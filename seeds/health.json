@@ -1,0 +1,14 @@
+{
+  "name": "Health",
+  "description": "Move daily, sleep regularly",
+  "nodes": [
+    { "key": "goal-health", "type": "goal", "title": "Stay healthy", "weight": 2, "weekly_hour_target": 5 },
+    { "key": "habit-walk", "type": "habit", "title": "Daily walk", "frequency": 1, "frequency_horizon": "day" },
+    { "key": "metric-energy", "type": "metric", "title": "Energy", "metric_kind": "five_point", "metric_min": 1, "metric_max": 5 }
+  ],
+  "links": [
+    { "from": "habit-walk", "to": "goal-health", "kind": "measures", "weight": 1 },
+    { "from": "metric-energy", "to": "habit-walk", "kind": "measures", "weight": 1 }
+  ],
+  "rules": []
+}

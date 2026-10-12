@@ -1,0 +1,17 @@
+{
+  "name": "Deep work",
+  "description": "Protect maker time for the highest-weight goal",
+  "nodes": [
+    { "key": "goal-ship", "type": "goal", "title": "Ship Life on Rails", "weight": 3, "weekly_hour_target": 10 },
+    { "key": "habit-deepwork", "type": "habit", "title": "Daily deep work", "frequency": 1, "frequency_horizon": "day" },
+    { "key": "metric-focus", "type": "metric", "title": "Focus quality", "metric_kind": "five_point", "metric_min": 1, "metric_max": 5 }
+  ],
+  "links": [
+    { "from": "habit-deepwork", "to": "goal-ship", "kind": "measures", "weight": 1 },
+    { "from": "metric-focus", "to": "habit-deepwork", "kind": "measures", "weight": 1 }
+  ],
+  "rules": [
+    { "match_app": "Code", "intent_key": "goal-ship" },
+    { "match_title": "standup|sync|review", "intent_key": "meetings" }
+  ]
+}

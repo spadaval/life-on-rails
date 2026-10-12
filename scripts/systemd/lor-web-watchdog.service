@@ -1,0 +1,11 @@
+[Unit]
+Description=Life on Rails watchdog tick (POST /internal/jobs/tick when stale)
+Requires=lor-web.service
+After=lor-web.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/life-on-rails/env
+ExecStart=/usr/bin/curl -sf -X POST \
+  -H "Authorization: Bearer ${LOR_JOB_TOKEN}" \
+  http://127.0.0.1:3847/internal/jobs/tick

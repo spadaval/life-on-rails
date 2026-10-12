@@ -1,0 +1,4 @@
+[
+  { "id": "primary", "summary": "primary", "primary": true, "timeZone": "America/Los_Angeles" },
+  { "id": "holidays", "summary": "Holidays in United States", "timeZone": "America/Los_Angeles" }
+]

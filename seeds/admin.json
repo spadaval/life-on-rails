@@ -1,0 +1,12 @@
+{
+  "name": "Admin",
+  "description": "Keep the lights on: mail triage, bills, chores",
+  "nodes": [
+    { "key": "goal-admin", "type": "goal", "title": "Stay on top of admin", "weight": 1, "weekly_hour_target": 3 },
+    { "key": "task-inbox", "type": "task", "title": "Clear inbox to zero", "weight": 1 }
+  ],
+  "links": [
+    { "from": "task-inbox", "to": "goal-admin", "kind": "measures", "weight": 1 }
+  ],
+  "rules": []
+}

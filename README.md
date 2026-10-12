@@ -1,28 +1,33 @@
-# Create T3 App
+# Life on Rails v2 — self-hosted personal operating system
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+Intention-aware time tracker on one box (`buildbot`, `127.0.0.1:3847`).
+Spec: `docs/v2-product-engineering-spec.md`. Agent notes: `AGENTS.md`.
+Predecessor draft (frozen): `archive/2023/`.
 
-## What's next? How do I make an app with this?
+## Stack (exact pins in `package.json`)
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+TanStack Start + React 19 + Tailwind 4 + PostgreSQL 18 (apt, Unix socket) +
+Drizzle + postgres.js + Zod 4 + Vitest. pnpm. Node 22+.
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## Quick start (operator)
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+```bash
+pnpm install
+cp .env.example ~/.config/life-on-rails/env   # 0600; fill keys, GOG_KEYRING_*, DATABASE_URL
+chmod 600 ~/.config/life-on-rails/env
+pnpm db:migrate
+pnpm start                 # dogfood: 127.0.0.1:3847, owns the job clock
+# pnpm dev is UI-only (HMR); do not rely on it for calendar_poll
+```
 
-## Learn More
+Postgres host runbook (needs `sudo apt`, not a code PR): see spec
+“Host, install, rollout”. Port `3847` is chosen to avoid the existing
+Tailscale Serve `/` → `127.0.0.1:3773`; a later `/lor` path must not reset `/`.
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+## Layout
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
-
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
-
-## How do I deploy this?
-
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+`src/shared/` envelope + ingest contract · `src/db/` Drizzle schema/client/migrate/seed ·
+`src/server/{google,capture,attribution,scoring,agent,jobs,functions}/` ·
+`src/routes/` Start routes · `agents/linux-activity/` on-box sensor daemon ·
+`tests/` vitest suites · `seeds/` graph seed JSON · `scripts/` runbook helpers +
+systemd units.

@@ -1,0 +1,19 @@
+[Unit]
+Description=Life on Rails web (production clock: calendar poll, overnight, scores)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+WorkingDirectory=%h/projects/life-on-rails
+Environment=PATH=/home/supadava/.local/bin:/usr/bin:/bin
+Environment=NODE_ENV=production
+EnvironmentFile=%h/.config/life-on-rails/env
+ExecStart=/home/supadava/.local/bin/pnpm start
+# Watchdog: poke due jobs if calendar_poll is stale (in-process scheduler is primary).
+# OnCalendar=*:0/15 is paired with a timer unit (lor-web-watchdog.timer).
+
+[Install]
+WantedBy=default.target

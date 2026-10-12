@@ -1,7 +1,11 @@
-import type { Config } from "drizzle-kit";
+import { defineConfig } from "drizzle-kit";
 
-export default {
-  schema: "./src/schema/*",
+export default defineConfig({
+  schema: "./src/db/schema.ts",
   out: "./drizzle",
-  connectionString: process.env.DATABASE_URL,
-} satisfies Config;
+  dialect: "postgresql",
+  dbCredentials: {
+    // Generate-only in CI/dev without a live DB; migrate.ts uses DATABASE_URL at runtime.
+    url: process.env.DATABASE_URL ?? "postgres:///life_on_rails?host=/var/run/postgresql",
+  },
+});
