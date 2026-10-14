@@ -6,7 +6,6 @@ import {
   subtractSpans,
   totalSeconds,
 } from "../../src/server/attribution/intervals.js";
-import { coalesceSamples, mergeSessions } from "../../src/server/attribution/segment.js";
 import {
   calendarOverlapSuggest,
   globMatch,
@@ -70,41 +69,6 @@ describe("attributionCoverage", () => {
       22 * H,
     );
     expect(rate).toBeCloseTo(1.5 / 14, 9);
-  });
-});
-
-describe("segment", () => {
-  it("coalesces identical app+title within idle threshold", () => {
-    const out = coalesceSamples(
-      [
-        { app: "Code", title: "lor", tStart: 0, tEnd: 60_000, intentId: null },
-        { app: "Code", title: "lor", tStart: 90_000, tEnd: 120_000, intentId: null }, // 30s gap
-        { app: "Code", title: "other", tStart: 130_000, tEnd: 140_000, intentId: null },
-      ],
-      180,
-    );
-    expect(out).toHaveLength(2);
-    expect(out[0]).toMatchObject({ tStart: 0, tEnd: 120_000 });
-  });
-  it("NULL-safe label equality", () => {
-    const out = coalesceSamples(
-      [
-        { app: null, title: null, tStart: 0, tEnd: 10_000, intentId: null },
-        { app: null, title: null, tStart: 20_000, tEnd: 30_000, intentId: null },
-      ],
-      180,
-    );
-    expect(out).toHaveLength(1);
-  });
-  it("merges same-intent sessions within 120s", () => {
-    const out = mergeSessions(
-      [
-        { app: "a", title: "x", tStart: 0, tEnd: 100_000, intentId: "i1" },
-        { app: "b", title: "y", tStart: 200_000, tEnd: 300_000, intentId: "i1" }, // 100s gap
-        { app: "c", title: "z", tStart: 310_000, tEnd: 320_000, intentId: "i2" },
-      ],
-    );
-    expect(out).toHaveLength(2);
   });
 });
 

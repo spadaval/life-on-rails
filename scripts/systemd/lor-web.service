@@ -1,19 +1,18 @@
 [Unit]
-Description=Life on Rails web (production clock: calendar poll, overnight, scores)
-After=network.target postgresql.service
-Wants=postgresql.service
+Description=Life on Rails (web, API, jobs)
+# Postgres is a system unit and cannot be ordered against from a user unit:
+# if it is not up yet, the server exits non-zero and is started again.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-Restart=on-failure
-RestartSec=5
 WorkingDirectory=%h/projects/life-on-rails
-Environment=PATH=/home/supadava/.local/bin:/usr/bin:/bin
-Environment=NODE_ENV=production
 EnvironmentFile=%h/.config/life-on-rails/env
-ExecStart=/home/supadava/.local/bin/pnpm start
-# Watchdog: poke due jobs if calendar_poll is stale (in-process scheduler is primary).
-# OnCalendar=*:0/15 is paired with a timer unit (lor-web-watchdog.timer).
+Environment=NODE_ENV=production
+# node by absolute path, not pnpm: a corepack shim would try to download pnpm at start.
+ExecStart=%h/.local/opt/node/bin/node scripts/serve.mjs
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=default.target

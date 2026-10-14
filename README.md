@@ -1,33 +1,61 @@
-# Life on Rails v2 — self-hosted personal operating system
+# Life on Rails v2
 
-Intention-aware time tracker on one box (`buildbot`, `127.0.0.1:3847`).
-Spec: `docs/v2-product-engineering-spec.md`. Agent notes: `AGENTS.md`.
-Predecessor draft (frozen): `archive/2023/`.
+A self-hosted personal operating system for one person on one box: a time
+tracker that knows intent, and the memory and senses of a personal agent that
+lives in T3 Code.
 
-## Stack (exact pins in `package.json`)
+- Design and build order: `docs/v2-product-engineering-spec.md`
+- Notes for agents working in this repo: `AGENTS.md`
+- The frozen 2023 app: `archive/2023/` (never imported)
 
-TanStack Start + React 19 + Tailwind 4 + PostgreSQL 18 (apt, Unix socket) +
-Drizzle + postgres.js + Zod 4 + Vitest. pnpm. Node 22+.
+## Stack
 
-## Quick start (operator)
+TanStack Start, React 19, Tailwind 4, PostgreSQL 18 (apt, Unix socket, peer
+auth), Drizzle for migrations with postgres.js for queries, Zod 4, Vitest, pnpm.
+Versions are pinned exact in `package.json`.
+
+The service runs on Node 22 at `~/.local/opt/node/bin/node`, called by absolute
+path. Builds and tests run under whatever Node `pnpm` uses in the shell.
+
+## Set up a box
 
 ```bash
+scripts/install-postgres.sh                  # apt install, role, databases (needs sudo)
 pnpm install
-cp .env.example ~/.config/life-on-rails/env   # 0600; fill keys, GOG_KEYRING_*, DATABASE_URL
-chmod 600 ~/.config/life-on-rails/env
-pnpm db:migrate
-pnpm start                 # dogfood: 127.0.0.1:3847, owns the job clock
-# pnpm dev is UI-only (HMR); do not rely on it for calendar_poll
+install -m 600 .env.example ~/.config/life-on-rails/env   # then fill it in
+pnpm db:migrate                              # schema + seed
+pnpm build
+scripts/install-units.sh                     # lor-web.service + nightly backup timer
 ```
 
-Postgres host runbook (needs `sudo apt`, not a code PR): see spec
-“Host, install, rollout”. Port `3847` is chosen to avoid the existing
-Tailscale Serve `/` → `127.0.0.1:3773`; a later `/lor` path must not reset `/`.
+After a change: `pnpm build && systemctl --user restart lor-web`.
+
+## Running
+
+| | |
+| --- | --- |
+| `pnpm start` | The production server: both listeners and the scheduler. What the unit runs. |
+| `pnpm dev` | Vite dev server, UI only. It never runs jobs. |
+| `pnpm test` | Pure functions. No database, no network. |
+| `pnpm test:db` | Write paths against `life_on_rails_test`. |
+| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm db:generate` | Generate a migration from `src/db/schema.ts`. |
+| `pnpm db:migrate` | Apply migrations and the seed. |
+
+- `http://127.0.0.1:3847` is everything, for use on the box. `/health` reports the database and every job.
+- `127.0.0.1:3848` is the owner-only listener that `tailscale serve` publishes.
+- Logs: `journalctl --user -u lor-web -f`
+- Backups: `~/.local/share/life-on-rails/backup/`, nightly, last 7 kept.
+  Restore with `pg_restore --clean --if-exists -d life_on_rails <file>` after stopping the unit.
 
 ## Layout
 
-`src/shared/` envelope + ingest contract · `src/db/` Drizzle schema/client/migrate/seed ·
-`src/server/{google,capture,attribution,scoring,agent,jobs,functions}/` ·
-`src/routes/` Start routes · `agents/linux-activity/` on-box sensor daemon ·
-`tests/` vitest suites · `seeds/` graph seed JSON · `scripts/` runbook helpers +
-systemd units.
+```
+src/shared/      types and helpers safe for both sides (envelope, ids, local time)
+src/db/          schema, client, migrate, seed
+src/server/      env, logging, jobs, and everything that touches the database
+src/routes/      TanStack Start routes (UI, /health, /api/v1)
+scripts/         production entry (serve.mjs), host setup, systemd units
+tests/           pure tests; tests/db/ runs against Postgres
+drizzle/         generated SQL migrations
+```

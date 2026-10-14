@@ -1,0 +1,9 @@
+[Unit]
+Description=Life on Rails nightly pg_dump
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

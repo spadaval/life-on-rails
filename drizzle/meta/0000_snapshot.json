@@ -1,5 +1,5 @@
 {
-  "id": "4d24383c-7bd1-4688-b1e9-fb5befd743d8",
+  "id": "0560e4a5-2bdc-4d3d-84d1-69b3695a00bc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -147,9 +147,16 @@
           "primaryKey": false,
           "notNull": false
         },
-        "observation_ids": {
-          "name": "observation_ids",
-          "type": "uuid[]",
+        "via": {
+          "name": "via",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ui'"
+        },
+        "source_ref": {
+          "name": "source_ref",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -221,33 +228,47 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.conversation": {
-      "name": "conversation",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
+      "foreignKeys": {
+        "commitment_intent_id_intent_id_fk": {
+          "name": "commitment_intent_id_intent_id_fk",
+          "tableFrom": "commitment",
+          "tableTo": "intent",
+          "columnsFrom": [
+            "intent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
+        "commitment_proposal_id_proposal_id_fk": {
+          "name": "commitment_proposal_id_proposal_id_fk",
+          "tableFrom": "commitment",
+          "tableTo": "proposal",
+          "columnsFrom": [
+            "proposal_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "commitment_time_block_id_time_block_id_fk": {
+          "name": "commitment_time_block_id_time_block_id_fk",
+          "tableFrom": "commitment",
+          "tableTo": "time_block",
+          "columnsFrom": [
+            "time_block_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -258,23 +279,17 @@
       "name": "google_event",
       "schema": "",
       "columns": {
-        "event_id": {
-          "name": "event_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "calendar_id": {
           "name": "calendar_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "ical_uid": {
-          "name": "ical_uid",
+        "event_id": {
+          "name": "event_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "title": {
           "name": "title",
@@ -305,7 +320,8 @@
           "name": "status",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "'confirmed'"
         },
         "html_link": {
           "name": "html_link",
@@ -324,7 +340,8 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
@@ -366,12 +383,11 @@
         }
       },
       "compositePrimaryKeys": {
-        "google_event_calendar_id_event_id_t_start_pk": {
-          "name": "google_event_calendar_id_event_id_t_start_pk",
+        "google_event_calendar_id_event_id_pk": {
+          "name": "google_event_calendar_id_event_id_pk",
           "columns": [
             "calendar_id",
-            "event_id",
-            "t_start"
+            "event_id"
           ]
         }
       },
@@ -404,12 +420,6 @@
         },
         "last_error": {
           "name": "last_error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "etag": {
-          "name": "etag",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -600,7 +610,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "intent_weight_nonneg": {
+          "name": "intent_weight_nonneg",
+          "value": "\"intent\".\"weight\" >= 0"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.intent_link": {
@@ -737,7 +752,16 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "intent_link_weight_nonneg": {
+          "name": "intent_link_weight_nonneg",
+          "value": "\"intent_link\".\"weight\" >= 0"
+        },
+        "intent_link_not_self": {
+          "name": "intent_link_not_self",
+          "value": "\"intent_link\".\"from_id\" <> \"intent_link\".\"to_id\""
+        }
+      },
       "isRLSEnabled": false
     },
     "public.intent_tag": {
@@ -757,29 +781,7 @@
           "notNull": true
         }
       },
-      "indexes": {
-        "intent_tag_pk": {
-          "name": "intent_tag_pk",
-          "columns": [
-            {
-              "expression": "intent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "tag_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "intent_tag_intent_id_intent_id_fk": {
           "name": "intent_tag_intent_id_intent_id_fk",
@@ -808,7 +810,15 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "intent_tag_intent_id_tag_id_pk": {
+          "name": "intent_tag_intent_id_tag_id_pk",
+          "columns": [
+            "intent_id",
+            "tag_id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -887,70 +897,6 @@
         }
       },
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.message": {
-      "name": "message",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "conversation_id": {
-          "name": "conversation_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "role": {
-          "name": "role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tool_name": {
-          "name": "tool_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "message_conversation_id_conversation_id_fk": {
-          "name": "message_conversation_id_conversation_id_fk",
-          "tableFrom": "message",
-          "tableTo": "conversation",
-          "columnsFrom": [
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1072,9 +1018,38 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "observation_ingested_idx": {
+          "name": "observation_ingested_idx",
+          "columns": [
+            {
+              "expression": "ingested_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "observation_intent_hint_intent_id_fk": {
+          "name": "observation_intent_hint_intent_id_fk",
+          "tableFrom": "observation",
+          "tableTo": "intent",
+          "columnsFrom": [
+            "intent_hint"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1096,7 +1071,8 @@
           "type": "proposal_kind",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "'time_attribution'"
         },
         "status": {
           "name": "status",
@@ -1116,7 +1092,7 @@
           "name": "time_block_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "intent_id": {
           "name": "intent_id",
@@ -1133,6 +1109,19 @@
         },
         "reason": {
           "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "via": {
+          "name": "via",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ui'"
+        },
+        "source_ref": {
+          "name": "source_ref",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -1185,17 +1174,48 @@
             }
           ],
           "isUnique": false,
-          "where": "time_block_id is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "proposal_time_block_id_time_block_id_fk": {
+          "name": "proposal_time_block_id_time_block_id_fk",
+          "tableFrom": "proposal",
+          "tableTo": "time_block",
+          "columnsFrom": [
+            "time_block_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "proposal_intent_id_intent_id_fk": {
+          "name": "proposal_intent_id_intent_id_fk",
+          "tableFrom": "proposal",
+          "tableTo": "intent",
+          "columnsFrom": [
+            "intent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "proposal_confidence_range": {
+          "name": "proposal_confidence_range",
+          "value": "\"proposal\".\"confidence\" BETWEEN 0 AND 1"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.score_snapshot": {
@@ -1210,7 +1230,7 @@
         },
         "as_of": {
           "name": "as_of",
-          "type": "timestamp with time zone",
+          "type": "date",
           "primaryKey": false,
           "notNull": true
         },
@@ -1218,7 +1238,7 @@
           "name": "score",
           "type": "real",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "parts": {
           "name": "parts",
@@ -1227,29 +1247,7 @@
           "notNull": true
         }
       },
-      "indexes": {
-        "score_snapshot_pk": {
-          "name": "score_snapshot_pk",
-          "columns": [
-            {
-              "expression": "intent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "as_of",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "score_snapshot_intent_id_intent_id_fk": {
           "name": "score_snapshot_intent_id_intent_id_fk",
@@ -1265,7 +1263,15 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "score_snapshot_intent_id_as_of_pk": {
+          "name": "score_snapshot_intent_id_as_of_pk",
+          "columns": [
+            "intent_id",
+            "as_of"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -1357,12 +1363,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "calendar_t_start": {
-          "name": "calendar_t_start",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "title": {
           "name": "title",
           "type": "text",
@@ -1392,12 +1392,6 @@
         "commitment_id": {
           "name": "commitment_id",
           "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "confidence": {
-          "name": "confidence",
-          "type": "real",
           "primaryKey": false,
           "notNull": false
         },
@@ -1448,22 +1442,6 @@
           "method": "btree",
           "with": {}
         },
-        "time_block_uncommitted_idx": {
-          "name": "time_block_uncommitted_idx",
-          "columns": [
-            {
-              "expression": "t_start",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "committed = false",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "time_block_calendar_event_idx": {
           "name": "time_block_calendar_event_idx",
           "columns": [
@@ -1478,22 +1456,43 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            },
-            {
-              "expression": "calendar_t_start",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
             }
           ],
           "isUnique": false,
-          "where": "origin = 'calendar' and calendar_event_id is not null",
+          "where": "origin = 'calendar'",
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "time_block_intent_id_intent_id_fk": {
+          "name": "time_block_intent_id_intent_id_fk",
+          "tableFrom": "time_block",
+          "tableTo": "intent",
+          "columnsFrom": [
+            "intent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "time_block_commitment_id_commitment_id_fk": {
+          "name": "time_block_commitment_id_commitment_id_fk",
+          "tableFrom": "time_block",
+          "tableTo": "commitment",
+          "columnsFrom": [
+            "commitment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1517,29 +1516,7 @@
           "notNull": true
         }
       },
-      "indexes": {
-        "time_block_observation_pk": {
-          "name": "time_block_observation_pk",
-          "columns": [
-            {
-              "expression": "block_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "observation_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "time_block_observation_block_id_time_block_id_fk": {
           "name": "time_block_observation_block_id_time_block_id_fk",
@@ -1568,149 +1545,15 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.title_embedding": {
-      "name": "title_embedding",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "app": {
-          "name": "app",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "embedding": {
-          "name": "embedding",
-          "type": "vector(384)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "title_embedding_app_title": {
-          "name": "title_embedding_app_title",
+      "compositePrimaryKeys": {
+        "time_block_observation_block_id_observation_id_pk": {
+          "name": "time_block_observation_block_id_observation_id_pk",
           "columns": [
-            {
-              "expression": "app",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "title",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
+            "block_id",
+            "observation_id"
+          ]
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.user_profile": {
-      "name": "user_profile",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "boolean",
-          "primaryKey": true,
-          "notNull": true,
-          "default": true
-        },
-        "display_name": {
-          "name": "display_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'me'"
-        },
-        "timezone": {
-          "name": "timezone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'America/Los_Angeles'"
-        },
-        "scoring_weeks": {
-          "name": "scoring_weeks",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 2
-        },
-        "wake_start": {
-          "name": "wake_start",
-          "type": "time",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'08:00'"
-        },
-        "wake_end": {
-          "name": "wake_end",
-          "type": "time",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'22:00'"
-        },
-        "idle_threshold_s": {
-          "name": "idle_threshold_s",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 180
-        },
-        "xai_model": {
-          "name": "xai_model",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'grok-4.7'"
-        },
-        "outbound_enabled": {
-          "name": "outbound_enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -1752,6 +1595,7 @@
       "schema": "public",
       "values": [
         "active",
+        "waiting",
         "paused",
         "later",
         "done",
@@ -1792,11 +1636,7 @@
       "name": "proposal_kind",
       "schema": "public",
       "values": [
-        "link_intent",
-        "time_attribution",
-        "habit_completion",
-        "metric_value",
-        "day_plan"
+        "time_attribution"
       ]
     },
     "public.proposal_status": {

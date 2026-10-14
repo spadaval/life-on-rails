@@ -1,1 +1,50 @@
 @import "tailwindcss";
+/* The frozen 2023 app is full of class names; do not scan it. */
+@source not "../archive";
+
+@theme {
+  --color-ink: #16181d;
+  --color-paper: #fafaf7;
+  --color-rail: #2f6f5e;
+  --color-warn: #b7791f;
+  --color-bad: #b83232;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  @apply bg-paper text-ink antialiased;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #101214;
+    color: #e8e6e1;
+  }
+}
+
+/* One column, large type, no hover-only actions: Today doubles as a kiosk. */
+.btn {
+  @apply inline-flex items-center justify-center rounded-lg border border-black/15 px-3 py-2 text-sm font-medium dark:border-white/20;
+}
+.btn-primary {
+  @apply border-transparent bg-rail text-white;
+}
+.btn-danger {
+  @apply border-transparent bg-bad text-white;
+}
+.card {
+  @apply rounded-xl border border-black/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5;
+}
+.muted {
+  @apply text-black/55 dark:text-white/55;
+}
+.chip {
+  @apply inline-flex items-center rounded-full border border-black/15 px-2 py-0.5 text-xs dark:border-white/20;
+}
+.input {
+  @apply w-full rounded-lg border border-black/20 bg-white px-3 py-2 text-base dark:border-white/20 dark:bg-white/10;
+}

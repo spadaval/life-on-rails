@@ -7,13 +7,12 @@
   "scripts": {
     "dev": "vite dev --port 3847 --host 127.0.0.1",
     "build": "vite build",
-    "start": "node .output/server/index.mjs",
+    "start": "node scripts/serve.mjs",
     "test": "vitest run",
-    "test:watch": "vitest",
+    "test:db": "vitest run --config vitest.db.config.ts",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/db/migrate.ts",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.42",
@@ -22,6 +21,7 @@
     "postgres": "3.4.9",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "srvx": "0.11.22",
     "tailwindcss": "4.3.3",
     "zod": "4.6.6"
   },

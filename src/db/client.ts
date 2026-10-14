@@ -1,8 +1,8 @@
-// postgres.js client. Forces the Unix socket dir when DATABASE_URL has an
-// empty host: postgres.js would otherwise treat it as TCP localhost:5432,
-// but peer auth only works over the socket (local … peer in pg_hba.conf).
-// Spec: DATABASE_URL=postgres:///life_on_rails?host=/var/run/postgresql
+// postgres.js client over the Unix socket (peer auth, no password).
+// postgres.js treats an empty URL host as TCP localhost, where peer auth does
+// not apply, so the socket directory is always passed explicitly.
 import postgres from "postgres";
+import { env } from "../server/env.js";
 
 export interface DbOptions {
   host: string;
@@ -10,26 +10,29 @@ export interface DbOptions {
   username?: string;
 }
 
-export function parseDatabaseUrl(raw?: string): DbOptions {
-  const input = raw ?? process.env.DATABASE_URL ?? "postgres:///life_on_rails?host=/var/run/postgresql";
-  const u = new URL(input);
-  const params = u.searchParams;
+export function parseDatabaseUrl(raw: string): DbOptions {
+  const u = new URL(raw);
   const database = decodeURIComponent(u.pathname.replace(/^\//, "") || "life_on_rails");
-  // Empty hostname (postgres:///db?host=/sock) means Unix socket; postgres.js
-  // must get the socket dir as `host`, never "" (which falls back to TCP).
-  const host = u.hostname || params.get("host") || "/var/run/postgresql";
+  const host = u.hostname || u.searchParams.get("host") || "/var/run/postgresql";
   const username = decodeURIComponent(u.username || "");
   return { host, database, ...(username ? { username } : {}) };
 }
 
-const opts = parseDatabaseUrl();
+export function connect(url: string, max = 5): postgres.Sql {
+  const opts = parseDatabaseUrl(url);
+  return postgres({
+    host: opts.host,
+    database: opts.database,
+    ...(opts.username ? { username: opts.username } : {}),
+    max,
+    idle_timeout: 20,
+    connect_timeout: 10,
+    onnotice: () => {},
+  });
+}
 
-export const sql = postgres({
-  host: opts.host,
-  database: opts.database,
-  ...(opts.username ? { username: opts.username } : {}),
-  // One box, one user: small pool.
-  max: 5,
-  idle_timeout: 20,
-  connect_timeout: 10,
-});
+export const sql = connect(env.DATABASE_URL);
+
+export type Sql = postgres.Sql;
+/** A transaction handle, or the pool itself: helpers accept either. */
+export type Tx = postgres.TransactionSql | postgres.Sql;

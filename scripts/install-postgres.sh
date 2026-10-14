@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
-# Host runbook helper: install PostgreSQL 18 + pgvector via apt (operator runs
-# with sudo; NOT invoked by any code PR). Then:
-#   sudo -u postgres createuser "$USER"
-#   sudo -u postgres createdb -O "$USER" life_on_rails
-#   sudo -u postgres psql -d life_on_rails -c 'CREATE EXTENSION IF NOT EXISTS vector;'
+# One-off host setup: PostgreSQL 18 from apt, a non-superuser role for the
+# current user (peer auth over the Unix socket), and the two databases.
+# pg_trgm is a trusted extension; the migration creates it without superuser.
 set -euo pipefail
-sudo apt-get update
-sudo apt-get install -y postgresql-18 postgresql-client-18 postgresql-18-pgvector
-echo "Postgres 18 installed. Next (as postgres superuser):"
-echo "  sudo -u postgres createuser \"\$USER\""
-echo "  sudo -u postgres createdb -O \"\$USER\" life_on_rails"
-echo "  sudo -u postgres psql -d life_on_rails -c 'CREATE EXTENSION IF NOT EXISTS vector;'"
+sudo apt-get install -y postgresql-18 postgresql-client-18
+sudo -u postgres createuser "$USER" || true
+sudo -u postgres createdb -O "$USER" life_on_rails || true
+sudo -u postgres createdb -O "$USER" life_on_rails_test || true
+psql -h /var/run/postgresql -d life_on_rails -Atc "select 'connected as ' || current_user"

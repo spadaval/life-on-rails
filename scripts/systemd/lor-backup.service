@@ -1,0 +1,6 @@
+[Unit]
+Description=Life on Rails nightly pg_dump
+
+[Service]
+Type=oneshot
+ExecStart=%h/projects/life-on-rails/scripts/backup-postgres.sh

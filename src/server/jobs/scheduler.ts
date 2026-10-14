@@ -1,40 +1,113 @@
-// In-process scheduler (spec Decision 13). Owns calendar_poll, overnight_close,
-// score_tick inside `pnpm start` / lor-web.service. pnpm dev is UI-only.
-// Every run takes pg_advisory_xact_lock(hashtext(name)) first so the systemd
-// watchdog POST /internal/jobs/tick racing the timer exits `skipped`.
+// In-process scheduler. Started once, from the production server entry only.
+// One process owns the clock, so an in-memory flag is all the exclusion a job
+// needs; if the process dies, systemd restarts it.
+import { sql } from "../../db/client.js";
+import { uuidv7 } from "../../shared/ids.js";
+import { localTimeOnDay, localYmd, addDays } from "../../shared/localTime.js";
+import { env } from "../env.js";
+import { errorMessage, log } from "../log.js";
+
 export interface Job {
-  name: "calendar_poll" | "overnight_close" | "score_tick";
-  /** Seconds between runs. */
-  everyS: number;
+  name: string;
+  /** Run every N seconds ... */
+  everyS?: number;
+  /** ... or once a day at this local wall-clock time ("01:30"). */
+  dailyAt?: string;
   run: () => Promise<Record<string, unknown>>;
 }
 
-export interface JobStore {
-  /** Returns true when the lock + running-row were acquired. */
-  acquire(name: string): Promise<boolean>;
-  finish(name: string, status: "ok" | "error", stats: Record<string, unknown>, error?: string): Promise<void>;
+const TICK_MS = 15_000;
+const DAILY_RETRY_MS = 15 * 60_000;
+
+const jobs = new Map<string, Job>();
+const running = new Set<string>();
+const lastOk = new Map<string, number>();
+const lastAttempt = new Map<string, number>();
+let timer: NodeJS.Timeout | null = null;
+
+/** The most recent instant a daily job was scheduled for, at or before `now`. */
+export function lastScheduledInstant(tz: string, hm: string, now: Date): Date {
+  const today = localTimeOnDay(tz, localYmd(tz, now), hm);
+  return today.getTime() <= now.getTime() ? today : localTimeOnDay(tz, addDays(localYmd(tz, now), -1), hm);
 }
 
-export function dueJobs(lastRun: Map<string, number>, nowMs: number, jobs: Job[]): Job[] {
-  return jobs.filter((j) => nowMs - (lastRun.get(j.name) ?? 0) >= j.everyS * 1000);
+export function isDue(
+  job: Pick<Job, "everyS" | "dailyAt">,
+  now: Date,
+  state: { lastOk?: number; lastAttempt?: number },
+  tz: string,
+): boolean {
+  const attempt = state.lastAttempt ?? 0;
+  if (job.dailyAt) {
+    const scheduled = lastScheduledInstant(tz, job.dailyAt, now).getTime();
+    if ((state.lastOk ?? 0) >= scheduled) return false;
+    return now.getTime() - attempt >= DAILY_RETRY_MS;
+  }
+  if (job.everyS) return now.getTime() - attempt >= job.everyS * 1000;
+  return false;
 }
 
-export async function runJob(store: JobStore, job: Job): Promise<{ ran: boolean; stats?: Record<string, unknown> }> {
-  if (!(await store.acquire(job.name))) return { ran: false };
+export type RunOutcome = "ok" | "error" | "skipped";
+
+/** Run a job now. A run already in flight makes this a no-op (`skipped`). */
+export async function runJob(name: string): Promise<RunOutcome> {
+  const job = jobs.get(name);
+  if (!job) throw new Error(`unknown job: ${name}`);
+  if (running.has(name)) return "skipped";
+  running.add(name);
+  const id = uuidv7();
+  const started = Date.now();
+  lastAttempt.set(name, started);
   try {
+    await sql`INSERT INTO job_run (id, name, status) VALUES (${id}, ${name}, 'running')`;
     const stats = await job.run();
-    await store.finish(job.name, "ok", stats);
-    return { ran: true, stats };
+    await sql`UPDATE job_run SET status = 'ok', finished_at = now(), stats = ${sql.json(stats as never)} WHERE id = ${id}`;
+    lastOk.set(name, started);
+    return "ok";
   } catch (err) {
-    await store.finish(job.name, "error", {}, (err as Error).message);
-    throw err;
+    const message = errorMessage(err);
+    log("error", "job failed", { job: name, err: message, duration_ms: Date.now() - started });
+    await sql`UPDATE job_run SET status = 'error', finished_at = now(), error = ${message} WHERE id = ${id}`.catch(() => {});
+    return "error";
+  } finally {
+    running.delete(name);
   }
 }
 
-export const ACQUIRE_SQL = `
-SELECT pg_try_advisory_xact_lock(hashtext($1)) AS locked`;
+async function tick(): Promise<void> {
+  const now = new Date();
+  for (const job of jobs.values()) {
+    const state = { lastOk: lastOk.get(job.name), lastAttempt: lastAttempt.get(job.name) };
+    if (!running.has(job.name) && isDue(job, now, state, env.LOR_TZ)) void runJob(job.name);
+  }
+}
 
-export const JOB_RUN_INSERT_SQL = `
-INSERT INTO job_run (id, name, status, stats)
-VALUES (gen_random_uuid(), $1, 'running', '{}')
-RETURNING id`;
+export function registerJobs(list: Job[]): void {
+  for (const job of list) jobs.set(job.name, job);
+}
+
+export function registeredJobs(): Job[] {
+  return [...jobs.values()];
+}
+
+export async function startScheduler(): Promise<void> {
+  if (timer) return;
+  // One process: a row still marked running belongs to a process that died.
+  await sql`UPDATE job_run SET status = 'error', finished_at = now(), error = 'abandoned'
+    WHERE status = 'running'`;
+  const rows = await sql<{ name: string; last: Date }[]>`
+    SELECT name, max(started_at) AS last FROM job_run WHERE status = 'ok' GROUP BY name`;
+  for (const r of rows) {
+    lastOk.set(r.name, r.last.getTime());
+    lastAttempt.set(r.name, r.last.getTime());
+  }
+  timer = setInterval(() => void tick(), TICK_MS);
+  timer.unref?.();
+  void tick();
+  log("info", "scheduler started", { jobs: [...jobs.keys()] });
+}
+
+export function stopScheduler(): void {
+  if (timer) clearInterval(timer);
+  timer = null;
+}
