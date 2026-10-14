@@ -109,6 +109,9 @@ export const intentLink = pgTable(
     kind: linkKind("kind").notNull(),
     weight: real("weight").notNull().default(1),
     meta: jsonb("meta").notNull().default({}),
+    via: text("via").notNull().default("ui"),
+    sourceRef: text("source_ref"),
+    createdAt: ts("created_at").notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("intent_link_unique").on(t.fromId, t.toId, t.kind),

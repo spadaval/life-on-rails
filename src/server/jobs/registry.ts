@@ -4,6 +4,8 @@ import { env } from "../env.js";
 import { syncCalendars } from "../google/calendarSync.js";
 import { googleCalendar, googleTasks } from "../google/client.js";
 import { syncTasks } from "../google/tasksSync.js";
+import { wakeSnoozed } from "../intents.js";
+import { recomputeScores, scheduleRecompute } from "../scoring/recompute.js";
 import type { Job } from "./scheduler.js";
 
 const startedAt = Date.now();
@@ -24,8 +26,14 @@ export const JOBS: Job[] = [
     everyS: env.LOR_TASKS_POLL_S,
     run: async () => {
       const { touched, ...stats } = await syncTasks(sql, googleTasks);
+      if (touched.length > 0) scheduleRecompute();
       return stats;
     },
+  },
+  {
+    name: "score_tick",
+    everyS: 3600,
+    run: async () => ({ woken: await wakeSnoozed(sql), ...(await recomputeScores(sql)) }),
   },
 ];
 

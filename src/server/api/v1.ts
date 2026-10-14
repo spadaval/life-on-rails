@@ -9,6 +9,10 @@ import type { Json } from "../../shared/json.js";
 import { env } from "../env.js";
 import { BadInput, NotFound, Refused } from "../errors.js";
 import { errorMessage, log } from "../log.js";
+import { getGraph, getIntentDetail, renderGraph, taskContextMarkdown } from "../graph.js";
+import {
+  INTENT_TYPES, LINK_KINDS, assignTask, commitHabit, commitMetric, completeTask, createIntent, linkIntents,
+} from "../intents.js";
 import { agentLog } from "../memory/agentLog.js";
 import { getChanges } from "../memory/changes.js";
 import { getContext } from "../memory/context.js";
@@ -16,6 +20,8 @@ import { getDay, resolveDate } from "../memory/day.js";
 import { ENTITY_KINDS, showEntity, upsertEntity } from "../memory/entities.js";
 import { createPage, pageHistory, readPage, searchPages, updatePage } from "../memory/pages.js";
 import { SEARCH_KINDS, search } from "../memory/search.js";
+import "../memory/worldSections.js";
+import { explainScore, recomputeScores } from "../scoring/recompute.js";
 import { getStatus } from "../status.js";
 
 export interface ApiRequest {
@@ -66,7 +72,11 @@ const slugOf = (params: string[]) => decodeURIComponent(params[0] ?? "");
 
 // ---- orientation ----
 
-route("GET", /^\/context$/, async () => getContext(sql));
+route("GET", /^\/context$/, async ({ query }) => {
+  const task = query.get("task");
+  if (task) return { task, markdown: await taskContextMarkdown(sql, Uuid.parse(task)) };
+  return getContext(sql);
+});
 route("GET", /^\/status$/, async () => getStatus());
 route("GET", /^\/changes$/, async ({ query }) => {
   const since = timeParam(query, "since");
@@ -190,6 +200,99 @@ const LogEntry = z.object({ text: z.string().trim().min(1), intent_id: OptionalU
 route("POST", /^\/log$/, async ({ body }) => {
   const d = LogEntry.parse(body);
   return agentLog(sql, { text: d.text, intentId: d.intent_id, thread: d.thread });
+});
+
+// ---- the world model ----
+
+route("GET", /^\/graph$/, async ({ query }) => {
+  let { nodes } = await getGraph(sql);
+  if (query.get("starving")) nodes = nodes.filter((n) => n.starving);
+  if (query.get("waiting")) nodes = nodes.filter((n) => n.status === "waiting");
+  return { results: nodes, markdown: renderGraph(nodes) };
+});
+
+route("GET", /^\/intents\/([0-9a-f-]{36})$/, async ({ params }) => getIntentDetail(sql, params[0]!));
+
+const CreateIntent = z.object({
+  type: z.enum(INTENT_TYPES),
+  title: z.string(),
+  description: z.string().nullish(),
+  parent_id: OptionalUuid,
+  due_at: z.string().nullish(),
+  waiting_on_entity_id: OptionalUuid,
+  assignee: z.enum(["owner", "agent"]).nullish(),
+  weight: z.number().nullish(),
+  weekly_hour_target: z.number().nullish(),
+  frequency: z.number().int().nullish(),
+  frequency_horizon: z.enum(["day", "week"]).nullish(),
+  estimate_hours: z.number().nullish(),
+  thread: Thread,
+});
+
+function parseTime(value: string | null | undefined, name: string): Date | null {
+  if (!value) return null;
+  const t = new Date(value);
+  if (Number.isNaN(t.getTime())) throw new BadInput(`${name} must be an RFC 3339 time`);
+  return t;
+}
+
+route("POST", /^\/intents$/, async ({ body }) => {
+  const d = CreateIntent.parse(body);
+  return createIntent(
+    sql,
+    {
+      type: d.type,
+      title: d.title,
+      description: d.description,
+      parentId: d.parent_id,
+      dueAt: parseTime(d.due_at, "--due"),
+      waitingOnEntityId: d.waiting_on_entity_id,
+      assignee: d.assignee ?? undefined,
+      threadRef: d.assignee === "agent" ? d.thread : null,
+      weight: d.weight ?? undefined,
+      weeklyHourTarget: d.weekly_hour_target,
+      frequency: d.frequency,
+      frequencyHorizon: d.frequency_horizon,
+      estimateHours: d.estimate_hours,
+    },
+    { via: "agent", sourceRef: d.thread },
+  );
+});
+
+const CreateLink = z.object({ from_id: Uuid, to_id: Uuid, kind: z.enum(LINK_KINDS), weight: z.number().min(0).nullish(), thread: Thread });
+
+route("POST", /^\/links$/, async ({ body }) => {
+  const d = CreateLink.parse(body);
+  return linkIntents(sql, { fromId: d.from_id, toId: d.to_id, kind: d.kind, weight: d.weight ?? undefined }, { via: "agent", sourceRef: d.thread });
+});
+
+route("POST", /^\/intents\/([0-9a-f-]{36})\/assign$/, async ({ params, body }) => {
+  const d = z.object({ assignee: z.enum(["owner", "agent"]), thread: Thread }).parse(body);
+  return assignTask(sql, params[0]!, d.assignee, d.thread);
+});
+
+route("POST", /^\/intents\/([0-9a-f-]{36})\/done$/, async ({ params, body }) => {
+  const d = z.object({ memo: z.string().nullish(), thread: Thread }).parse(body);
+  return completeTask(sql, params[0]!, { memo: d.memo, via: "agent", sourceRef: d.thread });
+});
+
+route("GET", /^\/intents\/([0-9a-f-]{36})\/score$/, async ({ params }) => {
+  await recomputeScores(sql);
+  const s = await explainScore(sql, params[0]!);
+  if (!s) throw new NotFound(`no score for ${params[0]}`);
+  return s;
+});
+
+const Dated = z.object({ date: z.string().nullish(), memo: z.string().nullish(), thread: Thread });
+
+route("POST", /^\/intents\/([0-9a-f-]{36})\/habit$/, async ({ params, body }) => {
+  const d = Dated.parse(body);
+  return commitHabit(sql, params[0]!, { date: d.date ? resolveDate(d.date) : undefined, memo: d.memo, via: "agent", sourceRef: d.thread });
+});
+
+route("POST", /^\/intents\/([0-9a-f-]{36})\/metric$/, async ({ params, body }) => {
+  const d = Dated.extend({ value: z.number() }).parse(body);
+  return commitMetric(sql, params[0]!, d.value, { date: d.date ? resolveDate(d.date) : undefined, memo: d.memo, via: "agent", sourceRef: d.thread });
 });
 
 // ---- dispatch ----

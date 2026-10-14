@@ -215,6 +215,9 @@ importers:
       drizzle-kit:
         specifier: 0.31.11
         version: 0.31.11
+      playwright-core:
+        specifier: 1.64.0
+        version: 1.64.0
       tsx:
         specifier: 4.23.15
         version: 4.23.15
@@ -227,22 +230,6 @@ importers:
       vitest:
         specifier: 5.0.4
         version: 5.0.4(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
-
-  agents/linux-activity:
-    dependencies:
-      zod:
-        specifier: 4.6.6
-        version: 4.6.6
-    devDependencies:
-      '@types/node':
-        specifier: 26.6.5
-        version: 26.6.5
-      tsx:
-        specifier: 4.23.15
-        version: 4.23.15
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
 
 packages:
 
@@ -1626,6 +1613,11 @@ packages:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
 
+  playwright-core@1.64.0:
+    resolution: {integrity: sha512-T9r+MZkTECl2+oUcZ26YgZzTrYidTsIhYYkJix+6iDOymOb1FB2RLLSOxRGnZGv5DStt+aduIVbt+E8WygXYpg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   postcss@8.5.29:
     resolution: {integrity: sha512-49cGhUbXj8Qenv0iTMxA1cFBzxXoctpC9Ujd77t1WcbJIr6nF/eI7g/8MgxrYldFRuAXvja7xQRwavoW7kgrxQ==}
     engines: {node: ^10 || ^12 || >=14}
@@ -2958,6 +2950,8 @@ snapshots:
   picocolors@1.1.1: {}
 
   picomatch@4.0.7: {}
+
+  playwright-core@1.64.0: {}
 
   postcss@8.5.29:
     dependencies:

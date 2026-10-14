@@ -9,7 +9,10 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Life on Rails" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+    ],
   }),
   component: RootComponent,
   notFoundComponent: () => <p className="p-6">Nothing here.</p>,
@@ -17,6 +20,7 @@ export const Route = createRootRoute({
 
 const NAV = [
   { to: "/", label: "Today" },
+  { to: "/graph", label: "Graph" },
   { to: "/capture", label: "Capture" },
 ] as const;
 

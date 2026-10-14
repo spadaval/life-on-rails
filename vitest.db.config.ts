@@ -21,6 +21,6 @@ export default defineConfig({
     globalSetup: ["tests/db/globalSetup.ts"],
     setupFiles: ["tests/db/setup.ts"],
     // The app's client reads DATABASE_URL at import; point it at the test database.
-    env: { DATABASE_URL: url, LOR_TEST_DATABASE_URL: url, LOR_TZ: "America/Los_Angeles", LOR_AGENT_TOKEN: "test-agent-token-000" },
+    env: { DATABASE_URL: url, LOR_TEST_DATABASE_URL: url, LOR_TZ: "America/Los_Angeles", LOR_AGENT_TOKEN: "test-agent-token-000", LOR_SYNC_RECOMPUTE: "off" },
   },
 });

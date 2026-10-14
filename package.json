@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "google:auth": "tsx scripts/google-auth.ts"
+    "google:auth": "tsx scripts/google-auth.ts",
+    "db:seed": "tsx scripts/seed-graph.ts"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.42",
@@ -34,6 +35,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "drizzle-kit": "0.31.11",
+    "playwright-core": "1.64.0",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vite": "8.3.4",
