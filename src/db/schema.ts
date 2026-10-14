@@ -46,7 +46,8 @@ export const commitmentKind = pgEnum("commitment_kind", [
   "task_done",
   "note",
 ]);
-export const blockOrigin = pgEnum("block_origin", ["auto_activity", "calendar", "manual", "merged"]);
+// auto_activity: phone app use; place: time at a known place. Both are fill, like calendar.
+export const blockOrigin = pgEnum("block_origin", ["auto_activity", "calendar", "manual", "merged", "place"]);
 
 export const intent = pgTable(
   "intent",
@@ -270,6 +271,7 @@ export const attributionRule = pgTable("attribution_rule", {
   matchApp: text("match_app"), // exact, or a * / ? glob
   matchTitle: text("match_title"), // case-insensitive regex; ≤200 chars, must compile
   matchUrl: text("match_url"), // * glob on origin + path
+  matchPlace: uuid("match_place").references((): AnyPgColumn => entity.id, { onDelete: "cascade" }), // a place entity
   intentId: uuid("intent_id")
     .notNull()
     .references(() => intent.id, { onDelete: "cascade" }),
@@ -356,6 +358,10 @@ export const entity = pgTable(
     birthdayYear: integer("birthday_year"),
     // Keep in touch at least this often; null = no expectation.
     keepInTouchDays: integer("keep_in_touch_days"),
+    // Places: where, and how near counts as being there.
+    lat: real("lat"),
+    lon: real("lon"),
+    radiusM: real("radius_m"),
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },

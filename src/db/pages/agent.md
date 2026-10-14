@@ -28,6 +28,7 @@ Do anything you can take back. Ask in the thread before anything you cannot take
 3. File each `inbox` entry onto the page where it belongs, then take it out of `inbox`.
 4. Link unlinked tasks to the goal or project they serve (`lor graph --md`).
 5. Note tasks that have been waiting on someone for more than a week.
+6. Phone and places (`lor apps`, `lor places`, `lor rules`). When an app plainly serves one goal or project (an editor, a work chat), add a rule: `lor rule add --app <package> --intent <id>`. Leave leisure apps unlabelled; that time is shown, not asked about. When `lor places` lists an unnamed place with many hours, ask Sumeet in the morning brief what it is; once he says, `lor place add "<name>" --at <lat>,<lon> --intent <id>` (the intent only if time there is for something, like an office).
 
 A nightly run never confirms time, never edits `agent` or `me`, and never sends anything.
 

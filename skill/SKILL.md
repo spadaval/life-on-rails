@@ -158,6 +158,18 @@ lor done <task_id> --memo "Booked for Nov 3; confirmation in mail:18c2..."
 lor propose time --block <block_id> --intent <intent_id> --reason "calendar says dentist"
 ```
 
+The actual lane fills itself, in order of precedence: Sumeet's own timers and anything confirmed,
+then calendar events, then phone app use, then stays at known places. Phone and place blocks
+with no matching rule are grey: shown, never asked about. A rule makes them suggestions:
+
+```bash
+lor apps                                       # apps by time in the last 14 days, and their labels
+lor rules
+lor rule add --app com.example.editor --intent <project_id>
+lor places                                     # named places, and unnamed ones the phone keeps visiting
+lor place add "Office" --at 35.8553,-78.8752 --intent <goal_id>
+```
+
 You may create and link tasks, goals, and projects freely; they are badged as yours and
 Sumeet can undo them. You may propose what a block of his time was.
 

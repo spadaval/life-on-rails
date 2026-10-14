@@ -7,7 +7,8 @@ import { sql } from "../db/client.js";
 import { systemIntentId } from "../db/seed.js";
 import { ObservationEnvelope } from "../shared/observation.js";
 import { normalizePhone } from "../shared/phone.js";
-import { pauseRunningBlock, resumeRunningBlock, startManualBlock, stopRunningBlock } from "./attribution/blocks.js";
+import { fillWindow, pauseRunningBlock, resumeRunningBlock, startManualBlock, stopRunningBlock } from "./attribution/blocks.js";
+import { lockBlocks, syncFill } from "./attribution/fill.js";
 import { env } from "./env.js";
 import { BadInput } from "./errors.js";
 import { takeNotifications } from "./intents.js";
@@ -33,6 +34,9 @@ export async function ingest(body: unknown): Promise<IngestResult> {
   if (!parsed.success) throw new BadInput(`expected {device, observations[]} with at most ${MAX_BATCH} observations`);
   const { device, observations } = parsed.data;
   const result: IngestResult = { received: observations.length, stored: 0, rejected: [] };
+  // App sessions and location fixes are evidence for the actual lane: re-sync fill over the time they cover.
+  let evidenceFrom = Infinity;
+  let evidenceTo = -Infinity;
   await sql.begin(async (tx) => {
     for (const raw of observations) {
       const o = ObservationEnvelope.safeParse(raw);
@@ -67,8 +71,19 @@ export async function ingest(body: unknown): Promise<IngestResult> {
         intentHint: e.intent_hint,
       });
       if (inserted) result.stored++;
+      if (payload.kind === "app" || payload.kind === "location") {
+        evidenceFrom = Math.min(evidenceFrom, Date.parse(e.t_start));
+        evidenceTo = Math.max(evidenceTo, Date.parse(e.t_end ?? e.t_start));
+      }
     }
   });
+  if (evidenceFrom <= evidenceTo) {
+    const { from, to } = fillWindow(new Date(), new Date(evidenceFrom), new Date(evidenceTo));
+    await sql.begin(async (tx) => {
+      await lockBlocks(tx);
+      await syncFill(tx, from, to);
+    });
+  }
   return result;
 }
 

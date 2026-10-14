@@ -19,6 +19,12 @@ type Data = Awaited<ReturnType<typeof getTodayFn>>;
 type Block = Data["today"]["actual"][number];
 type Planned = Data["today"]["planned"][number];
 
+/** Phone or place time nobody has labelled: shown, never asked about. */
+const isBare = (b: Block) => (b.origin === "auto_activity" || b.origin === "place") && !b.intent && !b.committed && !b.proposal;
+const blockName = (b: Block) => b.intent ?? (b.origin === "auto_activity" ? "Phone" : b.origin === "place" ? (b.title ?? "Somewhere") : "Unlabelled");
+const fromWhere = (origin: string) =>
+  origin === "calendar" ? "from the calendar" : origin === "auto_activity" ? "from your phone" : origin === "place" ? "from where you were" : "timer";
+
 const PX_PER_MIN = 0.9;
 const MIN_BLOCK_PX = 22;
 
@@ -206,6 +212,13 @@ function Today() {
             </span>
           ))}
         </section>
+      ) : null}
+
+      {t.phone ? (
+        <p className="muted text-sm">
+          Phone: {duration(t.phone.screen_s)} on screen · {t.phone.pickups} pickups · {t.phone.glances} glances
+          {t.phone.top.length > 0 ? ` · most: ${t.phone.top.map((a) => a.name).join(", ")}` : ""}
+        </p>
       ) : null}
 
       {data.starving.length > 0 || data.agentTasks.length > 0 ? (
@@ -428,6 +441,8 @@ function Timeline({ t, now, selected, onSelect, clock }: { t: Data["today"]; now
             const end = b.t_end ? ms(b.t_end) : b.paused_at ? ms(b.paused_at) : now;
             const look = b.committed
               ? "border-rail bg-rail text-white"
+              : isBare(b)
+                ? "border-dashed border-black/15 bg-black/5 opacity-70 dark:border-white/20 dark:bg-white/10"
               : b.rejected
                 ? "border-dashed border-black/25 opacity-50 dark:border-white/30"
                 : b.t_end
@@ -440,8 +455,8 @@ function Timeline({ t, now, selected, onSelect, clock }: { t: Data["today"]; now
                 style={box(ms(b.t_start), end)}
                 onClick={() => onSelect(b.id)}
               >
-                {b.intent ?? "Unlabelled"}
-                {b.title && b.title !== b.intent ? <span className="opacity-75"> · {b.title}</span> : null}
+                {blockName(b)}
+                {b.title && b.title !== blockName(b) ? <span className="opacity-75"> · {b.title}</span> : null}
                 {b.mismatch ? <span className="ml-1 rounded bg-warn px-1 text-xs text-white">{b.mismatch}</span> : null}
                 {b.committed && b.committed_via === "agent" ? <span className="ml-1 rounded bg-white/25 px-1 text-xs">agent</span> : null}
               </button>
@@ -469,6 +484,7 @@ function BlockPanel({ block: b, data, busy, act, clock, hm, onClose }: {
     void ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, []);
   const calendar = b.origin === "calendar";
+  const fill = calendar || b.origin === "auto_activity" || b.origin === "place";
   const closed = b.t_end !== null;
 
   return (
@@ -476,11 +492,11 @@ function BlockPanel({ block: b, data, busy, act, clock, hm, onClose }: {
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="muted text-sm">
-            {clock(b.t_start)}–{b.t_end ? clock(b.t_end) : "now"} · {calendar ? "from the calendar" : "timer"}
+            {clock(b.t_start)}–{b.t_end ? clock(b.t_end) : "now"} · {fromWhere(b.origin)}
           </p>
           <p className="text-xl font-semibold">
-            {b.intent ?? "Unlabelled"}
-            {b.title ? <span className="muted text-base"> · {b.title}</span> : null}
+            {blockName(b)}
+            {b.title && b.title !== blockName(b) ? <span className="muted text-base"> · {b.title}</span> : null}
           </p>
           <p className="text-sm">
             {b.committed
@@ -489,7 +505,9 @@ function BlockPanel({ block: b, data, busy, act, clock, hm, onClose }: {
                 ? `Suggested${b.proposal.via === "agent" ? " by the agent" : ""}${b.proposal.reason ? `: ${b.proposal.reason}` : "."}`
                 : b.rejected
                   ? "You said this label was wrong. Pick the right one, or leave it."
-                  : "Not confirmed."}
+                  : isBare(b)
+                    ? "Nothing to confirm. Label it if it was for something."
+                    : "Not confirmed."}
           </p>
         </div>
         <button className="btn" onClick={onClose}>
@@ -521,7 +539,7 @@ function BlockPanel({ block: b, data, busy, act, clock, hm, onClose }: {
           inputId="relabel-search"
           intents={data.intents}
           recent={data.recent}
-          onPick={(i: PickIntent) => act(() => recategorizeFn({ data: { blockId: b.id, intentId: i.id, rememberTitle: calendar && remember } })).then(onClose)}
+          onPick={(i: PickIntent) => act(() => recategorizeFn({ data: { blockId: b.id, intentId: i.id, rememberTitle: calendar && remember, remember: !calendar && remember } })).then(onClose)}
         />
         {calendar && b.title ? (
           <label className="flex items-center gap-2 text-sm">
@@ -529,11 +547,17 @@ function BlockPanel({ block: b, data, busy, act, clock, hm, onClose }: {
             Label every “{b.title}” this way from now on
           </label>
         ) : null}
+        {b.origin === "auto_activity" || b.origin === "place" ? (
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+            {b.origin === "place" ? `Label time ${b.title ? b.title.replace(/^At /, "at ") : "here"} this way from now on` : "Label this app this way from now on"}
+          </label>
+        ) : null}
       </div>
 
       {closed ? (
         <div className="flex flex-wrap items-end gap-2 border-t border-black/10 pt-3 dark:border-white/10">
-          {!calendar ? (
+          {!fill ? (
             <>
               <label className="text-sm">
                 <span className="muted block">Start</span>
@@ -552,10 +576,10 @@ function BlockPanel({ block: b, data, busy, act, clock, hm, onClose }: {
             <span className="muted block">Split at</span>
             <input className="input" type="time" value={splitAt} onChange={(e) => setSplitAt(e.target.value)} />
           </label>
-          <button className="btn" disabled={busy || !splitAt} onClick={() => act(() => splitBlockFn({ data: { blockId: b.id, date, at: splitAt } }), calendar ? "Split. Label one half now, or the calendar will join them again." : "Split.")}>
+          <button className="btn" disabled={busy || !splitAt} onClick={() => act(() => splitBlockFn({ data: { blockId: b.id, date, at: splitAt } }), fill ? "Split. Label one half now, or the next sync will join them again." : "Split.")}>
             Split
           </button>
-          {!calendar ? (
+          {!fill ? (
             <button className="btn btn-danger" disabled={busy} onClick={() => act(() => deleteBlockFn({ data: { blockId: b.id } }), "Deleted.").then(onClose)}>
               Delete
             </button>

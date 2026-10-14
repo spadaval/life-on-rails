@@ -214,13 +214,13 @@ Invariants:
 | `recategorizeBlock` | Close if open. Reject other pending proposals for the block. Insert `commitment time_spent` (`intent_id` required; `value` is a display copy of the hours). Set `time_block.intent_id`, `committed`, `commitment_id`. An earlier `time_spent` for the block is replaced. Then sync fill if the block is a calendar block. |
 | `splitBlock({blockId, at})` | Left keeps the id and ends at `at`; right is a new block with the same origin, intent, and committed state. Observations are re-pointed by midpoint. A commitment is split the same way. Two halves of an unconfirmed calendar block are joined again by the next fill sync unless one of them is relabelled. |
 | `confirmDay` | Each accepted proposal runs the `recategorizeBlock` transaction with the proposal's intent. Each rejected proposal becomes `rejected`. `all` accepts every other pending proposal for that date whose block has ended. Gaps stay gaps. |
-| Overnight close | Merge adjacent uncommitted non-calendar blocks with the same intent and a gap of at most 120 s (`origin=merged`). Create missing proposals. |
+| Overnight close | Merge adjacent uncommitted timer blocks (`manual`, `merged`) with the same intent and a gap of at most 120 s (`origin=merged`). Create missing proposals. |
 
-Activity blocks from sensors are not in this table yet; see "The phone".
+Phone and place blocks are fill like calendar blocks: they cannot be moved or deleted, only labelled; see "The phone".
 
-**Calendar fill.** One function, `syncCalendarFill(window)`, decides what calendar blocks should exist and changes only what differs. It runs after every calendar poll and after any change to a non-calendar block or to a commitment on a calendar block.
+**Calendar fill.** One function, `syncCalendarFill(window)`, decides what calendar blocks should exist and changes only what differs. It runs first inside `syncFill`, which also runs phone and place fill, after every calendar poll, every phone upload, and any block write.
 
-- **Taken time** is every non-calendar block plus every committed calendar block. An open block is taken from its start with no end, so while a timer runs there is no fill ahead of it; stopping the timer brings the fill back.
+- **Taken time** is every timer or manual block plus every committed block. Phone and place fill rank below the calendar, so they never take time from it. An open block is taken from its start with no end, so while a timer runs there is no fill ahead of it; stopping the timer brings the fill back.
 - **Events that fill:** timed events that are not cancelled, not declined by the owner, not marked free (`transparency=transparent`), and of type `default` or `fromGmail`. All-day events, focus time, out-of-office, and working-location entries show in the planned lane only.
 - **Two events at once:** the shorter event gets the overlapping time (ties go to the earlier start). A one-hour meeting inside an afternoon-long hold keeps its hour.
 - **Wanted blocks:** for each event, shortest first, its span minus taken time minus what shorter events already got. Each remaining fragment of a minute or more is one closed, uncommitted `origin=calendar` block with a pending proposal (`intent_id` from a matching rule, else `Meetings`).
@@ -477,14 +477,13 @@ There is no chat screen: the conversation is a T3 thread.
 
 **Building and installing.** `cd android && ./gradlew assembleDebug`, then `adb install -r app/build/outputs/apk/debug/app-debug.apk` over wireless debugging: the phone is paired with this box and reachable over Tailscale at `100.83.51.27` (the port changes each time wireless debugging is switched on; `nmap -p 30000-50000` finds it). `testDebugUnitTest` runs the session-building tests on the JVM. The T3 emulator image (`start-t3-emulator`, run under `sg kvm`) works for trying it against the test database at `http://10.0.2.2:3857`.
 
-**Not built yet: activity blocks.** Phone observations are stored, not yet turned into time blocks. That needs a design, now with real data to design against:
+**Activity blocks** (`src/server/attribution/activity.ts`, pure; `fill.ts`, the sync). The actual lane fills itself, in order of precedence: the owner's own blocks (timer, manual, anything confirmed), then calendar events, then phone app use, then stays at known places. `syncFill` runs the three fills in that order; each sees what outranks it as taken, keeps a block's id while its span is unchanged, and applies a rule's label only where nobody has suggested another. It runs after every phone upload (over the time the upload covers), after every calendar poll, and inside every block write.
 
-- Usage events arrive up to 15 minutes late and already closed, so there is no "open activity block".
-- What happens when phone activity overlaps a running timer or a manual block is undecided.
-- A day of phone use is dozens of short sessions; they need rolling up into a handful of blocks, or the evening confirm stops being 30 seconds.
-- Waking hours from sleep data change daily and need somewhere to live; config is the env file only.
-- Places from location fixes (home, work, the gym) are worked out on the server later.
-
+- **Phone blocks** (`origin = auto_activity`). Each app session takes the label of the first rule matching its package (`attribution_rule.match_app`). Same-label sessions under 10 minutes apart join; a session under 2 minutes inside a block belongs to it (a reply in the middle of work); a block with under 3 minutes on screen is a glance and is dropped. The title is the breakdown ("T3 Code 14m · Reddit 1m"), and the block links to its sessions.
+- **Place blocks** (`origin = place`). Places are entities of kind `place` with `lat`, `lon`, `radius_m` (default 150 m). A stay is a run of fixes at one place no more than 75 minutes apart, padded 10 minutes at each end but never past a fix somewhere else; fixes vaguer than 250 m are ignored. A stay becomes blocks only where nothing else claims the time, so an afternoon at the office minus the Reddit is "probably working". A rule on the place (`match_place`) labels it, at confidence 0.4. `lor places` also lists unnamed places the phone keeps visiting, with rough hours, so the agent can ask what they are.
+- **Unlabelled is grey.** A phone or place block with no rule has no intent and no proposal: it shows on Today, never counts toward "to confirm", and can be labelled by hand, with "remember" making a rule for the app or the place.
+- **Glances** are not blocks but are counted: Today and `lor day` show screen time, pickups (a session after 2 minutes of nothing), and glances (pickups over within 2 minutes). They measure distraction, not time.
+- **Not yet:** waking hours from sleep, a desktop sensor.
 ---
 
 ## Security
@@ -550,6 +549,7 @@ Built on 2026-10-14, in this order, each checked as described.
 | 8 | Memory screen | A browser pass: read, undo the agent's edit, a conflicting save, history, revert, people, timeline, search. |
 | 9 | Overnight close | Tests; it ran once on the boot after it was added. |
 | 10 | People: contacts import, last in touch, keep-in-touch cadences, birthdays | Tests with a fake Contacts account (import, merge, edits, deletions, expired token) and for every channel of "last in touch"; a browser pass over the People screen. **Not yet run against Google.** |
+| 13 | Activity blocks: phone app use and stays at known places fill the actual lane by precedence; glances counted | Pure tests for grouping, stays, unknown places, and phone stats; a database test of precedence, rules, the agent's label surviving a re-sync, and "remember"; a browser pass; run over two real days (11 phone blocks). |
 | 12 | Needs you: flagged tasks on Today, in the digest, and as phone notifications; unattended runs no longer touch T3 | Tests for flag, notify-once, done, and seen; a browser pass over the Today card; on the emulator against the test server, a sync showed the notification. |
 | 11 | The phone app: app usage, calls, texts, Health Connect, location, the timer tile, settings | JVM tests for session building; on the emulator, a sync uploaded app sessions and calls to the test database and the tile started and stopped a timer. Installed on the phone over wireless adb; permissions are granted on the phone. |
 
@@ -559,7 +559,7 @@ Built on 2026-10-14, in this order, each checked as described.
 
 **Not built**
 
-- **Activity blocks** from phone observations, and places from location fixes (see "The phone").
+- **Waking hours from sleep data** (the waking day is still `LOR_WAKE_START`/`LOR_WAKE_END`).
 
 ### When wanted
 
@@ -579,8 +579,7 @@ Multi-user, billing, or hosting for anyone else. A mail client. A contacts edito
 ## Open questions
 
 1. **OAuth consent screen.** `gmail.metadata` is a restricted scope. Whether an unverified app can be "In production" with it for one user, so the refresh token does not expire after seven days.
-2. **Activity blocks.** The design called for in "The phone".
-3. **Drive files as sources.** Not yet.
+2. **Drive files as sources.** Not yet.
 
 ## Alternatives set aside
 

@@ -28,6 +28,9 @@ read
   lor graph [--starving] [--waiting]
   lor intent show <id>
   lor score explain <intent_id>
+  lor places                              named places, and places the phone keeps visiting that have no name
+  lor apps [--days N]                     which phone apps took the time, and what each is labelled as
+  lor rules                               which app, calendar title, or place stands for which goal
 
 write (free for the agent; every write needs --thread <your T3 thread id>)
   lor page create <slug> --title "..." [--entity <id> | --intent <id>] [--note "..."] < body.md
@@ -46,6 +49,9 @@ write (free for the agent; every write needs --thread <your T3 thread id>)
   lor task flag <id> "<why it needs Sumeet>"   Needs you on Today, and one phone notification
   lor done <task_id> [--memo "..."]
   lor propose time --block <id> --intent <id> [--reason "..."]
+  lor place add "<name>" --at <lat>,<lon> [--radius <m>] [--intent <id>]
+  lor rule add (--app <package> | --title <regex> | --place <name>) --intent <id>
+  lor rule delete <rule_id>
 
 the owner's evidence (only when the owner asks in the current thread)
   lor timer start|stop|pause|resume [--intent <id>] [--title "..."]
@@ -153,6 +159,27 @@ function plan(positionals, flags) {
       return { method: "GET", path: `/context${q({ task: flags.task })}`, md: true };
     case "status":
       return { method: "GET", path: "/status" };
+    case "places":
+      return { method: "GET", path: "/places" };
+    case "apps":
+      return { method: "GET", path: `/apps${q({ days: int(flags.days, "days") })}` };
+    case "rules":
+      return { method: "GET", path: "/rules" };
+    case "place":
+      if (b === "add") {
+        const at = need(flags.at, "--at <lat>,<lon>").split(",").map(Number);
+        if (at.length !== 2 || at.some((n) => !Number.isFinite(n))) throw new Usage("--at must be <lat>,<lon>");
+        return {
+          method: "POST",
+          path: "/places",
+          body: write({ name: need(c, '"<name>"'), lat: at[0], lon: at[1], radius_m: num(flags.radius, "radius"), intent_id: flags.intent }),
+        };
+      }
+      break;
+    case "rule":
+      if (b === "add") return { method: "POST", path: "/rules", body: write({ app: flags.app, title: flags.title, place: flags.place, intent_id: need(flags.intent, "--intent") }) };
+      if (b === "delete") return { method: "DELETE", path: `/rules/${need(c, "<rule_id>")}`, body: write({}) };
+      break;
     case "mail":
       if (b === "pending") return { method: "GET", path: "/mail/pending" };
       if (b === "done") {

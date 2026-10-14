@@ -3,6 +3,7 @@
 // confirming.
 import type { Tx } from "../db/client.js";
 import { type Ymd, addDays, localDayBounds, localTimeOnDay, localYmd } from "../shared/localTime.js";
+import { type PhoneStats, phoneStats } from "./attribution/activity.js";
 import { FILLS_ACTUAL_SQL } from "./attribution/fill.js";
 import { type Span, attributionCoverage, calendarConfirmRate, normalize, subtractSpans } from "./attribution/intervals.js";
 import { env } from "./env.js";
@@ -71,6 +72,8 @@ export interface TodayView {
   day_end: string;
   confirm_rate: number | null;
   coverage: number | null;
+  /** Screen time, pickups, and glances on the phone this day; null with no phone data. */
+  phone: PhoneStats | null;
 }
 
 interface BlockRow {
@@ -236,6 +239,13 @@ export async function getToday(db: Tx, date: Ymd, now = new Date()): Promise<Tod
     }
   }
 
+  const sessions = await db<{ id: string; t_start: Date; t_end: Date; app: string | null; title: string | null; device: string }[]>`
+    SELECT id, t_start, t_end, app, title, device FROM observation
+    WHERE source = 'android' AND payload->>'kind' = 'app' AND t_end IS NOT NULL AND t_start < ${end} AND t_end > ${start}`;
+  const phone = sessions.length > 0
+    ? phoneStats(sessions.map((s) => ({ id: s.id, t: s.t_start.getTime(), tEnd: s.t_end.getTime(), app: s.app ?? "", name: s.title ?? s.app ?? "app", device: s.device })), start.getTime(), end.getTime())
+    : null;
+
   const wakeSeconds = (wake.end.getTime() - wake.start.getTime()) / 1000;
   const remaining = isToday ? Math.max(0, (wake.end.getTime() - Math.max(now.getTime(), wake.start.getTime())) / 1000) : 0;
   return {
@@ -263,6 +273,7 @@ export async function getToday(db: Tx, date: Ymd, now = new Date()): Promise<Tod
     day_end: end.toISOString(),
     confirm_rate: m.confirmRate,
     coverage: m.coverage,
+    phone,
   };
 }
 
@@ -285,6 +296,13 @@ const hm = (iso: string, tz: string) =>
   new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
 
 /** The day as text, with the ids the agent needs to act on a block or a suggestion. */
+export function phoneLine(p: PhoneStats): string {
+  const h = Math.floor(p.screen_s / 3600);
+  const m = Math.round((p.screen_s % 3600) / 60);
+  const top = p.top.map((a) => `${a.name} ${Math.round(a.s / 60)}m`).join(", ");
+  return `${h}h ${m}m on screen, picked up ${p.pickups} times, ${p.glances} of them glances under two minutes${top ? ` (most: ${top})` : ""}`;
+}
+
 export function renderToday(t: TodayView): string {
   const out: string[] = [`# ${t.date}${t.is_today ? " (today)" : ""}, ${t.timezone}`, ""];
   if (t.is_today) {
@@ -320,6 +338,7 @@ export function renderToday(t: TodayView): string {
     out.push("", "## Free stretches left", "");
     for (const g of t.gaps) out.push(`- ${hm(g.t_start, t.timezone)}–${hm(g.t_end, t.timezone)} (${g.minutes} min)${g.fits ? `, could go to: ${g.fits}` : ""}`);
   }
+  if (t.phone) out.push("", `Phone: ${phoneLine(t.phone)}.`);
   out.push("", `To confirm: ${t.to_confirm}. Calendar-confirm rate so far: ${t.confirm_rate === null ? "—" : `${Math.round(t.confirm_rate * 100)}%`}.`);
   return out.join("\n") + "\n";
 }

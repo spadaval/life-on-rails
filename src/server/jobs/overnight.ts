@@ -29,10 +29,10 @@ export async function overnightClose(db: Sql, now = new Date()): Promise<Overnig
 
   await db.begin(async (tx) => {
     await lockBlocks(tx);
-    // Merge adjacent uncommitted timer and activity blocks with the same label.
+    // Merge adjacent uncommitted timer blocks with the same label. Fill blocks are left to their own sync.
     const rows = await tx<{ id: string; t_start: Date; t_end: Date; intent_id: string | null; title: string | null }[]>`
       SELECT id, t_start, t_end, intent_id, title FROM time_block
-      WHERE NOT committed AND origin <> 'calendar' AND t_end IS NOT NULL AND t_start >= ${start} AND t_start < ${end}
+      WHERE NOT committed AND origin IN ('manual', 'merged') AND t_end IS NOT NULL AND t_start >= ${start} AND t_start < ${end}
       ORDER BY t_start`;
     type Row = (typeof rows)[number];
     const sameStretch = (a: Row, b: Row) =>

@@ -1,7 +1,7 @@
 // The job list. Each build step adds its jobs here.
 import { sql } from "../../db/client.js";
 import { applyAutoRules, fillWindow } from "../attribution/blocks.js";
-import { lockBlocks, syncCalendarFill } from "../attribution/fill.js";
+import { lockBlocks, syncFill } from "../attribution/fill.js";
 import { env } from "../env.js";
 import { syncCalendars } from "../google/calendarSync.js";
 import { SCOPES, hasScope } from "../google/auth.js";
@@ -40,7 +40,7 @@ export const JOBS: Job[] = [
       const { from, to } = fillWindow(new Date());
       const fill = await sql.begin(async (tx) => {
         await lockBlocks(tx);
-        const f = await syncCalendarFill(tx, from, to);
+        const f = await syncFill(tx, from, to);
         return { ...f, auto_committed: await applyAutoRules(tx, from, to) };
       });
       if (fill.auto_committed > 0) scheduleRecompute();

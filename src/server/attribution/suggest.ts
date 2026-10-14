@@ -1,11 +1,13 @@
-// Suggestion matching v1: attribution_rule (app glob / title POSIX regex /
-// URL glob) then calendar overlap. Embeddings + LLM propose_link are PR 8.
+// Suggestion matching: attribution_rule (app glob / title regex / URL glob /
+// place) then calendar overlap.
 export interface Rule {
   id: string;
   matchDevice: string | null;
   matchApp: string | null;
   matchTitle: string | null;
   matchUrl: string | null;
+  /** A place entity id. */
+  matchPlace: string | null;
   intentId: string;
   autoApply: boolean;
   priority: number;
@@ -16,6 +18,8 @@ export interface Candidate {
   title: string | null;
   url: string | null;
   device: string | null;
+  /** The place entity the candidate is at, for location stays. */
+  place: string | null;
 }
 
 /** validating regex on write: must compile, ≤200 chars. */
@@ -41,6 +45,7 @@ export function globMatch(pattern: string, value: string): boolean {
 
 function ruleMatches(rule: Rule, c: Candidate): boolean {
   if (rule.matchDevice !== null && rule.matchDevice !== c.device) return false;
+  if (rule.matchPlace !== null && rule.matchPlace !== c.place) return false;
   if (rule.matchApp !== null) {
     if (c.app === null) return false;
     if (!globMatch(rule.matchApp, c.app)) return false;

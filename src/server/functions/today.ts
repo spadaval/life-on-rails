@@ -72,9 +72,9 @@ export const timerFn = createServerFn({ method: "POST" })
   });
 
 export const recategorizeFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ blockId: z.string().uuid(), intentId: z.string().uuid(), rememberTitle: z.boolean().optional() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ blockId: z.string().uuid(), intentId: z.string().uuid(), rememberTitle: z.boolean().optional(), remember: z.boolean().optional() }).parse(d))
   .handler(async ({ data }) => {
-    await recategorizeBlock(sql, data.blockId, data.intentId, ui, { rememberTitle: data.rememberTitle });
+    await recategorizeBlock(sql, data.blockId, data.intentId, ui, { rememberTitle: data.rememberTitle, remember: data.remember });
     return { ok: true };
   });
 

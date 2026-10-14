@@ -74,14 +74,14 @@ describe("attributionCoverage", () => {
 
 describe("suggest", () => {
   const rules = [
-    { id: "r1", matchDevice: null, matchApp: "Code", matchTitle: null, matchUrl: null, intentId: "lor", autoApply: false, priority: 1 },
-    { id: "r2", matchDevice: null, matchApp: null, matchTitle: "standup|sync", matchUrl: null, intentId: "meet", autoApply: false, priority: 5 },
+    { id: "r1", matchDevice: null, matchApp: "Code", matchTitle: null, matchUrl: null, matchPlace: null, intentId: "lor", autoApply: false, priority: 1 },
+    { id: "r2", matchDevice: null, matchApp: null, matchTitle: "standup|sync", matchUrl: null, matchPlace: null, intentId: "meet", autoApply: false, priority: 5 },
   ];
   it("rule priority wins; title regex is case-insensitive (~*)", () => {
-    const hit = matchRule(rules, { app: "Code", title: "Team Sync", url: null, device: null });
+    const hit = matchRule(rules, { app: "Code", title: "Team Sync", url: null, device: null, place: null });
     expect(hit?.id).toBe("r2");
-    expect(matchRule(rules, { app: "Code", title: "refactor", url: null, device: null })?.id).toBe("r1");
-    expect(matchRule(rules, { app: "Mail", title: "hello", url: null, device: null })).toBeNull();
+    expect(matchRule(rules, { app: "Code", title: "refactor", url: null, device: null, place: null })?.id).toBe("r1");
+    expect(matchRule(rules, { app: "Mail", title: "hello", url: null, device: null, place: null })).toBeNull();
   });
   it("validates title regex on write", () => {
     expect(validateTitleRegex("standup|sync")).toBe(true);

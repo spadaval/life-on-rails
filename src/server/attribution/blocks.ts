@@ -11,7 +11,8 @@ import { env } from "../env.js";
 import { BadInput, NotFound, Refused } from "../errors.js";
 import { recordObservation } from "../observations.js";
 import { scheduleRecompute } from "../scoring/recompute.js";
-import { loadRules, lockBlocks, syncCalendarFill } from "./fill.js";
+import { placeOf } from "./activity.js";
+import { loadPlaces, loadRules, lockBlocks, syncFill } from "./fill.js";
 
 export interface Who {
   via: "ui" | "agent" | "rule" | "job";
@@ -26,7 +27,7 @@ interface BlockRow {
   t_start: Date;
   t_end: Date | null;
   paused_at: Date | null;
-  origin: "auto_activity" | "calendar" | "manual" | "merged";
+  origin: "auto_activity" | "calendar" | "manual" | "merged" | "place";
   intent_id: string | null;
   calendar_id: string | null;
   calendar_event_id: string | null;
@@ -34,6 +35,11 @@ interface BlockRow {
   committed: boolean;
   commitment_id: string | null;
 }
+
+/** Blocks that follow evidence (the calendar, the phone, a place) rather than the owner's own timing. */
+export const FILL_ORIGINS = ["calendar", "auto_activity", "place"] as const;
+const isFill = (origin: string) => (FILL_ORIGINS as readonly string[]).includes(origin);
+const followsWhat = (origin: string) => (origin === "calendar" ? "its event" : origin === "place" ? "where you were" : "your phone use");
 
 export const hoursBetween = (a: Date, b: Date) => Math.max(0, (b.getTime() - a.getTime()) / 3_600_000);
 
@@ -87,7 +93,7 @@ async function closeOpen(tx: Tx, at: Date, who: Who): Promise<BlockRow | null> {
 
 async function resync(tx: Tx, now: Date, ...around: (Date | null | undefined)[]): Promise<void> {
   const { from, to } = fillWindow(now, ...around);
-  await syncCalendarFill(tx, from, to);
+  await syncFill(tx, from, to);
 }
 
 // ---- the timer ----
@@ -176,6 +182,8 @@ async function commitBlock(tx: Tx, block: BlockRow, intentId: string, proposalId
 export interface RecategorizeOptions {
   /** For a calendar block: label every future event with this exact title the same way. */
   rememberTitle?: boolean;
+  /** For a phone block: label this block's main app the same way from now on. For a place block: time at that place. */
+  remember?: boolean;
 }
 
 export async function recategorizeBlock(db: Sql, blockId: string, intentId: string, who: Who, opts: RecategorizeOptions = {}, now = new Date()): Promise<void> {
@@ -190,9 +198,38 @@ export async function recategorizeBlock(db: Sql, blockId: string, intentId: stri
         await tx`INSERT INTO attribution_rule (id, match_title, intent_id) VALUES (${uuidv7()}, ${pattern}, ${intentId})`;
       }
     }
+    if (opts.remember && block.origin === "auto_activity") {
+      const main = await tx<{ app: string }[]>`
+        SELECT o.app FROM time_block_observation l JOIN observation o ON o.id = l.observation_id
+        WHERE l.block_id = ${block.id} AND o.app IS NOT NULL
+        GROUP BY o.app ORDER BY sum(extract(epoch FROM o.t_end - o.t_start)) DESC LIMIT 1`;
+      if (main[0]) {
+        await tx`DELETE FROM attribution_rule WHERE match_app = ${main[0].app} AND match_title IS NULL AND match_place IS NULL`;
+        await tx`INSERT INTO attribution_rule (id, match_app, intent_id) VALUES (${uuidv7()}, ${main[0].app}, ${intentId})`;
+      }
+    }
+    if (opts.remember && block.origin === "place") {
+      const place = await tx<{ place_id: string }[]>`
+        SELECT payload->>'place_id' AS place_id FROM proposal WHERE time_block_id = ${block.id} AND payload ? 'place_id' LIMIT 1`;
+      const placeId = place[0]?.place_id ?? (await placeForBlock(tx, block.id));
+      if (placeId) {
+        await tx`DELETE FROM attribution_rule WHERE match_place = ${placeId}`;
+        await tx`INSERT INTO attribution_rule (id, match_place, intent_id) VALUES (${uuidv7()}, ${placeId}, ${intentId})`;
+      }
+    }
     await resync(tx, now, block.t_start, block.t_end);
   });
   scheduleRecompute();
+}
+
+/** The place a stay block is at: the nearest known place to its first fix. */
+async function placeForBlock(tx: Tx, blockId: string): Promise<string | null> {
+  const fix = await tx<{ lat: number; lon: number; accuracy_m: number | null; t_start: Date; id: string }[]>`
+    SELECT o.id, o.t_start, (o.payload->>'lat')::float8 AS lat, (o.payload->>'lon')::float8 AS lon, (o.payload->>'accuracy_m')::float8 AS accuracy_m
+    FROM time_block_observation l JOIN observation o ON o.id = l.observation_id WHERE l.block_id = ${blockId} ORDER BY o.t_start LIMIT 1`;
+  if (!fix[0]) return null;
+  const f = fix[0];
+  return placeOf({ id: f.id, t: f.t_start.getTime(), lat: f.lat, lon: f.lon, accuracyM: f.accuracy_m ?? 100 }, await loadPlaces(tx))?.id ?? null;
 }
 
 /** Remove a block's commitment: it goes back to being a suggestion. */
@@ -229,7 +266,7 @@ export async function proposeTime(db: Sql, blockId: string, intentId: string, wh
 async function refuseOverlap(tx: Tx, blockId: string, start: Date, end: Date): Promise<void> {
   const clash = await tx<{ id: string; title: string | null }[]>`
     SELECT id, title FROM time_block
-    WHERE id <> ${blockId} AND origin <> 'calendar' AND t_start < ${end} AND coalesce(t_end, 'infinity') > ${start} LIMIT 1`;
+    WHERE id <> ${blockId} AND origin IN ('manual', 'merged') AND t_start < ${end} AND coalesce(t_end, 'infinity') > ${start} LIMIT 1`;
   if (clash[0]) throw new Refused("overlaps", "that would overlap another block", { block_id: clash[0].id });
 }
 
@@ -237,7 +274,7 @@ export async function editBlock(db: Sql, blockId: string, patch: { tStart?: Date
   await db.begin(async (tx) => {
     await lockBlocks(tx);
     const block = await getBlock(tx, blockId);
-    if (block.origin === "calendar") throw new Refused("calendar-block", "a calendar block follows its event; relabel it, or start a timer over it");
+    if (isFill(block.origin)) throw new Refused("fill-block", `this block follows ${followsWhat(block.origin)}; relabel it, or start a timer over it`);
     const start = patch.tStart ?? block.t_start;
     const end = patch.tEnd ?? block.t_end;
     if (patch.tEnd && !block.t_end) throw new BadInput("stop the timer before changing its end");
@@ -259,7 +296,7 @@ export async function deleteBlock(db: Sql, blockId: string, now = new Date()): P
   await db.begin(async (tx) => {
     await lockBlocks(tx);
     const block = await getBlock(tx, blockId);
-    if (block.origin === "calendar") throw new Refused("calendar-block", "a calendar block follows its event; reject its label instead");
+    if (isFill(block.origin)) throw new Refused("fill-block", `this block follows ${followsWhat(block.origin)}; reject its label instead`);
     await tx`DELETE FROM commitment WHERE time_block_id = ${blockId}`;
     await tx`DELETE FROM time_block WHERE id = ${blockId}`;
     await resync(tx, now, block.t_start, block.t_end);
@@ -301,8 +338,8 @@ export async function splitBlock(db: Sql, blockId: string, at: Date, now = new D
           VALUES (${uuidv7()}, ${p[0].confidence}, ${rightId}, ${p[0].intent_id}, ${tx.json((p[0].payload ?? {}) as never)}, ${p[0].reason}, ${p[0].via}, ${p[0].source_ref})`;
       }
     }
-    // A split calendar block is two fragments the calendar did not ask for; fill sync would merge them back.
-    if (b.origin !== "calendar") await resync(tx, now, b.t_start, b.t_end);
+    // A split fill block is two fragments the evidence did not ask for; fill sync would merge them back.
+    if (!isFill(b.origin)) await resync(tx, now, b.t_start, b.t_end);
   });
   scheduleRecompute();
   return { rightId };

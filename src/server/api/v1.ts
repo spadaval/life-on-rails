@@ -29,6 +29,7 @@ import { SEARCH_KINDS, search } from "../memory/search.js";
 import "../memory/worldSections.js";
 import { explainScore, recomputeScores } from "../scoring/recompute.js";
 import { markMailHandled, pendingMail } from "../mail/wake.js";
+import { addPlace, addRule, deleteRule, listApps, listPlaces, listRules } from "../places.js";
 import { getStatus } from "../status.js";
 import { getToday, renderToday } from "../today.js";
 
@@ -247,6 +248,32 @@ route("POST", /^\/log$/, async ({ body }) => {
   const d = LogEntry.parse(body);
   return agentLog(sql, { text: d.text, intentId: d.intent_id, thread: d.thread });
 });
+
+// ---- places, apps, and rules: what phone and place time stands for ----
+
+route("GET", /^\/places$/, async () => listPlaces(sql));
+
+const AddPlace = z.object({
+  name: z.string(), lat: z.number(), lon: z.number(), radius_m: z.number().nullish(), intent_id: Uuid.nullish(), thread: Thread,
+});
+
+route("POST", /^\/places$/, async ({ body }) => {
+  const d = AddPlace.parse(body);
+  return addPlace(sql, { name: d.name, lat: d.lat, lon: d.lon, radiusM: d.radius_m, intentId: d.intent_id });
+});
+
+route("GET", /^\/apps$/, async ({ query }) => listApps(sql, Number(query.get("days") ?? 14) || 14));
+
+route("GET", /^\/rules$/, async () => listRules(sql));
+
+const AddRule = z.object({ app: z.string().nullish(), title: z.string().nullish(), place: z.string().nullish(), intent_id: Uuid, thread: Thread });
+
+route("POST", /^\/rules$/, async ({ body }) => {
+  const d = AddRule.parse(body);
+  return addRule(sql, { app: d.app, title: d.title, place: d.place, intentId: d.intent_id });
+});
+
+route("DELETE", /^\/rules\/([0-9a-f-]{36})$/, async ({ params }) => deleteRule(sql, params[0]!));
 
 // ---- mail waiting for the agent ----
 

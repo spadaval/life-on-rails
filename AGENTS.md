@@ -15,7 +15,7 @@ Single-user self-hosted personal OS. The design and the state of the build are i
 - `pnpm dev` is UI-only. The scheduler starts only from `scripts/serve.mjs`.
 - Scoring reads **commitments only**, never observations. `time_block.committed` is denormalized; truth = `commitment`.
 - The scorer recomputes hours from `[t, t_end]` intervals with a sweep-line merge. `commitment.value` is display-only. A pause is never inside a block.
-- No overlapping actual seconds. Calendar blocks are fill only: `syncCalendarFill` decides which should exist and changes only what differs. Taken time = non-calendar blocks + committed calendar blocks.
+- No overlapping actual seconds. Calendar, phone (`auto_activity`), and place blocks are fill: `syncFill` runs calendar, then phone, then place fill, each deciding which of its blocks should exist and changing only what differs. Precedence: timer/manual and anything committed, then calendar, then phone, then place.
 - Every writer of `time_block` calls `lockBlocks(tx)` first and re-syncs fill in the same transaction.
 - Local-day arithmetic goes through `src/shared/localTime.ts`. Never add 24 hours to move a day.
 - Queries are SQL through postgres.js; pass JSON with `sql.json(...)`, never a pre-stringified string.
