@@ -14,7 +14,7 @@ import { BadInput, NotFound, Refused } from "../errors.js";
 import { errorMessage, log } from "../log.js";
 import { getGraph, getIntentDetail, renderGraph, taskContextMarkdown } from "../graph.js";
 import {
-  INTENT_TYPES, LINK_KINDS, assignTask, commitHabit, commitMetric, completeTask, createIntent, linkIntents,
+  INTENT_TYPES, LINK_KINDS, assignTask, commitHabit, commitMetric, completeTask, createIntent, flagTask, linkIntents,
 } from "../intents.js";
 import { agentLog } from "../memory/agentLog.js";
 import { getChanges } from "../memory/changes.js";
@@ -285,6 +285,8 @@ const CreateIntent = z.object({
   frequency: z.number().int().nullish(),
   frequency_horizon: z.enum(["day", "week"]).nullish(),
   estimate_hours: z.number().nullish(),
+  /** Why it needs Sumeet: also flags it (see flagTask). */
+  flag: z.string().trim().min(1).nullish(),
   thread: Thread,
 });
 
@@ -297,7 +299,8 @@ function parseTime(value: string | null | undefined, name: string): Date | null 
 
 route("POST", /^\/intents$/, async ({ body }) => {
   const d = CreateIntent.parse(body);
-  return createIntent(
+  if (d.flag && d.type !== "task") throw new BadInput("only a task can be flagged");
+  const created = await createIntent(
     sql,
     {
       type: d.type,
@@ -316,6 +319,7 @@ route("POST", /^\/intents$/, async ({ body }) => {
     },
     { via: "agent", sourceRef: d.thread },
   );
+  return d.flag ? flagTask(sql, created.id, d.flag) : created;
 });
 
 const CreateLink = z.object({ from_id: Uuid, to_id: Uuid, kind: z.enum(LINK_KINDS), weight: z.number().min(0).nullish(), thread: Thread });
@@ -328,6 +332,11 @@ route("POST", /^\/links$/, async ({ body }) => {
 route("POST", /^\/intents\/([0-9a-f-]{36})\/assign$/, async ({ params, body }) => {
   const d = z.object({ assignee: z.enum(["owner", "agent"]), thread: Thread }).parse(body);
   return assignTask(sql, params[0]!, d.assignee, d.thread);
+});
+
+route("POST", /^\/intents\/([0-9a-f-]{36})\/flag$/, async ({ params, body }) => {
+  const d = z.object({ note: z.string(), thread: Thread }).parse(body);
+  return flagTask(sql, params[0]!, d.note);
 });
 
 route("POST", /^\/intents\/([0-9a-f-]{36})\/done$/, async ({ params, body }) => {

@@ -13,4 +13,4 @@ export PATH="$here:$PATH"
 cd "$HOME/google/assistant"
 echo "run $LOR_THREAD"
 exec claude -p "$1" --session-id "$session" --model claude-opus-5-5 --dangerously-skip-permissions \
-  --append-system-prompt "You are running unattended, outside T3: nobody reads this output. LOR_THREAD is already set for your lor writes. If Sumeet needs to see or decide something, run \`tell-sumeet \"<short message>\"\`; it posts into his main T3 thread. Otherwise record what you did with \`lor log\`."
+  --append-system-prompt "You are running unattended, outside T3: nobody reads this output. LOR_THREAD is already set for your lor writes. If Sumeet needs to reply to or decide something, put it in front of him with \`lor intent create --type task --title \"...\" --flag \"<why it needs him>\"\` (or \`lor task flag <id> \"...\"\` on an existing task): it shows under Needs you on Today and his phone notifies him. Record anything else with \`lor log\`."

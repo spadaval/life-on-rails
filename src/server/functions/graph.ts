@@ -7,7 +7,7 @@ import { BadInput } from "../errors.js";
 import { getGraph } from "../graph.js";
 import {
   INTENT_STATUSES, INTENT_TYPES, LINK_KINDS, archiveIntent, assignTask, commitHabit, commitMetric, completeTask,
-  createIntent, linkIntents, reopenTask, resetVisibility, undoIntent, unlinkIntents, updateIntent,
+  createIntent, linkIntents, reopenTask, resetVisibility, undoIntent, unflagTask, unlinkIntents, updateIntent,
 } from "../intents.js";
 import { entityNames } from "../memory/entities.js";
 import { explainScore, recomputeScores } from "../scoring/recompute.js";
@@ -89,6 +89,13 @@ export const taskDoneFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (data.done) await completeTask(sql, data.id, ui);
     else await reopenTask(sql, data.id);
+    return { ok: true };
+  });
+
+export const unflagFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    await unflagTask(sql, data.id);
     return { ok: true };
   });
 

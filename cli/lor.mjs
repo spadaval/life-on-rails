@@ -40,8 +40,10 @@ write (free for the agent; every write needs --thread <your T3 thread id>)
   lor mail done <observation_id>...       take handled mail off the queue
   lor intent create --type goal|project|habit|task|metric --title "..." [--parent <id>]
         [--due <t>] [--waiting-on <entity_id>] [--assign agent] [--weight N] [--hours N] [--description "..."]
+        [--flag "<why it needs Sumeet>"]
   lor link --from <id> --to <id> --kind measures|blocks|derived_from [--weight N]
   lor task assign <id> owner|agent
+  lor task flag <id> "<why it needs Sumeet>"   Needs you on Today, and one phone notification
   lor done <task_id> [--memo "..."]
   lor propose time --block <id> --intent <id> [--reason "..."]
 
@@ -266,6 +268,7 @@ function plan(positionals, flags) {
               frequency: int(flags.frequency, "frequency"),
               frequency_horizon: flags.per,
               estimate_hours: num(flags.estimate, "estimate"),
+              flag: flags.flag,
             }),
           };
       }
@@ -278,6 +281,7 @@ function plan(positionals, flags) {
       };
     case "task":
       if (b === "assign") return { method: "POST", path: `/intents/${need(c, "<id>")}/assign`, body: write({ assignee: need(d, "owner|agent") }) };
+      if (b === "flag") return { method: "POST", path: `/intents/${need(c, "<id>")}/flag`, body: write({ note: need(positionals.slice(3).join(" "), '"<why it needs Sumeet>"') }) };
       break;
     case "done":
       return { method: "POST", path: `/intents/${need(b, "<task_id>")}/done`, body: write({ memo: flags.memo }) };

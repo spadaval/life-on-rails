@@ -3,7 +3,7 @@ import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import { duration, pct } from "../components/format.js";
 import { IntentPicker, type PickIntent } from "../components/IntentPicker.js";
-import { metricFn, resetVisibilityFn } from "../server/functions/graph.js";
+import { metricFn, resetVisibilityFn, taskDoneFn, unflagFn } from "../server/functions/graph.js";
 import {
   confirmFn, deleteBlockFn, editBlockFn, getTodayFn, recategorizeFn, splitBlockFn, timerFn, uncommitFn,
 } from "../server/functions/today.js";
@@ -134,6 +134,32 @@ function Today() {
             dismiss
           </button>
         </p>
+      ) : null}
+
+      {data.needsYou.length > 0 ? (
+        <section className="card space-y-2">
+          <h2 className="text-lg font-semibold">Needs you</h2>
+          <ul className="divide-y divide-black/10 dark:divide-white/10">
+            {data.needsYou.map((n) => (
+              <li key={n.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{n.title}</p>
+                  <p className="muted text-sm">{n.note}</p>
+                </div>
+                {n.google ? (
+                  <span className="muted text-sm">complete in Google</span>
+                ) : (
+                  <button className="btn" disabled={busy} onClick={() => act(() => taskDoneFn({ data: { id: n.id, done: true } }))}>
+                    Done
+                  </button>
+                )}
+                <button className="btn" disabled={busy} onClick={() => act(() => unflagFn({ data: { id: n.id } }))}>
+                  Seen
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       {t.is_today ? <Timer data={data} now={now} busy={busy} act={act} onRelabel={() => t.running && setSelected(t.running.id)} clock={clock} /> : null}

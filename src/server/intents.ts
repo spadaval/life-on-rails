@@ -45,14 +45,18 @@ export interface IntentView {
   google_task_id: string | null;
   assignee: "owner" | "agent";
   thread_ref: string | null;
+  /** Tasks the agent flagged for the owner's attention, and why. */
+  flagged_at: string | null;
+  flag_note: string | null;
   via: string;
   source_ref: string | null;
   created_at: string;
   updated_at: string;
 }
 
-interface IntentRow extends Omit<IntentView, "due_at" | "snoozed_until" | "waiting_since" | "created_at" | "updated_at"> {
+interface IntentRow extends Omit<IntentView, "due_at" | "snoozed_until" | "waiting_since" | "flagged_at" | "created_at" | "updated_at"> {
   due_at: Date | null;
+  flagged_at: Date | null;
   snoozed_until: Date | null;
   waiting_since: Date | null;
   created_at: Date;
@@ -69,7 +73,7 @@ function toView(r: IntentRow): IntentView {
     metric_min: r.metric_min, metric_max: r.metric_max, estimate_hours: r.estimate_hours,
     due_at: iso(r.due_at), snoozed_until: iso(r.snoozed_until), waiting_on_entity_id: r.waiting_on_entity_id,
     waiting_on: r.waiting_on, waiting_since: iso(r.waiting_since), google_task_id: r.google_task_id,
-    assignee: r.assignee, thread_ref: r.thread_ref, via: r.via, source_ref: r.source_ref,
+    assignee: r.assignee, thread_ref: r.thread_ref, flagged_at: iso(r.flagged_at), flag_note: r.flag_note, via: r.via, source_ref: r.source_ref,
     created_at: r.created_at.toISOString(), updated_at: r.updated_at.toISOString(),
   };
 }
@@ -78,7 +82,7 @@ const SELECT_INTENT = (tx: Tx) => tx`
   SELECT i.id, i.type, i.title, i.description, i.status, i.weight, i.weekly_hour_target, i.frequency,
          i.frequency_horizon, i.completion_weight, i.goal_mix, i.system, i.metric_kind, i.metric_min, i.metric_max,
          i.estimate_hours, i.due_at, i.snoozed_until, i.waiting_on_entity_id, e.name AS waiting_on, i.waiting_since,
-         i.google_task_id, i.assignee, i.thread_ref, i.via, i.source_ref, i.created_at, i.updated_at
+         i.google_task_id, i.assignee, i.thread_ref, i.flagged_at, i.flag_note, i.via, i.source_ref, i.created_at, i.updated_at
   FROM intent i LEFT JOIN entity e ON e.id = i.waiting_on_entity_id`;
 
 export async function getIntent(tx: Tx, id: string): Promise<IntentView> {
@@ -268,7 +272,7 @@ export async function completeTask(db: Sql, id: string, opts: { memo?: string | 
     } else if (opts.memo) {
       await tx`UPDATE commitment SET memo = ${opts.memo} WHERE id = ${existing[0]!.id}`;
     }
-    await tx`UPDATE intent SET status = 'done', updated_at = now() WHERE id = ${id}`;
+    await tx`UPDATE intent SET status = 'done', flagged_at = NULL, flag_note = NULL, updated_at = now() WHERE id = ${id}`;
   });
   scheduleRecompute();
   return getIntent(db, id);
@@ -283,6 +287,43 @@ export async function reopenTask(db: Sql, id: string): Promise<IntentView> {
   });
   scheduleRecompute();
   return getIntent(db, id);
+}
+
+// ---- needs you ----
+
+/**
+ * The agent asks for the owner's attention on a task: it shows under "Needs
+ * you" on Today and in the digest, and the phone notifies once. Flagging again
+ * (with a new reason) notifies again.
+ */
+export async function flagTask(db: Sql, id: string, note: string): Promise<IntentView> {
+  const current = await getIntent(db, id);
+  if (current.type !== "task") throw new BadInput("only a task can be flagged");
+  if (current.status !== "active" && current.status !== "waiting") throw new BadInput(`this task is ${current.status}`);
+  if (!note.trim()) throw new BadInput("say why it needs Sumeet");
+  await db`UPDATE intent SET flagged_at = now(), flag_note = ${note.trim()}, notified_at = NULL, assignee = 'owner',
+    updated_at = now() WHERE id = ${id}`;
+  return getIntent(db, id);
+}
+
+/** The owner has seen it. The task stays. */
+export async function unflagTask(db: Sql, id: string): Promise<void> {
+  await db`UPDATE intent SET flagged_at = NULL, flag_note = NULL, updated_at = now() WHERE id = ${id}`;
+}
+
+export async function needsOwner(tx: Tx): Promise<IntentView[]> {
+  const rows = await tx<IntentRow[]>`${SELECT_INTENT(tx)}
+    WHERE i.flagged_at IS NOT NULL AND i.status IN ('active', 'waiting') ORDER BY i.flagged_at`;
+  return rows.map(toView);
+}
+
+/** Flagged tasks the phone has not been handed yet. Handing them over marks them, so each notifies once. */
+export async function takeNotifications(db: Sql): Promise<{ id: string; title: string; note: string }[]> {
+  const rows = await db<{ id: string; title: string; note: string }[]>`
+    UPDATE intent SET notified_at = now()
+    WHERE flagged_at IS NOT NULL AND notified_at IS NULL AND status IN ('active', 'waiting')
+    RETURNING id, title, flag_note AS note`;
+  return [...rows];
 }
 
 /** Outcome memos on a task, newest first (what `lor done --memo` recorded). */

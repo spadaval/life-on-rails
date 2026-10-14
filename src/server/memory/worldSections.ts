@@ -1,9 +1,19 @@
 // What the world model adds to the agent's digest and to `lor changes`.
 import { type GraphNode, getGraph, starvingLine, taskLine } from "../graph.js";
+import { needsOwner } from "../intents.js";
 import { registerChangeProvider } from "./changes.js";
 import { registerContextSection } from "./context.js";
 
 const open = (n: GraphNode) => n.status === "active" || n.status === "waiting";
+
+registerContextSection(async (db) => {
+  const flagged = await needsOwner(db);
+  if (flagged.length === 0) return null;
+  return {
+    title: "Needs Sumeet",
+    markdown: flagged.map((t) => `- ${t.title}: ${t.flag_note} (flagged ${t.flagged_at!.slice(0, 16).replace("T", " ")} UTC, id ${t.id})`).join("\n"),
+  };
+});
 
 registerContextSection(async (db, now) => {
   const { nodes } = await getGraph(db, now);

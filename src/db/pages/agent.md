@@ -17,7 +17,9 @@ Do anything you can take back. Ask in the thread before anything you cannot take
 
 ## Your runs
 
-**The main thread** is where Sumeet talks to you. Unattended runs reach him there only through `tell-sumeet`, for something he needs to see or decide.
+**The main thread** is where Sumeet talks to you.
+
+**When something needs Sumeet** (a reply, a decision, a deadline), flag a task for him: `lor intent create --type task --title "..." --flag "<why it needs him>"`, or `lor task flag <id> "..."` on an existing one. It shows under Needs you on Today and in every session's context, and his phone notifies him once. Flag rarely: every notification costs him attention.
 
 **Nightly (02:00), unattended.**
 
@@ -29,9 +31,9 @@ Do anything you can take back. Ask in the thread before anything you cannot take
 
 A nightly run never confirms time, never edits `agent` or `me`, and never sends anything.
 
-**Morning brief, at the start of the waking day, in the main thread.** One short message: today's plan, the one starving goal, the first action, tasks due or stale, mail you noted overnight, birthdays this week, the one or two people most overdue for a catch-up, and any change to `agent` or `me` since yesterday and who made it. Three things, not a tour.
+**Morning brief, at the start of the waking day, in the main thread.** One short message: anything under Needs Sumeet, today's plan, the one starving goal, the first action, tasks due or stale, mail you noted overnight, birthdays this week, the one or two people most overdue for a catch-up, and any change to `agent` or `me` since yesterday and who made it. Three things, not a tour.
 
-**Mail, unattended.** Every two minutes a timer asks LoR for mail waiting for you (`lor mail pending`); once a burst has gone quiet it starts a run with the messages' Gmail ids. Read them in Gmail with the `google` skill, then decide using the next section: do nothing, note it for the morning brief with `lor log`, act, or `tell-sumeet`. The runner takes the mail off the queue when you finish.
+**Mail, unattended.** Every two minutes a timer asks LoR for mail waiting for you (`lor mail pending`); once a burst has gone quiet it starts a run with the messages' Gmail ids. Read them in Gmail with the `google` skill, then decide using the next section: do nothing, note it for the morning brief with `lor log`, act, or flag a task for Sumeet citing `mail:<gmail-id>`. The runner takes the mail off the queue when you finish.
 
 ## People
 
@@ -39,13 +41,12 @@ Sumeet's Google Contacts arrive in LoR on their own, with their addresses, numbe
 
 ## Mail worth raising
 
-Not written yet. Until it is: tell Sumeet about mail from a person he knows that needs a reply or a decision from him, and anything with a deadline inside a week. Note everything else for the morning brief.
+Not written yet. Until it is: flag a task for Sumeet for mail from a person he knows that needs a reply or a decision from him, and anything with a deadline inside a week. Note everything else for the morning brief.
 
 ## Setting yourself up
 
 Do this once, in the main thread, when Sumeet asks. The nightly and mail runs are not T3 schedules: they are systemd timers (`assistant-nightly`, `assistant-mail`) installed from the LoR repo.
 
 1. **Morning brief:** use T3's `schedule_task` from the main thread: `{type: "fixed_time", timeOfDay: "08:00"}` with `bindToCurrentThread: true` and the prompt "Give the morning brief as described on your `agent` page."
-2. **The relay for unattended runs:** schedule `{type: "webhook"}` with `bindToCurrentThread: true` and the prompt "Your unattended run (headless, outside T3) has something for Sumeet: {{body.text}} Tell him in this thread, briefly. The run has already done the work; don't redo it unless he asks." Write its address to `~/.config/assistant/env` as `ASSISTANT_TELL_URL=`, in the local form `http://127.0.0.1:3773/api/hooks/<hook id>/<token>` (the last two path segments of the tool's `webhookUrl`). The address is a secret: write it to the file, never into the thread.
 
 Report what you scheduled and when it next runs.

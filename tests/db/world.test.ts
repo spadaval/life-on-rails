@@ -4,8 +4,8 @@ import { handleApi } from "../../src/server/api/v1.js";
 import { Refused } from "../../src/server/errors.js";
 import { getGraph, getIntentDetail, taskContextMarkdown } from "../../src/server/graph.js";
 import {
-  archiveIntent, assignTask, commitHabit, commitMetric, completeTask, createIntent, linkIntents, reopenTask,
-  resetVisibility, undoCommitment, undoIntent, updateIntent,
+  archiveIntent, assignTask, commitHabit, commitMetric, completeTask, createIntent, flagTask, linkIntents, needsOwner,
+  reopenTask, resetVisibility, takeNotifications, undoCommitment, undoIntent, unflagTask, updateIntent,
 } from "../../src/server/intents.js";
 import { getContext } from "../../src/server/memory/context.js";
 import { createPage } from "../../src/server/memory/pages.js";
@@ -168,5 +168,34 @@ dbDescribe("world model over the API", () => {
     expect(graph.results).toHaveLength(2);
     expect(graph.markdown).toContain("## Goals");
     expect((await api("GET", "/graph?waiting=1").then((r) => r.json())) as { results: unknown[] }).toMatchObject({ results: [] });
+  });
+});
+
+dbDescribe("needs you", () => {
+  it("a flagged task shows in the digest, notifies the phone once, and leaves the list when done or seen", async () => {
+    const res = await api("POST", "/intents", { type: "task", title: "Reply to Priya about Friday", flag: "She needs a yes or no by Thursday", thread: "claude:run-1" });
+    expect(res.status).toBe(200);
+    const task = (await res.json()) as { id: string; flagged_at: string | null; flag_note: string };
+    expect(task.flag_note).toBe("She needs a yes or no by Thursday");
+
+    expect((await getContext(sql)).markdown).toContain("Reply to Priya about Friday: She needs a yes or no by Thursday");
+    expect(await takeNotifications(sql)).toEqual([{ id: task.id, title: "Reply to Priya about Friday", note: "She needs a yes or no by Thursday" }]);
+    expect(await takeNotifications(sql)).toEqual([]);
+
+    // Flagging again with a new reason notifies again.
+    expect((await api("POST", `/intents/${task.id}/flag`, { note: "Thursday is tomorrow", thread: "claude:run-2" })).status).toBe(200);
+    expect((await takeNotifications(sql)).map((n) => n.note)).toEqual(["Thursday is tomorrow"]);
+
+    await unflagTask(sql, task.id);
+    expect(await needsOwner(sql)).toEqual([]);
+
+    const other = await createIntent(sql, { type: "task", title: "Sign the lease" }, agent);
+    await flagTask(sql, other.id, "Due Monday");
+    await completeTask(sql, other.id, ui);
+    expect(await needsOwner(sql)).toEqual([]);
+    expect(await takeNotifications(sql)).toEqual([]);
+
+    const goal = await createIntent(sql, { type: "goal", title: "A goal" }, ui);
+    expect((await api("POST", `/intents/${goal.id}/flag`, { note: "x", thread: "t" })).status).toBe(400);
   });
 });

@@ -80,6 +80,11 @@ export const intent = pgTable(
     // Tasks: who is doing it. `agent` is all that delegated work is.
     assignee: text("assignee").notNull().default("owner"),
     threadRef: text("thread_ref"), // the T3 thread working an agent-assigned task
+    // Tasks: the agent asked for the owner's attention ("Needs you"), and why.
+    // notified_at: when the phone was handed it, so it notifies once.
+    flaggedAt: ts("flagged_at"),
+    flagNote: text("flag_note"),
+    notifiedAt: ts("notified_at"),
     via: text("via").notNull().default("ui"), // ui | agent | job: who created it
     sourceRef: text("source_ref"),
     meta: jsonb("meta").notNull().default({}),

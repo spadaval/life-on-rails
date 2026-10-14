@@ -24,12 +24,12 @@ The owner has executive dysfunction, so the system must cost less to keep up tha
 ## Who is who
 
 - **T3 Code** is where the owner talks to the agent: threads, devices, auth, models, delegation, the morning brief. Every question the agent has for the owner is asked in a thread.
-- **The runner** (`runner/`, systemd timers) starts the unattended runs, nightly and mail, as headless Claude Code. It is not part of LoR, and it reaches the owner only by posting into the main T3 thread (`tell-sumeet`).
+- **The runner** (`runner/`, systemd timers) starts the unattended runs, nightly and mail, as headless Claude Code. It is not part of LoR and does not touch T3: what needs the owner it flags in LoR.
 - **LoR** is what the agent knows, the owner's dashboard, and the senses. It records, shows, and notices, and decides by fixed rules when mail is ready for the agent. It runs no model and calls nobody. It never acts, asks, or approves.
 - **The agent** is a role, not a program: any session (a T3 thread or a headless run) that has the skills and has run `lor context`. Its standing instructions are the `agent` wiki page, served by `lor context`.
 - **`gog`** is the agent's Google tool, signed in with broad access. LoR never runs it.
 
-Do not add chat, an approval queue, notifications, or a model runtime to LoR.
+Do not add chat, an approval queue, or a model runtime to LoR. LoR may notify the owner, on the phone, about what the agent flagged for him ("Needs you"). Every notification has to earn its place: few, never guilt-shaped, and each opens the thing it is about. Nothing depends on LoR calling T3: T3 threads read and write LoR, never the other way round.
 
 ## Product rules
 
@@ -185,6 +185,7 @@ A user-visible interval is always a `time_block`. Accepting its proposal inserts
 - **Recategorize:** last five intents plus search (`r`, then type).
 - **Evening confirm:** one timeline of proposed labels. Enter accepts everything labeled; unlabeled meetings commit to `Meetings`. One optional mood or energy prompt.
 - **Reset Visibility:** moves overdue active tasks and projects (and any task the owner selects) to `status=later` or sets `snoozed_until`. Goals, habits, and metrics are never moved. Nothing is deleted.
+- **Needs you:** tasks the agent flagged (`--flag`), each with why, until the owner marks it Done or Seen. The phone notifies once per flag.
 - **With the agent:** tasks assigned to the agent and their state.
 - Rows written by the agent are badged and have one-tap undo.
 
@@ -417,17 +418,17 @@ The owner talks to the agent in T3: the project `assistant`, rooted at `~/google
 
 | Run | Started by | Does |
 | --- | --- | --- |
-| Main thread (T3) | The owner, or a relayed `tell-sumeet` | The conversation. Updates pages, creates and links tasks, drafts replies, asks before sending. Hands errands to workers. |
+| Main thread (T3) | The owner | The conversation. Updates pages, creates and links tasks, drafts replies, asks before sending. Hands errands to workers. |
 | Worker (T3) | The main thread | One task assigned to the agent, in whichever project the work belongs to. Starts with `lor context --task <id>`, ends with `lor done <id> --memo "…"`. LoR stores the worker's thread on the task. |
 | Morning brief (T3) | 08:00, a T3 schedule bound to the main thread | Today's plan, the starving goal, the first action, tasks due or stale, mail noted overnight, and any change to an `in_digest` page. |
 | Nightly (headless) | `assistant-nightly.timer`, 02:00 Eastern | Writes the day page; files `inbox` entries; links unlinked tasks; notes stale waiting tasks. Reads `lor changes --since 24h`. |
-| Mail (headless) | `assistant-mail.timer`, every 2 min, only when `lor mail pending` is due | Reads the new mail in Gmail; does nothing, notes it for the brief, acts, or tells the owner. |
+| Mail (headless) | `assistant-mail.timer`, every 2 min, only when `lor mail pending` is due | Reads the new mail in Gmail; does nothing, notes it for the brief, acts, or flags a task for the owner. |
 
 Every run uses the owner's one `gog` login.
 
 **Why headless.** Unattended runs in T3 were turns in a chat thread: the mail ones would have filled the main thread, and LoR depended on a T3 hook address and T3's scheduler. Now the conversation is T3's and nothing else is. A headless run's record is what it wrote to LoR (credited to `claude:<session id>`); its transcript is in `~/.claude/projects/`, and `claude -r <session id>` in `~/google/assistant` reopens it. Logs: `journalctl --user -u assistant-mail -u assistant-nightly`.
 
-**Reaching the owner.** `runner/tell-sumeet "<text>"` POSTs to a T3 webhook task bound to the main thread, which relays the message there. Its address (`http://127.0.0.1:3773/api/hooks/<id>/<token>`, a secret) is `ASSISTANT_TELL_URL` in `~/.config/assistant/env` (0600). The hook is tied to one thread: a new main thread means recreating it there.
+**Reaching the owner.** A run that needs the owner flags a task: `lor intent create --type task --title "..." --flag "<why>"` or `lor task flag <id> "<why>"`. It shows under Needs you on Today and in `lor context` (so any T3 thread knows), and the phone app notifies once: each sync calls `POST /device/notifications`, which hands over flagged tasks not yet handed over and marks them (`intent.notified_at`). The phone syncs about every 15 minutes, so that is the latency; nothing pushes. The app asks for none of these until notifications are allowed on the phone.
 
 --- | --- | --- |
 | Main thread | The owner, or a mail wake | The conversation. Updates pages, creates and links tasks, reads new mail, drafts replies, asks before sending. Hands errands to workers. |
@@ -456,7 +457,7 @@ There is no chat screen: the conversation is a T3 thread.
 
 ## The phone
 
-`buildbot` is headless, so the owner's day happens on the phone. The phone runs a small app of its own, `android/` in this repo: Kotlin and Jetpack Compose, sideloaded, package `com.spadaval.lor`.
+`buildbot` is headless, so the owner's day happens on the phone. The phone runs a small app of its own, `android/` in this repo: Kotlin and Jetpack Compose, sideloaded, package `com.spadaval.lor`. Besides the sensors and the timer it shows the "Needs you" notifications (see "Agent runs"), once the owner allows notifications in its Settings.
 
 **What it collects** (each sensor can be switched off in the app, and each needs a permission the owner grants there):
 
@@ -522,7 +523,7 @@ src/server/attribution/ fill, the block state machine, rules, interval math
 src/server/scoring/    formulas (pure) and recompute
 src/server/memory/     pages, entities, search, the digest, changes
 src/server/mail/       check, bulk rules, the wake queue
-runner/                the unattended runs (not LoR): headless Claude Code, tell-sumeet
+runner/                the unattended runs (not LoR): headless Claude Code
 src/server/api/v1.ts   one endpoint per lor verb
 src/server/functions/  what the screens call
 src/routes/            Today, Graph, Memory, Capture, /health, /api/v1
@@ -549,6 +550,7 @@ Built on 2026-10-14, in this order, each checked as described.
 | 8 | Memory screen | A browser pass: read, undo the agent's edit, a conflicting save, history, revert, people, timeline, search. |
 | 9 | Overnight close | Tests; it ran once on the boot after it was added. |
 | 10 | People: contacts import, last in touch, keep-in-touch cadences, birthdays | Tests with a fake Contacts account (import, merge, edits, deletions, expired token) and for every channel of "last in touch"; a browser pass over the People screen. **Not yet run against Google.** |
+| 12 | Needs you: flagged tasks on Today, in the digest, and as phone notifications; unattended runs no longer touch T3 | Tests for flag, notify-once, done, and seen; a browser pass over the Today card; on the emulator against the test server, a sync showed the notification. |
 | 11 | The phone app: app usage, calls, texts, Health Connect, location, the timer tile, settings | JVM tests for session building; on the emulator, a sync uploaded app sessions and calls to the test database and the tile started and stopped a timer. Installed on the phone over wireless adb; permissions are granted on the phone. |
 
 **Waiting on the owner**

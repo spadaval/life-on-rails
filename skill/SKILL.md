@@ -152,6 +152,8 @@ lor graph --starving                          # goals short of their weekly hour
 lor intent create --type task --title "Renew passport" --parent <project_id> --due 2026-11-01T00:00:00-07:00
 lor link --from <habit_id> --to <goal_id> --kind measures
 lor task assign <task_id> agent               # you are doing it; `owner` hands it back (tasks only)
+lor intent create --type task --title "Reply to Priya about Friday" --flag "She needs a yes or no by Thursday (mail:18c2...)"
+lor task flag <task_id> "Due tomorrow and still open"   # Needs you on Today, and one phone notification
 lor done <task_id> --memo "Booked for Nov 3; confirmation in mail:18c2..."
 lor propose time --block <block_id> --intent <intent_id> --reason "calendar says dentist"
 ```

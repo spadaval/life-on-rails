@@ -11,6 +11,7 @@ import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.data.Queue
 import com.spadaval.lor.data.Sensor
 import com.spadaval.lor.net.LorClient
+import com.spadaval.lor.notify.NeedsYou
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -85,6 +86,15 @@ object Sync {
             }
         } catch (e: Exception) {
             errors += "upload: ${e.message ?: e.javaClass.simpleName}"
+        }
+
+        // Only ask when they can be shown: the server hands each one over once.
+        if (NeedsYou.permitted(context)) {
+            try {
+                NeedsYou.show(context, prefs.serverUrl, client.notifications().getJSONArray("notifications"))
+            } catch (e: Exception) {
+                errors += "notifications: ${e.message ?: e.javaClass.simpleName}"
+            }
         }
 
         val pending = queue.count()

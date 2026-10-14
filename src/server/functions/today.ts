@@ -9,6 +9,7 @@ import {
 import { env } from "../env.js";
 import { BadInput } from "../errors.js";
 import { getGraph } from "../graph.js";
+import { needsOwner } from "../intents.js";
 import { resolveDate } from "../memory/day.js";
 import { getToday } from "../today.js";
 
@@ -48,6 +49,7 @@ export const getTodayFn = createServerFn({ method: "GET" })
       ],
       recent: recent.map((r) => ({ id: r.id, title: r.title })),
       starving: graph.nodes.filter((n) => n.starving).map((n) => ({ id: n.id, title: n.title, hours: n.week_hours ?? 0, target: n.weekly_hour_target ?? 0 })),
+      needsYou: (await needsOwner(sql)).map((n) => ({ id: n.id, title: n.title, note: n.flag_note ?? "", google: n.google_task_id !== null })),
       agentTasks: graph.nodes
         .filter((n) => n.type === "task" && n.assignee === "agent" && (n.status === "active" || n.status === "waiting"))
         .map((n) => ({ id: n.id, title: n.title, status: n.status as string })),

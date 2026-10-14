@@ -20,6 +20,9 @@ class LorClient(baseUrl: String) {
         return request("POST", "/device/timer", body)
     }
 
+    /** Tasks flagged for you that this call hands over; each comes back once. */
+    fun notifications(): JSONObject = request("POST", "/device/notifications", JSONObject())
+
     fun ingest(device: String, observations: List<String>): JSONObject {
         val array = JSONArray()
         for (o in observations) array.put(JSONObject(o))

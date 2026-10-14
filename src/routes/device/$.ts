@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
-import { deviceState, deviceTimer, ingest } from "../../server/device.js";
+import { deviceNotifications, deviceState, deviceTimer, ingest } from "../../server/device.js";
 import { BadInput, NotFound, Refused } from "../../server/errors.js";
 import { errorMessage, log } from "../../server/log.js";
 
@@ -16,6 +16,7 @@ async function handle(request: Request): Promise<Response> {
   try {
     if (request.method === "GET" && path === "/state") return json(200, await deviceState(loginOf(request), url.searchParams.get("device")));
     if (request.method === "POST" && path === "/ingest") return json(200, await ingest(await request.json()));
+    if (request.method === "POST" && path === "/notifications") return json(200, await deviceNotifications());
     if (request.method === "POST" && path === "/timer") return json(200, await deviceTimer(await request.json(), loginOf(request)));
     return json(404, { error: { code: "no-such-endpoint", message: `${request.method} ${url.pathname}` } });
   } catch (err) {
