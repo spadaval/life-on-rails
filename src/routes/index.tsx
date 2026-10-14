@@ -64,7 +64,10 @@ function Today() {
     return () => clearInterval(id);
   }, [router]);
 
-  const toConfirm = t.actual.filter((b) => b.proposal && b.t_end && new Date(b.t_end).getTime() <= now);
+  // A block belongs to the day it starts, the same rule "Accept all" uses.
+  const toConfirm = t.actual.filter(
+    (b) => b.proposal && b.t_end && new Date(b.t_end).getTime() <= now && new Date(b.t_start).getTime() >= new Date(t.day_start).getTime(),
+  );
   const acceptAll = () => act(() => confirmFn({ data: { date: t.date, all: true } }), "Confirmed.");
 
   // Enter confirms everything labelled; `r` jumps to relabelling. Never while typing.

@@ -49,6 +49,16 @@ dbDescribe("the Today view", () => {
     expect(renderToday(t)).toContain("[calendar] Meetings — standup (confirmed; block ");
   });
 
+  it("a block that runs past midnight is confirmed with the day it started", async () => {
+    await startManualBlock(sql, {}, ui, at(23, 30));
+    await stopRunningBlock(sql, ui, at(0, 30, 15));
+    expect((await getToday(sql, "2026-10-14", at(12, 0, 15))).to_confirm).toBe(1);
+    const next = await getToday(sql, "2026-10-15", at(12, 0, 15));
+    expect(next.actual).toHaveLength(1); // drawn on both days
+    expect(next.to_confirm).toBe(0); // confirmed on one
+    expect(await confirmDay(sql, { date: "2026-10-14", all: true }, ui, at(12, 0, 15))).toEqual({ accepted: 1, rejected: 0 });
+  });
+
   it("a confirmed block whose event later moved carries a mismatch", async () => {
     await event("review", 9, 10);
     await fill();
@@ -83,11 +93,13 @@ dbDescribe("time over the API", () => {
     const proposed = await api("POST", "/proposals", { block_id: stopped.id, intent_id: other.id, reason: "you were in the bank's site", thread: "t-1" });
     expect(proposed.status).toBe(200);
 
-    const day = (await (await api("GET", "/day")).json()) as { markdown: string; to_confirm: number };
+    // The block belongs to the local day it started on, which near midnight is not today.
+    const started = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date(Date.now() - 30 * 60_000));
+    const day = (await (await api("GET", `/day?date=${started}`)).json()) as { markdown: string; to_confirm: number };
     expect(day.to_confirm).toBe(1);
     expect(day.markdown).toContain("suggested by agent, proposal ");
 
-    const confirmed = (await (await api("POST", "/confirm", { date: "today", all: true, thread: "t-1" })).json()) as { accepted: number };
+    const confirmed = (await (await api("POST", "/confirm", { date: started, all: true, thread: "t-1" })).json()) as { accepted: number };
     expect(confirmed.accepted).toBe(1);
     const [c] = await sql<{ via: string; source_ref: string; intent: string }[]>`
       SELECT c.via, c.source_ref, i.title AS intent FROM commitment c JOIN intent i ON i.id = c.intent_id`;

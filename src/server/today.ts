@@ -64,8 +64,11 @@ export interface TodayView {
   planned: PlannedEvent[];
   actual: BlockView[];
   gaps: Gap[];
-  /** Blocks on this day that have ended and still have a pending label. */
+  /** Blocks starting on this day (a block belongs to the day it starts) that have ended and still have a pending label. */
   to_confirm: number;
+  /** When this local day starts and ends. */
+  day_start: string;
+  day_end: string;
   confirm_rate: number | null;
   coverage: number | null;
 }
@@ -253,7 +256,11 @@ export async function getToday(db: Tx, date: Ymd, now = new Date()): Promise<Tod
     })),
     actual: blocks,
     gaps,
-    to_confirm: blocks.filter((b) => b.proposal && b.t_end && new Date(b.t_end).getTime() <= now.getTime()).length,
+    to_confirm: blocks.filter(
+      (b) => b.proposal && b.t_end && new Date(b.t_end).getTime() <= now.getTime() && new Date(b.t_start).getTime() >= start.getTime(),
+    ).length,
+    day_start: start.toISOString(),
+    day_end: end.toISOString(),
     confirm_rate: m.confirmRate,
     coverage: m.coverage,
   };
