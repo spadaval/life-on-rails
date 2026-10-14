@@ -26,7 +26,12 @@ install -m 600 .env.example ~/.config/life-on-rails/env   # then fill it in
 pnpm db:migrate                              # schema + seed
 pnpm build
 scripts/install-units.sh                     # lor-web.service + nightly backup timer
+tailscale serve --bg --http=3847 http://127.0.0.1:3848    # the dashboard on the owner's other devices
 ```
+
+The last line publishes the owner-only listener on its own Tailscale Serve port, so the
+dashboard is `http://buildbot:3847` (or `http://buildbot.tail47515a.ts.net:3847`) from any
+of the owner's devices. It does not touch whatever else Serve already publishes.
 
 After a change: `pnpm build && systemctl --user restart lor-web`.
 
