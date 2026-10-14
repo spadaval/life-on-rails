@@ -54,6 +54,8 @@ page shows whether the login is working.
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm db:generate` | Generate a migration from `src/db/schema.ts`. |
 | `pnpm db:migrate` | Apply migrations and the seed. |
+| `pnpm db:seed seeds/<name>.json` | Load a starter graph. |
+| `pnpm google:auth [--mail]` | LoR's own Google sign-in. |
 
 - `http://127.0.0.1:3847` is everything, for use on the box. `/health` reports the database and every job.
 - `127.0.0.1:3848` is the owner-only listener that `tailscale serve` publishes.
@@ -61,14 +63,14 @@ page shows whether the login is working.
 - Backups: `~/.local/share/life-on-rails/backup/`, nightly, last 7 kept.
   Restore with `pg_restore --clean --if-exists -d life_on_rails <file>` after stopping the unit.
 
+## The agent
+
+`cli/lor.mjs` is the agent's CLI (symlink it to `~/.local/bin/lor`), and `skill/` is the
+`lor` skill (symlink it into the skills directory each harness reads). `lor help` lists the
+verbs; `lor status` shows every job and sensor. The assistant itself runs as T3 Code
+threads in a project of its own; what it does on each run is written on the `agent` page,
+which the owner edits in the Memory screen.
+
 ## Layout
 
-```
-src/shared/      types and helpers safe for both sides (envelope, ids, local time)
-src/db/          schema, client, migrate, seed
-src/server/      env, logging, jobs, and everything that touches the database
-src/routes/      TanStack Start routes (UI, /health, /api/v1)
-scripts/         production entry (serve.mjs), host setup, systemd units
-tests/           pure tests; tests/db/ runs against Postgres
-drizzle/         generated SQL migrations
-```
+See "Where things are" in the spec.

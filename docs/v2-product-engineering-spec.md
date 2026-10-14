@@ -1,12 +1,12 @@
-# Life on Rails v2: design and build order
+# Life on Rails v2: design and state of the build
 
 | | |
 | --- | --- |
 | **Owner** | Sumeet Padavala |
-| **Rewritten** | 2026-10-14, as one description of the current design |
+| **Rewritten** | 2026-10-14, as one description of the current design; updated the same day as it was built |
 | **Repo** | `/home/supadava/projects/life-on-rails` |
 | **Runs on** | `buildbot` (Ubuntu 26.04, headless, Tailscale `buildbot.tail47515a.ts.net`) |
-| **Code so far** | `e050ace`: 2023 app archived, v2 scaffolded, nothing has run end to end |
+| **State** | Built and running on `buildbot` through the overnight close. Google and mail wait on the owner's OAuth client; the phone sensor is not built. See "State of the build". |
 
 This is a personal project on one box with one user. There is no PR plan, review gate, or staged rollout: work goes to `main` when it works. The earlier, much longer spec (history, superseded decisions, the 2023 post-mortem) is not carried here; the v1 text is in git at `e050ace`.
 
@@ -81,7 +81,7 @@ manual timer (UI)       ────────┘     │  ▲
                                  T3 Code threads (the agent, with gog)
 ```
 
-**Server entry.** As landed, `pnpm build` writes `dist/server/server.js`, which exports a fetch handler and opens no socket, while `start` runs `.output/server/index.mjs`, which does not exist. The production entry (1) serves that handler and `dist/client` on `LOR_BIND:LOR_PORT`, (2) pings the database and exits non-zero if it is down, and (3) starts the scheduler, once. `srvx` is already in the dependency tree and is the default host for the handler. The systemd unit runs `node` by absolute path on the built entry, not `pnpm`, with `Restart=on-failure` and `EnvironmentFile=%h/.config/life-on-rails/env`.
+**Server entry.** `pnpm build` writes `dist/server/server.js`, which exports a fetch handler and opens no socket. `scripts/serve.mjs` is the production entry: it (1) loads that bundle, which pings the database and exits non-zero if it is down, (2) serves the handler and `dist/client` with `srvx`, and (3) is the only thing that sets `LOR_RUN_JOBS=1`, so the scheduler inside the bundle starts once and never under `vite dev`. The systemd unit runs `node` by absolute path on it, not `pnpm`, with `Restart=always` and `EnvironmentFile=%h/.config/life-on-rails/env`.
 
 **Two listeners, one process.**
 
@@ -92,17 +92,18 @@ manual timer (UI)       ────────┘     │  ▲
 
 **`pnpm dev` is UI only.** Vite's reloads would kill the clock, so the scheduler is started only from the production entry.
 
-**Scheduler.** In-process timers. Each job has an in-memory "already running" flag, so a slow run is skipped rather than doubled. Each run writes a `job_run` row. On boot, any row still marked `running` is set to `error` (there is one process, so it cannot be live), and the overnight close runs once if yesterday has no successful run. There is no watchdog, no tick endpoint, and no database lock: if the process dies, systemd restarts it.
+**Scheduler.** In-process timers. Each job has an in-memory "already running" flag, so a slow run is skipped rather than doubled. Each run writes a `job_run` row; a job with nothing to do (no mail queued) records no run. On boot, any row still marked `running` is set to `error` (there is one process, so it cannot be live), and a daily job whose time was missed runs once. There is no watchdog, no tick endpoint, and no job lock in the database: if the process dies, systemd restarts it. A repeated failure is logged once, not every interval.
 
 | Job | When | Does |
 | --- | --- | --- |
-| `calendar_poll` | every 300 s | `events.list` per calendar, `singleEvents=true`, from the start of local yesterday to the end of local +2 days. Upserts `google_event` and a `source=calendar` observation, then runs calendar fill. The full-window poll is also how moved and cancelled events are retracted. |
+| `calendar_poll` | every 300 s | `events.list` for each calendar ticked in Google Calendar, `singleEvents=true`, from the start of local yesterday to the end of local +2 days. Upserts `google_event` and a `source=calendar` observation, then runs calendar fill. The full-window poll is also how moved and cancelled events are retracted. |
 | `tasks_poll` | every 900 s | Upserts `task` intents by `google_task_id`. See "Google Tasks". |
 | `mail_check` | on push, at startup, after watch renewal | See "Mail". |
-| `mail_watch_renew` | daily | Re-registers the Gmail watch, which lapses after 7 days. |
+| `mail_watch_renew` | daily 04:15 | Re-registers the Gmail watch, which lapses after 7 days, then runs a check. |
 | `wake_flush` | 180 s quiet or 900 s max | Posts queued mail to the agent. Rows leave the queue only when the POST succeeds. |
 | `score_tick` | hourly | Recomputes scores. |
-| `overnight_close` | 01:30 local | Merges adjacent blocks, creates missing proposals, snapshots scores. Does not confirm anything and calls no model. |
+| `overnight_close` | 01:30 local | Merges adjacent blocks, creates missing proposals, snapshots scores, wakes snoozed tasks. Does not confirm anything and calls no model. |
+| `heartbeat` | every 300 s | Proves the clock is alive. |
 
 **Health.** `GET /health` returns 200 whenever the process is listening, with the database state and each job's last successful run. A job is `stale` when that run is older than three intervals. The Capture cockpit shows the same thing plus each source's last arrival and the Google auth state. The cockpit is the only alerting.
 
@@ -110,6 +111,7 @@ manual timer (UI)       ────────┘     │  ▲
 
 ```
 DATABASE_URL=postgres:///life_on_rails?host=/var/run/postgresql   # socket + peer auth; never 127.0.0.1
+LOR_TEST_DATABASE_URL=postgres:///life_on_rails_test?host=/var/run/postgresql   # pnpm test:db only
 LOR_BIND=127.0.0.1
 LOR_PORT=3847
 LOR_SERVE_PORT=3848           # the identity-checked listener behind tailscale serve
@@ -127,106 +129,33 @@ LOR_WAKE_MAX_S=900
 GOOGLE_ACCOUNT=sumeet.padavala@gmail.com
 GOOGLE_OAUTH_CLIENT=/home/supadava/.config/life-on-rails/google-client.json
 GOOGLE_TOKEN_FILE=/home/supadava/.config/life-on-rails/google-token.json
-GOOGLE_PUBSUB_SUBSCRIPTION=   # projects/<project>/subscriptions/<name>
+GOOGLE_PUBSUB_TOPIC=          # projects/<project>/topics/<name>: where Gmail publishes
+GOOGLE_PUBSUB_SUBSCRIPTION=   # projects/<project>/subscriptions/<name>: what LoR pulls
 ```
 
-postgres.js treats an empty host as TCP localhost, so `src/db/client.ts` forces the socket directory when the URL has none.
+The comments above are for this document: in the real file every comment is on its own line, because systemd does not strip trailing ones. postgres.js treats an empty host as TCP localhost, so `src/db/client.ts` forces the socket directory when the URL has none.
 
 ---
 
 ## Data model
 
-Single user, so no owner column anywhere. Ids are UUIDv7. Timestamps are `timestamptz`.
+Single user, so no owner column anywhere. Ids are UUIDv7. Timestamps are `timestamptz`. `src/db/schema.ts` is the reference; `pnpm db:generate` turns it into the SQL under `drizzle/`.
 
-`src/db/schema.ts` in the foundation commit is the reference for the tables that already exist: `intent`, `intent_link`, `tag`, `intent_tag`, `observation`, `proposal`, `commitment`, `time_block`, `time_block_observation`, `attribution_rule`, `google_sync_state`, `google_event`, `job_run`, `score_snapshot`. The first migration is regenerated (no database exists yet) with these changes:
+| Table | Holds |
+| --- | --- |
+| `intent`, `intent_link`, `tag`, `intent_tag` | The world model. `intent` also carries `status` (including `waiting`), `waiting_on_entity_id`, `google_task_id`, `assignee`, `thread_ref`. |
+| `observation` | Sensor facts, one envelope for every source. Never scored. Has a generated `search` column. |
+| `time_block`, `time_block_observation` | The actual lane. |
+| `proposal` | A suggested label for a block. One kind (`time_attribution`); `time_block_id` is never null. |
+| `commitment` | What the owner confirmed: `time_spent`, `habit_completion`, `metric_value`, `task_done`, `note`. The only input to scores. |
+| `attribution_rule` | App, title, or URL patterns that label blocks. |
+| `google_sync_state`, `google_event` | The calendar window, with what decides fill: `transparency`, `event_type`, `self_response`. |
+| `entity`, `entity_identifier` | People, organisations, places, and how they are recognised. `entity.priority` skips the mail wait. |
+| `page`, `page_version` | The wiki. |
+| `mail_state`, `wake_queue` | Where the mail check got to, and arrivals waiting to wake the agent. |
+| `job_run`, `score_snapshot` | What ran, and each intent's score per local date with its explanation. |
 
-- **Drop** `user_profile`, `title_embedding`, `conversation`, `message`, and the `vector` extension.
-- **`proposal_kind`** is `time_attribution` only. The other kinds go: the agent writes links directly, the morning plan is a message in the thread, and nothing in LoR suggests habit completions or metric values (the owner records those, in the evening confirm or by asking the agent).
-- **`intent_status`** gains `waiting` (a task blocked on someone else) now, because adding a value to an enum later is awkward.
-- **`proposal` and `commitment`** gain `via text` (`ui` | `agent` | `rule` | `job`) and `source_ref text` (for agent writes, the T3 thread id).
-
-Added later, each with the code that uses it:
-
-```sql
--- with the memory API
-CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- trusted: the database owner can create it
-
-CREATE TABLE entity (
-  id         uuid PRIMARY KEY,
-  kind       text NOT NULL,                 -- person | org | place | thing
-  name       text NOT NULL,
-  aliases    text[] NOT NULL DEFAULT '{}',
-  priority   boolean NOT NULL DEFAULT false,   -- mail from this entity skips the wake debounce
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX entity_name_trgm ON entity USING gin (name gin_trgm_ops);
-
-CREATE TABLE entity_identifier (            -- how an entity is recognised in raw data
-  entity_id uuid NOT NULL REFERENCES entity(id) ON DELETE CASCADE,
-  kind      text NOT NULL,                  -- email | phone | handle | domain
-  value     text NOT NULL,                  -- lowercased
-  PRIMARY KEY (kind, value)
-);
-
-CREATE TABLE page (
-  id           uuid PRIMARY KEY,
-  slug         text NOT NULL UNIQUE CHECK (slug ~ '^[a-z0-9][a-z0-9/-]*$'),
-  title        text NOT NULL,
-  entity_id    uuid UNIQUE REFERENCES entity(id) ON DELETE SET NULL,   -- the page is about this entity
-  intent_id    uuid UNIQUE REFERENCES intent(id) ON DELETE SET NULL,   -- ... or this goal or project
-  head_version int  NOT NULL,
-  body         text NOT NULL,               -- copy of the head version, kept here for search
-  in_digest    boolean NOT NULL DEFAULT false,   -- body is included in every `lor context`
-  search       tsvector GENERATED ALWAYS AS (
-                 setweight(to_tsvector('english', title), 'A') || to_tsvector('english', body)) STORED,
-  updated_at   timestamptz NOT NULL DEFAULT now(),
-  CHECK (num_nonnulls(entity_id, intent_id) <= 1)
-);
-CREATE INDEX page_search_idx ON page USING gin (search);
-CREATE INDEX page_title_trgm ON page USING gin (title gin_trgm_ops);
-
-CREATE TABLE page_version (                 -- every write is a whole new copy
-  page_id    uuid NOT NULL REFERENCES page(id) ON DELETE CASCADE,
-  version    int  NOT NULL,
-  title      text NOT NULL,
-  body       text NOT NULL,
-  via        text NOT NULL,                 -- ui | agent
-  source_ref text,                          -- T3 thread id
-  note       text,                          -- one-line edit summary
-  created_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (page_id, version)
-);
--- also: observation.search, a generated tsvector over title, with a GIN index
-
--- with the world model
-ALTER TABLE intent
-  ADD COLUMN waiting_on_entity_id uuid REFERENCES entity(id) ON DELETE SET NULL,
-  ADD COLUMN waiting_since timestamptz,
-  ADD COLUMN assignee   text NOT NULL DEFAULT 'owner',   -- owner | agent
-  ADD COLUMN thread_ref text,                           -- the T3 thread working an agent-assigned task
-  ADD COLUMN via        text NOT NULL DEFAULT 'ui',
-  ADD COLUMN source_ref text;
-
--- with calendar and tasks
-ALTER TABLE intent ADD COLUMN google_task_id text;
-CREATE UNIQUE INDEX intent_google_task_idx ON intent (google_task_id) WHERE google_task_id IS NOT NULL;
-
--- with mail
-CREATE TABLE mail_state (                   -- one row
-  id         boolean PRIMARY KEY DEFAULT true CHECK (id),
-  history_id text,
-  watch_expires_at timestamptz,
-  last_push_at     timestamptz
-);
-CREATE TABLE wake_queue (                   -- arrivals waiting to wake the agent, one row per Gmail thread
-  gmail_thread_id text PRIMARY KEY,
-  observation_ids uuid[] NOT NULL,
-  first_seen      timestamptz NOT NULL,
-  last_seen       timestamptz NOT NULL,
-  priority        boolean NOT NULL DEFAULT false
-);
-```
+`intent`, `intent_link`, `proposal`, and `commitment` carry `via` (`ui` | `agent` | `rule` | `job`) and `source_ref` (for agent writes, the T3 thread id).
 
 **Intent graph.** Node types: goal, project, habit, task, metric. Links (`intent_link.kind`): `measures`, `blocks`, `derived_from`. **`from_id` is the child or source; `to_id` is the parent or target.** Calendar title patterns live on `attribution_rule.match_title`, not as links. Tags are filters, never score inputs. The migration seeds two system intents that cannot be deleted: `Uncategorized` (manual and activity default) and `Meetings` (calendar default).
 
@@ -264,21 +193,26 @@ A user-visible interval is always a `time_block`. Accepting its proposal inserts
 Invariants:
 
 - **At most one open block:** `CREATE UNIQUE INDEX time_block_one_open ON time_block ((true)) WHERE t_end IS NULL`. Paused is `t_end IS NULL AND paused_at IS NOT NULL`.
-- `startManualBlock` closes the open block and opens the new one in **one transaction** with `SELECT … FOR UPDATE`, so two rapid taps cannot create two open blocks.
+- Every writer of time blocks takes one advisory transaction lock first (`lockBlocks`), so they run one at a time: two rapid taps on Start leave one open block. Fill is re-synced inside the same transaction, so the invariant below holds at every commit.
+- **A pause is never inside a block.** Pausing marks the open block; resuming ends it at the pause and starts a new block with the same label. Hours can therefore always be computed from intervals.
+- A timer stopped within a minute was a mis-tap and is dropped.
+- **One pending suggestion per block.** A newer one (from the agent, say) expires the older.
 - **No overlapping actual seconds.** Calendar blocks are fill only: they occupy time not already taken (see "Calendar fill").
 - `time_block.committed` is set only by recategorize, confirm, or an `auto_apply` rule. Never by a poll, ingest, or the overnight close.
 
 | Event | Rows written |
 | --- | --- |
 | `startManualBlock` | One transaction: lock and close any open block; insert `time_block` (`origin=manual`, `intent_id` = chosen or `Uncategorized`, uncommitted) and a `source=manual` observation. Then sync fill. |
-| `stopRunningBlock` | Set `t_end=now`. Insert a pending proposal (confidence 1.0). Then sync fill. |
-| `pauseRunningBlock` / `resumeRunningBlock` | Set or clear `paused_at`; on resume add the pause to `idle_s`. `t_end` stays null. |
+| `stopRunningBlock` | Set `t_end=now` (or the pause time, if paused). Insert a pending proposal (confidence 1.0). Then sync fill. |
+| `pauseRunningBlock` | Set `paused_at`. `t_end` stays null. |
+| `resumeRunningBlock` | End the paused block at `paused_at`; insert a new open block with the same intent and title. |
+| `uncommitBlock` | Delete the block's commitment and put its label back as a pending suggestion. This is the undo for a confirmation, including one the agent made. |
 | `editBlock({blockId, tStart?, tEnd?})` | Move a closed non-calendar block's start or end. A `time_spent` commitment on it moves with it. Then sync fill. |
 | `deleteBlock` | Delete a non-calendar block, and its commitment first if it has one. Then sync fill. |
 | Calendar poll | Upsert events and observations, then sync fill. Calendar blocks always have `t_end` set. |
 | `recategorizeBlock` | Close if open. Reject other pending proposals for the block. Insert `commitment time_spent` (`intent_id` required; `value` is a display copy of the hours). Set `time_block.intent_id`, `committed`, `commitment_id`. An earlier `time_spent` for the block is replaced. Then sync fill if the block is a calendar block. |
-| `splitBlock({blockId, at})` | Left keeps the id and ends at `at`; right is a new block with the same origin, intent, and committed state. Observations are re-pointed by midpoint. A commitment is split the same way. |
-| `confirmDay` | Each accepted proposal runs the `recategorizeBlock` transaction with the proposal's intent. Each rejected proposal becomes `rejected`. `acceptAllPending` accepts every other pending proposal for that date. Gaps stay gaps. |
+| `splitBlock({blockId, at})` | Left keeps the id and ends at `at`; right is a new block with the same origin, intent, and committed state. Observations are re-pointed by midpoint. A commitment is split the same way. Two halves of an unconfirmed calendar block are joined again by the next fill sync unless one of them is relabelled. |
+| `confirmDay` | Each accepted proposal runs the `recategorizeBlock` transaction with the proposal's intent. Each rejected proposal becomes `rejected`. `all` accepts every other pending proposal for that date whose block has ended. Gaps stay gaps. |
 | Overnight close | Merge adjacent uncommitted non-calendar blocks with the same intent and a gap of at most 120 s (`origin=merged`). Create missing proposals. |
 
 Activity blocks from sensors are not in this table yet; see "The phone".
@@ -288,7 +222,8 @@ Activity blocks from sensors are not in this table yet; see "The phone".
 - **Taken time** is every non-calendar block plus every committed calendar block. An open block is taken from its start with no end, so while a timer runs there is no fill ahead of it; stopping the timer brings the fill back.
 - **Events that fill:** timed events that are not cancelled, not declined by the owner, not marked free (`transparency=transparent`), and of type `default` or `fromGmail`. All-day events, focus time, out-of-office, and working-location entries show in the planned lane only.
 - **Two events at once:** the shorter event gets the overlapping time (ties go to the earlier start). A one-hour meeting inside an afternoon-long hold keeps its hour.
-- **Wanted blocks:** for each event, shortest first, its span minus taken time minus what shorter events already got. Each remaining fragment is one closed, uncommitted `origin=calendar` block with a pending proposal (`intent_id` from a matching rule, else `Meetings`).
+- **Wanted blocks:** for each event, shortest first, its span minus taken time minus what shorter events already got. Each remaining fragment of a minute or more is one closed, uncommitted `origin=calendar` block with a pending proposal (`intent_id` from a matching rule, else `Meetings`).
+- **Auto-apply rules** commit their blocks after the event has ended, never before.
 - **Changing only what differs:** an existing uncommitted calendar block whose event and exact start and end are still wanted is left untouched, with its id and its proposals (including a rejected one). Others are deleted, and their proposals with them. Missing ones are inserted. A poll that finds nothing changed writes nothing.
 - **Committed calendar blocks are never rewritten.** If their event moved or was cancelled, Today shows a mismatch chip.
 
@@ -313,12 +248,13 @@ Pure functions in `src/server/scoring/formulas.ts`. Recomputed on every commitme
 - **Metric:** mean of committed values normalized to 0–1 between `metric_min` and `metric_max` (five-point: 1 and 5). No values in the window means **undefined**, not zero.
 - **Habit:** `adherence = min(C / E, 1)`, where `E = W ×` (expected completions per week) and `C` is committed completions. `quality` = mean raw score of metrics linked to it by `measures`. `score = α·adherence + (1−α)·quality`, with `α = completion_weight` (default 0.7). With no linked metrics, the score is adherence.
 - **Task:** 1 if a `task_done` commitment exists, else 0. Overdue is a flag, not a score.
-- **Project:** `0.6 × tasks done ÷ tasks + 0.4 × min(committed hours ÷ estimate_hours, 1)`. A missing term is dropped. Hours are those committed directly to the project.
+- **Project:** `0.6 × tasks done ÷ tasks + 0.4 × min(committed hours ÷ estimate_hours, 1)`. A missing term is dropped. Hours are those committed directly to the project, counted from its start rather than the window, because an estimate is a total.
 - **Goal:** `β·children + (1−β)·hours`, with `β = goal_mix` (default 0.7; not `completion_weight`). `children` is the weighted mean of raw child scores over `measures` links into the goal; undefined children are skipped, and no children means the term is dropped. `hours = min(unique hours ÷ (weekly_hour_target × W), 1)` over the goal and all its descendants. A missing term is dropped and the other takes the full weight. Nothing to mix means undefined.
 - **Descendant walk:** follow `measures` links from parent to children with a visiting set; an edge that would re-enter it is dropped and logged, so cycles terminate.
 - **Hours are recomputed from `[t, t_end]` intervals with a sweep-line merge.** `commitment.value` is display only.
 - **Known and intended:** a project whose hours all sit on child tasks scores 0 on its hours term while its parent goal counts them. The explanation shows both.
-- **Decay on silence:** `d` = whole days since the last relevant commitment. `δ = 1` for `d ≤ 2`, else `exp(−(d−2)/7)`. Applied **once, last, on the node being displayed**. Parents always mix raw child scores.
+- **Decay on silence:** `d` = whole local days since the last relevant commitment, or since the intent was created if there is none. `δ = 1` for `d ≤ 2`, else `exp(−(d−2)/7)`. Applied **once, last, on the node being displayed**. Parents always mix raw child scores.
+- **Starving:** a goal with `weight ≥ 2` whose hours over the last 7 days are under half its weekly target.
 - **Confidence chip:** high if the last commitment is under 2 days old and the trailing 7-day confirm rate is at least 0.5; medium if there is any commitment in the window; low otherwise.
 
 ---
@@ -354,7 +290,7 @@ Priya moved to Austin in March [^move] and prefers calls to email [^calls]. See 
 [^calls]: thread:3f3320a0 @2026-10-13
 ```
 
-Citation targets are `mail:<gmail-id>`, `obs:<id>`, `thread:<id>`, and `url:<https://…>`. The server stores these as written and does not parse or check them; the Memory UI turns them into links when it renders. Cite sources, never another page.
+Citation targets are `mail:<gmail-id>`, `obs:<id>`, `thread:<id>`, and `url:<https://…>`. The server stores these as written and keeps no index of them; the Memory UI turns them into links when it renders. The one check is a warning in the reply to a write when a marker has no definition or a definition has no marker. Cite sources, never another page.
 
 Write rules:
 
@@ -362,7 +298,7 @@ Write rules:
 | --- | --- |
 | `create` | Refused (exit 6, naming the existing page) if the slug, `entity_id`, or `intent_id` is taken. |
 | `update --base <n>` | Refused as `stale-base`, with the current head, if `n` is not the head version. Otherwise one transaction: insert version `n+1`, set `page.body` and `head_version`. Whole body on stdin, or `--find/--replace` where the text occurs exactly once. `--dry-run` prints the diff. |
-| `update --append` | No `--base`; the server appends to the head inside the transaction. For `inbox` and running logs. |
+| `update --append` | No `--base`; the server appends to the head inside the transaction, continuing a list or a footnote block and otherwise starting a new paragraph. For `inbox` and running logs. |
 | set `in_digest` | The owner only, in the UI. |
 | any agent write | Refused without `--thread`. |
 
@@ -381,7 +317,8 @@ lor changes --since <rfc3339>           # what arrived or changed after that tim
 # read
 lor search <query> [--in page,obs,intent,entity] [--from <t>] [--to <t>] [--limit N]
 lor page search <query>
-lor page read <slug> [--version N] [--history]
+lor page read <slug> [--version N]
+lor page history <slug>
 lor entity show <id|name|email>         # its page, identifiers, recent mail arrivals, linked intents
 lor day [<date>]                        # planned, actual, commitments, and the day page
 lor graph [--starving] [--waiting]
@@ -431,10 +368,10 @@ The API cannot tell an instructed call from an uninstructed one, so this is audi
 
 ## Google
 
-LoR has its own OAuth client (desktop type) in a Google Cloud project the owner controls.
+LoR has its own OAuth client (desktop type) in a Google Cloud project the owner controls, saved as `GOOGLE_OAUTH_CLIENT`. With no client yet, `pnpm google:auth` prints the steps to create one.
 
 - **Scopes:** `calendar.readonly`, `tasks.readonly`, `gmail.metadata` (headers and labels, never bodies), plus access to one Pub/Sub subscription. LoR cannot write to Google or read a mail body even by mistake.
-- **Consent:** `pnpm google:auth`, run once at a terminal, writes the refresh token to `GOOGLE_TOKEN_FILE` (0600, outside the repo). The box has no browser, so the command prints the consent URL to open on another device and asks for the redirected URL to be pasted back. The consent screen is set to "In production" so the token does not expire after seven days (to be confirmed).
+- **Consent:** `pnpm google:auth` (add `--mail` for the Gmail and Pub/Sub scopes), run once at a terminal, writes the refresh token to `GOOGLE_TOKEN_FILE` (0600, outside the repo). The box has no browser, so the command prints the consent URL to open on another device and asks for the redirected URL to be pasted back. The consent screen is set to "In production" so the token does not expire after seven days (to be confirmed).
 - **Code:** `src/server/google/client.ts` holds auth and the calls behind `CalendarPort`, `TasksPort`, and `MailPort`, so sync and mail logic are tested against recorded responses with no network.
 - **Failure:** a refused token shows "Google auth required: run `pnpm google:auth`" in the cockpit and the job records an error. The app keeps running.
 
@@ -462,18 +399,20 @@ Mail lives in Gmail. LoR notices that something arrived and wakes the agent once
 
 ### Agent runs
 
-These live in T3, not in this repo. A T3 project `assistant`, rooted at `~/google/assistant/`, holds an `AGENTS.md` that says to run `lor context` and follow the `agent` page. Neither exists yet; both are created with the memory API.
+These live in T3, not in this repo. The T3 project `assistant` is rooted at `~/google/assistant/`, whose `AGENTS.md` says to load the `lor` skill, run `lor context`, and follow the `agent` page. What each run does, and how the agent sets up its own schedules, is written on the `agent` page, so the owner can change it in the Memory screen.
 
 | Run | Started by | Does |
 | --- | --- | --- |
 | Main thread | The owner, or a mail wake | The conversation. Updates pages, creates and links tasks, reads new mail, drafts replies, asks before sending. Hands errands to workers. |
 | Worker | The main thread | One task assigned to the agent, in whichever project the work belongs to. Starts with `lor context --task <id>`, ends with `lor done <id> --memo "…"`. LoR stores the worker's thread on the task. |
-| Nightly | 02:00 local | Writes the day page; files `inbox` entries; links unlinked tasks; notes stale waiting tasks. Reads `lor changes --since` its last run. |
-| Morning brief | Start of the waking day | Today's plan, the starving goal, waiting tasks that are due or stale, mail noted overnight, and any change to an `in_digest` page. |
+| Nightly | 02:00 local, a fresh thread | Writes the day page; files `inbox` entries; links unlinked tasks; notes stale waiting tasks. Reads `lor changes --since 24h`. |
+| Morning brief | Start of the waking day, in the main thread | Today's plan, the starving goal, the first action, tasks due or stale, mail noted overnight, and any change to an `in_digest` page. |
 
 Every run uses the owner's one `gog` login.
 
-The mail wake is a T3 webhook task created from the main thread, so its runs are queued into that thread. T3 serves the hook on the box at `http://127.0.0.1:3773/api/hooks/<id>/<token>`; the URL contains the token, so it is a secret. The hook is tied to that one thread: if the owner starts a new main thread, the hook is recreated there. That thread grows with every wake, which is the reason to add a triage tier if it becomes a problem.
+**Schedules are created from the main thread,** by the agent, with T3's `schedule_task`, so they inherit that thread's model. LoR does not create them.
+
+**The mail wake** is a T3 webhook task created from the main thread, so its runs are queued into that thread. T3 serves the hook on the box at `http://127.0.0.1:3773/api/hooks/<id>/<token>`; the address contains the token, so it is a secret. T3 tells an agent the address only when T3 Connect is on; otherwise the owner copies it from T3's scheduled-task settings. The hook is tied to one thread: if the owner starts a new main thread, the hook is recreated there. That thread grows with every wake, which is the reason to add a triage tier if it becomes a problem.
 
 ---
 
@@ -483,10 +422,10 @@ The mail wake is a T3 webhook task created from the main thread, so its runs are
 | --- | --- |
 | `/` Today | See "Today" above. |
 | `/graph` | Intents grouped by type, with links, score chips, and starve flags. A plain list, no canvas. |
-| `/memory` | **Pages:** a tree by slug prefix, a reader that renders links and footnotes, a markdown editor that saves through the same `--base` check as the agent, history with diff and revert, the `in_digest` toggle, and who last changed each `in_digest` page. **People:** entities, their identifiers, page, recent mail arrivals, and the `priority` flag. **Timeline:** every observation for a day. |
+| `/memory` | **Pages:** a tree by slug prefix, a reader that renders links and footnotes, a markdown editor that saves through the same `--base` check as the agent (a refused save keeps the text and offers to save it on top), history with diff and revert, one-tap undo of the agent's last edit, the `in_digest` toggle, and who last changed each `in_digest` page. **People:** entities, their identifiers, page, recent mail arrivals, and the `priority` flag. **Timeline:** every observation for a day. |
 | `/capture` | The cockpit: jobs, sources, Google auth, Gmail watch expiry and last push. |
 
-The foundation's `/chat` route is deleted.
+There is no chat screen: the conversation is a T3 thread.
 
 ## The phone
 
@@ -524,112 +463,59 @@ LoR's only egress is Google's APIs and the POST to the T3 webhook.
 
 - `pnpm test`: pure functions (scoring, intervals, fill, parsers, zod). No database, no network.
 - `pnpm test:db`: runs against `life_on_rails_test` over the socket (`LOR_TEST_DATABASE_URL`), migrations applied once, tables truncated between tests. (Not a rolled-back transaction per test: the code under test opens its own transactions, and the two-rapid-taps case needs two connections that commit.) Skips loudly when the variable is unset. The invariants live in Postgres (the `--base` check, the one-open-block index, the delete rules, generated search columns), so write paths are tested here.
-- Google code is tested against recorded API responses in `tests/google/fixtures/`, with tokens removed.
+- Google code is tested against API responses in `tests/google/fixtures/`. They are hand-written in the API's shape until LoR's login exists to record real ones.
+- `scripts/ui-check.mjs` drives the screens in headless Chrome against a server on the test database (`scripts/ui-server.sh`).
 - **Backup:** a nightly systemd timer runs `scripts/backup-postgres.sh` (`pg_dump -Fc`, keep 7). Restore it once into a scratch database to know it works. Undoing a bad migration is: stop the unit, restore the dump.
 - **Logs:** JSON lines to journald. Titles and subjects may be logged; secrets never.
 
-## Foundation code to remove or change
+## Where things are
 
-| Path | Change |
-| --- | --- |
-| `src/server/agent/*`, `src/server/functions/chat.ts`, `src/routes/chat.tsx` | Delete. `scrubLog` moves to `src/server/log.ts`. |
-| `src/server/google/gog.ts`, `scripts/capture-gog-fixture.sh`, `tests/google/*` | Replace with LoR's Google client; fixtures become recorded API responses. `calendarSync.ts` keeps its shape. |
-| `src/db/schema.ts`, `src/db/migrate.ts`, `drizzle/0000_*` | Apply the drops above (including the vector extension and HNSW index) and regenerate. |
-| `src/server/jobs/scheduler.ts` | In-memory running flag instead of `pg_try_advisory_xact_lock`; started from the server entry. |
-| `src/routes/internal/jobs/tick.ts`, `scripts/systemd/lor-web-watchdog.*` | Delete. |
-| `agents/linux-activity/`, `scripts/systemd/lor-linux-activity.service` | Delete; rewritten if a desktop session ever exists. |
-| `src/routes/ingest.ts`, `src/server/capture/*` | Drop the heartbeat, `LOR_ACTIVITY_ENABLED`, idle, and bearer-token handling. Ingest is not wired until the phone work. |
-| `src/server/attribution/fill.ts`, `segment.ts` | Fill becomes the single `syncCalendarFill(window)`. Activity segmentation waits for the phone design. |
-| `package.json` `start`, `scripts/systemd/lor-web.service` | `node` on the built server entry. |
-| `.env.example`, `README.md` | Match "Config" above. |
+```
+src/shared/            envelope, ids, local time, line diff
+src/db/                schema, client, migrate, seed (and the seed pages)
+src/server/            env, logging, status, boot
+src/server/jobs/       scheduler, the job list, overnight close
+src/server/google/     LoR's login, Calendar/Tasks/Gmail/Pub/Sub calls, the syncs
+src/server/attribution/ fill, the block state machine, rules, interval math
+src/server/scoring/    formulas (pure) and recompute
+src/server/memory/     pages, entities, search, the digest, changes
+src/server/mail/       check, bulk rules, the wake queue, the push loop
+src/server/api/v1.ts   one endpoint per lor verb
+src/server/functions/  what the screens call
+src/routes/            Today, Graph, Memory, Capture, /health, /api/v1
+cli/lor.mjs            the agent's CLI
+skill/SKILL.md         the lor skill
+scripts/               serve.mjs, google-auth, seed-graph, host setup, systemd units, UI check
+```
 
 ---
 
-## Build order
+## State of the build
 
-A default, not a contract. Each item says what gets built and how to tell it works.
+Built on 2026-10-14, in this order, each checked as described.
 
-### 1. Make the box run
+| | Built | Checked by |
+| --- | --- | --- |
+| 1 | Postgres 18, migrations, the production server, the scheduler, backups | The service survives `kill -9`, exits non-zero with no database, and a nightly dump restores. Not yet checked: an actual reboot. |
+| 2 | Memory API, `lor`, the skill, the `assistant` T3 project | Two fresh T3 threads: one stored and updated a person with a thread citation; the other found the page by search, had a stale write refused, and ran a task end to end. |
+| 3 | Calendar and tasks sync | Tests against hand-written API responses. **Not yet run against Google:** needs the owner's OAuth client. |
+| 4 | The owner-only listener behind `tailscale serve` on port 3847 | A request through Serve from this box got the identity header and the page; without the header it is refused; `/api/` is not routed there. Not yet checked from the phone. |
+| 5 | World model, scores, Graph | Tests, and a browser pass that added a goal, a habit, and a task and checked the numbers. |
+| 6 | Today | Tests for every state-machine row and fill rule, and a browser pass: timer, fill, relabel, remember a title, accept all. Not yet: a week of real use. |
+| 7 | Mail notifications | Tests with a fake mailbox. **Not yet run against Google.** |
+| 8 | Memory screen | A browser pass: read, undo the agent's edit, a conflicting save, history, revert, people, timeline, search. |
+| 9 | Overnight close | Tests; it ran once on the boot after it was added. |
 
-- Install PostgreSQL 18; create a non-superuser role and the databases `life_on_rails` and `life_on_rails_test`.
-- Regenerate the first migration with the drops in "Data model". `pnpm db:migrate` and `pnpm db:seed` run against the socket.
-- The production server entry; fix `start`; one Node for the shell and the unit.
-- The scheduler with one trivial `heartbeat` job.
-- The `test:db` harness, with first cases for the migration, the one-open-block index, the delete rules, and the observation upsert.
-- The nightly backup, restored once.
-- The deletions in "Foundation code to remove or change".
+**Waiting on the owner**
 
-**Works when:** after a reboot and without an interactive login, `/health` reports the database up and a recent `heartbeat` run; killing the node process gets it restarted; both test suites pass.
+1. **Google.** Run `pnpm google:auth`: it prints how to create LoR's OAuth client, then signs in. Calendar and tasks start within five minutes.
+2. **Mail.** Create a Pub/Sub topic and a pull subscription in the same Google Cloud project, let `gmail-api-push@system.gserviceaccount.com` publish to the topic, put both names in the env file, and run `pnpm google:auth --mail`. Open question 1 lists what is unverified.
+3. **The agent.** In the `assistant` project's main thread, ask it to set itself up; the `agent` page tells it how to schedule the nightly run, the morning brief, and the mail hook.
+4. **A reboot,** whenever convenient, to see everything come back without a login.
 
-### 2. Memory API and the `lor` CLI
+**Not built**
 
-- Tables: `entity`, `entity_identifier`, `page`, `page_version`; `observation.search`. The seed pages.
-- Page `create`, `read`, `search`, `update` in its three forms. Entity `upsert` and `show`. `log`, `search`, `context`, `status`, `changes`, `day`.
-- `/api/v1`, the CLI, and the skill.
-- In T3: create the `assistant` project, write the `agent` page, start the main thread and the nightly schedule.
-
-**Works when:** from a fresh T3 thread the agent creates a page for a person with a thread citation and updates it. A second thread finds it by search and reads its history, and a write against the old version is refused as `stale-base`. Both threads passed a real thread id.
-
-### 3. Calendar and tasks
-
-- Register LoR's OAuth client and run `pnpm google:auth`.
-- The Google client behind `CalendarPort` and `TasksPort`; fixtures re-recorded from the API, including a recurring series.
-- `calendar_poll` and `tasks_poll`. No time blocks are created until Today exists.
-- The cockpit shows both jobs and the auth state.
-
-**Works when:** after a reboot both polls succeed with no interactive login. A task ticked in Google is done in LoR within one poll, and unticking it reverses that.
-
-Items 2 and 3 do not depend on each other.
-
-### 4. The dashboard on other devices
-
-- The `:3848` listener with the identity check, and `tailscale serve --bg --http=3847 http://127.0.0.1:3848`. T3 Code's `/` on port 80 is left as it is.
-
-**Works when:** the cockpit opens at `http://buildbot:3847` from the phone and the laptop; a request to `:3848` without the owner's identity header is refused; `/api/v1` is not reachable there.
-
-### 5. World model and scores
-
-- Create, edit, link, and archive intents. The new `intent` columns.
-- `/graph` as a list, with agent-written rows badged and undoable.
-- Score recompute and snapshots. `pnpm db:seed` can load a `seeds/*.json` graph.
-- CLI: `graph`, `intent show|create`, `link`, `task assign`, `done`, `score explain`, `habit`, `metric`, `context --task`.
-
-**Works when:** the owner's real goals are entered and `lor score explain` matches the Graph list. The main thread assigns a task to the agent, a worker completes it, and the outcome memo shows on the task.
-
-### 6. Today
-
-- The state machine, `syncCalendarFill`, `confirmDay`, block edit and delete, the remaining-day bar, gap chips, `Reset Visibility`. The calendar poll starts creating fill blocks.
-- CLI: `timer`, `recategorize`, `confirm`, `propose time`.
-
-**Works when:** Toggl stays closed for a working week. Two rapid timer taps leave one open block. A manual block started inside a meeting removes the fill ahead of it, and stopping it restores the rest of the meeting. Two polls in a row with an unchanged calendar leave every block id as it was. This is the largest piece of work.
-
-### 7. Mail
-
-- Set up the Pub/Sub topic and subscription and add `gmail.metadata` to LoR's login. Do this first; there is no polling fallback.
-- The Gmail watch, the Pub/Sub pull loop, the daily renewal, `mail_check`.
-- Bulk rules, `wake_queue`, `entity.priority`, the debounced POST.
-- In T3: create the webhook task from the main thread, and write the "what mail is worth raising" section of the `agent` page.
-
-**Works when:** a non-bulk message is on the Timeline within seconds and reaches the main thread within the debounce window, where the agent reads it in Gmail. A newsletter is recorded as bulk and starts nothing. Mail the owner sends is not recorded. Two messages in one thread a minute apart cause one wake. After LoR has been stopped for an hour, the messages that arrived meanwhile appear and cause one wake.
-
-### 8. Memory UI
-
-- `/memory` with Pages, People, and Timeline.
-
-**Works when:** the owner reverts an agent edit in one tap, and edits the `agent` page so that the next run follows the new text.
-
-### 9. Overnight close
-
-- Block merging, missing proposals, score snapshots, catch-up on boot.
-
-**Works when:** a day left untouched is ready for confirm by morning, and a boot that missed 01:30 runs the close once.
-
-### 10. The phone sensor
-
-- Design activity blocks first (see "The phone").
-- `/ingest` on the Serve listener; the Android sensor.
-
-**Works when:** a day of phone use shows up as a handful of activity blocks with proposals, and attribution coverage is reported for the first time.
+- **The phone sensor.** It starts with a design for activity blocks (see "The phone"), then `/ingest` on the Serve listener and the Android module.
 
 ### When wanted
 
@@ -648,13 +534,12 @@ Multi-user, billing, or hosting for anyone else. A mail client. Two-way Tasks sy
 
 ## Open questions
 
-1. **Pub/Sub prerequisites.** A topic and pull subscription in LoR's Google Cloud project; permission for Gmail to publish to it; how LoR authenticates to Pub/Sub (the owner's OAuth login with a Pub/Sub scope, or a service account key); whether `gmail.metadata` is enough for `users.watch` and `history.list`.
+1. **Pub/Sub prerequisites.** A topic and pull subscription in LoR's Google Cloud project; permission for Gmail to publish to it; whether the owner's OAuth login with the Pub/Sub scope is enough to pull, or a service account is needed; whether `gmail.metadata` is enough for `users.watch` and `history.list`.
 2. **OAuth consent screen.** `gmail.metadata` is a restricted scope. Whether an unverified app can be "In production" with it for one user, so the refresh token does not expire after seven days.
-3. **Host for the phone pieces.** A thin T3 mobile fork or a standalone app. Unverified: whether a self-built T3 client pairs with a stock server, and whether this box can build an Android app.
-4. **Activity blocks.** The design called for in "The phone".
-5. **Drive files as sources.** Not yet.
-
-Checked on 2026-10-14: T3 serves webhooks directly on the box, with no relay needed; `srvx` 0.11.22 is in `node_modules`; `tailscale whois` works for this user without root.
+3. **The mail hook's address.** Whether T3 Connect is on here, so the agent can read the address itself.
+4. **Host for the phone pieces.** A thin T3 mobile fork or a standalone app. Unverified: whether a self-built T3 client pairs with a stock server, and whether this box can build an Android app.
+5. **Activity blocks.** The design called for in "The phone".
+6. **Drive files as sources.** Not yet.
 
 ## Alternatives set aside
 

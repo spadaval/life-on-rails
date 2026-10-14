@@ -15,6 +15,7 @@ import { recomputeScores, scheduleRecompute, setConfirmRateProvider } from "../s
 import { trailingConfirmRate } from "../today.js";
 
 setConfirmRateProvider(trailingConfirmRate);
+import { overnightClose } from "./overnight.js";
 import type { Job } from "./scheduler.js";
 
 const startedAt = Date.now();
@@ -72,6 +73,11 @@ export const JOBS: Job[] = [
     everyS: 20,
     shouldRun: async () => wakeDue(sql, wakeConfig()),
     run: async () => flushWake(sql, wakeConfig()),
+  },
+  {
+    name: "overnight_close",
+    dailyAt: "01:30",
+    run: async () => overnightClose(sql),
   },
   {
     name: "score_tick",
