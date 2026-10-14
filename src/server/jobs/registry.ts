@@ -4,9 +4,13 @@ import { applyAutoRules, fillWindow } from "../attribution/blocks.js";
 import { lockBlocks, syncCalendarFill } from "../attribution/fill.js";
 import { env } from "../env.js";
 import { syncCalendars } from "../google/calendarSync.js";
+import { SCOPES, hasScope } from "../google/auth.js";
 import { googleCalendar, googleTasks } from "../google/client.js";
+import { googleMail } from "../google/mailClient.js";
 import { syncTasks } from "../google/tasksSync.js";
 import { wakeSnoozed } from "../intents.js";
+import { mailCheck, renewWatch } from "../mail/check.js";
+import { flushWake, wakeDue } from "../mail/wake.js";
 import { recomputeScores, scheduleRecompute, setConfirmRateProvider } from "../scoring/recompute.js";
 import { trailingConfirmRate } from "../today.js";
 
@@ -14,6 +18,13 @@ setConfirmRateProvider(trailingConfirmRate);
 import type { Job } from "./scheduler.js";
 
 const startedAt = Date.now();
+
+/** Mail notifications need a topic, a subscription, and the Gmail-headers scope on LoR's login. */
+export function mailConfigured(): boolean {
+  return Boolean(env.GOOGLE_PUBSUB_TOPIC && env.GOOGLE_PUBSUB_SUBSCRIPTION) && hasScope(SCOPES.gmail);
+}
+
+const wakeConfig = () => ({ url: env.LOR_WAKE_URL, quietS: env.LOR_WAKE_QUIET_S, maxS: env.LOR_WAKE_MAX_S });
 
 export const JOBS: Job[] = [
   {
@@ -45,6 +56,23 @@ export const JOBS: Job[] = [
       return stats;
     },
   },
+  // Runs on a push from Gmail, at startup, and after the daily watch renewal. No timer.
+  {
+    name: "mail_check",
+    run: async () => mailCheck(sql, googleMail),
+  },
+  {
+    name: "mail_watch_renew",
+    dailyAt: "04:15",
+    shouldRun: async () => mailConfigured(),
+    run: async () => renewWatch(sql, googleMail, env.GOOGLE_PUBSUB_TOPIC),
+  },
+  {
+    name: "wake_flush",
+    everyS: 20,
+    shouldRun: async () => wakeDue(sql, wakeConfig()),
+    run: async () => flushWake(sql, wakeConfig()),
+  },
   {
     name: "score_tick",
     everyS: 3600,
@@ -52,8 +80,12 @@ export const JOBS: Job[] = [
   },
 ];
 
-/** A job is stale when its last successful run is older than this. */
-export function staleAfterMs(job: Pick<Job, "everyS" | "dailyAt">): number {
+/**
+ * A job is stale when its last successful run is older than this. Jobs that
+ * only run when there is something to do are never stale.
+ */
+export function staleAfterMs(job: Pick<Job, "everyS" | "dailyAt" | "shouldRun">): number {
+  if (job.shouldRun || (!job.everyS && !job.dailyAt)) return Infinity;
   if (job.everyS) return job.everyS * 3 * 1000;
   return 26 * 3600_000;
 }

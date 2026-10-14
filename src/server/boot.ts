@@ -3,8 +3,9 @@
 // so a dev server can never own the clock.
 import { sql } from "../db/client.js";
 import { ensureSeed } from "../db/seed.js";
-import { JOBS } from "./jobs/registry.js";
+import { JOBS, mailConfigured } from "./jobs/registry.js";
 import { registerJobs, startScheduler } from "./jobs/scheduler.js";
+import { startMailPush } from "./mail/push.js";
 import { errorMessage, log } from "./log.js";
 
 declare global {
@@ -22,6 +23,7 @@ async function start(): Promise<void> {
   }
   registerJobs(JOBS);
   await startScheduler();
+  if (mailConfigured()) startMailPush();
 }
 
 export function boot(): void {

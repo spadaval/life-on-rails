@@ -13,6 +13,11 @@ export interface Job {
   everyS?: number;
   /** ... or once a day at this local wall-clock time ("01:30"). */
   dailyAt?: string;
+  /**
+   * Checked before a scheduled run; false means "nothing to do", and no run is
+   * recorded. A job with neither everyS nor dailyAt runs only when asked.
+   */
+  shouldRun?: () => Promise<boolean>;
   run: () => Promise<Record<string, unknown>>;
 }
 
@@ -84,7 +89,16 @@ async function tick(): Promise<void> {
   const now = new Date();
   for (const job of jobs.values()) {
     const state = { lastOk: lastOk.get(job.name), lastAttempt: lastAttempt.get(job.name) };
-    if (!running.has(job.name) && isDue(job, now, state, env.LOR_TZ)) void runJob(job.name);
+    if (running.has(job.name) || !isDue(job, now, state, env.LOR_TZ)) continue;
+    if (job.shouldRun) {
+      const go = await job.shouldRun().catch(() => false);
+      if (!go) {
+        // Not a failure and not a run: look again at the next interval.
+        if (!job.dailyAt) lastAttempt.set(job.name, now.getTime());
+        continue;
+      }
+    }
+    void runJob(job.name);
   }
 }
 

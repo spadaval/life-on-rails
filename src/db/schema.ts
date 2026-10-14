@@ -339,6 +339,8 @@ export const entity = pgTable(
     kind: text("kind").notNull(), // person | org | place | thing
     name: text("name").notNull(),
     aliases: text("aliases").array().notNull().default(sql`'{}'::text[]`),
+    // Mail from this entity skips the wake debounce.
+    priority: boolean("priority").notNull().default(false),
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
@@ -408,3 +410,27 @@ export const pageVersion = pgTable(
   },
   (t) => [primaryKey({ columns: [t.pageId, t.version] })],
 );
+
+// ---- Mail: notifications, not a mirror ----
+
+// One row: where the last check got to, and the health of the push path.
+export const mailState = pgTable(
+  "mail_state",
+  {
+    id: boolean("id").primaryKey().default(true),
+    historyId: text("history_id"),
+    watchExpiresAt: ts("watch_expires_at"),
+    lastPushAt: ts("last_push_at"),
+    lastCheckAt: ts("last_check_at"),
+  },
+  (t) => [check("mail_state_one_row", sql`${t.id}`)],
+);
+
+// Arrivals waiting to wake the agent, one row per Gmail thread.
+export const wakeQueue = pgTable("wake_queue", {
+  gmailThreadId: text("gmail_thread_id").primaryKey(),
+  observationIds: uuid("observation_ids").array().notNull(),
+  firstSeen: ts("first_seen").notNull(),
+  lastSeen: ts("last_seen").notNull(),
+  priority: boolean("priority").notNull().default(false),
+});

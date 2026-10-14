@@ -37,6 +37,7 @@ const Env = z.object({
   GOOGLE_ACCOUNT: z.string().default(""),
   GOOGLE_OAUTH_CLIENT: z.string().default(path.join(homedir(), ".config/life-on-rails/google-client.json")),
   GOOGLE_TOKEN_FILE: z.string().default(path.join(homedir(), ".config/life-on-rails/google-token.json")),
+  GOOGLE_PUBSUB_TOPIC: z.string().default(""),
   GOOGLE_PUBSUB_SUBSCRIPTION: z.string().default(""),
 });
 

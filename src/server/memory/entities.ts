@@ -21,6 +21,10 @@ export interface EntityView {
   identifiers: Identifier[];
   /** Slug of the page about this entity, if one exists. */
   page: string | null;
+  /** Mail from this entity reaches the agent without the usual wait. */
+  priority: boolean;
+  /** The latest messages from this entity (headers only; the mail itself is in Gmail). */
+  recent_mail: { gmail_id: string; subject: string | null; at: string }[];
   updated_at: string;
 }
 
@@ -29,6 +33,7 @@ interface EntityRow {
   kind: string;
   name: string;
   aliases: string[];
+  priority: boolean;
   updated_at: Date;
 }
 
@@ -42,6 +47,9 @@ async function viewOf(tx: Tx, e: EntityRow): Promise<EntityView> {
   const identifiers = await tx<Identifier[]>`
     SELECT kind, value FROM entity_identifier WHERE entity_id = ${e.id} ORDER BY kind, value`;
   const page = await tx<{ slug: string }[]>`SELECT slug FROM page WHERE entity_id = ${e.id}`;
+  const mail = await tx<{ gmail_id: string; subject: string | null; at: Date }[]>`
+    SELECT payload->>'gmail_id' AS gmail_id, title AS subject, t_start AS at FROM observation
+    WHERE source = 'gmail' AND payload->>'entity_id' = ${e.id} ORDER BY t_start DESC LIMIT 10`;
   return {
     id: e.id,
     kind: e.kind,
@@ -49,6 +57,8 @@ async function viewOf(tx: Tx, e: EntityRow): Promise<EntityView> {
     aliases: e.aliases,
     identifiers: identifiers.map((i) => ({ kind: i.kind, value: i.value })),
     page: page[0]?.slug ?? null,
+    priority: e.priority,
+    recent_mail: mail.map((m) => ({ gmail_id: m.gmail_id, subject: m.subject, at: m.at.toISOString() })),
     updated_at: e.updated_at.toISOString(),
   };
 }
@@ -161,4 +171,9 @@ export async function entityForEmail(db: Tx, email: string): Promise<{ id: strin
     WHERE (i.kind = 'email' AND i.value = ${address}) OR (i.kind = 'domain' AND i.value = ${domain})
     ORDER BY (i.kind = 'email') DESC LIMIT 1`;
   return rows[0] ?? null;
+}
+
+export async function setEntityPriority(db: Tx, id: string, priority: boolean): Promise<void> {
+  const rows = await db`UPDATE entity SET priority = ${priority}, updated_at = now() WHERE id = ${id} RETURNING id`;
+  if (rows.length === 0) throw new NotFound(`no entity ${id}`);
 }

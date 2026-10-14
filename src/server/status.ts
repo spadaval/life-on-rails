@@ -2,7 +2,8 @@
 import { sql } from "../db/client.js";
 import type { JsonObject } from "../shared/json.js";
 import { type GoogleAuthState, authState } from "./google/auth.js";
-import { JOBS, staleAfterMs } from "./jobs/registry.js";
+import { JOBS, mailConfigured, staleAfterMs } from "./jobs/registry.js";
+import { type MailStatus, mailStatus } from "./mail/check.js";
 
 export interface JobStatus {
   name: string;
@@ -27,6 +28,7 @@ export interface Status {
   jobs: JobStatus[];
   sources: SourceStatus[];
   google: GoogleAuthState;
+  mail: MailStatus;
 }
 
 export async function getStatus(): Promise<Status> {
@@ -49,7 +51,7 @@ export async function getStatus(): Promise<Status> {
       else if (lastOk) state = now.getTime() - lastOk.getTime() > staleAfterMs(job) ? "stale" : "ok";
       return {
         name: job.name,
-        schedule: job.everyS ? `every ${job.everyS}s` : job.dailyAt ? `daily ${job.dailyAt}` : "on demand",
+        schedule: job.shouldRun && job.everyS ? "when needed" : job.everyS ? `every ${job.everyS}s` : job.dailyAt ? `daily ${job.dailyAt}` : "on demand",
         state,
         lastOk: lastOk?.toISOString() ?? null,
         lastRun: run?.started_at.toISOString() ?? null,
@@ -64,8 +66,12 @@ export async function getStatus(): Promise<Status> {
       jobs,
       sources: sources.map((s) => ({ source: s.source, lastArrival: s.last.toISOString(), count: s.n })),
       google: authState(),
+      mail: await mailStatus(sql, mailConfigured()),
     };
   } catch {
-    return { ok: false, db: false, now: now.toISOString(), jobs: [], sources: [], google: authState() };
+    return {
+      ok: false, db: false, now: now.toISOString(), jobs: [], sources: [], google: authState(),
+      mail: { configured: false, watch_expires_at: null, last_push_at: null, last_check_at: null, queued_threads: 0 },
+    };
   }
 }
