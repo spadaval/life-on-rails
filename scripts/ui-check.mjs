@@ -30,7 +30,67 @@ const psql = (sql) => execFileSync("psql", ["-d", "life_on_rails_test", "-v", "O
 const LOCAL_MIDNIGHT = `(date_trunc('day', now() AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'America/Los_Angeles')`;
 const at = (hours) => `${LOCAL_MIDNIGHT} + interval '${hours} hours'`;
 
+/** Run `lor` as the agent against the test server. */
+const lor = (args, input) =>
+  execFileSync("node", ["cli/lor.mjs", ...args], { encoding: "utf8", input, env: { ...process.env, LOR_PORT: new URL(BASE).port, LOR_THREAD: "ui-check-thread" } });
+
 const flows = {
+  async memory() {
+    psql(`DELETE FROM page WHERE slug NOT IN ('agent', 'me', 'inbox'); DELETE FROM entity; DELETE FROM observation;`);
+    const entity = JSON.parse(lor(["entity", "upsert", "--kind", "person", "--name", "Priya Raman", "--email", "priya@example.com"]));
+    lor(["page", "create", "people/priya-raman", "--title", "Priya Raman", "--entity", entity.id],
+      "# Priya Raman\n\nMoved to Austin in March [^move] and prefers calls to email. See [[me]].\n\n[^move]: mail:18c2f4a9d0e1b2c3 \"we close on the house March 3\"\n");
+    lor(["page", "update", "people/priya-raman", "--base", "1", "--find", "prefers calls to email", "--replace", "HATES phone calls", "--note", "a wrong edit"]);
+    lor(["log", "Looked up Priya's new address in Austin"]);
+
+    await page.goto(`${BASE}/memory`);
+    await settle();
+    await shot("memory-1-pages");
+    await page.click('a:has-text("Priya Raman")');
+    await page.waitForSelector("text=HATES phone calls");
+    await shot("memory-2-page");
+    console.log("gmail link:", await page.locator('a[href*="mail.google.com"]').getAttribute("href"));
+    console.log("wiki link:", await page.locator('.prose-lor a[href*="slug=me"]').getAttribute("href"));
+
+    await page.click(`button:has-text("Undo the agent's last edit")`);
+    await page.waitForSelector("text=prefers calls to email");
+    console.log("after undo:", (await page.locator("article .muted").first().innerText()).trim());
+
+    // The owner edits while the agent writes: the save is refused, nothing is lost.
+    await page.click('button:has-text("Edit")');
+    await page.fill('textarea[aria-label="Page body"]', "# Priya Raman\n\nOwner's version.\n");
+    lor(["page", "update", "people/priya-raman", "--append"], "- The agent added this meanwhile.\n");
+    await page.click('button:has-text("Save")');
+    await page.waitForSelector("text=Save mine on top");
+    console.log("conflict notice:", (await page.locator('[role="status"]').innerText()).replace(/\s+/g, " ").slice(0, 110));
+    await shot("memory-3-conflict");
+    console.log("textarea kept:", (await page.locator('textarea[aria-label="Page body"]').inputValue()).includes("Owner's version"));
+    await page.click('button:has-text("Save mine on top")');
+    await page.waitForSelector("text=Saved.");
+    console.log("after save on top:", (await page.locator("article .muted").first().innerText()).trim());
+
+    await page.goto(`${BASE}/memory?slug=people/priya-raman&version=2`);
+    await settle();
+    await shot("memory-4-old-version");
+    await page.click('button:has-text("Revert to this version")');
+    await page.waitForSelector("text=Reverted to version 2");
+    console.log("versions:", psql("SELECT string_agg(version || ':' || via, ' ' ORDER BY version) FROM page_version v JOIN page p ON p.id = v.page_id WHERE p.slug = 'people/priya-raman'").trim());
+
+    await page.goto(`${BASE}/memory?tab=people`);
+    await settle();
+    await page.click('input[type="checkbox"]');
+    await page.waitForFunction(() => document.querySelector('input[type="checkbox"]')?.checked === true);
+    await shot("memory-5-people");
+    console.log("priority:", psql("SELECT priority FROM entity").trim());
+    await page.goto(`${BASE}/memory?tab=timeline`);
+    await settle();
+    await shot("memory-6-timeline");
+    await page.goto(`${BASE}/memory?q=austin`);
+    await settle();
+    await shot("memory-7-search");
+    console.log("search kinds:", await page.locator("section.card .chip").allInnerTexts());
+  },
+
   async today() {
     psql(`
       DELETE FROM commitment; DELETE FROM time_block; DELETE FROM google_event; DELETE FROM attribution_rule;

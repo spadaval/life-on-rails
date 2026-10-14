@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { getCaptureStatus } from "../server/functions/cockpit.js";
-import { ago } from "../components/format.js";
+import { Ago } from "../components/Ago.js";
 
 export const Route = createFileRoute("/capture")({
   loader: () => getCaptureStatus(),
@@ -53,10 +53,10 @@ function Capture() {
         <h2 className="text-lg font-semibold">Mail</h2>
         {status.mail.configured ? (
           <ul className="mt-1 text-sm">
-            <li>last push from Gmail: {ago(status.mail.last_push_at)}</li>
-            <li>last check: {ago(status.mail.last_check_at)}</li>
+            <li>last push from Gmail: <Ago iso={status.mail.last_push_at} /></li>
+            <li>last check: <Ago iso={status.mail.last_check_at} /></li>
             <li>
-              watch {status.mail.watch_expires_at ? `expires ${new Date(status.mail.watch_expires_at).toLocaleString()}` : "not registered yet"}
+              watch {status.mail.watch_expires_at ? `expires ${status.mail.watch_expires_at.slice(0, 16).replace("T", " ")} UTC` : "not registered yet"}
             </li>
             <li>waiting to reach the agent: {status.mail.queued_threads} thread(s)</li>
           </ul>
@@ -75,7 +75,7 @@ function Capture() {
               <span className="font-medium">{j.name}</span>
               <span className="muted text-sm">{j.schedule}</span>
               <span className={`${STATE_CLASS[j.state]} text-sm font-semibold`}>{j.state}</span>
-              <span className="text-sm">last ok {ago(j.lastOk)}</span>
+              <span className="text-sm">last ok <Ago iso={j.lastOk} /></span>
               {j.lastError ? <span className="basis-full text-sm text-bad">{j.lastError}</span> : null}
             </li>
           ))}
@@ -92,7 +92,7 @@ function Capture() {
               <li key={s.source} className="flex justify-between py-2">
                 <span className="font-medium">{s.source}</span>
                 <span className="text-sm">
-                  {s.count} · last {ago(s.lastArrival)}
+                  {s.count} · last <Ago iso={s.lastArrival} />
                 </span>
               </li>
             ))}

@@ -21,6 +21,7 @@ export const Route = createRootRoute({
 const NAV = [
   { to: "/", label: "Today" },
   { to: "/graph", label: "Graph" },
+  { to: "/memory", label: "Memory" },
   { to: "/capture", label: "Capture" },
 ] as const;
 
