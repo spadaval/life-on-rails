@@ -6,6 +6,9 @@ import { timingSafeEqual } from "node:crypto";
 import { z, ZodError } from "zod";
 import { sql } from "../../db/client.js";
 import type { Json } from "../../shared/json.js";
+import {
+  confirmDay, pauseRunningBlock, proposeTime, recategorizeBlock, resumeRunningBlock, startManualBlock, stopRunningBlock,
+} from "../attribution/blocks.js";
 import { env } from "../env.js";
 import { BadInput, NotFound, Refused } from "../errors.js";
 import { errorMessage, log } from "../log.js";
@@ -16,13 +19,15 @@ import {
 import { agentLog } from "../memory/agentLog.js";
 import { getChanges } from "../memory/changes.js";
 import { getContext } from "../memory/context.js";
-import { getDay, resolveDate } from "../memory/day.js";
+import { resolveDate } from "../memory/day.js";
+import "../memory/todaySection.js";
 import { ENTITY_KINDS, showEntity, upsertEntity } from "../memory/entities.js";
 import { createPage, pageHistory, readPage, searchPages, updatePage } from "../memory/pages.js";
 import { SEARCH_KINDS, search } from "../memory/search.js";
 import "../memory/worldSections.js";
 import { explainScore, recomputeScores } from "../scoring/recompute.js";
 import { getStatus } from "../status.js";
+import { getToday, renderToday } from "../today.js";
 
 export interface ApiRequest {
   query: URLSearchParams;
@@ -83,7 +88,13 @@ route("GET", /^\/changes$/, async ({ query }) => {
   if (!since) throw new BadInput("--since <rfc3339> is required");
   return getChanges(sql, since);
 });
-route("GET", /^\/day$/, async ({ query }) => getDay(sql, resolveDate(query.get("date"))));
+route("GET", /^\/day$/, async ({ query }) => {
+  const date = resolveDate(query.get("date"));
+  const day = await getToday(sql, date);
+  const page = await sql<{ body: string }[]>`SELECT body FROM page WHERE slug = ${"days/" + date}`;
+  const notes = page[0]?.body ?? null;
+  return { ...day, page: notes, markdown: renderToday(day) + (notes ? `\n## Day page\n\n${notes.trim()}\n` : "") };
+});
 
 // ---- search ----
 
@@ -293,6 +304,40 @@ route("POST", /^\/intents\/([0-9a-f-]{36})\/habit$/, async ({ params, body }) =>
 route("POST", /^\/intents\/([0-9a-f-]{36})\/metric$/, async ({ params, body }) => {
   const d = Dated.extend({ value: z.number() }).parse(body);
   return commitMetric(sql, params[0]!, d.value, { date: d.date ? resolveDate(d.date) : undefined, memo: d.memo, via: "agent", sourceRef: d.thread });
+});
+
+// ---- time ----
+
+const agentWho = (thread: string) => ({ via: "agent" as const, sourceRef: thread });
+
+route("POST", /^\/timer\/(start|stop|pause|resume)$/, async ({ params, body }) => {
+  const d = z.object({ intent_id: OptionalUuid, title: z.string().nullish(), thread: Thread }).parse(body);
+  switch (params[0]) {
+    case "start":
+      return startManualBlock(sql, { intentId: d.intent_id, title: d.title }, agentWho(d.thread));
+    case "stop":
+      return stopRunningBlock(sql, agentWho(d.thread));
+    case "pause":
+      return pauseRunningBlock(sql);
+    default:
+      return resumeRunningBlock(sql, agentWho(d.thread));
+  }
+});
+
+route("POST", /^\/blocks\/([0-9a-f-]{36})\/recategorize$/, async ({ params, body }) => {
+  const d = z.object({ intent_id: Uuid, thread: Thread }).parse(body);
+  await recategorizeBlock(sql, params[0]!, d.intent_id, agentWho(d.thread));
+  return { ok: true };
+});
+
+route("POST", /^\/confirm$/, async ({ body }) => {
+  const d = z.object({ date: z.string(), all: z.boolean().optional(), accept: z.array(Uuid).optional(), reject: z.array(Uuid).optional(), thread: Thread }).parse(body);
+  return confirmDay(sql, { date: resolveDate(d.date), all: d.all, accept: d.accept, reject: d.reject }, agentWho(d.thread));
+});
+
+route("POST", /^\/proposals$/, async ({ body }) => {
+  const d = z.object({ block_id: Uuid, intent_id: Uuid, reason: z.string().nullish(), thread: Thread }).parse(body);
+  return proposeTime(sql, d.block_id, d.intent_id, agentWho(d.thread), d.reason);
 });
 
 // ---- dispatch ----
