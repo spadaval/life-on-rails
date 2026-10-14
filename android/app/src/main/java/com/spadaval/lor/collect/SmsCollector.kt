@@ -8,8 +8,9 @@ import com.spadaval.lor.data.Prefs
 import org.json.JSONObject
 
 /**
- * Texts from the SMS store: who, which way, when. The message itself is never
- * read. RCS chats live inside Google Messages and are not visible here.
+ * Texts from the SMS store: who, which way, when, and what was said. The first
+ * run reads the whole store. RCS chats live inside Google Messages and are not
+ * visible here.
  */
 class SmsCollector(private val context: Context, private val prefs: Prefs) {
 
@@ -18,13 +19,13 @@ class SmsCollector(private val context: Context, private val prefs: Prefs) {
 
     fun collect(now: Long): Collected {
         val cursor = prefs.cursor(CURSOR)
-        val from = if (cursor > 0) cursor - OVERLAP_MS else now - 30 * DAY_MS
+        val from = if (cursor > 0) cursor - OVERLAP_MS else 0L
         val device = prefs.deviceName
         val items = mutableListOf<JSONObject>()
         var newest = cursor
         context.contentResolver.query(
             Telephony.Sms.CONTENT_URI,
-            arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.DATE, Telephony.Sms.TYPE),
+            arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.DATE, Telephony.Sms.TYPE, Telephony.Sms.BODY),
             "${Telephony.Sms.DATE} > ?",
             arrayOf(from.toString()),
             "${Telephony.Sms.DATE} ASC",
@@ -41,6 +42,7 @@ class SmsCollector(private val context: Context, private val prefs: Prefs) {
                 newest = maxOf(newest, date)
                 if (direction == null || address.isBlank()) continue
                 val payload = JSONObject().put("kind", "sms").put("direction", direction).put("phone", address)
+                    .put("text", c.getString(4) ?: JSONObject.NULL)
                 items += Obs.envelope(Obs.id("sms", device, rowId, date), device, date, date, "sms", address, payload)
             }
         }
@@ -48,8 +50,8 @@ class SmsCollector(private val context: Context, private val prefs: Prefs) {
     }
 
     companion object {
-        private const val CURSOR = "texts"
-        private const val DAY_MS = 24 * 3_600_000L
+        // "texts" was the cursor when only who and when were kept; a new name re-reads everything with the text.
+        private const val CURSOR = "texts_with_body"
         private const val OVERLAP_MS = 60 * 60_000L
     }
 }

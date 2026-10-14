@@ -7,6 +7,7 @@ import com.spadaval.lor.collect.Collected
 import com.spadaval.lor.collect.HealthCollector
 import com.spadaval.lor.collect.LocationCollector
 import com.spadaval.lor.collect.SmsCollector
+import com.spadaval.lor.collect.WhatsAppBackup
 import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.data.Queue
 import com.spadaval.lor.data.Sensor
@@ -88,6 +89,16 @@ object Sync {
             errors += "upload: ${e.message ?: e.javaClass.simpleName}"
         }
 
+        var whatsapp: String? = null
+        if (prefs.enabled(Sensor.WHATSAPP)) {
+            val backup = WhatsAppBackup(context, prefs)
+            try {
+                if (backup.permitted()) whatsapp = backup.uploadIfChanged(client) else errors += "${Sensor.WHATSAPP.label}: not allowed yet"
+            } catch (e: Exception) {
+                errors += "${Sensor.WHATSAPP.label}: ${e.message ?: e.javaClass.simpleName}"
+            }
+        }
+
         // Only ask when they can be shown: the server hands each one over once.
         if (NeedsYou.permitted(context)) {
             try {
@@ -104,6 +115,7 @@ object Sync {
             append(if (collected.isEmpty()) "Nothing collected" else "Collected " + collected.entries.joinToString(", ") { "${it.value} ${it.key.unit}" })
             append("; $uploaded new on the server")
             if (pending > 0) append("; $pending waiting to upload")
+            if (whatsapp != null) append("; $whatsapp")
             append('.')
         }
         prefs.lastSyncErrors = errors.joinToString("\n")

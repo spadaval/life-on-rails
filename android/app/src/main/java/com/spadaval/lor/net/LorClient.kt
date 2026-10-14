@@ -2,6 +2,7 @@ package com.spadaval.lor.net
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -27,6 +28,26 @@ class LorClient(baseUrl: String) {
         val array = JSONArray()
         for (o in observations) array.put(JSONObject(o))
         return request("POST", "/device/ingest", JSONObject().put("device", device).put("observations", array), readTimeoutMs = 120_000)
+    }
+
+    /** Streams a file to the server as the request body; for the WhatsApp backup, which can be hundreds of MB. */
+    fun uploadWhatsappBackup(device: String, file: File): JSONObject {
+        val conn = URL("$base/device/whatsapp-backup?device=${URLEncoder.encode(device, "UTF-8")}").openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = "POST"
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 600_000
+            conn.doOutput = true
+            conn.setFixedLengthStreamingMode(file.length())
+            conn.setRequestProperty("content-type", "application/octet-stream")
+            file.inputStream().use { input -> conn.outputStream.use { input.copyTo(it, 1 shl 16) } }
+            val code = conn.responseCode
+            val text = (if (code in 200..299) conn.inputStream else conn.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
+            if (code !in 200..299) throw IOException("$code: ${text.take(200)}")
+            return JSONObject(text)
+        } finally {
+            conn.disconnect()
+        }
     }
 
     private fun request(method: String, path: String, body: JSONObject? = null, readTimeoutMs: Int = 20_000): JSONObject {

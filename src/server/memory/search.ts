@@ -117,7 +117,8 @@ export async function search(db: Tx, input: SearchInput): Promise<SearchHit[]> {
       "obs",
       await db<Row[]>`
         WITH q AS (SELECT websearch_to_tsquery('english', ${q}) AS tsq)
-        SELECT o.id, o.title, concat_ws(' · ', o.source, o.app, o.payload->>'from') AS snippet,
+        SELECT o.id, o.title,
+               concat_ws(' · ', o.source, o.app, o.payload->>'from', o.payload->>'direction', left(o.payload->>'text', 200)) AS snippet,
                o.t_start AS t, ts_rank_cd(o.search, q.tsq)::float8 AS score
         FROM observation o, q
         WHERE o.search @@ q.tsq

@@ -24,8 +24,8 @@ const EMPTY: LastContact = { at: null, via: null, mail_in: null, mail_out: null,
 
 /**
  * Last contact per entity. Mail and meetings match an entity's email
- * addresses (and its domains, for an organisation); calls and texts from the
- * phone match its phone numbers.
+ * addresses (and its domains, for an organisation); calls, texts and
+ * one-to-one WhatsApp messages match its phone numbers.
  */
 export async function lastContacts(db: Tx, entityIds: string[] | null = null): Promise<Map<string, LastContact>> {
   const rows = await db<{ entity_id: string; mail_in: Date | null; mail_out: Date | null; meeting: Date | null; phone: Date | null }[]>`
@@ -48,7 +48,10 @@ export async function lastContacts(db: Tx, entityIds: string[] | null = null): P
     ),
     calls AS (
       SELECT payload->>'phone' AS v, max(t_start) AS t FROM observation
-      WHERE source = 'android' AND payload ? 'phone' GROUP BY 1
+      WHERE source = 'android' AND payload->>'phone' IS NOT NULL
+        -- A group chat is not being in touch with everyone in it.
+        AND NOT coalesce((payload->>'group')::boolean, false)
+      GROUP BY 1
     ),
     matched AS (
       SELECT i.entity_id, t.ch, t.t FROM touches t JOIN ids i ON i.kind = 'email' AND i.value = t.v
@@ -215,7 +218,7 @@ export const CHANNEL_LABEL: Record<Channel, string> = {
   mail_in: "they emailed",
   mail_out: "you emailed",
   meeting: "you met",
-  phone: "call or text",
+  phone: "call, text or WhatsApp",
 };
 
 /** Days until a date, from today, for the digest. */

@@ -39,6 +39,7 @@ import com.spadaval.lor.collect.CallCollector
 import com.spadaval.lor.collect.HealthCollector
 import com.spadaval.lor.collect.LocationCollector
 import com.spadaval.lor.collect.SmsCollector
+import com.spadaval.lor.collect.WhatsAppBackup
 import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.data.Queue
 import com.spadaval.lor.data.Sensor
@@ -62,6 +63,7 @@ fun SensorsScreen() {
     val texts = remember { SmsCollector(context, prefs) }
     val health = remember { HealthCollector(context, prefs) }
     val location = remember { LocationCollector(context, prefs) }
+    val whatsapp = remember { WhatsAppBackup(context, prefs) }
 
     LifecycleResumeEffect(Unit) {
         tick++
@@ -81,8 +83,13 @@ fun SensorsScreen() {
         access = mapOf(
             Sensor.APPS to if (apps.permitted()) Access(true, "Allowed.", null) else Access(false, "Needs Usage access: find Life on Rails in the list and switch it on.", "Open Usage access"),
             Sensor.CALLS to if (calls.permitted()) Access(true, "Allowed.", null) else Access(false, "Needs permission to read the call log.", "Allow"),
-            Sensor.TEXTS to if (texts.permitted()) Access(true, "Allowed.", null) else Access(false, "Needs permission to read texts (only who and when is kept).", "Allow"),
+            Sensor.TEXTS to if (texts.permitted()) Access(true, "Allowed.", null) else Access(false, "Needs permission to read texts.", "Allow"),
             Sensor.HEALTH to healthAccess,
+            Sensor.WHATSAPP to when {
+                !whatsapp.permitted() -> Access(false, "Needs All files access, to read WhatsApp's backup in Android/media.", "Allow")
+                !whatsapp.file().isFile -> Access(false, "Allowed, but there is no backup yet. In WhatsApp: Settings > Chats > Chat backup > End-to-end encrypted backup, choose the 64-digit key, then Back up.", null)
+                else -> Access(true, "Allowed. Last backup ${ago(whatsapp.file().lastModified())}.", null)
+            },
             Sensor.LOCATION to when {
                 !location.foregroundPermitted() -> Access(false, "Needs location permission.", "Allow")
                 !location.backgroundPermitted() -> Access(true, "Allowed while the app is open. Choose \"Allow all the time\" so it works in the background.", "Allow all the time")
@@ -105,6 +112,9 @@ fun SensorsScreen() {
                 }
             }
             Sensor.CALLS -> permissions.launch(arrayOf(Manifest.permission.READ_CALL_LOG))
+            Sensor.WHATSAPP -> context.startActivity(
+                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}")),
+            )
             Sensor.TEXTS -> permissions.launch(arrayOf(Manifest.permission.READ_SMS))
             Sensor.HEALTH -> if (health.available()) {
                 healthPermissions.launch(HealthCollector.ALL_PERMISSIONS)

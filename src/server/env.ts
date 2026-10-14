@@ -37,6 +37,9 @@ const Env = z.object({
   LOR_AGENT_TOKEN: z.string().default(""),
   LOR_WAKE_QUIET_S: z.coerce.number().int().min(0).default(180),
   LOR_WAKE_MAX_S: z.coerce.number().int().min(0).default(900),
+  // WhatsApp: the phone uploads its encrypted nightly backup here; the key is the 64-digit backup key, alone in its file (0600).
+  LOR_WHATSAPP_DIR: z.string().default(path.join(homedir(), ".local/share/life-on-rails/whatsapp")),
+  LOR_WHATSAPP_KEY_FILE: z.string().default(path.join(homedir(), ".config/life-on-rails/whatsapp-key")),
   GOOGLE_ACCOUNT: z.string().default(""),
   GOOGLE_OAUTH_CLIENT: z.string().default(path.join(homedir(), ".config/life-on-rails/google-client.json")),
   GOOGLE_TOKEN_FILE: z.string().default(path.join(homedir(), ".config/life-on-rails/google-token.json")),

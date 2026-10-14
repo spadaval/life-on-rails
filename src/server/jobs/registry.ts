@@ -16,6 +16,7 @@ import { recomputeScores, scheduleRecompute, setConfirmRateProvider } from "../s
 import { trailingConfirmRate } from "../today.js";
 
 setConfirmRateProvider(trailingConfirmRate);
+import { importWhatsapp, whatsappPending } from "../whatsapp/import.js";
 import { overnightClose } from "./overnight.js";
 import type { Job } from "./scheduler.js";
 
@@ -66,6 +67,12 @@ export const JOBS: Job[] = [
     everyS: env.LOR_MAIL_POLL_S,
     shouldRun: async () => mailConfigured(),
     run: async () => mailCheck(sql, googleMail),
+  },
+  {
+    name: "whatsapp_import",
+    everyS: 300,
+    shouldRun: whatsappPending,
+    run: async () => importWhatsapp(sql),
   },
   {
     name: "overnight_close",

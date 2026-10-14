@@ -64,6 +64,13 @@
       "when": 1792008792961,
       "tag": "0008_busy_major_mapleleaf",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792011732543,
+      "tag": "0009_steady_blue_shield",
+      "breakpoints": true
     }
   ]
 }

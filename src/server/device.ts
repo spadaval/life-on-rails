@@ -2,6 +2,11 @@
 // the timer tile reads and changes the running block. Served on both
 // listeners; on the one behind `tailscale serve`, every request has already
 // been checked for the owner's Tailscale identity.
+import { createWriteStream, mkdirSync, renameSync, rmSync } from "node:fs";
+import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import { z } from "zod";
 import { sql } from "../db/client.js";
 import { systemIntentId } from "../db/seed.js";
@@ -13,6 +18,7 @@ import { env } from "./env.js";
 import { BadInput } from "./errors.js";
 import { takeNotifications } from "./intents.js";
 import { recordObservation } from "./observations.js";
+import { BACKUP_FILE, noteUploader } from "./whatsapp/import.js";
 
 /** Sources a device may send. Calendar, mail, and the agent's log have their own writers. */
 const DEVICE_SOURCES = new Set(["android", "linux_activity", "windows_activity"]);
@@ -151,4 +157,31 @@ export async function deviceTimer(body: unknown, login: string): Promise<DeviceS
   else if (action === "pause") await pauseRunningBlock(sql);
   else await resumeRunningBlock(sql, who);
   return deviceState(login, d.device ?? null);
+}
+
+/**
+ * The phone's copy of WhatsApp's nightly backup, still encrypted. Replaces the
+ * last one (only the newest is kept); the whatsapp_import job reads it.
+ */
+export async function receiveWhatsappBackup(body: ReadableStream<Uint8Array> | null, device: string | null): Promise<{ bytes: number }> {
+  if (!body) throw new BadInput("expected the backup file as the request body");
+  if (!device || !/^[a-z0-9-]{1,64}$/.test(device)) throw new BadInput("expected ?device=<the phone's name>");
+  mkdirSync(env.LOR_WHATSAPP_DIR, { recursive: true });
+  const final = path.join(env.LOR_WHATSAPP_DIR, BACKUP_FILE);
+  const partial = `${final}.partial`;
+  let bytes = 0;
+  const counted = Readable.fromWeb(body as WebReadableStream<Uint8Array>).on("data", (c: Buffer) => (bytes += c.length));
+  try {
+    await pipeline(counted, createWriteStream(partial, { mode: 0o600 }));
+  } catch (err) {
+    rmSync(partial, { force: true });
+    throw err;
+  }
+  if (bytes < 64) {
+    rmSync(partial, { force: true });
+    throw new BadInput("the upload is too small to be a WhatsApp backup");
+  }
+  renameSync(partial, final);
+  noteUploader(device);
+  return { bytes };
 }

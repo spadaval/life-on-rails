@@ -35,6 +35,8 @@ export interface EntityView {
   last_contact: LastContact | null;
   /** The latest mail with this entity, both ways (headers only; the mail itself is in Gmail). */
   recent_mail: { gmail_id: string; subject: string | null; at: string; direction: "in" | "sent" }[];
+  /** The latest texts and WhatsApp messages with this entity, text cut to a few hundred characters. */
+  recent_messages: { at: string; kind: string; direction: "in" | "out"; group: string | null; text: string | null }[];
   updated_at: string;
 }
 
@@ -77,6 +79,19 @@ export async function recentMail(tx: Tx, entityId: string, limit = 10): Promise<
   return rows.map((m) => ({ gmail_id: m.gmail_id, subject: m.subject, at: m.at.toISOString(), direction: m.direction }));
 }
 
+/** Texts and WhatsApp messages with this entity's numbers, newest first: one-to-one both ways, and what they wrote in groups. */
+export async function recentMessages(tx: Tx, entityId: string, limit = 10): Promise<EntityView["recent_messages"]> {
+  const rows = await tx<{ at: Date; kind: string; direction: "in" | "out"; grp: string | null; text: string | null }[]>`
+    SELECT o.t_start AS at, o.payload->>'kind' AS kind, o.payload->>'direction' AS direction,
+           CASE WHEN (o.payload->>'group')::boolean THEN coalesce(o.payload->>'chat_name', 'a group') END AS grp,
+           left(o.payload->>'text', 300) AS text
+    FROM observation o
+    WHERE o.source = 'android' AND o.payload->>'kind' IN ('sms', 'whatsapp')
+      AND o.payload->>'phone' IN (SELECT value FROM entity_identifier WHERE entity_id = ${entityId} AND kind = 'phone')
+    ORDER BY o.t_start DESC LIMIT ${limit}`;
+  return rows.map((m) => ({ at: m.at.toISOString(), kind: m.kind, direction: m.direction, group: m.grp, text: m.text }));
+}
+
 export async function viewOf(tx: Tx, e: EntityRow): Promise<EntityView> {
   const identifiers = await tx<Identifier[]>`
     SELECT kind, value FROM entity_identifier WHERE entity_id = ${e.id} ORDER BY kind, value`;
@@ -94,6 +109,7 @@ export async function viewOf(tx: Tx, e: EntityRow): Promise<EntityView> {
     keep_in_touch_days: e.keep_in_touch_days,
     last_contact: (await lastContacts(tx, [e.id])).get(e.id) ?? null,
     recent_mail: await recentMail(tx, e.id),
+    recent_messages: await recentMessages(tx, e.id),
     updated_at: e.updated_at.toISOString(),
   };
 }

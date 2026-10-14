@@ -161,7 +161,8 @@ export const observation = pgTable(
     payload: jsonb("payload").notNull().default({}),
     intentHint: uuid("intent_hint").references(() => intent.id, { onDelete: "set null" }),
     ingestedAt: ts("ingested_at").notNull().defaultNow(),
-    search: tsvector("search").generatedAlwaysAs(sql`to_tsvector('english', coalesce(title, ''))`),
+    // Message text (texts, WhatsApp) is searchable along with the title.
+    search: tsvector("search").generatedAlwaysAs(sql`to_tsvector('english', coalesce(title, '') || ' ' || coalesce(payload->>'text', ''))`),
   },
   (t) => [
     index("observation_time_idx").on(t.tStart),

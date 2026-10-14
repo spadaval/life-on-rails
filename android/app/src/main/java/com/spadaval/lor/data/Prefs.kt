@@ -8,9 +8,10 @@ import androidx.core.content.edit
 enum class Sensor(val key: String, val label: String, val unit: String, val description: String, val defaultOn: Boolean) {
     APPS("apps", "App usage", "app sessions", "Which app was on screen, and for how long.", true),
     CALLS("calls", "Calls", "calls", "Who you called or who called you, and for how long. Never audio.", true),
-    TEXTS("texts", "Texts", "texts", "Who you texted and when. Never what was said. RCS chats are not visible to other apps.", true),
+    TEXTS("texts", "Texts", "texts", "Every text, who and when and what was said, back to the oldest on the phone. RCS chats are not visible to other apps.", true),
     HEALTH("health", "Sleep, exercise, steps", "health records", "Read from Health Connect.", true),
     LOCATION("location", "Location", "locations", "Where the phone was, every 15 minutes or so.", false),
+    WHATSAPP("whatsapp", "WhatsApp", "backups", "Uploads WhatsApp's nightly backup, still encrypted, over Wi-Fi. LoR reads every message with your 64-digit backup key.", false),
 }
 
 /** Settings and sync state. Small, so SharedPreferences. */
@@ -48,6 +49,11 @@ class Prefs(context: Context) {
     var lastUploadAt: Long
         get() = p.getLong("last_upload_at", 0L)
         set(value) = p.edit { putLong("last_upload_at", value) }
+
+    /** The WhatsApp backup last uploaded, as "modified-ms:size", so an unchanged one is not sent again. */
+    var whatsappUploaded: String
+        get() = p.getString("whatsapp_uploaded", null) ?: ""
+        set(value) = p.edit { putString("whatsapp_uploaded", value) }
 
     var uploadedTotal: Long
         get() = p.getLong("uploaded_total", 0L)
