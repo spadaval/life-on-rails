@@ -370,7 +370,7 @@ The agent searches for an existing page before creating one and prefers updating
 
 ### `lor` CLI
 
-`cli/lor.ts`, built to `~/.local/bin/lor`. It reads `LOR_AGENT_TOKEN` and `LOR_PORT` from the env file, calls `http://127.0.0.1:$LOR_PORT/api/v1/…`, and prints JSON, or markdown with `--md`. Exit codes: `0` ok, `2` usage, `3` empty, `4` auth, `5` not found, `6` refused by a write rule, `8` server unavailable.
+`cli/lor.mjs`, plain JavaScript with no build step, symlinked as `~/.local/bin/lor`. It reads `LOR_AGENT_TOKEN` and `LOR_PORT` from the env file, calls `http://127.0.0.1:$LOR_PORT/api/v1/…`, and prints JSON, or markdown with `--md`. Exit codes: `0` ok, `2` usage, `3` empty, `4` auth, `5` not found, `6` refused by a write rule, `8` server unavailable.
 
 ```
 # orientation
@@ -412,7 +412,7 @@ lor metric <intent_id> <value> [--date <date>]
 - **`lor context`** returns the `in_digest` pages, today's plan and running block, starving goals, the agent's open tasks, waiting tasks, pending proposals, and the titles of recently changed pages. Keep it short; add a size budget when a digest is actually too long. `--task <id>` returns the `agent` page, the task, its parent and linked intents, and the pages for the entities and projects it touches.
 - **`lor search`** runs `websearch_to_tsquery` against each requested table's `search` column plus trigram matches on entity names and page titles, merges by rank with a recency boost, and returns ids and snippets, never full bodies.
 - **`lor changes`** keys on arrival time, so something recorded late is not missed. The caller remembers its own last run time.
-- Every write takes `--thread <id>`. A thread that does not know its own T3 id asks T3 for it; check that this works before the server starts refusing writes without one.
+- Every write takes `--thread <id>` (or `LOR_THREAD` in the environment). A thread learns its own id by calling T3's `t3_thread_configuration` tool with no arguments.
 - Verbs are added with the code behind them.
 
 **`/api/v1`** is one server route with one endpoint per verb. Handlers call the same functions as the UI, so each write has one implementation. Auth is a loopback source address and `Authorization: Bearer $LOR_AGENT_TOKEN`. Requests are stamped `via=agent`.
@@ -650,10 +650,9 @@ Multi-user, billing, or hosting for anyone else. A mail client. Two-way Tasks sy
 
 1. **Pub/Sub prerequisites.** A topic and pull subscription in LoR's Google Cloud project; permission for Gmail to publish to it; how LoR authenticates to Pub/Sub (the owner's OAuth login with a Pub/Sub scope, or a service account key); whether `gmail.metadata` is enough for `users.watch` and `history.list`.
 2. **OAuth consent screen.** `gmail.metadata` is a restricted scope. Whether an unverified app can be "In production" with it for one user, so the refresh token does not expire after seven days.
-3. **The agent's thread id.** How a T3 thread learns its own id, for `--thread`.
-4. **Host for the phone pieces.** A thin T3 mobile fork or a standalone app. Unverified: whether a self-built T3 client pairs with a stock server, and whether this box can build an Android app.
-5. **Activity blocks.** The design called for in "The phone".
-6. **Drive files as sources.** Not yet.
+3. **Host for the phone pieces.** A thin T3 mobile fork or a standalone app. Unverified: whether a self-built T3 client pairs with a stock server, and whether this box can build an Android app.
+4. **Activity blocks.** The design called for in "The phone".
+5. **Drive files as sources.** Not yet.
 
 Checked on 2026-10-14: T3 serves webhooks directly on the box, with no relay needed; `srvx` 0.11.22 is in `node_modules`; `tailscale whois` works for this user without root.
 

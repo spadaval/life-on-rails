@@ -25,6 +25,7 @@ if (!existsSync(bundle)) {
 }
 
 process.env.LOR_RUN_JOBS = "1";
+process.env.LOR_ROOT = root;
 const { default: app } = await import(bundle);
 // Database ping, seed, and scheduler start; exits non-zero if the database is down.
 await globalThis.__lorReady;
@@ -37,7 +38,17 @@ const owner = (process.env.LOR_OWNER_LOGIN || "").trim().toLowerCase();
 const assets = serveStatic({ dir: path.join(root, "dist/client") });
 const fetch = (request) => app.fetch(request);
 
-serve({ hostname, port, fetch, middleware: [assets], silent: true });
+// /api/ is for processes on this box. The listener binds loopback by default;
+// this holds even if LOR_BIND is ever widened by mistake.
+const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+const apiFromLoopbackOnly = (request, next) => {
+  if (new URL(request.url).pathname.startsWith("/api/") && !LOOPBACK.has(request.ip ?? "")) {
+    return new Response("forbidden\n", { status: 403 });
+  }
+  return next();
+};
+
+serve({ hostname, port, fetch, middleware: [apiFromLoopbackOnly, assets], silent: true });
 console.log(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: "listening", hostname, port }));
 
 if (owner) {

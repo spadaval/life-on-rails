@@ -12,6 +12,7 @@ import {
   type AnyPgColumn,
   boolean,
   check,
+  customType,
   date,
   index,
   integer,
@@ -28,6 +29,7 @@ import {
 import { sql } from "drizzle-orm";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true });
+const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
 
 export const intentType = pgEnum("intent_type", ["goal", "project", "habit", "task", "metric"]);
 // `waiting` = a task blocked on someone else. `later` = hidden by Reset Visibility.
@@ -138,11 +140,13 @@ export const observation = pgTable(
     payload: jsonb("payload").notNull().default({}),
     intentHint: uuid("intent_hint").references(() => intent.id, { onDelete: "set null" }),
     ingestedAt: ts("ingested_at").notNull().defaultNow(),
+    search: tsvector("search").generatedAlwaysAs(sql`to_tsvector('english', coalesce(title, ''))`),
   },
   (t) => [
     index("observation_time_idx").on(t.tStart),
     index("observation_source_time_idx").on(t.source, t.tStart),
     index("observation_ingested_idx").on(t.ingestedAt),
+    index("observation_search_idx").using("gin", t.search),
   ],
 );
 
@@ -305,4 +309,83 @@ export const scoreSnapshot = pgTable(
     parts: jsonb("parts").notNull(), // what `lor score explain` shows
   },
   (t) => [primaryKey({ columns: [t.intentId, t.asOf] })],
+);
+
+// ---- Memory: entities and the wiki ----
+
+export const entity = pgTable(
+  "entity",
+  {
+    id: uuid("id").primaryKey(),
+    kind: text("kind").notNull(), // person | org | place | thing
+    name: text("name").notNull(),
+    aliases: text("aliases").array().notNull().default(sql`'{}'::text[]`),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("entity_name_trgm").using("gin", t.name.op("gin_trgm_ops")),
+    check("entity_kind_known", sql`${t.kind} IN ('person', 'org', 'place', 'thing')`),
+  ],
+);
+
+// How an entity is recognised in raw data (a mail From:, a calendar attendee).
+export const entityIdentifier = pgTable(
+  "entity_identifier",
+  {
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(), // email | phone | handle | domain
+    value: text("value").notNull(), // lowercased
+  },
+  (t) => [primaryKey({ columns: [t.kind, t.value] }), index("entity_identifier_entity_idx").on(t.entityId)],
+);
+
+// One page per subject. Plain markdown, complete in itself.
+export const page = pgTable(
+  "page",
+  {
+    id: uuid("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull(),
+    entityId: uuid("entity_id")
+      .unique()
+      .references(() => entity.id, { onDelete: "set null" }),
+    intentId: uuid("intent_id")
+      .unique()
+      .references(() => intent.id, { onDelete: "set null" }),
+    headVersion: integer("head_version").notNull(),
+    body: text("body").notNull(), // copy of the head version, kept here for search
+    inDigest: boolean("in_digest").notNull().default(false), // included in every `lor context`
+    search: tsvector("search").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', title), 'A') || to_tsvector('english', body)`,
+    ),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("page_search_idx").using("gin", t.search),
+    index("page_title_trgm").using("gin", t.title.op("gin_trgm_ops")),
+    check("page_slug_shape", sql`${t.slug} ~ '^[a-z0-9][a-z0-9/-]*$'`),
+    check("page_one_subject", sql`num_nonnulls(${t.entityId}, ${t.intentId}) <= 1`),
+  ],
+);
+
+// Every write is a whole new copy, so history, diff, and revert need no machinery.
+export const pageVersion = pgTable(
+  "page_version",
+  {
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => page.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    via: text("via").notNull(), // ui | agent | seed
+    sourceRef: text("source_ref"), // T3 thread id
+    note: text("note"), // one-line edit summary
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.pageId, t.version] })],
 );
