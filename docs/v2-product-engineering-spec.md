@@ -540,8 +540,7 @@ Built on 2026-10-14, in this order, each checked as described.
 
 **Waiting on the owner**
 
-1. **The agent.** In the `assistant` project's main thread, ask it to set itself up; the `agent` page tells it how to schedule the nightly run, the morning brief, and the mail hook.
-2. **A reboot,** whenever convenient, to see everything come back without a login.
+1. **A reboot,** whenever convenient, to see everything come back without a login.
 
 **Not built**
 
@@ -565,9 +564,8 @@ Multi-user, billing, or hosting for anyone else. A mail client. A contacts edito
 ## Open questions
 
 1. **OAuth consent screen.** `gmail.metadata` is a restricted scope. Whether an unverified app can be "In production" with it for one user, so the refresh token does not expire after seven days.
-2. **The mail hook's address.** Whether T3 Connect is on here, so the agent can read the address itself.
-3. **Activity blocks.** The design called for in "The phone".
-4. **Drive files as sources.** Not yet.
+2. **Activity blocks.** The design called for in "The phone".
+3. **Drive files as sources.** Not yet.
 
 ## Alternatives set aside
 
