@@ -24,6 +24,8 @@ export interface MappedEvent {
   selfResponse: string | null;
   htmlLink: string | null;
   attendees: number;
+  /** The other attendees' addresses, lowercased: who the owner met. */
+  attendeeEmails: string[];
 }
 
 export function mapEvent(calendarId: string, e: GEvent, tz: string): MappedEvent | null {
@@ -55,6 +57,9 @@ export function mapEvent(calendarId: string, e: GEvent, tz: string): MappedEvent
     selfResponse: e.attendees?.find((a) => a.self)?.responseStatus ?? null,
     htmlLink: e.htmlLink ?? null,
     attendees: e.attendees?.length ?? 0,
+    attendeeEmails: [
+      ...new Set((e.attendees ?? []).filter((a) => !a.self && a.email && !a.email.endsWith("resource.calendar.google.com")).map((a) => a.email!.toLowerCase())),
+    ].sort(),
   };
 }
 
@@ -121,18 +126,18 @@ export async function syncCalendars(db: Sql, port: CalendarPort, now = new Date(
       for (const e of events) {
         // updated_at moves only when something the owner would notice changed.
         const changed = await tx`
-          INSERT INTO google_event (calendar_id, event_id, title, t_start, t_end, all_day, status, transparency, event_type, self_response, html_link, payload, updated_at)
+          INSERT INTO google_event (calendar_id, event_id, title, t_start, t_end, all_day, status, transparency, event_type, self_response, attendees, html_link, payload, updated_at)
           VALUES (${e.calendarId}, ${e.eventId}, ${e.title}, ${e.tStart}, ${e.tEnd}, ${e.allDay}, ${e.status}, ${e.transparency},
-            ${e.eventType}, ${e.selfResponse}, ${e.htmlLink}, ${tx.json({ attendees: e.attendees })}, ${now})
+            ${e.eventType}, ${e.selfResponse}, ${e.attendeeEmails}::text[], ${e.htmlLink}, ${tx.json({ attendees: e.attendees })}, ${now})
           ON CONFLICT (calendar_id, event_id) DO UPDATE SET
             title = EXCLUDED.title, t_start = EXCLUDED.t_start, t_end = EXCLUDED.t_end, all_day = EXCLUDED.all_day,
             status = EXCLUDED.status, transparency = EXCLUDED.transparency, event_type = EXCLUDED.event_type,
-            self_response = EXCLUDED.self_response, html_link = EXCLUDED.html_link, payload = EXCLUDED.payload,
-            updated_at = EXCLUDED.updated_at
+            self_response = EXCLUDED.self_response, attendees = EXCLUDED.attendees, html_link = EXCLUDED.html_link,
+            payload = EXCLUDED.payload, updated_at = EXCLUDED.updated_at
           WHERE (google_event.title, google_event.t_start, google_event.t_end, google_event.all_day, google_event.status,
-                 google_event.transparency, google_event.event_type, google_event.self_response)
+                 google_event.transparency, google_event.event_type, google_event.self_response, google_event.attendees)
             IS DISTINCT FROM (EXCLUDED.title, EXCLUDED.t_start, EXCLUDED.t_end, EXCLUDED.all_day, EXCLUDED.status,
-                 EXCLUDED.transparency, EXCLUDED.event_type, EXCLUDED.self_response)
+                 EXCLUDED.transparency, EXCLUDED.event_type, EXCLUDED.self_response, EXCLUDED.attendees)
           RETURNING event_id`;
         if (changed.length > 0) {
           stats.changed++;

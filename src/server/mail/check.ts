@@ -5,11 +5,14 @@ import type { Sql, Tx } from "../../db/client.js";
 import { HistoryExpiredError, type MailPort } from "../google/mailClient.js";
 import { entityForEmail } from "../memory/entities.js";
 import { recordObservation, stableId } from "../observations.js";
-import { headersOf, isBulk, parseFrom } from "./bulk.js";
+import { env } from "../env.js";
+import { addressesIn, headersOf, isBulk, parseFrom } from "./bulk.js";
 
 export interface MailCheckStats {
   seen: number;
   recorded: number;
+  /** Mail the owner sent: recorded for "last in touch", never a wake. */
+  sent: number;
   bulk: number;
   queued: number;
   skipped: number;
@@ -26,7 +29,7 @@ async function state(tx: Tx): Promise<{ history_id: string | null }> {
 const CATCH_UP = 50;
 
 export async function mailCheck(db: Sql, port: MailPort, now = new Date()): Promise<MailCheckStats> {
-  const stats: MailCheckStats = { seen: 0, recorded: 0, bulk: 0, queued: 0, skipped: 0 };
+  const stats: MailCheckStats = { seen: 0, recorded: 0, sent: 0, bulk: 0, queued: 0, skipped: 0 };
   const { history_id } = await state(db);
 
   let ids: string[];
@@ -43,9 +46,9 @@ export async function mailCheck(db: Sql, port: MailPort, now = new Date()): Prom
       next = added.historyId;
     } catch (err) {
       if (!(err instanceof HistoryExpiredError)) throw err;
-      // Away for over a week: take recent inbox messages we have no record of.
+      // Away for over a week: take recent messages we have no record of.
       next = await port.currentHistoryId();
-      ids = await port.recentInbox(CATCH_UP);
+      ids = await port.recentMessages(CATCH_UP);
       stats.note = "history expired; caught up from recent messages";
     }
   }
@@ -56,16 +59,43 @@ export async function mailCheck(db: Sql, port: MailPort, now = new Date()): Prom
     const known = await db`SELECT 1 FROM observation WHERE id = ${obsId}`;
     if (known.length > 0) continue;
     const message = await port.metadata(id);
-    // Only what arrived: not what the owner sent, not drafts, not something already filed elsewhere.
-    if (!message || !message.labelIds.includes("INBOX") || message.labelIds.includes("SENT") || message.labelIds.includes("DRAFT")) {
+    // What arrived in the inbox, and what the owner sent. Not drafts, not mail filtered past the inbox.
+    if (!message || message.labelIds.includes("DRAFT") || !(message.labelIds.includes("INBOX") || message.labelIds.includes("SENT"))) {
       stats.skipped++;
       continue;
     }
     const headers = headersOf(message.payload.headers);
+    const when = message.internalDate ? new Date(Number(message.internalDate)) : now;
+
+    if (message.labelIds.includes("SENT")) {
+      const self = env.GOOGLE_ACCOUNT.toLowerCase();
+      const { inserted } = await recordObservation(db, {
+        id: obsId,
+        tStart: when,
+        tEnd: when,
+        device: "buildbot",
+        source: "gmail",
+        app: "SENT",
+        title: headers.subject,
+        payload: {
+          gmail_id: message.id,
+          thread_id: message.threadId,
+          direction: "sent",
+          to: headers.to,
+          to_emails: addressesIn(headers.to, headers.cc).filter((a) => a !== self),
+          labels: message.labelIds,
+        },
+      });
+      if (inserted) {
+        stats.recorded++;
+        stats.sent++;
+      }
+      continue;
+    }
+
     const sender = parseFrom(headers.from);
     const entity = sender.email ? await entityForEmail(db, sender.email) : null;
     const bulk = isBulk(headers, message.labelIds, entity !== null);
-    const when = message.internalDate ? new Date(Number(message.internalDate)) : now;
 
     await db.begin(async (tx) => {
       const { inserted } = await recordObservation(tx, {
@@ -79,6 +109,7 @@ export async function mailCheck(db: Sql, port: MailPort, now = new Date()): Prom
         payload: {
           gmail_id: message.id,
           thread_id: message.threadId,
+          direction: "in",
           from: headers.from,
           from_email: sender.email,
           entity_id: entity?.id ?? null,

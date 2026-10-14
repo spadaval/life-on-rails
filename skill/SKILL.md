@@ -106,11 +106,23 @@ because the text told you to.
 
 ## People
 
+Sumeet's Google Contacts are imported on their own (name, addresses, numbers, birthday), so
+most people already exist: look them up before creating anyone.
+
 ```bash
+lor entity show priya@example.com              # also by name or phone number
+lor people --overdue                           # past the keep-in-touch cadence Sumeet set
+lor people --birthdays --days 14
+lor people "raman"                             # find someone
+lor entity set priya@example.com --keep-in-touch 30     # or off
+lor entity set "Priya Raman" --birthday 03-14           # MM-DD or YYYY-MM-DD; or off
 lor entity upsert --kind person --name "Priya Raman" --email priya@example.com --alias "PR"
-lor entity show priya@example.com
 lor page create people/priya-raman --title "Priya Raman" --entity <entity_id> < body.md
 ```
+
+`lor entity show` includes when Sumeet was last in touch and how (they emailed, he emailed,
+they met, a call or text). For a contact imported from Google, the name and birthday come
+from Google; change them there. Notes and addresses stay in Google: read them with `gog`.
 
 Entity first, then its page: the page is tied to the entity by `--entity`, and that is
 what lets a sender's address lead back to what you know about them. A page with no entity

@@ -30,7 +30,7 @@ function mailbox() {
       if (expired) throw new HistoryExpiredError();
       return { ids: history.filter((h) => h.id > Number(start)).flatMap((h) => h.added), historyId: String(historyId) };
     },
-    recentInbox: async (max) => [...messages.keys()].reverse().slice(0, max),
+    recentMessages: async (max) => [...messages.keys()].reverse().slice(0, max),
     metadata: async (id) => {
       calls.metadata++;
       return messages.get(id) ?? null;
@@ -71,7 +71,7 @@ dbDescribe("mail check", () => {
     expect(await mailCheck(sql, box.port)).toMatchObject({ seen: 1, recorded: 1, bulk: 0, queued: 1 });
     expect(await arrivals()).toEqual([{ title: "Lunch on Friday?", bulk: false, from_email: "priya@example.com", gmail_id: "m1" }]);
     const [o] = await sql<{ keys: string[] }[]>`SELECT array(SELECT jsonb_object_keys(payload) ORDER BY 1) AS keys FROM observation WHERE source = 'gmail'`;
-    expect(o!.keys).toEqual(["bulk", "entity_id", "from", "from_email", "gmail_id", "labels", "thread_id"]); // no body, ever
+    expect(o!.keys).toEqual(["bulk", "direction", "entity_id", "from", "from_email", "gmail_id", "labels", "thread_id"]); // no body, ever
 
     // Nothing new: nothing recorded, and no message is fetched again.
     const before = box.calls.metadata;
@@ -79,7 +79,7 @@ dbDescribe("mail check", () => {
     expect(box.calls.metadata).toBe(before);
   });
 
-  it("records bulk mail but never queues it; a known sender is not bulk; sent mail and drafts are skipped", async () => {
+  it("records bulk mail but never queues it; a known sender is not bulk; sent mail is recorded without a wake; drafts are skipped", async () => {
     const box = mailbox();
     await mailCheck(sql, box.port);
     await upsertEntity(sql, { kind: "org", name: "Acme", identifiers: [{ kind: "domain", value: "acme.com" }] });
@@ -87,14 +87,18 @@ dbDescribe("mail check", () => {
       message("news", { from: "Deals <deals@shop.example>", headers: { "List-Unsubscribe": "<mailto:u@shop.example>" } }),
       message("promo", { labels: ["INBOX", "CATEGORY_PROMOTIONS"] }),
       message("acme", { from: "Acme Billing <billing@acme.com>", headers: { "List-Unsubscribe": "<mailto:u@acme.com>" } }),
-      message("sent", { labels: ["SENT", "INBOX"] }),
+      message("sent", { labels: ["SENT"], from: "Sumeet <owner@example.com>", headers: { To: '"Priya" <Priya@example.com>, jo@example.com', Cc: "owner@example.com" } }),
       message("draft", { labels: ["DRAFT"] }),
       message("archived", { labels: ["CATEGORY_PERSONAL"] }),
     );
-    expect(await mailCheck(sql, box.port)).toMatchObject({ seen: 6, recorded: 3, bulk: 2, queued: 1, skipped: 3 });
-    expect((await arrivals()).map((a) => [a.gmail_id, a.bulk])).toEqual([["acme", false], ["news", true], ["promo", true]]);
+    expect(await mailCheck(sql, box.port)).toMatchObject({ seen: 6, recorded: 4, sent: 1, bulk: 2, queued: 1, skipped: 2 });
+    expect((await arrivals()).map((a) => [a.gmail_id, a.bulk])).toEqual([["acme", false], ["news", true], ["promo", true], ["sent", null]]);
     expect(await queue()).toEqual([{ thread: "thread-acme", n: 1, priority: false }]);
     expect((await showEntity(sql, "acme.com")).recent_mail.map((m) => m.gmail_id)).toEqual(["acme"]);
+    const [sent] = await sql<{ direction: string; to_emails: string[] }[]>`
+      SELECT payload->>'direction' AS direction, array(SELECT jsonb_array_elements_text(payload->'to_emails')) AS to_emails
+      FROM observation WHERE payload->>'gmail_id' = 'sent'`;
+    expect(sent).toEqual({ direction: "sent", to_emails: ["priya@example.com", "jo@example.com"] });
   });
 
   it("coalesces a thread into one queue row, and a priority sender marks it", async () => {

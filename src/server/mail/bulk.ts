@@ -3,6 +3,8 @@
 
 export interface MailHeaders {
   from: string | null;
+  to: string | null;
+  cc: string | null;
   subject: string | null;
   listUnsubscribe: string | null;
   precedence: string | null;
@@ -28,5 +30,14 @@ export function parseFrom(from: string | null): { name: string | null; email: st
 
 export function headersOf(list: { name: string; value: string }[]): MailHeaders {
   const get = (name: string) => list.find((h) => h.name.toLowerCase() === name)?.value ?? null;
-  return { from: get("from"), subject: get("subject"), listUnsubscribe: get("list-unsubscribe"), precedence: get("precedence") };
+  return { from: get("from"), to: get("to"), cc: get("cc"), subject: get("subject"), listUnsubscribe: get("list-unsubscribe"), precedence: get("precedence") };
+}
+
+/** Every address in To/Cc-style headers, lowercased, without duplicates. */
+export function addressesIn(...headers: (string | null)[]): string[] {
+  const out = new Set<string>();
+  for (const h of headers) {
+    for (const m of (h ?? "").matchAll(/[^\s<>",;:()]+@[^\s<>",;:()]+\.[^\s<>",;:()]+/g)) out.add(m[0].toLowerCase());
+  }
+  return [...out];
 }

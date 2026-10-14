@@ -35,6 +35,35 @@ const lor = (args, input) =>
   execFileSync("node", ["cli/lor.mjs", ...args], { encoding: "utf8", input, env: { ...process.env, LOR_PORT: new URL(BASE).port, LOR_THREAD: "ui-check-thread" } });
 
 const flows = {
+  async people() {
+    psql(`DELETE FROM page WHERE slug NOT IN ('agent', 'me', 'inbox'); DELETE FROM entity_identifier; DELETE FROM entity; DELETE FROM observation WHERE source = 'gmail';`);
+    const priya = JSON.parse(lor(["entity", "upsert", "--kind", "person", "--name", "Priya Raman", "--email", "priya@example.com"]));
+    lor(["entity", "upsert", "--kind", "person", "--name", "Jo Bloggs", "--email", "jo@example.com"]);
+    lor(["entity", "upsert", "--kind", "org", "--name", "Acme", "--id", "domain:acme.com"]);
+    const soon = new Date(Date.now() + 2 * 86400000);
+    lor(["entity", "set", priya.id, "--keep-in-touch", "30", "--birthday", `${String(soon.getMonth() + 1).padStart(2, "0")}-${String(soon.getDate()).padStart(2, "0")}`]);
+    lor(["entity", "set", "jo@example.com", "--keep-in-touch", "14"]);
+    psql(`INSERT INTO observation (id, t_start, t_end, device, source, title, payload) VALUES
+      (gen_random_uuid(), now() - interval '45 days', now() - interval '45 days', 'buildbot', 'gmail', 'Lunch?', '{"direction":"in","from_email":"priya@example.com","gmail_id":"a1"}'),
+      (gen_random_uuid(), now() - interval '3 days', now() - interval '3 days', 'buildbot', 'gmail', 'Re: plans', '{"direction":"sent","to_emails":["jo@example.com"],"gmail_id":"a2"}'),
+      (gen_random_uuid(), now() - interval '1 days', now() - interval '1 days', 'buildbot', 'gmail', 'Invoice', '{"direction":"in","from_email":"billing@acme.com","gmail_id":"a3"}')`);
+    console.log(lor(["people", "--overdue", "--md"]).trim());
+    console.log(lor(["context", "--md"]).split("## People")[1]?.split("## ")[0]?.trim());
+    await page.goto(`${BASE}/memory?tab=people`);
+    await settle();
+    await shot("people-1-who-matters");
+    await page.click('a:has-text("Overdue")');
+    await page.waitForURL(/filter=overdue/);
+    await settle();
+    await shot("people-2-overdue");
+    await page.goto(`${BASE}/memory?tab=people&filter=all`);
+    await settle();
+    await page.selectOption('li:has-text("Acme") select[aria-label="Keep in touch"]', { label: "every 3 months" });
+    await page.waitForFunction(() => [...document.querySelectorAll("li")].some((li) => li.textContent?.includes("Acme") && li.querySelector("select")?.value === "90"));
+    console.log("acme cadence:", psql("SELECT keep_in_touch_days FROM entity WHERE name = 'Acme'").trim());
+    await shot("people-3-everyone");
+  },
+
   async memory() {
     psql(`DELETE FROM page WHERE slug NOT IN ('agent', 'me', 'inbox'); DELETE FROM entity; DELETE FROM observation;`);
     const entity = JSON.parse(lor(["entity", "upsert", "--kind", "person", "--name", "Priya Raman", "--email", "priya@example.com"]));

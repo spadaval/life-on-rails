@@ -2,7 +2,7 @@
 //
 // One-off consent for LoR's own Google login. Writes the refresh token to
 // GOOGLE_TOKEN_FILE (0600, outside the repo). Read-only scopes only:
-//   calendar.readonly, tasks.readonly            (always)
+//   calendar.readonly, tasks.readonly, contacts.readonly   (always)
 //   gmail.metadata, pubsub                        (with --mail)
 //
 // The box has no browser, so this prints a URL to open on any device. After
@@ -15,13 +15,13 @@ import { SCOPES, readClient, writeToken } from "../src/server/google/auth.js";
 import { env } from "../src/server/env.js";
 
 const mail = process.argv.includes("--mail");
-const scopes = [SCOPES.calendar, SCOPES.tasks, ...(mail ? [SCOPES.gmail, SCOPES.pubsub] : [])];
+const scopes = [SCOPES.calendar, SCOPES.tasks, SCOPES.contacts, ...(mail ? [SCOPES.gmail, SCOPES.pubsub] : [])];
 
 const SETUP = `
 LoR needs its own Google OAuth client (it does not use gog's login).
 
   1. https://console.cloud.google.com → create a project for Life on Rails.
-  2. APIs & Services → Library: enable "Google Calendar API" and "Tasks API"
+  2. APIs & Services → Library: enable "Google Calendar API", "Tasks API", and "People API"
      (and, for mail, "Gmail API" and "Cloud Pub/Sub API").
   3. APIs & Services → OAuth consent screen: user type External; publish the
      app ("In production") so the sign-in does not expire after seven days.

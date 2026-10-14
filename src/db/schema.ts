@@ -296,6 +296,8 @@ export const googleEvent = pgTable(
     transparency: text("transparency").notNull().default("opaque"), // opaque | transparent ("free")
     eventType: text("event_type").notNull().default("default"),
     selfResponse: text("self_response"), // the owner's RSVP, when the event has attendees
+    // The other attendees' addresses, lowercased: who the owner met.
+    attendees: text("attendees").array().notNull().default(sql`'{}'::text[]`),
     htmlLink: text("html_link"),
     payload: jsonb("payload").notNull().default({}),
     updatedAt: ts("updated_at").notNull().defaultNow(),
@@ -341,14 +343,31 @@ export const entity = pgTable(
     aliases: text("aliases").array().notNull().default(sql`'{}'::text[]`),
     // Mail from this entity skips the wake debounce.
     priority: boolean("priority").notNull().default(false),
+    // Set for people imported from Google Contacts ("people/c123..."). Google is the source for their name and birthday.
+    googleContactId: text("google_contact_id").unique(),
+    // Birthday: month and day, year when known.
+    birthdayMonth: integer("birthday_month"),
+    birthdayDay: integer("birthday_day"),
+    birthdayYear: integer("birthday_year"),
+    // Keep in touch at least this often; null = no expectation.
+    keepInTouchDays: integer("keep_in_touch_days"),
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
   (t) => [
     index("entity_name_trgm").using("gin", t.name.op("gin_trgm_ops")),
     check("entity_kind_known", sql`${t.kind} IN ('person', 'org', 'place', 'thing')`),
+    check("entity_birthday_valid", sql`(${t.birthdayMonth} IS NULL) = (${t.birthdayDay} IS NULL) AND (${t.birthdayMonth} IS NULL OR (${t.birthdayMonth} BETWEEN 1 AND 12 AND ${t.birthdayDay} BETWEEN 1 AND 31))`),
+    check("entity_keep_in_touch_positive", sql`${t.keepInTouchDays} IS NULL OR ${t.keepInTouchDays} > 0`),
   ],
 );
+
+// Where an incremental sync got to (the Google Contacts sync token).
+export const syncCursor = pgTable("sync_cursor", {
+  name: text("name").primaryKey(),
+  token: text("token"),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
 
 // How an entity is recognised in raw data (a mail From:, a calendar attendee).
 export const entityIdentifier = pgTable(

@@ -21,7 +21,8 @@ read
   lor page search <query> [--limit N]
   lor page read <slug> [--version N] [--md]
   lor page history <slug>
-  lor entity show <id|name|email>
+  lor entity show <id|name|email|phone>
+  lor people [<search>] [--overdue | --birthdays [--days N] | --all] [--limit N]
   lor day [<YYYY-MM-DD>]
   lor graph [--starving] [--waiting]
   lor intent show <id>
@@ -33,6 +34,7 @@ write (free for the agent; every write needs --thread <your T3 thread id>)
   lor page update <slug> --base <N> --find "..." --replace "..."
   lor page update <slug> --append < fragment.md
   lor entity upsert --kind person|org|place|thing --name "..." [--email a@b]... [--alias "..."]...
+  lor entity set <id|name|email> [--keep-in-touch <days>|off] [--birthday MM-DD|off] [--priority on|off]
   lor log "<text>" [--intent <id>]
   lor intent create --type goal|project|habit|task|metric --title "..." [--parent <id>]
         [--due <t>] [--waiting-on <entity_id>] [--assign agent] [--weight N] [--hours N] [--description "..."]
@@ -52,7 +54,7 @@ A body comes from stdin, or from --file <path>.
 --thread may also be set once as LOR_THREAD in the environment.
 `;
 
-const BOOLEAN_FLAGS = new Set(["md", "history", "append", "dry-run", "all", "starving", "waiting", "help"]);
+const BOOLEAN_FLAGS = new Set(["md", "history", "append", "dry-run", "all", "starving", "waiting", "help", "overdue", "birthdays"]);
 const REPEATABLE_FLAGS = new Set(["email", "alias", "id"]);
 
 class Usage extends Error {}
@@ -203,8 +205,34 @@ function plan(positionals, flags) {
           };
         case "show":
           return { method: "GET", path: `/entities/${encodeURIComponent(need(positionals.slice(2).join(" "), "<id|name|email>"))}` };
+        case "set": {
+          const onOff = (v, name) => {
+            if (v === undefined) return undefined;
+            if (v === "on") return true;
+            if (v === "off") return false;
+            throw new Usage(`--${name} takes on or off`);
+          };
+          const kit = flags["keep-in-touch"];
+          const bday = flags.birthday;
+          return {
+            method: "POST",
+            path: `/entities/${encodeURIComponent(need(c, "<id|name|email>"))}`,
+            body: write({
+              keep_in_touch_days: kit === undefined || kit === "off" ? undefined : int(kit, "keep-in-touch"),
+              clear_keep_in_touch: kit === "off" || undefined,
+              birthday: bday === undefined || bday === "off" ? undefined : bday,
+              clear_birthday: bday === "off" || undefined,
+              priority: onOff(flags.priority, "priority"),
+            }),
+          };
+        }
       }
       break;
+
+    case "people": {
+      const filter = flags.overdue ? "overdue" : flags.birthdays ? "birthdays" : flags.all ? "all" : undefined;
+      return { method: "GET", path: `/people${q({ filter, q: positionals.slice(1).join(" ") || undefined, days: flags.days, limit: int(flags.limit, "limit") })}`, md: true };
+    }
 
     case "graph":
       return { method: "GET", path: `/graph${q({ starving: flags.starving, waiting: flags.waiting })}`, md: true };

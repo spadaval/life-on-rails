@@ -30,6 +30,9 @@ const Env = z.object({
   LOR_SCORING_WEEKS: z.coerce.number().int().min(1).default(2),
   LOR_CALENDAR_POLL_S: z.coerce.number().int().min(30).default(300),
   LOR_TASKS_POLL_S: z.coerce.number().int().min(30).default(900),
+  LOR_CONTACTS_POLL_S: z.coerce.number().int().min(60).default(21600),
+  // Country calling code for numbers written without one ("(415) 555-0100").
+  LOR_PHONE_COUNTRY_CODE: z.string().regex(/^\d{1,3}$/).default("1"),
   LOR_AGENT_TOKEN: z.string().default(""),
   LOR_WAKE_URL: z.string().default(""),
   LOR_WAKE_QUIET_S: z.coerce.number().int().min(0).default(180),

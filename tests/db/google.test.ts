@@ -60,6 +60,12 @@ dbDescribe("calendar poll", () => {
     expect(n!.n).toBe(9);
   });
 
+  it("stores who else attended, so meetings count toward last in touch", async () => {
+    await syncCalendars(sql, calendarPort(fixture("events-primary").items), NOW);
+    const [e] = await sql<{ attendees: string[] }[]>`SELECT attendees FROM google_event WHERE event_id = 'standup_20261014T160000Z'`;
+    expect(e!.attendees).toEqual(["priya@example.com"]); // the owner's own entry is left out
+  });
+
   it("stores what decides fill: RSVP, free/busy, and event type", async () => {
     await syncCalendars(sql, calendarPort(fixture("events-primary").items), NOW);
     const rows = await sql<{ event_id: string; self_response: string | null; transparency: string; event_type: string }[]>`

@@ -6,6 +6,8 @@ import { env } from "../env.js";
 import { syncCalendars } from "../google/calendarSync.js";
 import { SCOPES, hasScope } from "../google/auth.js";
 import { googleCalendar, googleTasks } from "../google/client.js";
+import { googleContacts } from "../google/contactsClient.js";
+import { syncContacts } from "../google/contactsSync.js";
 import { googleMail } from "../google/mailClient.js";
 import { syncTasks } from "../google/tasksSync.js";
 import { wakeSnoozed } from "../intents.js";
@@ -56,6 +58,11 @@ export const JOBS: Job[] = [
       if (touched.length > 0) scheduleRecompute();
       return stats;
     },
+  },
+  {
+    name: "contacts_poll",
+    everyS: env.LOR_CONTACTS_POLL_S,
+    run: async () => syncContacts(sql, googleContacts),
   },
   // Runs on a push from Gmail, at startup, and after the daily watch renewal. No timer.
   {

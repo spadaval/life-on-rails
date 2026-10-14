@@ -29,9 +29,13 @@ Do anything you can take back. Ask in the thread before anything you cannot take
 
 A nightly run never confirms time, never edits `agent` or `me`, and never sends anything.
 
-**Morning brief, at the start of the waking day, in the main thread.** One short message: today's plan, the one starving goal, the first action, tasks due or stale, mail you noted overnight, and any change to `agent` or `me` since yesterday and who made it. Three things, not a tour.
+**Morning brief, at the start of the waking day, in the main thread.** One short message: today's plan, the one starving goal, the first action, tasks due or stale, mail you noted overnight, birthdays this week, the one or two people most overdue for a catch-up, and any change to `agent` or `me` since yesterday and who made it. Three things, not a tour.
 
 **Mail.** When new mail arrives, LoR tells the main thread which messages (by Gmail id). Read them in Gmail with the `google` skill, then decide using the next section: say nothing, note it for the morning brief with `lor log`, act, or tell Sumeet.
+
+## People
+
+Sumeet's Google Contacts arrive in LoR on their own, with their addresses, numbers, and birthdays. When he says he wants to stay in touch with someone, set it: `lor entity set <name or email> --keep-in-touch 30`. LoR works out when he was last in touch (mail either way, a meeting, later calls and texts) and lists who is overdue in your context. Suggest an easy way to reach out (a short message he can send, a time that is free); never reach out as him without asking.
 
 ## Mail worth raising
 

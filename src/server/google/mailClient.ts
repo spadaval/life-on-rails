@@ -36,17 +36,17 @@ const HistoryPage = z.object({
 export interface MailPort {
   /** The mailbox's current history id. */
   currentHistoryId(): Promise<string>;
-  /** Ids of messages added to INBOX after `startHistoryId`, and the id to continue from. */
+  /** Ids of messages added to INBOX or SENT after `startHistoryId` (drafts left out), and the id to continue from. */
   addedSince(startHistoryId: string): Promise<{ ids: string[]; historyId: string }>;
-  /** Ids of the most recent INBOX messages, newest first. */
-  recentInbox(max: number): Promise<string[]>;
+  /** Ids of the most recent INBOX and SENT messages. */
+  recentMessages(max: number): Promise<string[]>;
   /** Headers and labels. Null if the message is gone. */
   metadata(id: string): Promise<GMessage | null>;
-  /** (Re-)register the push watch on INBOX. */
+  /** (Re-)register the push watch on INBOX and SENT. */
   watch(topic: string): Promise<{ historyId: string; expiration: Date }>;
 }
 
-const HEADERS = ["From", "Subject", "Date", "List-Unsubscribe", "Precedence"];
+const HEADERS = ["From", "To", "Cc", "Subject", "Date", "List-Unsubscribe", "Precedence"];
 
 export const googleMail: MailPort = {
   async currentHistoryId() {
@@ -59,7 +59,8 @@ export const googleMail: MailPort = {
     let pageToken: string | undefined;
     let historyId = startHistoryId;
     do {
-      const qs = new URLSearchParams({ startHistoryId, historyTypes: "messageAdded", labelId: "INBOX", maxResults: "500", ...(pageToken ? { pageToken } : {}) });
+      // No label filter: one pass sees both what arrived and what the owner sent.
+      const qs = new URLSearchParams({ startHistoryId, historyTypes: "messageAdded", maxResults: "500", ...(pageToken ? { pageToken } : {}) });
       let raw: unknown;
       try {
         raw = await googleGet(`${GMAIL}/history?${qs}`);
@@ -68,17 +69,27 @@ export const googleMail: MailPort = {
         throw err;
       }
       const page = HistoryPage.parse(raw);
-      for (const h of page.history) for (const m of h.messagesAdded) ids.add(m.message.id);
+      for (const h of page.history) {
+        for (const m of h.messagesAdded) {
+          const labels = m.message.labelIds;
+          if (labels.includes("DRAFT")) continue; // every draft save adds a message
+          if (labels.includes("INBOX") || labels.includes("SENT")) ids.add(m.message.id);
+        }
+      }
       if (page.historyId) historyId = page.historyId;
       pageToken = page.nextPageToken;
     } while (pageToken);
     return { ids: [...ids], historyId };
   },
 
-  async recentInbox(max) {
-    const qs = new URLSearchParams({ labelIds: "INBOX", maxResults: String(max) });
-    const page = z.object({ messages: z.array(z.object({ id: z.string() })).default([]) }).parse(await googleGet(`${GMAIL}/messages?${qs}`));
-    return page.messages.map((m) => m.id);
+  async recentMessages(max) {
+    const ids: string[] = [];
+    for (const label of ["INBOX", "SENT"]) {
+      const qs = new URLSearchParams({ labelIds: label, maxResults: String(max) });
+      const page = z.object({ messages: z.array(z.object({ id: z.string() })).default([]) }).parse(await googleGet(`${GMAIL}/messages?${qs}`));
+      ids.push(...page.messages.map((m) => m.id));
+    }
+    return [...new Set(ids)];
   },
 
   async metadata(id) {
@@ -97,7 +108,7 @@ export const googleMail: MailPort = {
       await googleGet(`${GMAIL}/watch`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ topicName: topic, labelIds: ["INBOX"], labelFilterBehavior: "INCLUDE" }),
+        body: JSON.stringify({ topicName: topic, labelIds: ["INBOX", "SENT"], labelFilterBehavior: "INCLUDE" }),
       }),
     );
     return { historyId: res.historyId, expiration: new Date(Number(res.expiration)) };

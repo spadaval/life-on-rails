@@ -8,6 +8,7 @@ import { env } from "../env.js";
 export const SCOPES = {
   calendar: "https://www.googleapis.com/auth/calendar.readonly",
   tasks: "https://www.googleapis.com/auth/tasks.readonly",
+  contacts: "https://www.googleapis.com/auth/contacts.readonly",
   gmail: "https://www.googleapis.com/auth/gmail.metadata",
   pubsub: "https://www.googleapis.com/auth/pubsub",
 } as const;

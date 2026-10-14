@@ -37,7 +37,8 @@ After a change: `pnpm build && systemctl --user restart lor-web`.
 
 ### Google
 
-LoR has its own read-only Google login; it never uses `gog`. Run `pnpm google:auth`:
+LoR has its own read-only Google login (calendar, tasks, contacts; plus Gmail headers and
+Pub/Sub with `--mail`); it never uses `gog`. Run `pnpm google:auth`:
 with no OAuth client yet it prints the steps to create one in the Google Cloud console,
 and with one it prints a consent URL to open on any device. `pnpm google:auth --mail`
 adds the Gmail-headers and Pub/Sub scopes that mail notifications need. The Capture

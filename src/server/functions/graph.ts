@@ -9,7 +9,7 @@ import {
   INTENT_STATUSES, INTENT_TYPES, LINK_KINDS, archiveIntent, assignTask, commitHabit, commitMetric, completeTask,
   createIntent, linkIntents, reopenTask, resetVisibility, undoIntent, unlinkIntents, updateIntent,
 } from "../intents.js";
-import { listEntities } from "../memory/entities.js";
+import { entityNames } from "../memory/entities.js";
 import { explainScore, recomputeScores } from "../scoring/recompute.js";
 
 const ui = { via: "ui" as const };
@@ -18,7 +18,7 @@ const num = z.number().nullable().optional();
 
 export const getGraphFn = createServerFn({ method: "GET" }).handler(async () => {
   await recomputeScores(sql);
-  const [graph, entities] = await Promise.all([getGraph(sql), listEntities(sql)]);
+  const [graph, entities] = await Promise.all([getGraph(sql), entityNames(sql)]);
   return { nodes: graph.nodes, entities: entities.map((e) => ({ id: e.id, name: e.name })) };
 });
 

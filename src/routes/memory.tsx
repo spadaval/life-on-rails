@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Ago } from "../components/Ago.js";
 import { Markdown } from "../components/Markdown.js";
 import {
-  createPageFn, getMemoryFn, revertPageFn, savePageFn, setInDigestFn, setPriorityFn,
+  createPageFn, getMemoryFn, revertPageFn, savePageFn, setInDigestFn, setPersonFn,
 } from "../server/functions/memory.js";
 
 const Search = z.object({
@@ -14,11 +14,13 @@ const Search = z.object({
   q: z.string().optional(),
   date: z.string().optional(),
   obs: z.string().optional(),
+  filter: z.enum(["important", "all", "keep-in-touch", "overdue", "birthdays"]).optional(),
+  pq: z.string().optional(),
 });
 
 export const Route = createFileRoute("/memory")({
   validateSearch: (search) => Search.parse(search),
-  loaderDeps: ({ search }) => ({ tab: search.tab, slug: search.slug, version: search.version, q: search.q, date: search.date }),
+  loaderDeps: ({ search }) => ({ tab: search.tab, slug: search.slug, version: search.version, q: search.q, date: search.date, filter: search.filter, pq: search.pq }),
   loader: ({ deps }) => getMemoryFn({ data: deps }),
   component: Memory,
 });
@@ -352,46 +354,124 @@ function PageView({ page, act }: { page: NonNullable<Data["page"]>; act: Act }) 
   );
 }
 
+const CADENCES: [string, number | null][] = [
+  ["no cadence", null],
+  ["every week", 7],
+  ["every 2 weeks", 14],
+  ["every month", 30],
+  ["every 2 months", 60],
+  ["every 3 months", 90],
+  ["every 6 months", 182],
+  ["every year", 365],
+];
+
+const FILTERS = [
+  { id: "important", label: "Who matters" },
+  { id: "keep-in-touch", label: "Keeping in touch" },
+  { id: "overdue", label: "Overdue" },
+  { id: "birthdays", label: "Birthdays soon" },
+  { id: "all", label: "Everyone" },
+] as const;
+
+const VIA: Record<string, string> = { mail_in: "they emailed", mail_out: "you emailed", meeting: "you met", phone: "call or text" };
+
 function People({ data, act }: { data: Data; act: Act }) {
-  if (data.people.length === 0) return <p className="muted">No one yet. The agent adds people who matter as it meets them.</p>;
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/memory" });
+  const [pq, setPq] = useState(search.pq ?? "");
+  const filter = search.filter ?? "important";
+  const { people, total } = data.people;
+
   return (
-    <ul className="space-y-2">
-      {data.people.map((e) => (
-        <li key={e.id} className="card space-y-1">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="text-lg font-medium">
-              {e.name} <span className="chip">{e.kind}</span>
-            </span>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={e.priority} onChange={(ev) => act(() => setPriorityFn({ data: { id: e.id, value: ev.target.checked } }))} />
-              Their mail reaches the agent at once
-            </label>
-          </div>
-          <p className="muted text-sm">
-            {[...e.aliases, ...e.identifiers.map((i) => i.value)].join(" · ") || "no identifiers"}
-          </p>
-          {e.page ? (
-            <Link to="/memory" search={{ slug: e.page }} className="text-sm underline">
-              {e.page}
-            </Link>
-          ) : (
-            <span className="muted text-sm">no page</span>
-          )}
-          {e.recent_mail.length > 0 ? (
-            <ul className="text-sm">
-              {e.recent_mail.slice(0, 5).map((m) => (
-                <li key={m.gmail_id}>
-                  <a className="underline" href={`https://mail.google.com/mail/u/0/#all/${m.gmail_id}`} target="_blank" rel="noreferrer">
-                    {m.subject ?? "(no subject)"}
-                  </a>{" "}
-                  <span className="muted"><Ago iso={m.at} /></span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {FILTERS.map((f) => (
+          <Link key={f.id} to="/memory" search={{ tab: "people", filter: f.id, pq: search.pq }} className={`chip py-1 text-sm ${filter === f.id ? "bg-rail text-white" : ""}`}>
+            {f.label}
+          </Link>
+        ))}
+      </div>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void navigate({ search: (s) => ({ ...s, tab: "people", pq: pq.trim() || undefined }) });
+        }}
+      >
+        <input className="input" placeholder="Find a person by name, email, or number…" value={pq} onChange={(e) => setPq(e.target.value)} aria-label="Find a person" />
+        <button className="btn" type="submit">
+          Find
+        </button>
+      </form>
+      <p className="muted text-sm">
+        {total === 0
+          ? filter === "important" && !search.pq
+            ? "No one yet. People arrive from Google Contacts once LoR is signed in, and the agent adds people who matter."
+            : "No one matches."
+          : `${total} ${total === 1 ? "person" : "people"}${total > people.length ? `, showing ${people.length}` : ""}`}
+      </p>
+      <ul className="space-y-2">
+        {people.map((p) => (
+          <li key={p.id} className="card space-y-2">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-lg font-medium">
+                {p.page ? (
+                  <Link to="/memory" search={{ slug: p.page }} className="underline">
+                    {p.name}
+                  </Link>
+                ) : (
+                  p.name
+                )}{" "}
+                {p.kind !== "person" ? <span className="chip">{p.kind}</span> : null}
+                {p.from_google ? <span className="chip ml-1">contacts</span> : null}
+              </span>
+              {p.overdue_by !== null && p.overdue_by > 0 ? (
+                <span className="chip border-warn text-warn">overdue by {p.overdue_by} days</span>
+              ) : null}
+            </div>
+            <p className="text-sm">
+              {p.last.at ? (
+                <>
+                  Last in touch <Ago iso={p.last.at} />
+                  {p.last.via ? <span className="muted"> · {VIA[p.last.via]}</span> : null}
+                </>
+              ) : (
+                <span className="muted">Never in touch that LoR has seen.</span>
+              )}
+              {p.birthday ? (
+                <span className="muted">
+                  {" "}
+                  · birthday {new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`2000-${p.birthday.slice(-5)}T12:00:00Z`))}
+                  {p.birthday_in !== null && p.birthday_in <= 30 ? ` (${p.birthday_in === 0 ? "today" : `in ${p.birthday_in} days`}${p.turning ? `, turning ${p.turning}` : ""})` : ""}
+                </span>
+              ) : null}
+            </p>
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <select
+                className="input w-auto"
+                aria-label="Keep in touch"
+                value={p.keep_in_touch_days ?? ""}
+                onChange={(e) => act(() => setPersonFn({ data: { id: p.id, keepInTouchDays: e.target.value ? Number(e.target.value) : null } }))}
+              >
+                {CADENCES.map(([label, days]) => (
+                  <option key={label} value={days ?? ""}>
+                    {label}
+                  </option>
+                ))}
+                {p.keep_in_touch_days !== null && !CADENCES.some(([, d]) => d === p.keep_in_touch_days) ? (
+                  <option value={p.keep_in_touch_days}>every {p.keep_in_touch_days} days</option>
+                ) : null}
+              </select>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={p.priority} onChange={(e) => act(() => setPersonFn({ data: { id: p.id, priority: e.target.checked } }))} />
+                Their mail reaches the agent at once
+              </label>
+            </div>
+            {p.identifiers.length > 0 ? <p className="muted text-xs">{p.identifiers.map((i) => i.value).join(" · ")}</p> : null}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

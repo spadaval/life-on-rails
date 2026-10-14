@@ -21,7 +21,9 @@ import { getChanges } from "../memory/changes.js";
 import { getContext } from "../memory/context.js";
 import { resolveDate } from "../memory/day.js";
 import "../memory/todaySection.js";
-import { ENTITY_KINDS, showEntity, upsertEntity } from "../memory/entities.js";
+import "../memory/peopleSection.js";
+import { type PeopleFilter, birthdayLine, dueLine, listPeople } from "../people.js";
+import { ENTITY_KINDS, findEntity, showEntity, updateEntity, upsertEntity } from "../memory/entities.js";
 import { createPage, pageHistory, readPage, searchPages, updatePage } from "../memory/pages.js";
 import { SEARCH_KINDS, search } from "../memory/search.js";
 import "../memory/worldSections.js";
@@ -203,6 +205,38 @@ route("POST", /^\/entities$/, async ({ body }) => {
 });
 
 route("GET", /^\/entities\/(.+)$/, async ({ params }) => showEntity(sql, slugOf(params)));
+
+const SetEntity = z.object({
+  keep_in_touch_days: z.number().int().positive().nullish(),
+  clear_keep_in_touch: z.boolean().optional(),
+  birthday: z.string().nullish(),
+  clear_birthday: z.boolean().optional(),
+  priority: z.boolean().optional(),
+  thread: Thread,
+});
+
+route("POST", /^\/entities\/(.+)$/, async ({ params, body }) => {
+  const d = SetEntity.parse(body);
+  const row = await findEntity(sql, slugOf(params));
+  if (!row) throw new NotFound(`no entity matches ${JSON.stringify(slugOf(params))}`);
+  return updateEntity(sql, row.id, {
+    priority: d.priority,
+    keepInTouchDays: d.clear_keep_in_touch ? null : (d.keep_in_touch_days ?? undefined),
+    birthday: d.clear_birthday ? null : (d.birthday ?? undefined),
+  });
+});
+
+const PEOPLE_FILTERS = ["important", "all", "keep-in-touch", "overdue", "birthdays"] as const;
+
+route("GET", /^\/people$/, async ({ query }) => {
+  const filter = (query.get("filter") ?? "important") as PeopleFilter;
+  if (!(PEOPLE_FILTERS as readonly string[]).includes(filter)) throw new BadInput(`filter is one of ${PEOPLE_FILTERS.join(", ")}`);
+  const { people, total } = await listPeople(sql, { filter, q: query.get("q") ?? undefined, limit: intParam(query, "limit") ?? 50, birthdayWindow: intParam(query, "days") ?? 7 });
+  const lines = people.map((p) =>
+    filter === "birthdays" ? `- ${birthdayLine(p)}` : p.keep_in_touch_days ? `- ${dueLine(p)}` : `- ${p.name}: ${p.days_since === null ? "never in touch" : `last in touch ${p.days_since} days ago`} (entity ${p.id})`,
+  );
+  return { results: people, total, markdown: `${total} ${filter === "important" ? "people who matter" : filter}${total > people.length ? `, first ${people.length}` : ""}\n\n${lines.join("\n")}\n` };
+});
 
 // ---- log ----
 

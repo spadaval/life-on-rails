@@ -6,7 +6,8 @@ import { addDays, localDayBounds } from "../../shared/localTime.js";
 import { env } from "../env.js";
 import { NotFound } from "../errors.js";
 import { resolveDate } from "../memory/day.js";
-import { listEntities, setEntityPriority } from "../memory/entities.js";
+import { updateEntity } from "../memory/entities.js";
+import { type PeopleFilter, listPeople } from "../people.js";
 import { createPage, listPages, pageHistory, readPage, revertPage, setInDigest, updatePage } from "../memory/pages.js";
 import { search } from "../memory/search.js";
 
@@ -18,6 +19,8 @@ const Query = z.object({
   version: z.number().int().optional(),
   q: z.string().optional(),
   date: z.string().optional(),
+  filter: z.enum(["important", "all", "keep-in-touch", "overdue", "birthdays"]).optional(),
+  pq: z.string().optional(),
 });
 
 export const getMemoryFn = createServerFn({ method: "GET" })
@@ -44,7 +47,10 @@ export const getMemoryFn = createServerFn({ method: "GET" })
       }
     }
 
-    const people = tab === "people" ? await listEntities(sql) : [];
+    const people =
+      tab === "people"
+        ? await listPeople(sql, { filter: (data.filter ?? "important") as PeopleFilter, q: data.pq, limit: 200, birthdayWindow: 30 })
+        : { people: [], total: 0, shown: 0 };
 
     const date = resolveDate(data.date);
     let timeline: { id: string; t: string; source: string; title: string | null; detail: string | null; bulk: boolean }[] = [];
@@ -94,9 +100,17 @@ export const setInDigestFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const setPriorityFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), value: z.boolean() }).parse(d))
+export const setPersonFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      priority: z.boolean().optional(),
+      keepInTouchDays: z.number().int().positive().nullable().optional(),
+      birthday: z.string().nullable().optional(),
+    }).parse(d),
+  )
   .handler(async ({ data }) => {
-    await setEntityPriority(sql, data.id, data.value);
+    const { id, ...patch } = data;
+    await updateEntity(sql, id, patch);
     return { ok: true };
   });
