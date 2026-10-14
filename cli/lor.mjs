@@ -316,6 +316,17 @@ async function main() {
     if (e.detail && Object.keys(e.detail).length > 0) process.stderr.write(JSON.stringify(e.detail, null, 2) + "\n");
     return { 400: 2, 401: 4, 404: 5, 409: 6 }[response.status] ?? 1;
   }
+  // A page write echoes what changed, not the whole body the caller just sent.
+  if (call.method !== "GET" && call.path.startsWith("/pages")) {
+    const page = data.page ?? data;
+    data = {
+      slug: page.slug,
+      version: page.version,
+      head_version: page.head_version,
+      ...(data.page ? { changed: data.changed, dry_run: data.dry_run, diff: data.diff } : {}),
+      warnings: data.warnings ?? [],
+    };
+  }
   if (flags.md && call.md) printMarkdown(data);
   else {
     // The digest's markdown is the same content again; leave it out of JSON.

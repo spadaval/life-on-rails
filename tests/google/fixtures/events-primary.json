@@ -1,0 +1,60 @@
+{
+  "kind": "calendar#events",
+  "summary": "owner@example.com",
+  "timeZone": "America/Los_Angeles",
+  "items": [
+    {
+      "id": "standup_20261014T160000Z", "status": "confirmed", "summary": "Standup",
+      "htmlLink": "https://www.google.com/calendar/event?eid=c3RhbmR1cA",
+      "start": { "dateTime": "2026-10-14T09:00:00-07:00", "timeZone": "America/Los_Angeles" },
+      "end": { "dateTime": "2026-10-14T09:30:00-07:00", "timeZone": "America/Los_Angeles" },
+      "recurringEventId": "standup", "originalStartTime": { "dateTime": "2026-10-14T09:00:00-07:00" },
+      "eventType": "default",
+      "attendees": [
+        { "email": "owner@example.com", "self": true, "responseStatus": "accepted" },
+        { "email": "priya@example.com", "responseStatus": "accepted" }
+      ]
+    },
+    {
+      "id": "standup_20261015T160000Z", "status": "confirmed", "summary": "Standup",
+      "start": { "dateTime": "2026-10-15T09:00:00-07:00", "timeZone": "America/Los_Angeles" },
+      "end": { "dateTime": "2026-10-15T09:30:00-07:00", "timeZone": "America/Los_Angeles" },
+      "recurringEventId": "standup", "originalStartTime": { "dateTime": "2026-10-15T09:00:00-07:00" },
+      "eventType": "default"
+    },
+    {
+      "id": "dentist1", "status": "confirmed", "summary": "Dentist",
+      "start": { "dateTime": "2026-10-14T14:00:00-07:00" }, "end": { "dateTime": "2026-10-14T15:00:00-07:00" },
+      "eventType": "default"
+    },
+    {
+      "id": "hold1", "status": "confirmed", "summary": "Afternoon hold",
+      "start": { "dateTime": "2026-10-14T13:00:00-07:00" }, "end": { "dateTime": "2026-10-14T17:00:00-07:00" },
+      "eventType": "default"
+    },
+    {
+      "id": "declined1", "status": "confirmed", "summary": "Vendor pitch",
+      "start": { "dateTime": "2026-10-14T11:00:00-07:00" }, "end": { "dateTime": "2026-10-14T12:00:00-07:00" },
+      "eventType": "default",
+      "attendees": [{ "email": "owner@example.com", "self": true, "responseStatus": "declined" }, { "email": "sales@vendor.example" }]
+    },
+    {
+      "id": "free1", "status": "confirmed", "summary": "Rent due", "transparency": "transparent",
+      "start": { "dateTime": "2026-10-14T10:00:00-07:00" }, "end": { "dateTime": "2026-10-14T10:30:00-07:00" },
+      "eventType": "default"
+    },
+    {
+      "id": "focus1", "status": "confirmed", "summary": "Focus time", "eventType": "focusTime",
+      "start": { "dateTime": "2026-10-14T15:30:00-07:00" }, "end": { "dateTime": "2026-10-14T17:00:00-07:00" }
+    },
+    {
+      "id": "flight1", "status": "confirmed", "summary": "Flight to Austin (WN 1234)", "eventType": "fromGmail",
+      "start": { "dateTime": "2026-10-15T18:05:00-07:00" }, "end": { "dateTime": "2026-10-15T23:20:00-05:00" }
+    },
+    {
+      "id": "allday1", "status": "confirmed", "summary": "Priya in town",
+      "start": { "date": "2026-10-14" }, "end": { "date": "2026-10-16" }, "eventType": "default"
+    },
+    { "id": "broken1", "status": "confirmed", "summary": "No times" }
+  ]
+}

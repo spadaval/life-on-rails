@@ -77,6 +77,14 @@ dbDescribe("pages", () => {
     const after = await updatePage(sql, { slug: "inbox", append: "- Priya's birthday is in March\n", ...agent });
     expect(after.page.version).toBe(before.version + 1);
     expect(after.page.body.endsWith("\n\n- Priya's birthday is in March\n")).toBe(true);
+    // A second list item, and a footnote after a footnote, continue the block.
+    const more = await updatePage(sql, { slug: "inbox", append: "- Jo prefers Signal [^jo]\n", ...agent });
+    expect(more.page.body.endsWith("- Priya's birthday is in March\n- Jo prefers Signal [^jo]\n")).toBe(true);
+    expect(more.warnings).toEqual(["[^jo] is used but has no definition line"]);
+    const cited = await updatePage(sql, { slug: "inbox", append: "[^jo]: thread:t1", ...agent });
+    expect(cited.warnings).toEqual([]);
+    const last = await updatePage(sql, { slug: "inbox", append: "[^x]: thread:t2", ...agent });
+    expect(last.page.body.endsWith("[^jo]: thread:t1\n[^x]: thread:t2\n")).toBe(true);
   });
 
   it("dry run and no-op writes store nothing", async () => {

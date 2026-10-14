@@ -1,0 +1,10 @@
+{
+  "kind": "tasks#tasks",
+  "items": [
+    { "id": "t-open", "title": "Renew passport", "notes": "Form DS-82", "status": "needsAction", "due": "2026-10-20T00:00:00.000Z", "updated": "2026-10-13T18:00:00.000Z" },
+    { "id": "t-done", "title": "Book dentist", "status": "completed", "completed": "2026-10-13T21:15:00.000Z", "hidden": true, "updated": "2026-10-13T21:15:00.000Z" },
+    { "id": "t-deleted", "title": "Never mind", "status": "needsAction", "deleted": true },
+    { "id": "t-empty", "title": "  ", "status": "needsAction" },
+    { "id": "t-sub", "title": "Get passport photo", "status": "needsAction", "parent": "t-open" }
+  ]
+}

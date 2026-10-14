@@ -1,0 +1,9 @@
+{
+  "kind": "calendar#calendarList",
+  "items": [
+    { "id": "owner@example.com", "summary": "owner@example.com", "primary": true, "selected": true, "accessRole": "owner", "timeZone": "America/Los_Angeles" },
+    { "id": "family123@group.calendar.google.com", "summary": "Family", "selected": true, "accessRole": "writer" },
+    { "id": "en.usa#holiday@group.v.calendar.google.com", "summary": "Holidays in United States", "selected": true, "accessRole": "reader" },
+    { "id": "old-team@group.calendar.google.com", "summary": "Old team", "accessRole": "reader" }
+  ]
+}

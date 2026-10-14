@@ -40,3 +40,12 @@ describe("scrubLog", () => {
     expect(scrubLog("subject: Lunch on Friday")).toBe("subject: Lunch on Friday");
   });
 });
+
+describe("footnoteWarnings", () => {
+  it("names markers with no definition and definitions nothing uses", async () => {
+    const { footnoteWarnings } = await import("../../src/server/memory/pages.js");
+    expect(footnoteWarnings("Moved to Lisbon [^move].\n\n[^move]: thread:t1\n")).toEqual([]);
+    expect(footnoteWarnings("Birthday is 2 March [^bday].\n")).toEqual(["[^bday] is used but has no definition line"]);
+    expect(footnoteWarnings("Plain.\n\n[^old]: mail:abc\n")).toEqual(["[^old] is defined but never used"]);
+  });
+});

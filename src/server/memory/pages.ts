@@ -107,7 +107,12 @@ export interface CreatePageInput extends WriteMeta {
   intentId?: string | null;
 }
 
-export async function createPage(db: Sql, input: CreatePageInput): Promise<PageView> {
+export async function createPage(db: Sql, input: CreatePageInput): Promise<PageView & { warnings: string[] }> {
+  const page = await createPageRow(db, input);
+  return { ...page, warnings: footnoteWarnings(page.body) };
+}
+
+async function createPageRow(db: Sql, input: CreatePageInput): Promise<PageView> {
   if (!SLUG.test(input.slug)) {
     throw new BadInput(`bad slug ${JSON.stringify(input.slug)}: lowercase letters, digits, "-" and "/" only`);
   }
@@ -170,6 +175,42 @@ export interface UpdateResult {
   changed: boolean;
   dry_run: boolean;
   diff: string;
+  /** Things worth fixing that do not stop the write (a footnote with no definition). */
+  warnings: string[];
+}
+
+/**
+ * Footnote markers with no definition, and definitions nothing points at.
+ * A check on the text as written; nothing is stored about citations.
+ */
+export function footnoteWarnings(body: string): string[] {
+  const defined = new Set<string>();
+  const used = new Set<string>();
+  for (const line of body.split("\n")) {
+    const def = /^\[\^([^\]\s]+)\]:/.exec(line);
+    if (def) defined.add(def[1]!);
+    const rest = def ? line.slice(def[0].length) : line;
+    for (const m of rest.matchAll(/\[\^([^\]\s]+)\]/g)) used.add(m[1]!);
+  }
+  const out: string[] = [];
+  for (const k of used) if (!defined.has(k)) out.push(`[^${k}] is used but has no definition line`);
+  for (const k of defined) if (!used.has(k)) out.push(`[^${k}] is defined but never used`);
+  return out;
+}
+
+const LIST_LINE = /^\s*(?:[-*+]\s|\d+\.\s)/;
+const FOOTNOTE_LINE = /^\[\^[^\]\s]+\]:/;
+
+/** Append continues a list or a footnote block; anything else starts a new paragraph. */
+function appendTo(head: string, fragment: string): string {
+  const base = head.replace(/\n*$/, "");
+  const add = fragment.replace(/^\n+|\n*$/g, "");
+  if (!base) return `${add}\n`;
+  const last = base.slice(base.lastIndexOf("\n") + 1);
+  const first = add.split("\n", 1)[0]!;
+  const continues =
+    (LIST_LINE.test(last) && LIST_LINE.test(first)) || (FOOTNOTE_LINE.test(last) && FOOTNOTE_LINE.test(first));
+  return `${base}${continues ? "\n" : "\n\n"}${add}\n`;
 }
 
 export async function updatePage(db: Sql, input: UpdatePageInput): Promise<UpdateResult> {
@@ -204,17 +245,17 @@ export async function updatePage(db: Sql, input: UpdatePageInput): Promise<Updat
       }
       body = page.body.replace(input.find, () => input.replace ?? "");
     } else if (input.append !== undefined) {
-      const head = page.body.replace(/\n*$/, "");
-      body = `${head}${head ? "\n\n" : ""}${input.append.replace(/\n*$/, "")}\n`;
+      body = appendTo(page.body, input.append);
     }
     const title = input.title ?? page.title;
     const changed = body !== page.body || title !== page.title;
     const diff = renderDiff(diffLines(page.body, body));
     const head = await loadVersion(tx, page.id, page.head_version);
 
+    const warnings = footnoteWarnings(body);
     if (!changed || input.dryRun) {
       const shown = { ...head, title, body };
-      return { page: view(page, input.dryRun ? shown : head), changed, dry_run: Boolean(input.dryRun), diff };
+      return { page: view(page, input.dryRun ? shown : head), changed, dry_run: Boolean(input.dryRun), diff, warnings };
     }
 
     const next = page.head_version + 1;
@@ -223,7 +264,7 @@ export async function updatePage(db: Sql, input: UpdatePageInput): Promise<Updat
     await tx`UPDATE page SET title = ${title}, body = ${body}, head_version = ${next}, updated_at = now()
       WHERE id = ${page.id}`;
     const fresh = await loadPage(tx, page.slug);
-    return { page: view(fresh, await loadVersion(tx, page.id, next)), changed: true, dry_run: false, diff };
+    return { page: view(fresh, await loadVersion(tx, page.id, next)), changed: true, dry_run: false, diff, warnings };
   });
 }
 

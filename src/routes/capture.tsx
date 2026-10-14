@@ -32,6 +32,24 @@ function Capture() {
       </section>
 
       <section className="card">
+        <h2 className="text-lg font-semibold">Google</h2>
+        {status.google.state === "ok" ? (
+          <p className="text-rail">
+            signed in · {status.google.scopes.map((s) => s.replace("https://www.googleapis.com/auth/", "")).join(", ")}
+          </p>
+        ) : (
+          <>
+            <p className="font-semibold text-bad">
+              {status.google.state === "not-configured" ? "Not set up" : "Google auth required"}
+            </p>
+            <p className="muted text-sm">
+              {status.google.detail}. Run <code>pnpm google:auth</code> in the repo.
+            </p>
+          </>
+        )}
+      </section>
+
+      <section className="card">
         <h2 className="text-lg font-semibold">Jobs</h2>
         <ul className="mt-2 divide-y divide-black/10 dark:divide-white/10">
           {status.jobs.map((j) => (

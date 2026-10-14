@@ -1,6 +1,7 @@
 // What `/health`, the Capture cockpit, and `lor status` all report.
 import { sql } from "../db/client.js";
 import type { JsonObject } from "../shared/json.js";
+import { type GoogleAuthState, authState } from "./google/auth.js";
 import { JOBS, staleAfterMs } from "./jobs/registry.js";
 
 export interface JobStatus {
@@ -25,6 +26,7 @@ export interface Status {
   now: string;
   jobs: JobStatus[];
   sources: SourceStatus[];
+  google: GoogleAuthState;
 }
 
 export async function getStatus(): Promise<Status> {
@@ -61,8 +63,9 @@ export async function getStatus(): Promise<Status> {
       now: now.toISOString(),
       jobs,
       sources: sources.map((s) => ({ source: s.source, lastArrival: s.last.toISOString(), count: s.n })),
+      google: authState(),
     };
   } catch {
-    return { ok: false, db: false, now: now.toISOString(), jobs: [], sources: [] };
+    return { ok: false, db: false, now: now.toISOString(), jobs: [], sources: [], google: authState() };
   }
 }

@@ -15,6 +15,13 @@
       "when": 1791940548036,
       "tag": "0001_amazing_the_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791941131393,
+      "tag": "0002_good_iron_lad",
+      "breakpoints": true
     }
   ]
 }

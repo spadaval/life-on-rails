@@ -72,6 +72,16 @@ export const intent = pgTable(
     estimateHours: real("estimate_hours"),
     dueAt: ts("due_at"),
     snoozedUntil: ts("snoozed_until"),
+    // status=waiting: who owes the next move, and since when.
+    waitingOnEntityId: uuid("waiting_on_entity_id").references((): AnyPgColumn => entity.id, { onDelete: "set null" }),
+    waitingSince: ts("waiting_since"),
+    // Set for tasks imported from Google Tasks. A column, not meta: code branches on it.
+    googleTaskId: text("google_task_id"),
+    // Tasks: who is doing it. `agent` is all that delegated work is.
+    assignee: text("assignee").notNull().default("owner"),
+    threadRef: text("thread_ref"), // the T3 thread working an agent-assigned task
+    via: text("via").notNull().default("ui"), // ui | agent | job: who created it
+    sourceRef: text("source_ref"),
     meta: jsonb("meta").notNull().default({}),
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
@@ -79,7 +89,9 @@ export const intent = pgTable(
   },
   (t) => [
     index("intent_type_status_idx").on(t.type, t.status),
+    uniqueIndex("intent_google_task_idx").on(t.googleTaskId).where(sql`google_task_id is not null`),
     check("intent_weight_nonneg", sql`${t.weight} >= 0`),
+    check("intent_assignee_known", sql`${t.assignee} IN ('owner', 'agent')`),
   ],
 );
 
@@ -277,6 +289,10 @@ export const googleEvent = pgTable(
     tEnd: ts("t_end").notNull(),
     allDay: boolean("all_day").notNull().default(false),
     status: text("status").notNull().default("confirmed"), // confirmed | tentative | cancelled
+    // What decides whether an event fills the actual lane (see calendarSync.fillsActual).
+    transparency: text("transparency").notNull().default("opaque"), // opaque | transparent ("free")
+    eventType: text("event_type").notNull().default("default"),
+    selfResponse: text("self_response"), // the owner's RSVP, when the event has attendees
     htmlLink: text("html_link"),
     payload: jsonb("payload").notNull().default({}),
     updatedAt: ts("updated_at").notNull().defaultNow(),

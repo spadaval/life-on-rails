@@ -22,8 +22,13 @@ and Sumeet answers you here.
    `me` page (what is durably true about Sumeet), today, and what changed recently. Follow
    the `agent` page.
 2. Find your T3 thread id once: call the `t3_thread_configuration` tool with no arguments
-   and take `threadId`. Then `export LOR_THREAD=<threadId>` so every write is stamped with
-   it. Every write needs it; LoR refuses writes without one. Never invent an id.
+   and take `threadId` exactly as returned (it may look like `mcp:8fec4b1f-...` or be a bare
+   UUID; both are right). Then `export LOR_THREAD='<threadId>'` in each shell command that
+   writes, so every write is stamped with it. LoR refuses writes without one. Never invent
+   an id.
+
+Dates are Sumeet's local dates. The first line of `lor context` gives today's date and the
+time zone; use that date, not the machine's UTC clock.
 
 Working on one task for Sumeet (a worker thread)? Run `lor context --task <id> --md`
 instead, and finish with `lor done <id> --memo "<what happened>"`.
@@ -71,6 +76,10 @@ lor page update inbox --append <<< "- Priya's birthday is in March"
 - `--base` is the version you read. If someone wrote in between you get `stale-base` with
   the current body: read it and reapply your change. Never retry blindly.
 - `--find` text must occur exactly once. `--dry-run` shows the diff without writing.
+- A write that adds a claim and its footnote should be one edit: read the page, change the
+  body, and send the whole body back. The reply lists `warnings` for a footnote marker
+  with no definition or a definition nothing uses; fix those before moving on.
+- `--append` continues a list or a footnote block, and otherwise starts a new paragraph.
 - Do not change which pages are in the digest, and in unattended runs do not edit `agent`
   or `me` at all: say what you would change and let Sumeet decide.
 
@@ -82,6 +91,8 @@ Priya moved to Austin in March [^move] and prefers calls to email [^calls].
 [^move]: mail:18c2f4a9d0e1b2c3 "we close on the house March 3"
 [^calls]: thread:5534374d-adbc-4a28-9872-235fe9e18571 @2026-10-13
 ```
+
+The part after `thread:` is your thread id as T3 gave it, prefix and all.
 
 Targets are `mail:<gmail-id>`, `obs:<observation-id>`, `thread:<t3-thread-id>`,
 `url:<https://...>`. Cite sources, never another page. Things Sumeet tells you in the
@@ -100,7 +111,9 @@ lor entity show priya@example.com
 lor page create people/priya-raman --title "Priya Raman" --entity <entity_id> < body.md
 ```
 
-Create an entity for someone who matters, not for every sender.
+Entity first, then its page: the page is tied to the entity by `--entity`, and that is
+what lets a sender's address lead back to what you know about them. A page with no entity
+is fine for a topic. Create an entity for someone who matters, not for every sender.
 
 ## Looking things up
 
@@ -112,7 +125,9 @@ lor changes --since 24h                       # what arrived or changed
 lor status                                    # are the sensors and jobs healthy
 ```
 
-Search returns ids and snippets. Follow up with `lor page read` or `lor entity show`.
+Search matches page titles and bodies, entity names, aliases and identifiers (so an email
+address finds its person), task and goal titles, and the titles of recorded events. It
+returns ids and snippets; follow up with `lor page read` or `lor entity show`.
 Mail itself is not in LoR: LoR only knows that a message arrived. Read mail with the
 `google` skill (`gog`), and cite it as `mail:<gmail-id>`.
 

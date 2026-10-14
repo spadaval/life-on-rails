@@ -23,6 +23,7 @@ const jobs = new Map<string, Job>();
 const running = new Set<string>();
 const lastOk = new Map<string, number>();
 const lastAttempt = new Map<string, number>();
+const lastFailure = new Map<string, string>();
 let timer: NodeJS.Timeout | null = null;
 
 /** The most recent instant a daily job was scheduled for, at or before `now`. */
@@ -63,10 +64,15 @@ export async function runJob(name: string): Promise<RunOutcome> {
     const stats = await job.run();
     await sql`UPDATE job_run SET status = 'ok', finished_at = now(), stats = ${sql.json(stats as never)} WHERE id = ${id}`;
     lastOk.set(name, started);
+    lastFailure.delete(name);
     return "ok";
   } catch (err) {
     const message = errorMessage(err);
-    log("error", "job failed", { job: name, err: message, duration_ms: Date.now() - started });
+    // The same failure every five minutes is one line in the log, not hundreds.
+    if (lastFailure.get(name) !== message) {
+      log("error", "job failed", { job: name, err: message, duration_ms: Date.now() - started });
+      lastFailure.set(name, message);
+    }
     await sql`UPDATE job_run SET status = 'error', finished_at = now(), error = ${message} WHERE id = ${id}`.catch(() => {});
     return "error";
   } finally {
