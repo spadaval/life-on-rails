@@ -35,7 +35,6 @@ const Env = z.object({
   // Country calling code for numbers written without one ("(415) 555-0100").
   LOR_PHONE_COUNTRY_CODE: z.string().regex(/^\d{1,3}$/).default("1"),
   LOR_AGENT_TOKEN: z.string().default(""),
-  LOR_WAKE_URL: z.string().default(""),
   LOR_WAKE_QUIET_S: z.coerce.number().int().min(0).default(180),
   LOR_WAKE_MAX_S: z.coerce.number().int().min(0).default(900),
   GOOGLE_ACCOUNT: z.string().default(""),

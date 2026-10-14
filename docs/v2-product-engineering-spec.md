@@ -17,15 +17,16 @@ This is a personal project on one box with one user. There is no PR plan, review
 Life on Rails (LoR) closes the loop between what the owner intends and what the owner actually does. It has two jobs:
 
 1. **A time tracker that knows intent.** It replaces Toggl. It knows the calendar, the goals, and which goals are starving, and it asks for about 30 seconds of confirmation each evening.
-2. **The memory and senses of a personal agent.** An assistant that lives in T3 Code reads and writes LoR through a `lor` CLI: a wiki of what it knows, the owner's tasks and goals, the people in the owner's life, and a record of what happened. LoR notices things (calendar, tasks, contacts, mail arriving, phone activity) and wakes the agent when mail needs attention.
+2. **The memory and senses of a personal agent.** An assistant the owner talks to in T3 Code reads and writes LoR through a `lor` CLI: a wiki of what it knows, the owner's tasks and goals, the people in the owner's life, and a record of what happened. LoR notices things (calendar, tasks, contacts, mail arriving, phone activity) and holds mail that needs attention until the agent's mail run takes it.
 
 The owner has executive dysfunction, so the system must cost less to keep up than to abandon. That drives the product rules below.
 
 ## Who is who
 
-- **T3 Code** is where the agent lives and where the owner talks to it: threads, devices, auth, scheduling, models, delegation. Every question the agent has for the owner is asked in a thread.
-- **LoR** is what the agent knows, the owner's dashboard, and the senses. It records, shows, and notices, and decides by fixed rules when to wake the agent. It runs no model. It never acts, asks, or approves.
-- **The agent** is a role, not a program: any thread that has the skills and has run `lor context`. Its standing instructions are the `agent` wiki page, served by `lor context`.
+- **T3 Code** is where the owner talks to the agent: threads, devices, auth, models, delegation, the morning brief. Every question the agent has for the owner is asked in a thread.
+- **The runner** (`runner/`, systemd timers) starts the unattended runs, nightly and mail, as headless Claude Code. It is not part of LoR, and it reaches the owner only by posting into the main T3 thread (`tell-sumeet`).
+- **LoR** is what the agent knows, the owner's dashboard, and the senses. It records, shows, and notices, and decides by fixed rules when mail is ready for the agent. It runs no model and calls nobody. It never acts, asks, or approves.
+- **The agent** is a role, not a program: any session (a T3 thread or a headless run) that has the skills and has run `lor context`. Its standing instructions are the `agent` wiki page, served by `lor context`.
 - **`gog`** is the agent's Google tool, signed in with broad access. LoR never runs it.
 
 Do not add chat, an approval queue, notifications, or a model runtime to LoR.
@@ -47,7 +48,7 @@ Do not add chat, an approval queue, notifications, or a model runtime to LoR.
 - **A proposal means one thing:** LoR suggesting what the owner's time, habits, or metrics were, for the owner to confirm. It is never the agent asking permission.
 - **The agent has one rule:** do anything you can take back; ask in the thread before anything you cannot take back, or that speaks to other people as the owner (sending mail, pushing to a shared branch, paying, deleting). It is an instruction, not a mechanism. It will occasionally be broken, and that is accepted in exchange for an agent that can just do things.
 - **If code branches on it, it is schema; if only a model reads it, it is prose** on a wiki page. There is no generic fact table.
-- **LoR does not mirror the mailbox.** It records that a message arrived and wakes the agent, which reads mail in Gmail.
+- **LoR does not mirror the mailbox.** It records that a message arrived and queues it for the agent, which reads mail in Gmail.
 - **LoR has its own Google login** with read-only scopes, and calls Google's APIs directly.
 - **Search is Postgres full-text** (`tsvector` + `pg_trgm`). No embeddings, no pgvector.
 - **Nothing is deleted on a schedule.** No retention job. The box has 744 GiB free and a year of data is about a gigabyte at most.
@@ -74,10 +75,10 @@ Two processes: `postgresql`, and `lor-web` (a systemd user unit) which serves th
 ```
 Calendar, Tasks, Gmail  ──poll──┐
 phone sensor (tailnet)  ─ingest─┤→  lor-web  ⇄  Postgres
-manual timer (UI)       ────────┘     │  ▲
-                                 wake │  │ lor CLI → /api/v1
-                                      ▼  │
-                                 T3 Code threads (the agent, with gog)
+manual timer (UI)       ────────┘        ▲
+                                         │ lor CLI → /api/v1
+                                         │
+          the agent, with gog: T3 threads + headless timer runs
 ```
 
 **Server entry.** `pnpm build` writes `dist/server/server.js`, which exports a fetch handler and opens no socket. `scripts/serve.mjs` is the production entry: it (1) loads that bundle, which pings the database and exits non-zero if it is down, (2) serves the handler and `dist/client` with `srvx`, and (3) is the only thing that sets `LOR_RUN_JOBS=1`, so the scheduler inside the bundle starts once and never under `vite dev`. The systemd unit runs `node` by absolute path on it, not `pnpm`, with `Restart=always` and `EnvironmentFile=%h/.config/life-on-rails/env`.
@@ -99,7 +100,6 @@ manual timer (UI)       ────────┘     │  ▲
 | `tasks_poll` | every 900 s | Upserts `task` intents by `google_task_id`. See "Google Tasks". |
 | `contacts_poll` | every 6 h | Google Contacts → entities, incrementally with a sync token. See "People". |
 | `mail_check` | every 60 s, once `--mail` is signed in | See "Mail". |
-| `wake_flush` | 180 s quiet or 900 s max | Posts queued mail to the agent. Rows leave the queue only when the POST succeeds. |
 | `score_tick` | hourly | Recomputes scores. |
 | `overnight_close` | 01:30 local | Merges adjacent blocks, creates missing proposals, snapshots scores, wakes snoozed tasks. Does not confirm anything and calls no model. |
 | `heartbeat` | every 300 s | Proves the clock is alive. |
@@ -125,7 +125,6 @@ LOR_CONTACTS_POLL_S=21600
 LOR_MAIL_POLL_S=60
 LOR_PHONE_COUNTRY_CODE=1      # for numbers written without one
 LOR_AGENT_TOKEN=              # bearer for /api/v1; the lor CLI reads it from this file
-LOR_WAKE_URL=                 # T3 webhook that delivers new mail to the agent's main thread
 LOR_WAKE_QUIET_S=180
 LOR_WAKE_MAX_S=900
 GOOGLE_ACCOUNT=sumeet.padavala@gmail.com
@@ -153,7 +152,7 @@ Single user, so no owner column anywhere. Ids are UUIDv7. Timestamps are `timest
 | `entity`, `entity_identifier` | People, organisations, places, and how they are recognised (email, phone in E.164, domain). `entity` also carries `google_contact_id`, the birthday, `keep_in_touch_days`, and `priority` (skips the mail wait). |
 | `sync_cursor` | Where an incremental sync got to (the Google Contacts sync token). |
 | `page`, `page_version` | The wiki. |
-| `mail_state`, `wake_queue` | Where the mail check got to, and arrivals waiting to wake the agent. |
+| `mail_state`, `wake_queue` | Where the mail check got to, and arrivals waiting for the agent's mail run. |
 | `job_run`, `score_snapshot` | What ran, and each intent's score per local date with its explanation. |
 
 `intent`, `intent_link`, `proposal`, and `commitment` carry `via` (`ui` | `agent` | `rule` | `job`) and `source_ref` (for agent writes, the T3 thread id).
@@ -352,7 +351,7 @@ lor metric <intent_id> <value> [--date <date>]
 - **`lor context`** returns the `in_digest` pages, today's plan and running block, starving goals, the agent's open tasks, waiting tasks, pending proposals, and the titles of recently changed pages. Keep it short; add a size budget when a digest is actually too long. `--task <id>` returns the `agent` page, the task, its parent and linked intents, and the pages for the entities and projects it touches.
 - **`lor search`** runs `websearch_to_tsquery` against each requested table's `search` column plus trigram matches on entity names and page titles, merges by rank with a recency boost, and returns ids and snippets, never full bodies.
 - **`lor changes`** keys on arrival time, so something recorded late is not missed. The caller remembers its own last run time.
-- Every write takes `--thread <id>` (or `LOR_THREAD` in the environment). A thread learns its own id by calling T3's `t3_thread_configuration` tool with no arguments.
+- Every write takes `--thread <id>` (or `LOR_THREAD` in the environment). A thread learns its own id by calling T3's `t3_thread_configuration` tool with no arguments; the runner sets `LOR_THREAD=claude:<session id>` for headless runs.
 - Verbs are added with the code behind them.
 
 **`/api/v1`** is one server route with one endpoint per verb. Handlers call the same functions as the UI, so each write has one implementation. Auth is a loopback source address and `Authorization: Bearer $LOR_AGENT_TOKEN`. Requests are stamped `via=agent`.
@@ -389,14 +388,14 @@ One-way, Google → LoR. `tasks_poll` upserts `type=task` intents keyed on `goog
 
 ### Mail
 
-Mail lives in Gmail. LoR notices that something arrived and wakes the agent once per burst.
+Mail lives in Gmail. LoR notices that something arrived and hands it to the agent's mail run once per burst.
 
 - **Poll.** `mail_check` runs every `LOR_MAIL_POLL_S` (60 s). Gmail push would need a Cloud Pub/Sub topic, a subscription, and a billing account; a minute of latency is invisible behind the wake's quiet period, so LoR polls. Push can come back if the minute is ever felt.
 - **Check.** `history.list` from the stored history id, keeping messages added to `INBOX` or `SENT`, then `messages.get format=metadata` for each. Drafts and mail filtered past the inbox are skipped.
 - **Sent mail** is recorded the same way, with `direction: "sent"` and the recipients' addresses (`to_emails`), so "last in touch" counts the owner's replies. It never wakes the agent. Nothing is lost while LoR is down: the check reads from the stored position. If Gmail has expired the history id (about a week), list recent messages and take those with no observation.
 - **Arrival.** One observation per message: `source=gmail`, `title` = subject, `payload = {gmail_id, thread_id, direction: "in", from, from_email, labels, bulk}`. Idempotent on the Gmail id. That is all LoR knows about a message.
 - **Bulk.** A message is `bulk` if it has `List-Unsubscribe`, `Precedence: bulk|list|junk`, or a promotions, social, updates, or forums label, unless the sender is a known entity. Bulk is recorded and never wakes the agent. About 78% of the inbox is bulk; roughly ten messages a day are not.
-- **Wake.** Non-bulk arrivals go into `wake_queue`, coalesced by Gmail thread. The queue is flushed after `LOR_WAKE_QUIET_S` of quiet, or when its oldest entry is `LOR_WAKE_MAX_S` old, or at once for a sender whose entity has `priority`. A flush is one POST of the Gmail ids to `LOR_WAKE_URL`, which delivers them to the agent's main thread. One flush in flight at a time. If the POST fails (T3 is down, or it already holds 20 deliveries for a busy thread), the rows stay queued for the next flush.
+- **Wake.** Non-bulk arrivals go into `wake_queue`, coalesced by Gmail thread. The queue is due after `LOR_WAKE_QUIET_S` of quiet, or when its oldest entry is `LOR_WAKE_MAX_S` old, or at once for a sender whose entity has `priority`. LoR calls nobody: every two minutes `assistant-mail.timer` runs `runner/mail.sh`, which asks `lor mail pending` (empty until due) and, when there is something, starts a headless run with the Gmail ids. When the run exits cleanly the runner calls `lor mail done <observation ids>`; a failed run leaves the rows for the next tick, and mail that arrived meanwhile stays queued. systemd never starts a second run while one is going.
 - **The agent reads the mail** in Gmail with `gog`, decides what matters using the `agent` page, and either does nothing, notes it for the morning brief, acts, or asks the owner. What it learns goes onto pages, cited as `mail:<gmail-id>`.
 - **Senders.** Unknown senders do not create entities; the agent creates entities for people who matter.
 - **Not built:** backfill, a mail index, stored bodies, label tracking, a Mail tab, any model in LoR.
@@ -414,10 +413,23 @@ The people in the owner's life are entities. Google Contacts is where the owner 
 
 ### Agent runs
 
-These live in T3, not in this repo. The T3 project `assistant` is rooted at `~/google/assistant/`, whose `AGENTS.md` says to load the `lor` skill, run `lor context`, and follow the `agent` page. What each run does, and how the agent sets up its own schedules, is written on the `agent` page, so the owner can change it in the Memory screen.
+The owner talks to the agent in T3: the project `assistant`, rooted at `~/google/assistant/`, whose `AGENTS.md` says to load the `lor` skill, run `lor context`, and follow the `agent` page. Unattended runs start in the same directory as headless Claude Code (`claude -p`, Opus, permissions bypassed), so they have the same skills and page. What each run does is written on the `agent` page, so the owner can change it in the Memory screen.
 
 | Run | Started by | Does |
 | --- | --- | --- |
+| Main thread (T3) | The owner, or a relayed `tell-sumeet` | The conversation. Updates pages, creates and links tasks, drafts replies, asks before sending. Hands errands to workers. |
+| Worker (T3) | The main thread | One task assigned to the agent, in whichever project the work belongs to. Starts with `lor context --task <id>`, ends with `lor done <id> --memo "…"`. LoR stores the worker's thread on the task. |
+| Morning brief (T3) | 08:00, a T3 schedule bound to the main thread | Today's plan, the starving goal, the first action, tasks due or stale, mail noted overnight, and any change to an `in_digest` page. |
+| Nightly (headless) | `assistant-nightly.timer`, 02:00 Eastern | Writes the day page; files `inbox` entries; links unlinked tasks; notes stale waiting tasks. Reads `lor changes --since 24h`. |
+| Mail (headless) | `assistant-mail.timer`, every 2 min, only when `lor mail pending` is due | Reads the new mail in Gmail; does nothing, notes it for the brief, acts, or tells the owner. |
+
+Every run uses the owner's one `gog` login.
+
+**Why headless.** Unattended runs in T3 were turns in a chat thread: the mail ones would have filled the main thread, and LoR depended on a T3 hook address and T3's scheduler. Now the conversation is T3's and nothing else is. A headless run's record is what it wrote to LoR (credited to `claude:<session id>`); its transcript is in `~/.claude/projects/`, and `claude -r <session id>` in `~/google/assistant` reopens it. Logs: `journalctl --user -u assistant-mail -u assistant-nightly`.
+
+**Reaching the owner.** `runner/tell-sumeet "<text>"` POSTs to a T3 webhook task bound to the main thread, which relays the message there. Its address (`http://127.0.0.1:3773/api/hooks/<id>/<token>`, a secret) is `ASSISTANT_TELL_URL` in `~/.config/assistant/env` (0600). The hook is tied to one thread: a new main thread means recreating it there.
+
+--- | --- | --- |
 | Main thread | The owner, or a mail wake | The conversation. Updates pages, creates and links tasks, reads new mail, drafts replies, asks before sending. Hands errands to workers. |
 | Worker | The main thread | One task assigned to the agent, in whichever project the work belongs to. Starts with `lor context --task <id>`, ends with `lor done <id> --memo "…"`. LoR stores the worker's thread on the task. |
 | Nightly | 02:00 local, a fresh thread | Writes the day page; files `inbox` entries; links unlinked tasks; notes stale waiting tasks. Reads `lor changes --since 24h`. |
@@ -487,7 +499,7 @@ Privacy of the owner's own data is not a constraint. What matters is credentials
 | Reachable by others | Binds loopback by default. `/api/v1` also checks the source address. Off-box access is by Tailscale identity only. |
 | LoR writing to Google or reading mail | Not possible with its scopes. |
 
-LoR's only egress is Google's APIs and the POST to the T3 webhook.
+LoR's only egress is Google's APIs.
 
 ## Tests and backup
 
@@ -510,6 +522,7 @@ src/server/attribution/ fill, the block state machine, rules, interval math
 src/server/scoring/    formulas (pure) and recompute
 src/server/memory/     pages, entities, search, the digest, changes
 src/server/mail/       check, bulk rules, the wake queue
+runner/                the unattended runs (not LoR): headless Claude Code, tell-sumeet
 src/server/api/v1.ts   one endpoint per lor verb
 src/server/functions/  what the screens call
 src/routes/            Today, Graph, Memory, Capture, /health, /api/v1

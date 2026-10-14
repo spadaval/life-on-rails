@@ -28,6 +28,7 @@ import { createPage, pageHistory, readPage, searchPages, updatePage } from "../m
 import { SEARCH_KINDS, search } from "../memory/search.js";
 import "../memory/worldSections.js";
 import { explainScore, recomputeScores } from "../scoring/recompute.js";
+import { markMailHandled, pendingMail } from "../mail/wake.js";
 import { getStatus } from "../status.js";
 import { getToday, renderToday } from "../today.js";
 
@@ -246,6 +247,14 @@ route("POST", /^\/log$/, async ({ body }) => {
   const d = LogEntry.parse(body);
   return agentLog(sql, { text: d.text, intentId: d.intent_id, thread: d.thread });
 });
+
+// ---- mail waiting for the agent ----
+
+route("GET", /^\/mail\/pending$/, async () => pendingMail(sql, { quietS: env.LOR_WAKE_QUIET_S, maxS: env.LOR_WAKE_MAX_S }));
+
+const MailDone = z.object({ observation_ids: z.array(Uuid).min(1), thread: Thread });
+
+route("POST", /^\/mail\/done$/, async ({ body }) => markMailHandled(sql, MailDone.parse(body).observation_ids));
 
 // ---- the world model ----
 

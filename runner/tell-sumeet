@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# tell-sumeet "<text>": post into the assistant's main T3 thread, through the
+# T3 hook in ~/.config/assistant/env. The one way an unattended run reaches him.
+set -euo pipefail
+set -a; . "$HOME/.config/assistant/env"; set +a
+jq -n --arg text "$*" '{text: $text}' | curl -fsS -X POST -H 'content-type: application/json' --data @- "$ASSISTANT_TELL_URL" >/dev/null
+echo "sent"

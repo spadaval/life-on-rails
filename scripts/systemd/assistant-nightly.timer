@@ -1,0 +1,9 @@
+[Unit]
+Description=Assistant: nightly run
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target

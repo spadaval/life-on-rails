@@ -15,6 +15,7 @@ orientation
   lor context [--task <id>] [--md]        the digest; run first in every session
   lor status                              job and sensor health
   lor changes --since <rfc3339|24h|7d>    what arrived or changed after that time
+  lor mail pending                        mail waiting for the agent, once the burst is quiet
 
 read
   lor search <query> [--in page,entity,intent,obs] [--from <t>] [--to <t>] [--limit N]
@@ -36,6 +37,7 @@ write (free for the agent; every write needs --thread <your T3 thread id>)
   lor entity upsert --kind person|org|place|thing --name "..." [--email a@b]... [--alias "..."]...
   lor entity set <id|name|email> [--keep-in-touch <days>|off] [--birthday MM-DD|off] [--priority on|off]
   lor log "<text>" [--intent <id>]
+  lor mail done <observation_id>...       take handled mail off the queue
   lor intent create --type goal|project|habit|task|metric --title "..." [--parent <id>]
         [--due <t>] [--waiting-on <entity_id>] [--assign agent] [--weight N] [--hours N] [--description "..."]
   lor link --from <id> --to <id> --kind measures|blocks|derived_from [--weight N]
@@ -149,6 +151,13 @@ function plan(positionals, flags) {
       return { method: "GET", path: `/context${q({ task: flags.task })}`, md: true };
     case "status":
       return { method: "GET", path: "/status" };
+    case "mail":
+      if (b === "pending") return { method: "GET", path: "/mail/pending" };
+      if (b === "done") {
+        need(c, "<observation_id>...");
+        return { method: "POST", path: "/mail/done", body: write({ observation_ids: positionals.slice(2) }) };
+      }
+      break;
     case "changes":
       return { method: "GET", path: `/changes${q({ since: sinceTime(need(flags.since, "--since")) })}` };
     case "search":

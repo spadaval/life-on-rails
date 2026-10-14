@@ -12,7 +12,6 @@ import { googleMail } from "../google/mailClient.js";
 import { syncTasks } from "../google/tasksSync.js";
 import { wakeSnoozed } from "../intents.js";
 import { mailCheck } from "../mail/check.js";
-import { flushWake, wakeDue } from "../mail/wake.js";
 import { recomputeScores, scheduleRecompute, setConfirmRateProvider } from "../scoring/recompute.js";
 import { trailingConfirmRate } from "../today.js";
 
@@ -26,8 +25,6 @@ const startedAt = Date.now();
 export function mailConfigured(): boolean {
   return hasScope(SCOPES.gmail);
 }
-
-const wakeConfig = () => ({ url: env.LOR_WAKE_URL, quietS: env.LOR_WAKE_QUIET_S, maxS: env.LOR_WAKE_MAX_S });
 
 export const JOBS: Job[] = [
   {
@@ -69,12 +66,6 @@ export const JOBS: Job[] = [
     everyS: env.LOR_MAIL_POLL_S,
     shouldRun: async () => mailConfigured(),
     run: async () => mailCheck(sql, googleMail),
-  },
-  {
-    name: "wake_flush",
-    everyS: 20,
-    shouldRun: async () => wakeDue(sql, wakeConfig()),
-    run: async () => flushWake(sql, wakeConfig()),
   },
   {
     name: "overnight_close",

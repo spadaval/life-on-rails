@@ -1,0 +1,9 @@
+[Unit]
+Description=Assistant: check for mail waiting for the agent
+
+[Timer]
+OnCalendar=*:0/2
+# A run still going when the next tick comes is not started twice.
+
+[Install]
+WantedBy=timers.target

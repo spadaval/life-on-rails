@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { sql } from "../../src/db/client.js";
 import { type GMessage, HistoryExpiredError, type MailPort } from "../../src/server/google/mailClient.js";
 import { mailCheck } from "../../src/server/mail/check.js";
-import { flushWake, wakeDue } from "../../src/server/mail/wake.js";
+import { markMailHandled, pendingMail, wakeDue } from "../../src/server/mail/wake.js";
 import { showEntity, upsertEntity } from "../../src/server/memory/entities.js";
 import { dbDescribe } from "./helpers.js";
 
@@ -124,47 +124,40 @@ dbDescribe("mail check", () => {
 });
 
 dbDescribe("the wake", () => {
-  const cfg = { url: "http://t3.invalid/api/hooks/h/tok", quietS: 180, maxS: 900 };
+  const cfg = { quietS: 180, maxS: 900 };
 
   async function queued(box: ReturnType<typeof mailbox>, at: Date, ...msgs: GMessage[]) {
     box.arrive(...msgs);
     await mailCheck(sql, box.port, at);
   }
 
-  it("two messages in one thread a minute apart cause one wake, after the quiet period", async () => {
+  it("two messages in one thread a minute apart are pending together, after the quiet period", async () => {
     const box = mailbox();
     const t0 = new Date("2026-10-14T17:00:00Z");
     await mailCheck(sql, box.port, t0);
     await queued(box, t0, message("a1", { thread: "T", subject: "Quote" }));
     await queued(box, new Date(t0.getTime() + 60_000), message("a2", { thread: "T", subject: "Re: Quote" }));
-    expect(await wakeDue(sql, cfg, new Date(t0.getTime() + 120_000))).toBe(false);
-    expect(await wakeDue(sql, cfg, new Date(t0.getTime() + 241_000))).toBe(true);
+    expect(await pendingMail(sql, cfg, new Date(t0.getTime() + 120_000))).toMatchObject({ due: false, messages: [] });
 
-    const posts: { url: string; body: { count: number; text: string; messages: { gmail_id: string }[] } }[] = [];
-    const stats = await flushWake(sql, cfg, async (url, body) => {
-      posts.push({ url, body: body as never });
-      return { ok: true, status: 200 };
-    });
-    expect(stats).toMatchObject({ threads: 1, messages: 2, posted: true });
-    expect(posts).toHaveLength(1);
-    expect(posts[0]!.body.messages.map((m) => m.gmail_id)).toEqual(["a1", "a2"]);
-    expect(posts[0]!.body.text).toContain("Re: Quote");
+    const pending = await pendingMail(sql, cfg, new Date(t0.getTime() + 241_000));
+    expect(pending.due).toBe(true);
+    expect(pending.messages.map((m) => m.gmail_id)).toEqual(["a1", "a2"]);
+    expect(pending.text).toContain("Re: Quote");
+    expect(await queue()).toHaveLength(1); // listing does not take anything off
+
+    expect(await markMailHandled(sql, pending.observation_ids)).toEqual({ removed: 2 });
     expect(await queue()).toEqual([]);
     expect(await wakeDue(sql, cfg, new Date(t0.getTime() + 999_000))).toBe(false);
   });
 
-  it("a failed POST leaves the queue as it was", async () => {
+  it("mail that arrives while a run is handling a thread stays queued", async () => {
     const box = mailbox();
-    await mailCheck(sql, box.port);
-    await queued(box, new Date(), message("a1"));
-    await expect(flushWake(sql, cfg, async () => ({ ok: false, status: 429 }))).rejects.toThrow(/429/);
-    expect(await queue()).toHaveLength(1);
-  });
-
-  it("with no wake URL nothing is due and nothing is posted", async () => {
-    const box = mailbox();
-    await mailCheck(sql, box.port);
-    await queued(box, new Date(Date.now() - 3600_000), message("a1"));
-    expect(await wakeDue(sql, { ...cfg, url: "" })).toBe(false);
+    const t0 = new Date("2026-10-14T17:00:00Z");
+    await mailCheck(sql, box.port, t0);
+    await queued(box, t0, message("a1", { thread: "T" }));
+    const pending = await pendingMail(sql, cfg, new Date(t0.getTime() + 300_000));
+    await queued(box, new Date(t0.getTime() + 310_000), message("a2", { thread: "T" }));
+    await markMailHandled(sql, pending.observation_ids);
+    expect(await queue()).toEqual([{ thread: "T", n: 1, priority: false }]);
   });
 });

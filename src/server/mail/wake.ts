@@ -1,10 +1,10 @@
-// The wake: non-bulk arrivals wait in a queue, coalesced by Gmail thread, and
-// are handed to the agent in one POST once the burst has gone quiet. Rows
-// leave the queue only when the POST succeeds.
+// The wake: non-bulk arrivals wait in a queue, coalesced by Gmail thread, until
+// the burst has gone quiet. LoR calls nobody: the unattended mail run asks for
+// what is due (`lor mail pending`) and, once it has handled it, says so
+// (`lor mail done`). Rows leave the queue only then.
 import type { Sql, Tx } from "../../db/client.js";
 
 export interface WakeConfig {
-  url: string;
   quietS: number;
   maxS: number;
 }
@@ -36,34 +36,27 @@ export function isDue(rows: Pick<QueueRow, "first_seen" | "last_seen" | "priorit
 }
 
 export async function wakeDue(db: Tx, cfg: WakeConfig, now = new Date()): Promise<boolean> {
-  if (!cfg.url) return false;
   const rows = await db<QueueRow[]>`SELECT * FROM wake_queue`;
   return isDue(rows, now, cfg);
 }
-
-export type Poster = (url: string, body: unknown) => Promise<{ ok: boolean; status: number }>;
-
-const httpPost: Poster = async (url, body) => {
-  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  return { ok: res.ok, status: res.status };
-};
 
 export function wakeText(messages: WakeMessage[]): string {
   const lines = messages.map((m) => `- ${m.from ?? "unknown sender"} — ${m.subject ?? "(no subject)"} (gmail id ${m.gmail_id}, thread ${m.thread_id})`);
   return `${messages.length} new message${messages.length === 1 ? "" : "s"} in the inbox:\n${lines.join("\n")}`;
 }
 
-export interface FlushStats {
-  threads: number;
-  messages: number;
-  posted: boolean;
-  status?: number;
-  [key: string]: unknown;
+export interface PendingMail {
+  /** Quiet for long enough (or waiting too long, or a priority sender). Nothing is listed until then. */
+  due: boolean;
+  messages: WakeMessage[];
+  /** What to pass back to `lor mail done` once these are handled. */
+  observation_ids: string[];
+  text: string;
 }
 
-export async function flushWake(db: Sql, cfg: WakeConfig, post: Poster = httpPost): Promise<FlushStats> {
+export async function pendingMail(db: Sql, cfg: WakeConfig, now = new Date()): Promise<PendingMail> {
   const rows = await db<QueueRow[]>`SELECT * FROM wake_queue ORDER BY first_seen`;
-  if (rows.length === 0 || !cfg.url) return { threads: 0, messages: 0, posted: false };
+  if (!isDue(rows, now, cfg)) return { due: false, messages: [], observation_ids: [], text: "" };
   const ids = rows.flatMap((r) => r.observation_ids);
   const obs = await db<{ id: string; title: string | null; t_start: Date; payload: { gmail_id: string; thread_id: string; from: string | null; entity_id: string | null } }[]>`
     SELECT id, title, t_start, payload FROM observation WHERE id = ANY(${ids}::uuid[]) ORDER BY t_start`;
@@ -75,17 +68,18 @@ export async function flushWake(db: Sql, cfg: WakeConfig, post: Poster = httpPos
     date: o.t_start.toISOString(),
     known_sender: o.payload.entity_id !== null,
   }));
-  const result = await post(cfg.url, { text: wakeText(messages), count: messages.length, messages });
-  if (!result.ok) {
-    // T3 is down, or already holding its limit for a busy thread. Try again next time.
-    throw new Error(`wake POST failed with ${result.status}; ${rows.length} thread(s) stay queued`);
-  }
-  // Remove what was sent. A thread that got another message meanwhile stays, with only the new one.
-  for (const r of rows) {
-    await db`
-      UPDATE wake_queue SET observation_ids = ARRAY(SELECT unnest(observation_ids) EXCEPT SELECT unnest(${r.observation_ids}::uuid[]))
-      WHERE gmail_thread_id = ${r.gmail_thread_id}`;
-  }
-  await db`DELETE FROM wake_queue WHERE cardinality(observation_ids) = 0`;
-  return { threads: rows.length, messages: messages.length, posted: true, status: result.status };
+  return { due: true, messages, observation_ids: obs.map((o) => o.id), text: wakeText(messages) };
+}
+
+/** Take handled arrivals off the queue. A thread that got another message meanwhile stays, with only the new one. */
+export async function markMailHandled(db: Sql, observationIds: string[]): Promise<{ removed: number }> {
+  return db.begin(async (tx) => {
+    const before = (await tx<{ n: number }[]>`SELECT coalesce(sum(cardinality(observation_ids)), 0)::int AS n FROM wake_queue`)[0]!.n;
+    await tx`
+      UPDATE wake_queue SET observation_ids = ARRAY(SELECT unnest(observation_ids) EXCEPT SELECT unnest(${observationIds}::uuid[]))
+      WHERE observation_ids && ${observationIds}::uuid[]`;
+    await tx`DELETE FROM wake_queue WHERE cardinality(observation_ids) = 0`;
+    const after = (await tx<{ n: number }[]>`SELECT coalesce(sum(cardinality(observation_ids)), 0)::int AS n FROM wake_queue`)[0]!.n;
+    return { removed: before - after };
+  });
 }

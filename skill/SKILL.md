@@ -21,7 +21,8 @@ and Sumeet answers you here.
 1. Run `lor context --md`. It prints the `agent` page (who you are and the one rule), the
    `me` page (what is durably true about Sumeet), today, and what changed recently. Follow
    the `agent` page.
-2. Find your T3 thread id once: call T3's `t3_thread_configuration` tool with no arguments
+2. If `LOR_THREAD` is already set, you are an unattended run and it is your id; skip this
+   step. Otherwise find your T3 thread id once: call T3's `t3_thread_configuration` tool with no arguments
    and take `threadId` exactly as returned (it may look like `mcp:8fec4b1f-...` or be a bare
    UUID; both are right). The tool may be listed as `mcp__t3-code__t3_thread_configuration`
    and may need loading through tool search first. Every write must carry that id: either
@@ -168,7 +169,7 @@ lor habit <habit_id>
 lor metric <metric_id> 4
 ```
 
-Unattended runs (nightly, morning brief, mail wakes) never run these.
+Unattended runs (nightly, mail) and the morning brief never run these.
 
 ## Keeping a record
 

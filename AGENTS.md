@@ -7,9 +7,9 @@ Single-user self-hosted personal OS. The design and the state of the build are i
 - Personal project, one box, no users: no PR plan, review gate, or staged rollout. Work goes to `main` when it works.
 - Prefer the simplest shape: no fallbacks, watchdogs, retention, or permission layers until their absence is felt.
 - Add a table when the code that uses it is written.
-- T3 Code is where the agent lives. LoR is its memory, the owner's dashboard, and the senses. Do not add chat, an approval queue, notifications, or a model runtime to LoR.
+- T3 Code is where the owner talks to the agent. Unattended runs (nightly, mail) are headless Claude Code started by systemd timers from `runner/`, which is not part of LoR. LoR is the agent's memory, the owner's dashboard, and the senses; it calls nobody. Do not add chat, an approval queue, notifications, or a model runtime to LoR.
 - A `proposal` is only LoR suggesting what a block of the owner's time was.
-- LoR does not mirror the mailbox: it records that a message arrived (headers, never a body) and wakes the agent.
+- LoR does not mirror the mailbox: it records that a message arrived (headers, never a body) and queues it until the mail run takes it (`lor mail pending` / `lor mail done`).
 - LoR talks to Google through its own read-only OAuth login and never runs `gog`.
 - Never import from `archive/2023/` (frozen 2023 draft).
 - `pnpm dev` is UI-only. The scheduler starts only from `scripts/serve.mjs`.
@@ -47,4 +47,4 @@ The in-app browser preview may be off for a thread. `scripts/ui-server.sh` start
 
 ## Talking to the running service
 
-`lor` (symlinked from `cli/lor.mjs`) is the agent's CLI; `skill/SKILL.md` teaches it. `lor status` shows every job. Logs: `journalctl --user -u lor-web -f`.
+`lor` (symlinked from `cli/lor.mjs`) is the agent's CLI; `skill/SKILL.md` teaches it. `lor status` shows every job. Logs: `journalctl --user -u lor-web -f`; the unattended runs: `journalctl --user -u assistant-mail -u assistant-nightly`. An unattended run reaches the owner only with `runner/tell-sumeet`, whose T3 hook address is in `~/.config/assistant/env`.

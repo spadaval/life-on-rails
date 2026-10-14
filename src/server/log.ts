@@ -10,7 +10,7 @@ const TOKEN_PATTERNS: RegExp[] = [
 ];
 
 function secretValues(): string[] {
-  return [env.LOR_AGENT_TOKEN, env.LOR_WAKE_URL].filter((v) => v.length >= 8);
+  return [env.LOR_AGENT_TOKEN].filter((v) => v.length >= 8);
 }
 
 /** Remove bearer tokens, Google tokens, and configured secrets from a string. */
