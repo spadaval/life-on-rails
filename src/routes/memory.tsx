@@ -72,7 +72,7 @@ function Memory() {
         </button>
       </form>
 
-      {data.results ? <Results results={data.results} onClear={() => { setQ(""); void navigate({ search: (s) => ({ ...s, q: undefined }) }); }} /> : null}
+      {data.results ? <Results results={data.results} timezone={data.timezone} onClear={() => { setQ(""); void navigate({ search: (s) => ({ ...s, q: undefined }) }); }} /> : null}
 
       <nav className="flex gap-1">
         {TABS.map((t) => (
@@ -98,7 +98,7 @@ function Memory() {
   );
 }
 
-function Results({ results, onClear }: { results: NonNullable<Data["results"]>; onClear: () => void }) {
+function Results({ results, timezone, onClear }: { results: NonNullable<Data["results"]>; timezone: string; onClear: () => void }) {
   return (
     <section className="card space-y-2">
       <div className="flex items-center justify-between">
@@ -120,7 +120,7 @@ function Results({ results, onClear }: { results: NonNullable<Data["results"]>; 
                 {r.title}
               </Link>
             ) : r.kind === "obs" ? (
-              <Link to="/memory" search={{ tab: "timeline", date: localDate(r.t), obs: r.id }} className="font-medium underline">
+              <Link to="/memory" search={{ tab: "timeline", date: localDate(r.t, timezone), obs: r.id }} className="font-medium underline">
                 {r.title || "(untitled)"}
               </Link>
             ) : (
@@ -137,8 +137,8 @@ function Results({ results, onClear }: { results: NonNullable<Data["results"]>; 
 }
 
 /** The local calendar date of an instant, for a link into the Timeline. */
-function localDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+function localDate(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
 }
 
 function Pages({ data, act }: { data: Data; act: Act }) {

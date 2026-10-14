@@ -24,7 +24,7 @@ const Env = z.object({
   LOR_PORT: z.coerce.number().int().default(3847),
   LOR_SERVE_PORT: z.coerce.number().int().default(3848),
   LOR_OWNER_LOGIN: z.string().default(""),
-  LOR_TZ: z.string().default("America/Los_Angeles"),
+  LOR_TZ: z.string().default("America/New_York"),
   LOR_WAKE_START: hm.default("08:00"),
   LOR_WAKE_END: hm.default("22:00"),
   LOR_SCORING_WEEKS: z.coerce.number().int().min(1).default(2),
