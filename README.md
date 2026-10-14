@@ -64,6 +64,14 @@ page shows whether the login is working.
 - Backups: `~/.local/share/life-on-rails/backup/`, nightly, last 7 kept.
   Restore with `pg_restore --clean --if-exists -d life_on_rails <file>` after stopping the unit.
 
+## The phone app
+
+`android/` is the phone's sensor and timer, in Kotlin and Jetpack Compose. Build it with
+`cd android && ./gradlew assembleDebug` (the Android SDK is at `~/Android/Sdk`), and install it
+over wireless debugging: `adb connect 100.83.51.27:<port>` then
+`adb install -r app/build/outputs/apk/debug/app-debug.apk`. `./gradlew testDebugUnitTest`
+runs its JVM tests. See "The phone" in the spec.
+
 ## The agent
 
 `cli/lor.mjs` is the agent's CLI (symlink it to `~/.local/bin/lor`), and `skill/` is the

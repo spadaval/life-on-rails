@@ -1,6 +1,7 @@
 @import "tailwindcss";
 /* The frozen 2023 app is full of class names; do not scan it. */
 @source not "../archive";
+@source not "../android";
 
 @theme {
   --color-ink: #16181d;

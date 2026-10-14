@@ -41,6 +41,10 @@ Single-user self-hosted personal OS. The design and the state of the build are i
 
 The in-app browser preview may be off for a thread. `scripts/ui-server.sh` starts a throwaway server on the **test** database at `:3857`, and `node scripts/ui-check.mjs <graph|today|memory> <out-dir>` drives it in the system Chrome and writes screenshots. Never point either at the real database.
 
+## The phone app
+
+`android/` is a Kotlin + Compose app (the phone's sensors, the timer tile, settings). `cd android && ./gradlew assembleDebug testDebugUnitTest`. Install over wireless adb (`~/Android/Sdk/platform-tools/adb`, phone at `100.83.51.27` over Tailscale; find the port with `nmap -p 30000-50000`). Try it first on the emulator (`sg kvm -c start-t3-emulator`) pointed at the test server (`http://10.0.2.2:3857`), never the real one. The server side is `src/server/device.ts`.
+
 ## Talking to the running service
 
 `lor` (symlinked from `cli/lor.mjs`) is the agent's CLI; `skill/SKILL.md` teaches it. `lor status` shows every job. Logs: `journalctl --user -u lor-web -f`.

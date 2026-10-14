@@ -1,0 +1,53 @@
+package com.spadaval.lor.net
+
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+
+/** The server's /device endpoints. Blocking: call from Dispatchers.IO. */
+class LorClient(baseUrl: String) {
+    private val base = baseUrl.trimEnd('/')
+
+    fun state(device: String): JSONObject = request("GET", "/device/state?device=${URLEncoder.encode(device, "UTF-8")}")
+
+    fun timer(action: String, device: String, intentId: String? = null, title: String? = null): JSONObject {
+        val body = JSONObject().put("action", action).put("device", device)
+        if (intentId != null) body.put("intent_id", intentId)
+        if (!title.isNullOrBlank()) body.put("title", title)
+        return request("POST", "/device/timer", body)
+    }
+
+    fun ingest(device: String, observations: List<String>): JSONObject {
+        val array = JSONArray()
+        for (o in observations) array.put(JSONObject(o))
+        return request("POST", "/device/ingest", JSONObject().put("device", device).put("observations", array), readTimeoutMs = 120_000)
+    }
+
+    private fun request(method: String, path: String, body: JSONObject? = null, readTimeoutMs: Int = 20_000): JSONObject {
+        val conn = URL(base + path).openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = method
+            conn.connectTimeout = 15_000
+            conn.readTimeout = readTimeoutMs
+            conn.setRequestProperty("accept", "application/json")
+            if (body != null) {
+                conn.doOutput = true
+                conn.setRequestProperty("content-type", "application/json")
+                conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            }
+            val code = conn.responseCode
+            val text = (if (code in 200..299) conn.inputStream else conn.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
+            if (code !in 200..299) {
+                val message = runCatching { JSONObject(text).getJSONObject("error").getString("message") }.getOrNull()
+                    ?: if (code == 403) "the server did not recognise you: is Tailscale on?" else text.take(200)
+                throw IOException("$code: $message")
+            }
+            return JSONObject(text)
+        } finally {
+            conn.disconnect()
+        }
+    }
+}

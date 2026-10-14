@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Life on Rails</string>
+    <string name="tile_label">Timer</string>
+</resources>

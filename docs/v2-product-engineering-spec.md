@@ -447,19 +447,33 @@ There is no chat screen: the conversation is a T3 thread.
 
 ## The phone
 
-`buildbot` is headless, so the owner's day happens on the phone.
+`buildbot` is headless, so the owner's day happens on the phone. The phone runs a small app of its own, `android/` in this repo: Kotlin and Jetpack Compose, sideloaded, package `com.spadaval.lor`.
 
-- **The dashboard** is the Serve listener described in "Architecture". It is built before Today, because Today is used from the phone and the laptop.
-- **Ingest** rides the same listener: the sensor POSTs observation envelopes to `http://buildbot:3847/ingest`, and the Serve identity check is the only auth.
-- **Android sensor:** an Expo module on `pixel-9a` that uploads app-usage events in batches (read retroactively, so it tolerates being offline), sleep and exercise from Health Connect, places and movement, calls and texts, and a quick-settings tile for the timer. No accessibility-service capture.
-- **Calls and texts** are metadata only, like mail: one `source=android` observation each with `payload = {kind: "call" | "sms", direction: "in" | "out" | "missed", phone, duration_s}`, the number normalised the same way as contact numbers. "Last in touch" already reads them; nothing else needs to change when they start arriving. A sideloaded app may ask for the call-log and SMS permissions that Play restricts. It is hosted in a thin mobile-only fork of T3 Code or a minimal standalone app, decided while building it.
+**What it collects** (each sensor can be switched off in the app, and each needs a permission the owner grants there):
 
-**Activity blocks need a design before this is built.** The time-block rules above cover manual and calendar blocks only. Open problems:
+| Sensor | From | Observation (`source=android`) |
+| --- | --- | --- |
+| App usage | The system's usage events (Usage access) | One per foreground session: `app` = package, `title` = app name, `payload.kind = "app"`. Back-to-back sessions of one app within 30 s are one; the launcher and system UI are left out. |
+| Calls | The call log | `payload = {kind: "call", direction, phone, duration_s, name?}`. Never audio. |
+| Texts | The SMS store | `payload = {kind: "sms", direction, phone}`. Never the text. RCS chats live inside Google Messages and are not visible. |
+| Sleep, exercise, steps | Health Connect | `kind: "sleep"` (with minutes per stage), `kind: "exercise"`, and one `kind: "steps"` per local day whose end grows as the count does. |
+| Location (off by default) | The fused location provider | One fix per sync: `kind: "location"`, latitude, longitude, accuracy. |
 
-- Usage events arrive about 15 minutes late and already closed, so there is no "open activity block".
-- The one-open-block index means an activity block cannot be open while a timer runs, and what happens when activity overlaps a manual block is undecided.
-- A day of phone use is dozens of short app sessions. They need rolling up into a handful of blocks, or the evening confirm stops being 30 seconds.
-- Waking hours taken from sleep data change daily and need somewhere to live; config is the env file only.
+**How it gets to LoR.** Every 15 minutes (WorkManager's shortest period) each sensor collects what is new since its own cursor into a local queue, and the queue is uploaded to `POST /device/ingest` in batches. Every observation has a stable id derived from what it is (a call-log row, an app session's start), so a retry or a re-read is the same row, and a session that grew longer extends its row. The queue keeps working offline. The server accepts only device sources, checks the batch's device name, and stores phone numbers in E.164 so calls and texts count toward "last in touch".
+
+**Also in the app:** a Timer tab and a quick-settings tile (tap to start a timer, tap again to stop) through `GET /device/state` and `POST /device/timer`; a Dashboard tab showing the web dashboard; and settings for the server address and the phone's name.
+
+**Auth.** The app talks to `http://buildbot.tail47515a.ts.net:3847`, the Serve listener, so every request carries the owner's Tailscale identity and is refused without it. `/device/*` is not under `/api/`, so it is routed there.
+
+**Building and installing.** `cd android && ./gradlew assembleDebug`, then `adb install -r app/build/outputs/apk/debug/app-debug.apk` over wireless debugging: the phone is paired with this box and reachable over Tailscale at `100.83.51.27` (the port changes each time wireless debugging is switched on; `nmap -p 30000-50000` finds it). `testDebugUnitTest` runs the session-building tests on the JVM. The T3 emulator image (`start-t3-emulator`, run under `sg kvm`) works for trying it against the test database at `http://10.0.2.2:3857`.
+
+**Not built yet: activity blocks.** Phone observations are stored, not yet turned into time blocks. That needs a design, now with real data to design against:
+
+- Usage events arrive up to 15 minutes late and already closed, so there is no "open activity block".
+- What happens when phone activity overlaps a running timer or a manual block is undecided.
+- A day of phone use is dozens of short sessions; they need rolling up into a handful of blocks, or the evening confirm stops being 30 seconds.
+- Waking hours from sleep data change daily and need somewhere to live; config is the env file only.
+- Places from location fixes (home, work, the gym) are worked out on the server later.
 
 ---
 
@@ -525,6 +539,7 @@ Built on 2026-10-14, in this order, each checked as described.
 | 8 | Memory screen | A browser pass: read, undo the agent's edit, a conflicting save, history, revert, people, timeline, search. |
 | 9 | Overnight close | Tests; it ran once on the boot after it was added. |
 | 10 | People: contacts import, last in touch, keep-in-touch cadences, birthdays | Tests with a fake Contacts account (import, merge, edits, deletions, expired token) and for every channel of "last in touch"; a browser pass over the People screen. **Not yet run against Google.** |
+| 11 | The phone app: app usage, calls, texts, Health Connect, location, the timer tile, settings | JVM tests for session building; on the emulator, a sync uploaded app sessions and calls to the test database and the tile started and stopped a timer. Installed on the phone over wireless adb; permissions are granted on the phone. |
 
 **Waiting on the owner**
 
@@ -535,7 +550,7 @@ Built on 2026-10-14, in this order, each checked as described.
 
 **Not built**
 
-- **The phone sensor.** It starts with a design for activity blocks (see "The phone"), then `/ingest` on the Serve listener and the Android module.
+- **Activity blocks** from phone observations, and places from location fixes (see "The phone").
 
 ### When wanted
 
@@ -557,9 +572,8 @@ Multi-user, billing, or hosting for anyone else. A mail client. A contacts edito
 1. **Pub/Sub prerequisites.** A topic and pull subscription in LoR's Google Cloud project; permission for Gmail to publish to it; whether the owner's OAuth login with the Pub/Sub scope is enough to pull, or a service account is needed; whether `gmail.metadata` is enough for `users.watch` and `history.list`.
 2. **OAuth consent screen.** `gmail.metadata` is a restricted scope. Whether an unverified app can be "In production" with it for one user, so the refresh token does not expire after seven days.
 3. **The mail hook's address.** Whether T3 Connect is on here, so the agent can read the address itself.
-4. **Host for the phone pieces.** A thin T3 mobile fork or a standalone app. Unverified: whether a self-built T3 client pairs with a stock server, and whether this box can build an Android app.
-5. **Activity blocks.** The design called for in "The phone".
-6. **Drive files as sources.** Not yet.
+4. **Activity blocks.** The design called for in "The phone".
+5. **Drive files as sources.** Not yet.
 
 ## Alternatives set aside
 
@@ -567,6 +581,7 @@ Multi-user, billing, or hosting for anyone else. A mail client. A contacts edito
 - **ActivityWatch plus Notion.** No world model and no planned-versus-actual; the join is the product.
 - **LoR reading Google through `gog`.** It asked one tool to be both the agent's full-access hands and LoR's read-only reader.
 - **The agent inside LoR.** LoR would have to build a tool loop, chat, scheduling, notifications, and a phone client that T3 already has. Reversible later: an in-app agent would call the same `/api/v1`.
-- **A deep fork of T3 Code** with LoR's screens built in. Constant merge conflicts against a fast-moving UI. A thin mobile-only fork remains an option for the phone.
+- **A fork of T3 Code** with LoR's screens or the phone sensor built in. Constant merge conflicts against a fast-moving UI; the phone has a small app of its own instead.
+- **Expo for the phone app.** Every sensor needed native code anyway (usage events, the call log, the tile, background work), so the app is plain Kotlin.
 - **An approval queue or permission tiers for the agent.** Judged worse than the occasional unwanted action.
 - **A Hono worker plus a Vite SPA.** Would isolate the clock from dev reloads; not worth a second process while `pnpm dev` is simply not the clock.
