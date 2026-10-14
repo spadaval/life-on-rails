@@ -21,11 +21,12 @@ and Sumeet answers you here.
 1. Run `lor context --md`. It prints the `agent` page (who you are and the one rule), the
    `me` page (what is durably true about Sumeet), today, and what changed recently. Follow
    the `agent` page.
-2. Find your T3 thread id once: call the `t3_thread_configuration` tool with no arguments
+2. Find your T3 thread id once: call T3's `t3_thread_configuration` tool with no arguments
    and take `threadId` exactly as returned (it may look like `mcp:8fec4b1f-...` or be a bare
-   UUID; both are right). Then `export LOR_THREAD='<threadId>'` in each shell command that
-   writes, so every write is stamped with it. LoR refuses writes without one. Never invent
-   an id.
+   UUID; both are right). The tool may be listed as `mcp__t3-code__t3_thread_configuration`
+   and may need loading through tool search first. Every write must carry that id: either
+   pass `--thread '<threadId>'`, or set `export LOR_THREAD='<threadId>'` in each shell
+   command that writes. LoR refuses writes without one. Never invent an id.
 
 Dates are Sumeet's local dates. The first line of `lor context` gives today's date and the
 time zone; use that date, not the machine's UTC clock.
@@ -137,7 +138,7 @@ Mail itself is not in LoR: LoR only knows that a message arrived. Read mail with
 lor graph --starving                          # goals short of their weekly hours
 lor intent create --type task --title "Renew passport" --parent <project_id> --due 2026-11-01T00:00:00-07:00
 lor link --from <habit_id> --to <goal_id> --kind measures
-lor task assign <task_id> agent               # you are doing it; `owner` hands it back
+lor task assign <task_id> agent               # you are doing it; `owner` hands it back (tasks only)
 lor done <task_id> --memo "Booked for Nov 3; confirmation in mail:18c2..."
 lor propose time --block <block_id> --intent <intent_id> --reason "calendar says dentist"
 ```

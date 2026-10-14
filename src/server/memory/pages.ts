@@ -344,7 +344,7 @@ export async function searchPages(db: Tx, query: string, limit = 10): Promise<Pa
   const rows = await db<{ slug: string; title: string; snippet: string; score: number; updated_at: Date }[]>`
     WITH q AS (SELECT websearch_to_tsquery('english', ${q}) AS tsq)
     SELECT p.slug, p.title,
-           ts_headline('english', p.body, q.tsq, 'MaxWords=30, MinWords=10, MaxFragments=2') AS snippet,
+           ts_headline('english', p.body, q.tsq, 'MaxWords=30, MinWords=10, MaxFragments=2, StartSel="", StopSel=""') AS snippet,
            (ts_rank_cd(p.search, q.tsq) + similarity(p.title, ${q}) + CASE WHEN p.slug ILIKE ${"%" + q.replace(/\s+/g, "-") + "%"} THEN 0.5 ELSE 0 END)::float8 AS score,
            p.updated_at
     FROM page p, q

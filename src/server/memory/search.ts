@@ -69,7 +69,7 @@ export async function search(db: Tx, input: SearchInput): Promise<SearchHit[]> {
       await db<Row[]>`
         WITH q AS (SELECT websearch_to_tsquery('english', ${q}) AS tsq)
         SELECT p.slug AS id, p.title,
-               ts_headline('english', p.body, q.tsq, 'MaxWords=30, MinWords=10, MaxFragments=2') AS snippet,
+               ts_headline('english', p.body, q.tsq, 'MaxWords=30, MinWords=10, MaxFragments=2, StartSel="", StopSel=""') AS snippet,
                p.updated_at AS t,
                (ts_rank_cd(p.search, q.tsq) + similarity(p.title, ${q}))::float8 AS score
         FROM page p, q

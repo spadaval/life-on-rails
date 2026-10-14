@@ -216,13 +216,18 @@ route("POST", /^\/log$/, async ({ body }) => {
 // ---- the world model ----
 
 route("GET", /^\/graph$/, async ({ query }) => {
+  // Scores are recomputed shortly after a write; a read straight after one must not see the old number.
+  await recomputeScores(sql);
   let { nodes } = await getGraph(sql);
   if (query.get("starving")) nodes = nodes.filter((n) => n.starving);
   if (query.get("waiting")) nodes = nodes.filter((n) => n.status === "waiting");
   return { results: nodes, markdown: renderGraph(nodes) };
 });
 
-route("GET", /^\/intents\/([0-9a-f-]{36})$/, async ({ params }) => getIntentDetail(sql, params[0]!));
+route("GET", /^\/intents\/([0-9a-f-]{36})$/, async ({ params }) => {
+  await recomputeScores(sql);
+  return getIntentDetail(sql, params[0]!);
+});
 
 const CreateIntent = z.object({
   type: z.enum(INTENT_TYPES),

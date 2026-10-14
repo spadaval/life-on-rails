@@ -17,6 +17,9 @@ export interface GraphNode extends IntentView {
   overdue: boolean;
   /** The due date as a local calendar date, for display and editing. */
   due_local: string | null;
+  /** Projects: how many of their tasks are done. */
+  tasks_done: number;
+  tasks_total: number;
   parents: { link_id: string; id: string; title: string; kind: string; via: string }[];
   children: number;
 }
@@ -44,6 +47,8 @@ export async function getGraph(db: Tx, now = new Date()): Promise<Graph> {
         starving: i.type === "goal" && i.status === "active" && week?.starving === true,
         overdue: i.due_at !== null && new Date(i.due_at).getTime() < now.getTime() && i.status !== "done",
         due_local: i.due_at ? localYmd(env.LOR_TZ, new Date(i.due_at)) : null,
+        tasks_done: typeof terms.tasks_done === "number" ? terms.tasks_done : 0,
+        tasks_total: typeof terms.tasks_total === "number" ? terms.tasks_total : 0,
         parents: links
           .filter((l) => l.from_id === i.id && byId.has(l.to_id))
           .map((l) => ({ link_id: l.id, id: l.to_id, title: byId.get(l.to_id)!.title, kind: l.kind, via: l.via })),
@@ -79,7 +84,8 @@ export function renderGraph(nodes: GraphNode[]): string {
   };
   section("Goals", "goal", (n) =>
     `${n.title} — ${pct(n.score)}${n.weekly_hour_target ? `, ${n.week_hours ?? 0}/${n.weekly_hour_target}h this week` : ""}${n.starving ? " **starving**" : ""} (id ${n.id})`);
-  section("Projects", "project", (n) => `${n.title} — ${pct(n.score)}${n.parents.length ? ` · for ${n.parents.map((p) => p.title).join(", ")}` : ""} (id ${n.id})`);
+  section("Projects", "project", (n) =>
+    `${n.title} — ${pct(n.score)}${n.tasks_total ? `, ${n.tasks_done}/${n.tasks_total} tasks done` : ""}${n.parents.length ? ` · for ${n.parents.map((p) => p.title).join(", ")}` : ""} (id ${n.id})`);
   section("Habits", "habit", (n) => `${n.title} — ${pct(n.score)} (id ${n.id})`);
   section("Metrics", "metric", (n) => `${n.title} — ${pct(n.score)} (id ${n.id})`);
   section("Tasks", "task", taskLine);
@@ -126,7 +132,8 @@ export async function getIntentDetail(db: Tx, id: string): Promise<IntentDetail>
 export async function taskContextMarkdown(db: Tx, id: string): Promise<string> {
   const d = await getIntentDetail(db, id);
   if (d.intent.type !== "task") throw new NotFound(`${id} is a ${d.intent.type}, not a task`);
-  const out: string[] = [];
+  const now = new Date();
+  const out: string[] = [`# Context for one task: ${localYmd(env.LOR_TZ, now)} (${env.LOR_TZ})`, ""];
   const agent = await db<{ body: string }[]>`SELECT body FROM page WHERE slug = 'agent'`;
   if (agent[0]) out.push("## Page: agent", "", agent[0].body.trim(), "");
   out.push(`## Your task: ${d.intent.title}`, "", `- id: ${d.intent.id}`, `- status: ${d.intent.status}, assigned to: ${d.intent.assignee}`);

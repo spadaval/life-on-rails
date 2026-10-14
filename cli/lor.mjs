@@ -19,7 +19,8 @@ orientation
 read
   lor search <query> [--in page,entity,intent,obs] [--from <t>] [--to <t>] [--limit N]
   lor page search <query> [--limit N]
-  lor page read <slug> [--version N] [--history] [--md]
+  lor page read <slug> [--version N] [--md]
+  lor page history <slug>
   lor entity show <id|name|email>
   lor day [<YYYY-MM-DD>]
   lor graph [--starving] [--waiting]
@@ -164,6 +165,8 @@ function plan(positionals, flags) {
           return { method: "GET", path: `/pages${q({ q: need(positionals.slice(2).join(" "), "<query>"), limit: int(flags.limit, "limit") })}` };
         case "read":
           return { method: "GET", path: `/pages/${slugPath(c)}${q({ version: int(flags.version, "version"), history: flags.history })}`, md: true };
+        case "history":
+          return { method: "GET", path: `/pages/${slugPath(c)}${q({ history: true })}` };
         case "create":
           return {
             method: "POST",
@@ -326,6 +329,10 @@ async function main() {
       ...(data.page ? { changed: data.changed, dry_run: data.dry_run, diff: data.diff } : {}),
       warnings: data.warnings ?? [],
     };
+  }
+  // Other writes echo the row they made; the empty fields are noise.
+  else if (call.method !== "GET" && data && typeof data === "object" && !Array.isArray(data)) {
+    data = Object.fromEntries(Object.entries(data).filter(([, v]) => v !== null));
   }
   if (flags.md && call.md) printMarkdown(data);
   else {
