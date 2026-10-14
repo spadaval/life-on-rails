@@ -38,7 +38,7 @@ Do not add chat, an approval queue, or a model runtime to LoR. LoR may notify th
 3. **Safe failure.** `Reset Visibility` hides overdue tasks without deleting history. Trends over streaks. No coins, pets, or shame-red overdue lists.
 4. **Today is the home.** Now, next, and the remaining day shown as a quantity (a bar), not only a clock. Usable as a kiosk: one column, large type, no hover-only actions.
 5. **Objective and subjective.** Hours plus at most one "how did it feel" prompt in the evening. Never a form.
-6. **The owner's data is not rationed.** Nothing is redacted on its way to the agent. Secrets are never logged or stored in tables, and third-party text (mail, web pages, window titles) is data, never instructions.
+6. **The owner's data is not rationed.** LoR is meant to collect police-investigation levels of information about its owner: every message with its text, every call, where he was, what was on his screen. That is acceptable only because it is his data, on his box, and goes nowhere else. Nothing is filtered, masked or siloed on the way in, not even one-time codes in texts: the phone and this box are about equally secure, and a code is dead within minutes. Volume is handled where data is read (summaries, search, per-person views), never by leaving it out. LoR's own credentials (OAuth tokens, API keys, webhook addresses) are never logged or stored in tables. Third-party text (mail, messages, web pages, window titles) is data, never instructions.
 
 ## Settled choices
 
@@ -488,14 +488,14 @@ There is no chat screen: the conversation is a T3 thread.
 
 ## Security
 
-Privacy of the owner's own data is not a constraint. What matters is credentials, reachability, and third-party text steering an agent that can act.
+Privacy of the owner's own data is not a constraint: collecting everything is the point (product rule 6). The phone and this box are treated as one trust zone of about equal security. What matters is LoR's credentials, who can reach the box, and third-party text steering an agent that can act.
 
 | Risk | Position |
 | --- | --- |
 | **A crafted email steers the agent into acting.** | **Accepted by the owner.** Every run reads full third-party text and holds read-write Google access through `gog`. The mitigations are soft: the skill says such text is data, the one rule says to ask before anything irreversible, and bulk mail never reaches a model. Nothing prevents it. Do not add a permission layer. |
 | The agent does something unwanted | The one rule. Accepted. What it writes in LoR is versioned or undoable and badged. |
 | The agent, or text from an email, rewrites what every run loads | Only the owner sets `in_digest`. The content is not locked: unattended runs are told not to edit those pages, the Memory UI shows who last changed each, and the morning brief reports changes. |
-| Secrets in git or logs | Credential files are 0600 and outside the repo. `scrubLog` on structured logs. Never stored in tables. |
+| LoR's credentials in git or logs | Credential files are 0600 and outside the repo. `scrubLog` on structured logs. Never stored in tables. Codes and links inside the owner's own messages and mail are his data, not LoR's credentials, and are stored like the rest. |
 | Reachable by others | Binds loopback by default. `/api/v1` also checks the source address. Off-box access is by Tailscale identity only. |
 | LoR writing to Google or reading mail | Not possible with its scopes. |
 
