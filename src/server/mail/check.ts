@@ -138,35 +138,17 @@ export async function mailCheck(db: Sql, port: MailPort, now = new Date()): Prom
   return stats;
 }
 
-/** Re-register the watch (it lapses after seven days), then catch up. */
-export async function renewWatch(db: Sql, port: MailPort, topic: string, now = new Date()): Promise<{ expires: string } & MailCheckStats> {
-  await state(db);
-  const watch = await port.watch(topic);
-  await db`UPDATE mail_state SET watch_expires_at = ${watch.expiration}`;
-  const stats = await mailCheck(db, port, now);
-  return { ...stats, expires: watch.expiration.toISOString() };
-}
-
-export async function notePush(db: Tx, now = new Date()): Promise<void> {
-  await db`INSERT INTO mail_state (id, last_push_at) VALUES (true, ${now}) ON CONFLICT (id) DO UPDATE SET last_push_at = EXCLUDED.last_push_at`;
-}
-
 export interface MailStatus {
   configured: boolean;
-  watch_expires_at: string | null;
-  last_push_at: string | null;
   last_check_at: string | null;
   queued_threads: number;
 }
 
 export async function mailStatus(db: Tx, configured: boolean): Promise<MailStatus> {
-  const row = (await db<{ watch_expires_at: Date | null; last_push_at: Date | null; last_check_at: Date | null }[]>`
-    SELECT watch_expires_at, last_push_at, last_check_at FROM mail_state`)[0];
+  const row = (await db<{ last_check_at: Date | null }[]>`SELECT last_check_at FROM mail_state`)[0];
   const queued = (await db<{ n: number }[]>`SELECT count(*)::int AS n FROM wake_queue`)[0]?.n ?? 0;
   return {
     configured,
-    watch_expires_at: row?.watch_expires_at?.toISOString() ?? null,
-    last_push_at: row?.last_push_at?.toISOString() ?? null,
     last_check_at: row?.last_check_at?.toISOString() ?? null,
     queued_threads: queued,
   };

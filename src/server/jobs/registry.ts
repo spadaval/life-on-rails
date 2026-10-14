@@ -11,7 +11,7 @@ import { syncContacts } from "../google/contactsSync.js";
 import { googleMail } from "../google/mailClient.js";
 import { syncTasks } from "../google/tasksSync.js";
 import { wakeSnoozed } from "../intents.js";
-import { mailCheck, renewWatch } from "../mail/check.js";
+import { mailCheck } from "../mail/check.js";
 import { flushWake, wakeDue } from "../mail/wake.js";
 import { recomputeScores, scheduleRecompute, setConfirmRateProvider } from "../scoring/recompute.js";
 import { trailingConfirmRate } from "../today.js";
@@ -22,9 +22,9 @@ import type { Job } from "./scheduler.js";
 
 const startedAt = Date.now();
 
-/** Mail notifications need a topic, a subscription, and the Gmail-headers scope on LoR's login. */
+/** Mail needs the Gmail-headers scope on LoR's login (`pnpm google:auth --mail`). */
 export function mailConfigured(): boolean {
-  return Boolean(env.GOOGLE_PUBSUB_TOPIC && env.GOOGLE_PUBSUB_SUBSCRIPTION) && hasScope(SCOPES.gmail);
+  return hasScope(SCOPES.gmail);
 }
 
 const wakeConfig = () => ({ url: env.LOR_WAKE_URL, quietS: env.LOR_WAKE_QUIET_S, maxS: env.LOR_WAKE_MAX_S });
@@ -64,16 +64,11 @@ export const JOBS: Job[] = [
     everyS: env.LOR_CONTACTS_POLL_S,
     run: async () => syncContacts(sql, googleContacts),
   },
-  // Runs on a push from Gmail, at startup, and after the daily watch renewal. No timer.
   {
     name: "mail_check",
-    run: async () => mailCheck(sql, googleMail),
-  },
-  {
-    name: "mail_watch_renew",
-    dailyAt: "04:15",
+    everyS: env.LOR_MAIL_POLL_S,
     shouldRun: async () => mailConfigured(),
-    run: async () => renewWatch(sql, googleMail, env.GOOGLE_PUBSUB_TOPIC),
+    run: async () => mailCheck(sql, googleMail),
   },
   {
     name: "wake_flush",

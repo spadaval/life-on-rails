@@ -1,12 +1,10 @@
-// Gmail (headers only) and Pub/Sub, behind ports. LoR's login has
+// Gmail (headers only), behind a port. LoR's login has
 // gmail.metadata: it can see who a message is from and its subject, and
 // cannot fetch a body.
 import { z } from "zod";
-import { accessToken } from "./auth.js";
 import { googleGet } from "./client.js";
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
-const PUBSUB = "https://pubsub.googleapis.com/v1";
 
 /** Gmail no longer has history that far back (it keeps about a week). */
 export class HistoryExpiredError extends Error {
@@ -42,8 +40,6 @@ export interface MailPort {
   recentMessages(max: number): Promise<string[]>;
   /** Headers and labels. Null if the message is gone. */
   metadata(id: string): Promise<GMessage | null>;
-  /** (Re-)register the push watch on INBOX and SENT. */
-  watch(topic: string): Promise<{ historyId: string; expiration: Date }>;
 }
 
 const HEADERS = ["From", "To", "Cc", "Subject", "Date", "List-Unsubscribe", "Precedence"];
@@ -102,45 +98,5 @@ export const googleMail: MailPort = {
       throw err;
     }
   },
-
-  async watch(topic) {
-    const res = z.object({ historyId: z.string(), expiration: z.string() }).parse(
-      await googleGet(`${GMAIL}/watch`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ topicName: topic, labelIds: ["INBOX", "SENT"], labelFilterBehavior: "INCLUDE" }),
-      }),
-    );
-    return { historyId: res.historyId, expiration: new Date(Number(res.expiration)) };
-  },
 };
 
-export interface PubSubPort {
-  /** Waits for notifications (the request is held open until some arrive or it times out). */
-  pull(subscription: string, signal?: AbortSignal): Promise<{ ackId: string }[]>;
-  ack(subscription: string, ackIds: string[]): Promise<void>;
-}
-
-async function pubsubPost(path: string, body: unknown, signal?: AbortSignal): Promise<unknown> {
-  const res = await fetch(`${PUBSUB}/${path}`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${await accessToken()}`, "content-type": "application/json" },
-    body: JSON.stringify(body),
-    signal,
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`Pub/Sub ${res.status}: ${text.slice(0, 200)}`);
-  return text ? JSON.parse(text) : {};
-}
-
-export const googlePubSub: PubSubPort = {
-  async pull(subscription, signal) {
-    const res = z
-      .object({ receivedMessages: z.array(z.object({ ackId: z.string() })).default([]) })
-      .parse(await pubsubPost(`${subscription}:pull`, { maxMessages: 20 }, signal));
-    return res.receivedMessages;
-  },
-  async ack(subscription, ackIds) {
-    if (ackIds.length > 0) await pubsubPost(`${subscription}:acknowledge`, { ackIds });
-  },
-};

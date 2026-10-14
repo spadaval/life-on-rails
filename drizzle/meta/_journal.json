@@ -43,6 +43,13 @@
       "when": 1791958268015,
       "tag": "0005_bizarre_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791997266530,
+      "tag": "0006_daffy_ben_urich",
+      "breakpoints": true
     }
   ]
 }

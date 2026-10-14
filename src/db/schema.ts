@@ -438,8 +438,6 @@ export const mailState = pgTable(
   {
     id: boolean("id").primaryKey().default(true),
     historyId: text("history_id"),
-    watchExpiresAt: ts("watch_expires_at"),
-    lastPushAt: ts("last_push_at"),
     lastCheckAt: ts("last_check_at"),
   },
   (t) => [check("mail_state_one_row", sql`${t.id}`)],

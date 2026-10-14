@@ -31,6 +31,7 @@ const Env = z.object({
   LOR_CALENDAR_POLL_S: z.coerce.number().int().min(30).default(300),
   LOR_TASKS_POLL_S: z.coerce.number().int().min(30).default(900),
   LOR_CONTACTS_POLL_S: z.coerce.number().int().min(60).default(21600),
+  LOR_MAIL_POLL_S: z.coerce.number().int().min(30).default(60),
   // Country calling code for numbers written without one ("(415) 555-0100").
   LOR_PHONE_COUNTRY_CODE: z.string().regex(/^\d{1,3}$/).default("1"),
   LOR_AGENT_TOKEN: z.string().default(""),
@@ -40,8 +41,6 @@ const Env = z.object({
   GOOGLE_ACCOUNT: z.string().default(""),
   GOOGLE_OAUTH_CLIENT: z.string().default(path.join(homedir(), ".config/life-on-rails/google-client.json")),
   GOOGLE_TOKEN_FILE: z.string().default(path.join(homedir(), ".config/life-on-rails/google-token.json")),
-  GOOGLE_PUBSUB_TOPIC: z.string().default(""),
-  GOOGLE_PUBSUB_SUBSCRIPTION: z.string().default(""),
 });
 
 export type Env = z.infer<typeof Env>;

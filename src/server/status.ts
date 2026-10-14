@@ -71,7 +71,7 @@ export async function getStatus(): Promise<Status> {
   } catch {
     return {
       ok: false, db: false, now: now.toISOString(), jobs: [], sources: [], google: authState(),
-      mail: { configured: false, watch_expires_at: null, last_push_at: null, last_check_at: null, queued_threads: 0 },
+      mail: { configured: false, last_check_at: null, queued_threads: 0 },
     };
   }
 }

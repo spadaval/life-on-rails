@@ -6,7 +6,7 @@
 | **Rewritten** | 2026-10-14, as one description of the current design; updated the same day as it was built |
 | **Repo** | `/home/supadava/projects/life-on-rails` |
 | **Runs on** | `buildbot` (Ubuntu 26.04, headless, Tailscale `buildbot.tail47515a.ts.net`) |
-| **State** | Built and running on `buildbot` through the overnight close. Google and mail wait on the owner's OAuth client; the phone sensor is not built. See "State of the build". |
+| **State** | Built and running on `buildbot` through the overnight close. Signed in to Google (calendar, tasks, contacts, mail headers) on 2026-10-14. See "State of the build". |
 
 This is a personal project on one box with one user. There is no PR plan, review gate, or staged rollout: work goes to `main` when it works. The earlier, much longer spec (history, superseded decisions, the 2023 post-mortem) is not carried here; the v1 text is in git at `e050ace`.
 
@@ -48,7 +48,7 @@ Do not add chat, an approval queue, notifications, or a model runtime to LoR.
 - **The agent has one rule:** do anything you can take back; ask in the thread before anything you cannot take back, or that speaks to other people as the owner (sending mail, pushing to a shared branch, paying, deleting). It is an instruction, not a mechanism. It will occasionally be broken, and that is accepted in exchange for an agent that can just do things.
 - **If code branches on it, it is schema; if only a model reads it, it is prose** on a wiki page. There is no generic fact table.
 - **LoR does not mirror the mailbox.** It records that a message arrived and wakes the agent, which reads mail in Gmail.
-- **LoR has its own Google login** with read-only scopes, calls Google's APIs directly, and holds the Gmail watch itself.
+- **LoR has its own Google login** with read-only scopes, and calls Google's APIs directly.
 - **Search is Postgres full-text** (`tsvector` + `pg_trgm`). No embeddings, no pgvector.
 - **Nothing is deleted on a schedule.** No retention job. The box has 744 GiB free and a year of data is about a gigabyte at most.
 - **Loopback first.** The app binds `127.0.0.1:3847`. Anything reachable beyond loopback is authenticated by Tailscale identity. No local password, no Funnel, no public endpoint.
@@ -69,11 +69,10 @@ Do not add chat, an approval queue, notifications, or a model runtime to LoR.
 
 ## Architecture
 
-Two processes: `postgresql`, and `lor-web` (a systemd user unit) which serves the UI and `/api/v1`, runs the jobs, and holds the Gmail watch.
+Two processes: `postgresql`, and `lor-web` (a systemd user unit) which serves the UI and `/api/v1` and runs the jobs.
 
 ```
-Google Calendar, Tasks  ──poll──┐
-Gmail watch → Pub/Sub   ──pull──┤
+Calendar, Tasks, Gmail  ──poll──┐
 phone sensor (tailnet)  ─ingest─┤→  lor-web  ⇄  Postgres
 manual timer (UI)       ────────┘     │  ▲
                                  wake │  │ lor CLI → /api/v1
@@ -99,8 +98,7 @@ manual timer (UI)       ────────┘     │  ▲
 | `calendar_poll` | every 300 s | `events.list` for each calendar ticked in Google Calendar, `singleEvents=true`, from the start of local yesterday to the end of local +2 days. Upserts `google_event` and a `source=calendar` observation, then runs calendar fill. The full-window poll is also how moved and cancelled events are retracted. |
 | `tasks_poll` | every 900 s | Upserts `task` intents by `google_task_id`. See "Google Tasks". |
 | `contacts_poll` | every 6 h | Google Contacts → entities, incrementally with a sync token. See "People". |
-| `mail_check` | on push, at startup, after watch renewal | See "Mail". |
-| `mail_watch_renew` | daily 04:15 | Re-registers the Gmail watch, which lapses after 7 days, then runs a check. |
+| `mail_check` | every 60 s, once `--mail` is signed in | See "Mail". |
 | `wake_flush` | 180 s quiet or 900 s max | Posts queued mail to the agent. Rows leave the queue only when the POST succeeds. |
 | `score_tick` | hourly | Recomputes scores. |
 | `overnight_close` | 01:30 local | Merges adjacent blocks, creates missing proposals, snapshots scores, wakes snoozed tasks. Does not confirm anything and calls no model. |
@@ -124,6 +122,7 @@ LOR_SCORING_WEEKS=2
 LOR_CALENDAR_POLL_S=300
 LOR_TASKS_POLL_S=900
 LOR_CONTACTS_POLL_S=21600
+LOR_MAIL_POLL_S=60
 LOR_PHONE_COUNTRY_CODE=1      # for numbers written without one
 LOR_AGENT_TOKEN=              # bearer for /api/v1; the lor CLI reads it from this file
 LOR_WAKE_URL=                 # T3 webhook that delivers new mail to the agent's main thread
@@ -132,8 +131,6 @@ LOR_WAKE_MAX_S=900
 GOOGLE_ACCOUNT=sumeet.padavala@gmail.com
 GOOGLE_OAUTH_CLIENT=/home/supadava/.config/life-on-rails/google-client.json
 GOOGLE_TOKEN_FILE=/home/supadava/.config/life-on-rails/google-token.json
-GOOGLE_PUBSUB_TOPIC=          # projects/<project>/topics/<name>: where Gmail publishes
-GOOGLE_PUBSUB_SUBSCRIPTION=   # projects/<project>/subscriptions/<name>: what LoR pulls
 ```
 
 The comments above are for this document: in the real file every comment is on its own line, because systemd does not strip trailing ones. postgres.js treats an empty host as TCP localhost, so `src/db/client.ts` forces the socket directory when the URL has none.
@@ -376,8 +373,8 @@ The API cannot tell an instructed call from an uninstructed one, so this is audi
 
 LoR has its own OAuth client (desktop type) in a Google Cloud project the owner controls, saved as `GOOGLE_OAUTH_CLIENT`. With no client yet, `pnpm google:auth` prints the steps to create one.
 
-- **Scopes:** `calendar.readonly`, `tasks.readonly`, `contacts.readonly`, `gmail.metadata` (headers and labels, never bodies), plus access to one Pub/Sub subscription. LoR cannot write to Google or read a mail body even by mistake.
-- **Consent:** `pnpm google:auth` (add `--mail` for the Gmail and Pub/Sub scopes), run once at a terminal, writes the refresh token to `GOOGLE_TOKEN_FILE` (0600, outside the repo). The box has no browser, so the command prints the consent URL to open on another device and asks for the redirected URL to be pasted back. The consent screen is set to "In production" so the token does not expire after seven days (to be confirmed).
+- **Scopes:** `calendar.readonly`, `tasks.readonly`, `contacts.readonly`, `gmail.metadata` (headers and labels, never bodies). LoR cannot write to Google or read a mail body even by mistake.
+- **Consent:** `pnpm google:auth` (add `--mail` for the Gmail scope), run once at a terminal, writes the refresh token to `GOOGLE_TOKEN_FILE` (0600, outside the repo). The box has no browser, so the command prints the consent URL to open on another device and asks for the redirected URL to be pasted back. The consent screen is set to "In production" so the token does not expire after seven days (to be confirmed).
 - **Code:** `src/server/google/client.ts` holds auth and the calls behind `CalendarPort`, `TasksPort`, and `MailPort`, so sync and mail logic are tested against recorded responses with no network.
 - **Failure:** a refused token shows "Google auth required: run `pnpm google:auth`" in the cockpit and the job records an error. The app keeps running.
 
@@ -394,9 +391,9 @@ One-way, Google → LoR. `tasks_poll` upserts `type=task` intents keyed on `goog
 
 Mail lives in Gmail. LoR notices that something arrived and wakes the agent once per burst.
 
-- **Push.** LoR calls Gmail `users.watch` for the `INBOX` and `SENT` labels, which publishes to a Pub/Sub topic when the inbox changes. `lor-web` pulls that subscription in a loop over Pub/Sub's plain HTTP API (a request that waits for messages, repeated), which needs no extra library. The connection is outbound, so nothing listens on the internet. A notification carries no content; it triggers a check.
+- **Poll.** `mail_check` runs every `LOR_MAIL_POLL_S` (60 s). Gmail push would need a Cloud Pub/Sub topic, a subscription, and a billing account; a minute of latency is invisible behind the wake's quiet period, so LoR polls. Push can come back if the minute is ever felt.
 - **Check.** `history.list` from the stored history id, keeping messages added to `INBOX` or `SENT`, then `messages.get format=metadata` for each. Drafts and mail filtered past the inbox are skipped.
-- **Sent mail** is recorded the same way, with `direction: "sent"` and the recipients' addresses (`to_emails`), so "last in touch" counts the owner's replies. It never wakes the agent. It runs on a push, once at startup, and after the daily watch renewal. There is no polling. Nothing is lost while LoR is down: Pub/Sub holds notifications and the check reads from the stored position. If Gmail has expired the history id (about a week), list recent messages and take those with no observation.
+- **Sent mail** is recorded the same way, with `direction: "sent"` and the recipients' addresses (`to_emails`), so "last in touch" counts the owner's replies. It never wakes the agent. Nothing is lost while LoR is down: the check reads from the stored position. If Gmail has expired the history id (about a week), list recent messages and take those with no observation.
 - **Arrival.** One observation per message: `source=gmail`, `title` = subject, `payload = {gmail_id, thread_id, direction: "in", from, from_email, labels, bulk}`. Idempotent on the Gmail id. That is all LoR knows about a message.
 - **Bulk.** A message is `bulk` if it has `List-Unsubscribe`, `Precedence: bulk|list|junk`, or a promotions, social, updates, or forums label, unless the sender is a known entity. Bulk is recorded and never wakes the agent. About 78% of the inbox is bulk; roughly ten messages a day are not.
 - **Wake.** Non-bulk arrivals go into `wake_queue`, coalesced by Gmail thread. The queue is flushed after `LOR_WAKE_QUIET_S` of quiet, or when its oldest entry is `LOR_WAKE_MAX_S` old, or at once for a sender whose entity has `priority`. A flush is one POST of the Gmail ids to `LOR_WAKE_URL`, which delivers them to the agent's main thread. One flush in flight at a time. If the POST fails (T3 is down, or it already holds 20 deliveries for a busy thread), the rows stay queued for the next flush.
@@ -441,7 +438,7 @@ Every run uses the owner's one `gog` login.
 | `/` Today | See "Today" above. |
 | `/graph` | Intents grouped by type, with links, score chips, and starve flags. A plain list, no canvas. |
 | `/memory` | **Pages:** a tree by slug prefix, a reader that renders links and footnotes, a markdown editor that saves through the same `--base` check as the agent (a refused save keeps the text and offers to save it on top), history with diff and revert, one-tap undo of the agent's last edit, the `in_digest` toggle, and who last changed each `in_digest` page. **People:** who matters, keeping in touch, overdue, birthdays soon, and everyone; for each, when the owner was last in touch and how, the birthday, a cadence picker, and the `priority` flag. **Timeline:** every observation for a day. |
-| `/capture` | The cockpit: jobs, sources, Google auth, Gmail watch expiry and last push. |
+| `/capture` | The cockpit: jobs, sources, Google auth, the last mail check. |
 
 There is no chat screen: the conversation is a T3 thread.
 
@@ -508,11 +505,11 @@ src/shared/            envelope, ids, local time, line diff
 src/db/                schema, client, migrate, seed (and the seed pages)
 src/server/            env, logging, status, boot
 src/server/jobs/       scheduler, the job list, overnight close
-src/server/google/     LoR's login, Calendar/Tasks/Gmail/Pub/Sub calls, the syncs
+src/server/google/     LoR's login, Calendar/Tasks/Contacts/Gmail calls, the syncs
 src/server/attribution/ fill, the block state machine, rules, interval math
 src/server/scoring/    formulas (pure) and recompute
 src/server/memory/     pages, entities, search, the digest, changes
-src/server/mail/       check, bulk rules, the wake queue, the push loop
+src/server/mail/       check, bulk rules, the wake queue
 src/server/api/v1.ts   one endpoint per lor verb
 src/server/functions/  what the screens call
 src/routes/            Today, Graph, Memory, Capture, /health, /api/v1
@@ -543,10 +540,8 @@ Built on 2026-10-14, in this order, each checked as described.
 
 **Waiting on the owner**
 
-1. **Google.** Run `pnpm google:auth`: it prints how to create LoR's OAuth client (enable the Calendar, Tasks, and People APIs), then signs in. Calendar and tasks start within five minutes, contacts at the next six-hourly run (or restart the service).
-2. **Mail.** Create a Pub/Sub topic and a pull subscription in the same Google Cloud project, let `gmail-api-push@system.gserviceaccount.com` publish to the topic, put both names in the env file, and run `pnpm google:auth --mail`. Open question 1 lists what is unverified.
-3. **The agent.** In the `assistant` project's main thread, ask it to set itself up; the `agent` page tells it how to schedule the nightly run, the morning brief, and the mail hook.
-4. **A reboot,** whenever convenient, to see everything come back without a login.
+1. **The agent.** In the `assistant` project's main thread, ask it to set itself up; the `agent` page tells it how to schedule the nightly run, the morning brief, and the mail hook.
+2. **A reboot,** whenever convenient, to see everything come back without a login.
 
 **Not built**
 
@@ -569,11 +564,10 @@ Multi-user, billing, or hosting for anyone else. A mail client. A contacts edito
 
 ## Open questions
 
-1. **Pub/Sub prerequisites.** A topic and pull subscription in LoR's Google Cloud project; permission for Gmail to publish to it; whether the owner's OAuth login with the Pub/Sub scope is enough to pull, or a service account is needed; whether `gmail.metadata` is enough for `users.watch` and `history.list`.
-2. **OAuth consent screen.** `gmail.metadata` is a restricted scope. Whether an unverified app can be "In production" with it for one user, so the refresh token does not expire after seven days.
-3. **The mail hook's address.** Whether T3 Connect is on here, so the agent can read the address itself.
-4. **Activity blocks.** The design called for in "The phone".
-5. **Drive files as sources.** Not yet.
+1. **OAuth consent screen.** `gmail.metadata` is a restricted scope. Whether an unverified app can be "In production" with it for one user, so the refresh token does not expire after seven days.
+2. **The mail hook's address.** Whether T3 Connect is on here, so the agent can read the address itself.
+3. **Activity blocks.** The design called for in "The phone".
+4. **Drive files as sources.** Not yet.
 
 ## Alternatives set aside
 

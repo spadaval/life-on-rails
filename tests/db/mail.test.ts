@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { sql } from "../../src/db/client.js";
 import { type GMessage, HistoryExpiredError, type MailPort } from "../../src/server/google/mailClient.js";
-import { mailCheck, renewWatch } from "../../src/server/mail/check.js";
+import { mailCheck } from "../../src/server/mail/check.js";
 import { flushWake, wakeDue } from "../../src/server/mail/wake.js";
 import { showEntity, upsertEntity } from "../../src/server/memory/entities.js";
 import { dbDescribe } from "./helpers.js";
@@ -23,7 +23,7 @@ function mailbox() {
   const history: { id: number; added: string[] }[] = [];
   let historyId = 100;
   let expired = false;
-  const calls = { metadata: 0, watch: 0 };
+  const calls = { metadata: 0 };
   const port: MailPort = {
     currentHistoryId: async () => String(historyId),
     addedSince: async (start) => {
@@ -34,10 +34,6 @@ function mailbox() {
     metadata: async (id) => {
       calls.metadata++;
       return messages.get(id) ?? null;
-    },
-    watch: async () => {
-      calls.watch++;
-      return { historyId: String(historyId), expiration: new Date("2026-10-21T00:00:00Z") };
     },
   };
   return {
@@ -125,15 +121,6 @@ dbDescribe("mail check", () => {
     expect((await arrivals()).map((a) => a.gmail_id)).toEqual(["missed-1", "missed-2", "seen"]);
   });
 
-  it("renewing the watch records its expiry and runs a check", async () => {
-    const box = mailbox();
-    const stats = await renewWatch(sql, box.port, "projects/p/topics/t");
-    expect(stats.expires).toBe("2026-10-21T00:00:00.000Z");
-    expect(box.calls.watch).toBe(1);
-    const [s] = await sql<{ history_id: string; expires: Date; checked: boolean }[]>`
-      SELECT history_id, watch_expires_at AS expires, last_check_at IS NOT NULL AS checked FROM mail_state`;
-    expect(s).toMatchObject({ history_id: "100", checked: true });
-  });
 });
 
 dbDescribe("the wake", () => {

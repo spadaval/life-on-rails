@@ -10,7 +10,6 @@ export const SCOPES = {
   tasks: "https://www.googleapis.com/auth/tasks.readonly",
   contacts: "https://www.googleapis.com/auth/contacts.readonly",
   gmail: "https://www.googleapis.com/auth/gmail.metadata",
-  pubsub: "https://www.googleapis.com/auth/pubsub",
 } as const;
 
 /** The token is missing, revoked, or lacks a scope. Fix: `pnpm google:auth`. */

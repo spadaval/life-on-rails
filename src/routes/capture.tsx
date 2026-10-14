@@ -53,16 +53,12 @@ function Capture() {
         <h2 className="text-lg font-semibold">Mail</h2>
         {status.mail.configured ? (
           <ul className="mt-1 text-sm">
-            <li>last push from Gmail: <Ago iso={status.mail.last_push_at} /></li>
             <li>last check: <Ago iso={status.mail.last_check_at} /></li>
-            <li>
-              watch {status.mail.watch_expires_at ? `expires ${status.mail.watch_expires_at.slice(0, 16).replace("T", " ")} UTC` : "not registered yet"}
-            </li>
             <li>waiting to reach the agent: {status.mail.queued_threads} thread(s)</li>
           </ul>
         ) : (
           <p className="muted text-sm">
-            Not set up. Needs a Pub/Sub topic and subscription in the env file, and <code>pnpm google:auth --mail</code>.
+            Not set up. Run <code>pnpm google:auth --mail</code> in the repo.
           </p>
         )}
       </section>
