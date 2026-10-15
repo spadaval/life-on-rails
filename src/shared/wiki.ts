@@ -39,7 +39,7 @@ export function wikiLayout(nodes: { id: string; group: string }[], edges: [strin
     const a = i * 2.399963;
     return { x: r * Math.cos(a), y: r * Math.sin(a) };
   });
-  const k = 90; // the distance two linked pages settle at
+  const k = 150; // the distance two linked pages settle at: room for a label
   let heat = 60;
   for (let it = 0; it < iterations; it++) {
     const d = pos.map(() => ({ x: 0, y: 0 }));
