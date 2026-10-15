@@ -6,6 +6,7 @@ import { uuidv7 } from "../../shared/ids.js";
 import { normalizePhone } from "../../shared/phone.js";
 import { env } from "../env.js";
 import { BadInput, NotFound, Refused } from "../errors.js";
+import { recordObservation } from "../observations.js";
 import { type LastContact, lastContacts } from "../people.js";
 
 export const ENTITY_KINDS = ["person", "org", "place", "thing", "group"] as const;
@@ -28,6 +29,8 @@ export interface EntityView {
   priority: boolean;
   /** Set when the entity came from Google Contacts. */
   google_contact_id: string | null;
+  /** The name was chosen in LoR, so Google's name for the contact is only an alias. */
+  name_pinned: boolean;
   birthday: { month: number; day: number; year: number | null } | null;
   /** Keep in touch at least this often (days); null = no expectation. */
   keep_in_touch_days: number | null;
@@ -59,6 +62,10 @@ export interface EntityRow {
   birthday_day: number | null;
   birthday_year: number | null;
   keep_in_touch_days: number | null;
+  name_pinned: boolean;
+  lat: number | null;
+  lon: number | null;
+  radius_m: number | null;
   updated_at: Date;
 }
 
@@ -135,6 +142,7 @@ export async function viewOf(tx: Tx, e: EntityRow): Promise<EntityView> {
     page: page[0]?.slug ?? null,
     priority: e.priority,
     google_contact_id: e.google_contact_id,
+    name_pinned: e.name_pinned,
     birthday: e.birthday_month && e.birthday_day ? { month: e.birthday_month, day: e.birthday_day, year: e.birthday_year } : null,
     keep_in_touch_days: e.keep_in_touch_days,
     last_contact: (await lastContacts(tx, [e.id])).get(e.id) ?? null,
@@ -256,6 +264,10 @@ export async function entityForEmail(db: Tx, email: string): Promise<{ id: strin
 }
 
 export interface EntityPatch {
+  /** A new name, kept over Google's from now on; the old name becomes an alias. */
+  name?: string;
+  addAliases?: string[];
+  removeAliases?: string[];
   priority?: boolean;
   /** Days; null clears it. */
   keepInTouchDays?: number | null;
@@ -282,7 +294,17 @@ export async function updateEntity(db: Tx, id: string, patch: EntityPatch): Prom
   const month = bday === undefined ? e.birthday_month : (bday?.month ?? null);
   const day = bday === undefined ? e.birthday_day : (bday?.day ?? null);
   const year = bday === undefined ? e.birthday_year : (bday?.year ?? null);
+  const newName = patch.name?.trim();
+  if (patch.name !== undefined && !newName) throw new BadInput("an entity needs a name");
+  const name = newName ?? e.name;
+  const aliases = new Map<string, string>();
+  for (const a of [...e.aliases, ...(patch.addAliases ?? [])].map((a) => a.trim()).filter(Boolean)) aliases.set(a.toLowerCase(), a);
+  if (name !== e.name) aliases.set(e.name.toLowerCase(), e.name);
+  for (const a of patch.removeAliases ?? []) aliases.delete(a.trim().toLowerCase());
+  aliases.delete(name.toLowerCase());
   await db`UPDATE entity SET
+      name = ${name}, aliases = ${[...aliases.values()]},
+      name_pinned = ${e.name_pinned || newName !== undefined},
       priority = ${patch.priority ?? e.priority},
       keep_in_touch_days = ${patch.keepInTouchDays === undefined ? e.keep_in_touch_days : patch.keepInTouchDays},
       birthday_month = ${month}, birthday_day = ${day}, birthday_year = ${year},
@@ -293,4 +315,77 @@ export async function updateEntity(db: Tx, id: string, patch: EntityPatch): Prom
 
 export async function setEntityPriority(db: Tx, id: string, priority: boolean): Promise<void> {
   await updateEntity(db, id, { priority });
+}
+
+export interface MergeResult {
+  entity: EntityView;
+  /** The merged entity's page, when both had one: no longer tied to anyone, to be folded into the kept page. */
+  detached_page: string | null;
+}
+
+/**
+ * Fold `fromId` into `keepId`: its identifiers (and so its messages, calls and mail), group members,
+ * page, waiting tasks and place rules move over; its name joins the aliases; a birthday, cadence or
+ * Google link the kept entity lacks is taken from it. Then it is deleted. A snapshot of it is recorded
+ * as an agent observation, so the merge can be undone by hand.
+ */
+export async function mergeEntities(db: Sql, keepId: string, fromId: string, thread: string): Promise<MergeResult> {
+  if (keepId === fromId) throw new BadInput("an entity cannot be merged into itself");
+  return db.begin(async (tx) => {
+    const rows = await tx<EntityRow[]>`SELECT * FROM entity WHERE id IN (${keepId}, ${fromId}) FOR UPDATE`;
+    const keep = rows.find((r) => r.id === keepId);
+    const from = rows.find((r) => r.id === fromId);
+    if (!keep) throw new NotFound(`no entity ${keepId}`);
+    if (!from) throw new NotFound(`no entity ${fromId}`);
+    if (keep.kind !== from.kind) throw new Refused("kinds-differ", `${keep.name} is a ${keep.kind} and ${from.name} is a ${from.kind}`);
+    if (keep.google_contact_id && from.google_contact_id) {
+      throw new Refused("both-from-google", `${keep.name} and ${from.name} are both Google contacts: merge the cards in Google Contacts instead`);
+    }
+    const snapshot = { ...from, identifiers: [...(await tx<Identifier[]>`SELECT kind, value FROM entity_identifier WHERE entity_id = ${fromId}`)] };
+    const pages = await tx<{ slug: string; entity_id: string }[]>`SELECT slug, entity_id FROM page WHERE entity_id IN (${keepId}, ${fromId})`;
+    const keepPage = pages.find((p) => p.entity_id === keepId)?.slug ?? null;
+    const fromPage = pages.find((p) => p.entity_id === fromId)?.slug ?? null;
+
+    await tx`UPDATE entity_identifier SET entity_id = ${keepId} WHERE entity_id = ${fromId}`;
+    await tx`INSERT INTO entity_member (entity_id, kind, value)
+      SELECT ${keepId}, kind, value FROM entity_member WHERE entity_id = ${fromId} ON CONFLICT DO NOTHING`;
+    await tx`UPDATE intent SET waiting_on_entity_id = ${keepId} WHERE waiting_on_entity_id = ${fromId}`;
+    await tx`UPDATE attribution_rule SET match_place = ${keepId} WHERE match_place = ${fromId}`;
+    let detached: string | null = null;
+    if (fromPage && keepPage) {
+      await tx`UPDATE page SET entity_id = NULL WHERE slug = ${fromPage}`;
+      detached = fromPage;
+    } else if (fromPage) {
+      await tx`UPDATE page SET entity_id = ${keepId} WHERE slug = ${fromPage}`;
+    }
+
+    // The kept entity's name stays, and stays even when it takes over the Google link.
+    const google = keep.google_contact_id ?? from.google_contact_id;
+    const aliases = new Map<string, string>();
+    for (const a of [...keep.aliases, ...from.aliases, from.name]) aliases.set(a.toLowerCase(), a);
+    aliases.delete(keep.name.toLowerCase());
+    const bday = keep.birthday_month ? keep : from;
+    await tx`DELETE FROM entity WHERE id = ${fromId}`;
+    await tx`UPDATE entity SET
+        aliases = ${[...aliases.values()]},
+        google_contact_id = ${google},
+        name_pinned = ${keep.name_pinned || (!keep.google_contact_id && Boolean(from.google_contact_id))},
+        priority = ${keep.priority || from.priority},
+        keep_in_touch_days = ${keep.keep_in_touch_days ?? from.keep_in_touch_days},
+        birthday_month = ${bday.birthday_month}, birthday_day = ${bday.birthday_day}, birthday_year = ${bday.birthday_year},
+        lat = ${keep.lat ?? from.lat}, lon = ${keep.lon ?? from.lon}, radius_m = ${keep.radius_m ?? from.radius_m},
+        updated_at = now()
+      WHERE id = ${keepId}`;
+    const now = new Date();
+    await recordObservation(tx, {
+      tStart: now,
+      tEnd: now,
+      device: "buildbot",
+      source: "agent",
+      title: `Merged ${from.name} into ${keep.name}`,
+      payload: { thread, kept: keepId, merged: snapshot, page: fromPage, detached_page: detached },
+    });
+    const row = (await tx<EntityRow[]>`SELECT * FROM entity WHERE id = ${keepId}`)[0]!;
+    return { entity: await viewOf(tx, row), detached_page: detached };
+  }) as Promise<MergeResult>;
 }

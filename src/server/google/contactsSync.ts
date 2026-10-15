@@ -68,6 +68,7 @@ interface Row {
   name: string;
   aliases: string[];
   google_contact_id: string | null;
+  name_pinned: boolean;
   birthday_month: number | null;
   birthday_day: number | null;
   birthday_year: number | null;
@@ -95,17 +96,18 @@ async function upsertContact(tx: Tx, c: MappedContact, stats: ContactsSyncStats)
     stats.created++;
   } else {
     // Google wins on the name and the birthday; an older name is kept as an alias, and a birthday set in LoR stays if Google has none.
+    // A name pinned in LoR stays, and Google's name becomes an alias instead.
+    const name = entity.name_pinned ? entity.name : c.name;
     const aliases = new Map<string, string>();
-    for (const a of [...entity.aliases, ...c.aliases]) aliases.set(a.toLowerCase(), a);
-    if (entity.name.toLowerCase() !== c.name.toLowerCase()) aliases.set(entity.name.toLowerCase(), entity.name);
-    aliases.delete(c.name.toLowerCase());
+    for (const a of [...entity.aliases, ...c.aliases, entity.name, c.name]) aliases.set(a.toLowerCase(), a);
+    aliases.delete(name.toLowerCase());
     const b = c.birthday ?? (entity.birthday_month ? { month: entity.birthday_month, day: entity.birthday_day!, year: entity.birthday_year } : null);
     const changed =
-      entity.name !== c.name ||
+      entity.name !== name ||
       [...aliases.values()].sort().join("\n") !== [...entity.aliases].sort().join("\n") ||
       (b?.month ?? null) !== entity.birthday_month || (b?.day ?? null) !== entity.birthday_day || (b?.year ?? null) !== entity.birthday_year;
     if (changed) {
-      await tx`UPDATE entity SET name = ${c.name}, aliases = ${[...aliases.values()]},
+      await tx`UPDATE entity SET name = ${name}, aliases = ${[...aliases.values()]},
           birthday_month = ${b?.month ?? null}, birthday_day = ${b?.day ?? null}, birthday_year = ${b?.year ?? null}, updated_at = now()
         WHERE id = ${entity.id}`;
       stats.updated++;

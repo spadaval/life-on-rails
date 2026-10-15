@@ -1,0 +1,1 @@
+ALTER TABLE "entity" ADD COLUMN "name_pinned" boolean DEFAULT false NOT NULL;

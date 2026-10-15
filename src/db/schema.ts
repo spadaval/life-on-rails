@@ -370,6 +370,8 @@ export const entity = pgTable(
     birthdayYear: integer("birthday_year"),
     // Keep in touch at least this often; null = no expectation.
     keepInTouchDays: integer("keep_in_touch_days"),
+    // The name was chosen in LoR: a contacts sync keeps it and files Google's name as an alias.
+    namePinned: boolean("name_pinned").notNull().default(false),
     // Places: where, and how near counts as being there.
     lat: real("lat"),
     lon: real("lon"),

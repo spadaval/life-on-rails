@@ -246,6 +246,15 @@ export async function unlinkIntents(db: Sql, linkId: string): Promise<void> {
   scheduleRecompute();
 }
 
+/** Remove the link between two intents; refused if there is none. */
+export async function unlinkEnds(db: Sql, ends: { fromId: string; toId: string; kind: string }): Promise<{ removed: string }> {
+  const r = await db<{ id: string }[]>`
+    DELETE FROM intent_link WHERE from_id = ${ends.fromId} AND to_id = ${ends.toId} AND kind = ${ends.kind} RETURNING id`;
+  if (!r[0]) throw new NotFound(`no ${ends.kind} link from ${ends.fromId} to ${ends.toId}`);
+  scheduleRecompute();
+  return { removed: r[0].id };
+}
+
 // ---- tasks ----
 
 export async function assignTask(db: Sql, id: string, assignee: "owner" | "agent", threadRef?: string | null): Promise<IntentView> {

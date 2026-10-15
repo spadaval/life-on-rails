@@ -122,6 +122,18 @@ lor entity upsert --kind person --name "Priya Raman" --email priya@example.com -
 lor page create people/priya-raman --title "Priya Raman" --entity <entity_id> < body.md
 ```
 
+One person, two records (an agent-made entity and a Google contact, say)? Merge them:
+`lor entity merge <keep> <merge-in>`. The second one's numbers, addresses, messages, page and
+waiting tasks move to the first, its name becomes an alias, and it is deleted (a snapshot is
+kept as an agent observation). If both had a page, the merged one's page is detached and
+named in the reply: fold it into the kept page. Two Google contacts can't be merged here;
+that is done in Google Contacts.
+
+Sumeet's name for someone in his phone is often not their real name ("Imouto", "Dad"). Give
+the entity its real name with `lor entity set "Imouto" --name "Sanjana Padavala"`: a name set
+this way stays, and Google's name is kept as an alias. Add or drop other names with
+`--alias "..."` / `--unalias "..."`. Do not ask him to rename contacts in Google.
+
 `lor entity show` includes when Sumeet was last in touch and how (they emailed, he emailed,
 they met, a call, text or WhatsApp message), and their latest texts and WhatsApp messages
 with the words (`recent_messages`; a group message names the group, and `from` says who
@@ -130,8 +142,8 @@ wrote it). Group chats do not count as being in touch with each member.
 Each WhatsApp group is an entity of kind `group`, named as in WhatsApp (old names stay as
 aliases). `lor entity show "<group>"` gives its `members` (named when LoR knows them),
 what was said in it lately, and when it was last active; a person's view lists the
-`groups` they are in. A group can have a page like anyone else: `groups/<slug>`. For a contact imported from Google, the name and birthday come
-from Google; change them there. Notes and addresses stay in Google: read them with `gog`.
+`groups` they are in. A group can have a page like anyone else: `groups/<slug>`. For a contact imported from Google, the birthday comes from
+Google, and so does the name unless it was set with `--name`. Notes and addresses stay in Google: read them with `gog`.
 
 Entity first, then its page: the page is tied to the entity by `--entity`, and that is
 what lets a sender's address lead back to what you know about them. A page with no entity
@@ -163,6 +175,7 @@ Mail itself is not in LoR: LoR only knows that a message arrived. Read mail with
 lor graph --starving                          # goals short of their weekly hours
 lor intent create --type task --title "Renew passport" --parent <project_id> --due 2026-11-01T00:00:00-07:00
 lor link --from <habit_id> --to <goal_id> --kind measures
+lor unlink --from <task_id> --to <project_id> --kind measures   # a link made by mistake
 lor task assign <task_id> agent               # you are doing it; `owner` hands it back (tasks only)
 lor intent create --type task --title "Reply to Priya about Friday" --flag "She needs a yes or no by Thursday (mail:18c2...)"
 lor task flag <task_id> "Due tomorrow and still open"   # Needs you on Today, and one phone notification

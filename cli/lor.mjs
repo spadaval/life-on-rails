@@ -39,12 +39,15 @@ write (free for the agent; every write needs --thread <your T3 thread id>)
   lor page update <slug> --append < fragment.md
   lor entity upsert --kind person|org|place|thing|group --name "..." [--email a@b]... [--alias "..."]...
   lor entity set <id|name|email> [--keep-in-touch <days>|off] [--birthday MM-DD|off] [--priority on|off]
+        [--name "..."] [--alias "..."]... [--unalias "..."]...   a --name stays even when Google calls them something else
+  lor entity merge <keep> <merge-in>       fold the second into the first (identifiers, messages, page, tasks); the second is deleted
   lor log "<text>" [--intent <id>]
   lor mail done <observation_id>...       take handled mail off the queue
   lor intent create --type goal|project|habit|task|metric --title "..." [--parent <id>]
         [--due <t>] [--waiting-on <entity_id>] [--assign agent] [--weight N] [--hours N] [--description "..."]
         [--flag "<why it needs Sumeet>"]
   lor link --from <id> --to <id> --kind measures|blocks|derived_from [--weight N]
+  lor unlink --from <id> --to <id> --kind measures|blocks|derived_from
   lor task assign <id> owner|agent
   lor task flag <id> "<why it needs Sumeet>"   Needs you on Today, and one phone notification
   lor done <task_id> [--memo "..."]
@@ -65,7 +68,7 @@ A body comes from stdin, or from --file <path>.
 `;
 
 const BOOLEAN_FLAGS = new Set(["md", "history", "append", "dry-run", "all", "starving", "waiting", "help", "overdue", "birthdays", "groups"]);
-const REPEATABLE_FLAGS = new Set(["email", "alias", "id"]);
+const REPEATABLE_FLAGS = new Set(["email", "alias", "unalias", "id"]);
 
 class Usage extends Error {}
 
@@ -261,9 +264,18 @@ function plan(positionals, flags) {
               birthday: bday === undefined || bday === "off" ? undefined : bday,
               clear_birthday: bday === "off" || undefined,
               priority: onOff(flags.priority, "priority"),
+              name: flags.name,
+              add_aliases: flags.alias,
+              remove_aliases: flags.unalias,
             }),
           };
         }
+        case "merge":
+          return {
+            method: "POST",
+            path: `/entities/${encodeURIComponent(need(c, "<keep>"))}/merge`,
+            body: write({ from: need(d, "<merge-in>") }),
+          };
       }
       break;
 
@@ -305,6 +317,12 @@ function plan(positionals, flags) {
         method: "POST",
         path: "/links",
         body: write({ from_id: need(flags.from, "--from"), to_id: need(flags.to, "--to"), kind: need(flags.kind, "--kind"), weight: num(flags.weight, "weight") }),
+      };
+    case "unlink":
+      return {
+        method: "POST",
+        path: "/links/remove",
+        body: write({ from_id: need(flags.from, "--from"), to_id: need(flags.to, "--to"), kind: need(flags.kind, "--kind") }),
       };
     case "task":
       if (b === "assign") return { method: "POST", path: `/intents/${need(c, "<id>")}/assign`, body: write({ assignee: need(d, "owner|agent") }) };

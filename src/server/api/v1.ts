@@ -15,6 +15,7 @@ import { errorMessage, log } from "../log.js";
 import { getGraph, getIntentDetail, renderGraph, taskContextMarkdown } from "../graph.js";
 import {
   INTENT_TYPES, LINK_KINDS, assignTask, commitHabit, commitMetric, completeTask, createIntent, flagTask, linkIntents,
+  unlinkEnds,
 } from "../intents.js";
 import { agentLog } from "../memory/agentLog.js";
 import { getChanges } from "../memory/changes.js";
@@ -23,7 +24,7 @@ import { resolveDate } from "../memory/day.js";
 import "../memory/todaySection.js";
 import "../memory/peopleSection.js";
 import { PEOPLE_FILTERS, type PeopleFilter, birthdayLine, dueLine, listPeople } from "../people.js";
-import { ENTITY_KINDS, findEntity, showEntity, updateEntity, upsertEntity } from "../memory/entities.js";
+import { ENTITY_KINDS, findEntity, mergeEntities, showEntity, updateEntity, upsertEntity } from "../memory/entities.js";
 import { createPage, pageHistory, readPage, searchPages, updatePage } from "../memory/pages.js";
 import { SEARCH_KINDS, search } from "../memory/search.js";
 import "../memory/worldSections.js";
@@ -208,7 +209,21 @@ route("POST", /^\/entities$/, async ({ body }) => {
 
 route("GET", /^\/entities\/(.+)$/, async ({ params }) => showEntity(sql, slugOf(params)));
 
+const MergeEntity = z.object({ from: z.string().min(1), thread: Thread });
+
+route("POST", /^\/entities\/(.+)\/merge$/, async ({ params, body }) => {
+  const d = MergeEntity.parse(body);
+  const keep = await findEntity(sql, slugOf(params));
+  if (!keep) throw new NotFound(`no entity matches ${JSON.stringify(slugOf(params))}`);
+  const from = await findEntity(sql, d.from);
+  if (!from) throw new NotFound(`no entity matches ${JSON.stringify(d.from)}`);
+  return mergeEntities(sql, keep.id, from.id, d.thread);
+});
+
 const SetEntity = z.object({
+  name: z.string().nullish(),
+  add_aliases: z.array(z.string()).optional(),
+  remove_aliases: z.array(z.string()).optional(),
   keep_in_touch_days: z.number().int().positive().nullish(),
   clear_keep_in_touch: z.boolean().optional(),
   birthday: z.string().nullish(),
@@ -222,6 +237,9 @@ route("POST", /^\/entities\/(.+)$/, async ({ params, body }) => {
   const row = await findEntity(sql, slugOf(params));
   if (!row) throw new NotFound(`no entity matches ${JSON.stringify(slugOf(params))}`);
   return updateEntity(sql, row.id, {
+    name: d.name ?? undefined,
+    addAliases: d.add_aliases,
+    removeAliases: d.remove_aliases,
     priority: d.priority,
     keepInTouchDays: d.clear_keep_in_touch ? null : (d.keep_in_touch_days ?? undefined),
     birthday: d.clear_birthday ? null : (d.birthday ?? undefined),
@@ -353,6 +371,11 @@ const CreateLink = z.object({ from_id: Uuid, to_id: Uuid, kind: z.enum(LINK_KIND
 route("POST", /^\/links$/, async ({ body }) => {
   const d = CreateLink.parse(body);
   return linkIntents(sql, { fromId: d.from_id, toId: d.to_id, kind: d.kind, weight: d.weight ?? undefined }, { via: "agent", sourceRef: d.thread });
+});
+
+route("POST", /^\/links\/remove$/, async ({ body }) => {
+  const d = CreateLink.omit({ weight: true }).parse(body);
+  return unlinkEnds(sql, { fromId: d.from_id, toId: d.to_id, kind: d.kind });
 });
 
 route("POST", /^\/intents\/([0-9a-f-]{36})\/assign$/, async ({ params, body }) => {

@@ -4,7 +4,8 @@ import { handleApi } from "../../src/server/api/v1.js";
 import { type ContactsPort, GPerson, SyncTokenExpiredError } from "../../src/server/google/contactsClient.js";
 import { syncContacts } from "../../src/server/google/contactsSync.js";
 import { getContext } from "../../src/server/memory/context.js";
-import { findEntity, showEntity, updateEntity, upsertEntity } from "../../src/server/memory/entities.js";
+import { findEntity, mergeEntities, showEntity, updateEntity, upsertEntity } from "../../src/server/memory/entities.js";
+import { createPage, readPage } from "../../src/server/memory/pages.js";
 import "../../src/server/memory/peopleSection.js";
 import { lastContacts, listPeople } from "../../src/server/people.js";
 import { recordObservation } from "../../src/server/observations.js";
@@ -126,6 +127,77 @@ dbDescribe("contacts import", () => {
     g.vanish("people/c2"); // deleted with no record of it
     g.expireToken();
     expect(await syncContacts(sql, g.port)).toMatchObject({ full: true, unlinked: 1 });
+  });
+});
+
+dbDescribe("names, aliases, and merging", () => {
+  const thread = "test-thread";
+
+  it("a name set in LoR sticks: a contacts sync files Google's name as an alias instead", async () => {
+    const g = contacts();
+    g.put({ resourceName: "people/sis", names: [{ displayName: "Imouto" }], phoneNumbers: [{ value: "+91 81970 53878" }] });
+    await syncContacts(sql, g.port);
+    const e = (await findEntity(sql, "Imouto"))!;
+    const renamed = await updateEntity(sql, e.id, { name: "Sanjana Padavala", addAliases: ["Sanju", "Sis"], removeAliases: ["Sis"] });
+    expect(renamed).toMatchObject({ name: "Sanjana Padavala", name_pinned: true });
+    expect(renamed.aliases.sort()).toEqual(["Imouto", "Sanju"]);
+    g.put({ resourceName: "people/sis", names: [{ displayName: "Imouto-chan" }], phoneNumbers: [{ value: "+91 81970 53878" }] });
+    await syncContacts(sql, g.port);
+    const after = await showEntity(sql, e.id);
+    expect(after.name).toBe("Sanjana Padavala");
+    expect(after.aliases.sort()).toEqual(["Imouto", "Imouto-chan", "Sanju"]);
+  });
+
+  it("merges an agent-made person into a Google contact: identifiers, history, page and cadence move; the merged one is gone", async () => {
+    const g = contacts();
+    g.put({ resourceName: "people/sis", names: [{ displayName: "Imouto" }], phoneNumbers: [{ value: "+91 81970 53878" }] });
+    await syncContacts(sql, g.port);
+    const google = (await findEntity(sql, "Imouto"))!;
+    const made = await upsertEntity(sql, { kind: "person", name: "Sanjana Padavala", aliases: ["Sanjana"], identifiers: [{ kind: "email", value: "sanjana@example.com" }] });
+    await updateEntity(sql, made.id, { keepInTouchDays: 14, birthday: "03-14" });
+    await createPage(sql, { slug: "people/sanjana", title: "Sanjana", body: "Sister.\n", entityId: made.id, via: "agent", sourceRef: thread });
+    const at = new Date(Date.now() - 3600_000);
+    await recordObservation(sql, { tStart: at, tEnd: at, device: "pixel-9a", source: "android", payload: { kind: "call", direction: "in", phone: "+918197053878", duration_s: 60 } });
+
+    const { entity, detached_page } = await mergeEntities(sql, made.id, google.id, thread);
+    expect(detached_page).toBeNull();
+    expect(entity).toMatchObject({
+      id: made.id, name: "Sanjana Padavala", google_contact_id: "people/sis", name_pinned: true,
+      keep_in_touch_days: 14, birthday: { month: 3, day: 14 }, page: "people/sanjana", last_contact: { via: "phone" },
+    });
+    expect(entity.aliases.sort()).toEqual(["Imouto", "Sanjana"]);
+    expect(entity.identifiers.map((i) => i.value).sort()).toEqual(["+918197053878", "sanjana@example.com"]);
+    expect(await sql`SELECT 1 FROM entity WHERE id = ${google.id}`).toHaveLength(0);
+    const [note] = await sql<{ title: string; payload: { merged: { name: string } } }[]>`SELECT title, payload FROM observation WHERE source = 'agent'`;
+    expect(note).toMatchObject({ title: "Merged Imouto into Sanjana Padavala", payload: { merged: { name: "Imouto" } } });
+
+    // Google keeps the contact linked, and the name stays.
+    g.put({ resourceName: "people/sis", names: [{ displayName: "Imouto" }], phoneNumbers: [{ value: "+91 81970 53878" }, { value: "+1 415 555 0199" }] });
+    expect(await syncContacts(sql, g.port)).toMatchObject({ created: 0 });
+    expect(await showEntity(sql, "+14155550199")).toMatchObject({ id: made.id, name: "Sanjana Padavala" });
+  });
+
+  it("when both have a page, the merged one's page is detached for the agent to fold in", async () => {
+    const a = await upsertEntity(sql, { kind: "person", name: "Jo Bloggs" });
+    const b = await upsertEntity(sql, { kind: "person", name: "Joanna B" });
+    await createPage(sql, { slug: "people/jo", title: "Jo", body: "A.\n", entityId: a.id, via: "agent", sourceRef: thread });
+    await createPage(sql, { slug: "people/joanna", title: "Joanna", body: "B.\n", entityId: b.id, via: "agent", sourceRef: thread });
+    const r = await mergeEntities(sql, a.id, b.id, thread);
+    expect(r).toMatchObject({ detached_page: "people/joanna", entity: { page: "people/jo", aliases: ["Joanna B"] } });
+    expect((await readPage(sql, "people/joanna")).body).toBe("B.\n");
+  });
+
+  it("refuses to merge two Google contacts, different kinds, or an entity into itself", async () => {
+    const g = contacts();
+    g.put(priya);
+    g.put(jo);
+    await syncContacts(sql, g.port);
+    const p = (await findEntity(sql, "Priya Raman"))!;
+    const j = (await findEntity(sql, "Jo Bloggs"))!;
+    const acmeOrg = await upsertEntity(sql, { kind: "org", name: "Acme" });
+    await expect(mergeEntities(sql, p.id, j.id, thread)).rejects.toMatchObject({ code: "both-from-google" });
+    await expect(mergeEntities(sql, p.id, acmeOrg.id, thread)).rejects.toMatchObject({ code: "kinds-differ" });
+    await expect(mergeEntities(sql, p.id, p.id, thread)).rejects.toThrow(/itself/);
   });
 });
 
