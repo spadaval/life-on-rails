@@ -22,7 +22,7 @@ import { getContext } from "../memory/context.js";
 import { resolveDate } from "../memory/day.js";
 import "../memory/todaySection.js";
 import "../memory/peopleSection.js";
-import { type PeopleFilter, birthdayLine, dueLine, listPeople } from "../people.js";
+import { PEOPLE_FILTERS, type PeopleFilter, birthdayLine, dueLine, listPeople } from "../people.js";
 import { ENTITY_KINDS, findEntity, showEntity, updateEntity, upsertEntity } from "../memory/entities.js";
 import { createPage, pageHistory, readPage, searchPages, updatePage } from "../memory/pages.js";
 import { SEARCH_KINDS, search } from "../memory/search.js";
@@ -228,7 +228,6 @@ route("POST", /^\/entities\/(.+)$/, async ({ params, body }) => {
   });
 });
 
-const PEOPLE_FILTERS = ["important", "all", "keep-in-touch", "overdue", "birthdays"] as const;
 
 route("GET", /^\/people$/, async ({ query }) => {
   const filter = (query.get("filter") ?? "important") as PeopleFilter;

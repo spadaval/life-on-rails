@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { decryptCrypt15, sixteenByteFields } from "../../src/server/whatsapp/crypt15.js";
 import { messageObservation } from "../../src/server/whatsapp/import.js";
-import { readMessages } from "../../src/server/whatsapp/msgstore.js";
+import { readGroups, readMessages } from "../../src/server/whatsapp/msgstore.js";
 import { KEY, crypt15, msgstore } from "./fixture.js";
 
 describe("crypt15", () => {
@@ -53,6 +53,13 @@ describe("msgstore", () => {
 
   it("maps an @lid chat to its phone number", () => {
     expect(roundTrip()[5]).toMatchObject({ phone: "14155550111", text: "hi from a lid chat" });
+  });
+
+  it("reads each group with a message, and its current members by number, @lid ones mapped and pending invites left out", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "wa-out-"));
+    const file = path.join(dir, "msgstore.db");
+    writeFileSync(file, decryptCrypt15(crypt15(msgstore()), KEY));
+    expect(readGroups(file)).toEqual([{ jid: "120363000000000000@g.us", name: "Wedding planning", members: ["14155550111", "919876543210"] }]);
   });
 
   it("reads only messages newer than the cursor", () => {

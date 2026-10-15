@@ -23,7 +23,7 @@ read
   lor page read <slug> [--version N] [--md]
   lor page history <slug>
   lor entity show <id|name|email|phone>
-  lor people [<search>] [--overdue | --birthdays [--days N] | --all] [--limit N]
+  lor people [<search>] [--overdue | --birthdays [--days N] | --groups | --all] [--limit N]
   lor day [<YYYY-MM-DD>]
   lor graph [--starving] [--waiting]
   lor intent show <id>
@@ -37,7 +37,7 @@ write (free for the agent; every write needs --thread <your T3 thread id>)
   lor page update <slug> --base <N> [--note "..."] [--dry-run] < body.md
   lor page update <slug> --base <N> --find "..." --replace "..."
   lor page update <slug> --append < fragment.md
-  lor entity upsert --kind person|org|place|thing --name "..." [--email a@b]... [--alias "..."]...
+  lor entity upsert --kind person|org|place|thing|group --name "..." [--email a@b]... [--alias "..."]...
   lor entity set <id|name|email> [--keep-in-touch <days>|off] [--birthday MM-DD|off] [--priority on|off]
   lor log "<text>" [--intent <id>]
   lor mail done <observation_id>...       take handled mail off the queue
@@ -64,7 +64,7 @@ A body comes from stdin, or from --file <path>.
 --thread may also be set once as LOR_THREAD in the environment.
 `;
 
-const BOOLEAN_FLAGS = new Set(["md", "history", "append", "dry-run", "all", "starving", "waiting", "help", "overdue", "birthdays"]);
+const BOOLEAN_FLAGS = new Set(["md", "history", "append", "dry-run", "all", "starving", "waiting", "help", "overdue", "birthdays", "groups"]);
 const REPEATABLE_FLAGS = new Set(["email", "alias", "id"]);
 
 class Usage extends Error {}
@@ -268,7 +268,7 @@ function plan(positionals, flags) {
       break;
 
     case "people": {
-      const filter = flags.overdue ? "overdue" : flags.birthdays ? "birthdays" : flags.all ? "all" : undefined;
+      const filter = flags.overdue ? "overdue" : flags.birthdays ? "birthdays" : flags.groups ? "groups" : flags.all ? "all" : undefined;
       return { method: "GET", path: `/people${q({ filter, q: positionals.slice(1).join(" ") || undefined, days: flags.days, limit: int(flags.limit, "limit") })}`, md: true };
     }
 

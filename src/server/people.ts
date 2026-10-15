@@ -1,5 +1,5 @@
 // Keeping track of people: when the owner was last in touch with each one
-// (mail either way, a meeting, a call or a text), who is overdue against the
+// (mail either way, a meeting, a call, a text or WhatsApp), who is overdue against the
 // cadence the owner set, and whose birthday is coming. Everything is matched by
 // identifiers at read time, so mail that arrived before a contact was imported
 // still counts.
@@ -23,43 +23,31 @@ export interface LastContact {
 const EMPTY: LastContact = { at: null, via: null, mail_in: null, mail_out: null, meeting: null, phone: null };
 
 /**
- * Last contact per entity. Mail and meetings match an entity's email
- * addresses (and its domains, for an organisation); calls, texts and
- * one-to-one WhatsApp messages match its phone numbers.
+ * Last contact per entity: any observation whose parties include one of its
+ * identifiers (see observation_parties), plus meetings by attendee address.
+ * A group message is with the group, so it counts for the group, not for
+ * everyone in it.
  */
 export async function lastContacts(db: Tx, entityIds: string[] | null = null): Promise<Map<string, LastContact>> {
   const rows = await db<{ entity_id: string; mail_in: Date | null; mail_out: Date | null; meeting: Date | null; phone: Date | null }[]>`
     WITH ids AS (
-      SELECT entity_id, kind, value FROM entity_identifier
+      SELECT entity_id, kind || ':' || value AS key FROM entity_identifier
       WHERE ${entityIds}::uuid[] IS NULL OR entity_id = ANY(${entityIds}::uuid[])
     ),
     touches AS (
-      SELECT 'mail_in' AS ch, lower(payload->>'from_email') AS v, max(t_start) AS t FROM observation
-      WHERE source = 'gmail' AND coalesce(payload->>'direction', 'in') = 'in' AND payload->>'from_email' IS NOT NULL
-      GROUP BY 2
+      SELECT p AS key,
+             CASE WHEN o.kind <> 'mail' THEN 'phone' WHEN o.payload->>'direction' = 'sent' THEN 'mail_out' ELSE 'mail_in' END AS ch,
+             max(o.t_start) AS t
+      FROM observation o, unnest(o.parties) p
+      WHERE o.kind IN ('mail', 'call', 'sms', 'whatsapp')
+      GROUP BY 1, 2
       UNION ALL
-      SELECT 'mail_out', lower(x), max(o.t_start) FROM observation o, jsonb_array_elements_text(o.payload->'to_emails') x
-      WHERE o.source = 'gmail' AND o.payload->>'direction' = 'sent'
-      GROUP BY 2
-      UNION ALL
-      SELECT 'meeting', a, max(g.t_end) FROM google_event g, unnest(g.attendees) a
+      SELECT k, 'meeting', max(g.t_end) FROM google_event g, unnest(g.attendees) a,
+             unnest(ARRAY['email:' || lower(a), 'domain:' || split_part(lower(a), '@', 2)]) k
       WHERE g.t_end <= now() AND g.status <> 'cancelled' AND coalesce(g.self_response, '') <> 'declined'
-      GROUP BY 2
-    ),
-    calls AS (
-      SELECT payload->>'phone' AS v, max(t_start) AS t FROM observation
-      WHERE source = 'android' AND payload->>'phone' IS NOT NULL
-        -- A group chat is not being in touch with everyone in it.
-        AND NOT coalesce((payload->>'group')::boolean, false)
       GROUP BY 1
     ),
-    matched AS (
-      SELECT i.entity_id, t.ch, t.t FROM touches t JOIN ids i ON i.kind = 'email' AND i.value = t.v
-      UNION ALL
-      SELECT i.entity_id, t.ch, t.t FROM touches t JOIN ids i ON i.kind = 'domain' AND i.value = split_part(t.v, '@', 2)
-      UNION ALL
-      SELECT i.entity_id, 'phone', c.t FROM calls c JOIN ids i ON i.kind = 'phone' AND i.value = c.v
-    )
+    matched AS (SELECT i.entity_id, t.ch, t.t FROM touches t JOIN ids i ON i.key = t.key)
     SELECT entity_id,
            max(t) FILTER (WHERE ch = 'mail_in') AS mail_in,
            max(t) FILTER (WHERE ch = 'mail_out') AS mail_out,
@@ -116,7 +104,8 @@ export interface Person {
   identifiers: { kind: string; value: string }[];
 }
 
-export type PeopleFilter = "important" | "all" | "keep-in-touch" | "overdue" | "birthdays";
+export const PEOPLE_FILTERS = ["important", "all", "keep-in-touch", "overdue", "birthdays", "groups"] as const;
+export type PeopleFilter = (typeof PEOPLE_FILTERS)[number];
 
 export interface PeopleQuery {
   filter?: PeopleFilter;
@@ -184,7 +173,11 @@ export async function listPeople(db: Tx, query: PeopleQuery = {}): Promise<{ peo
   const filter = query.filter ?? "important";
   let shown = people.filter((p) => {
     if (q && !(p.name.toLowerCase().includes(q) || p.identifiers.some((i) => i.value.includes(q)))) return false;
+    // Groups have their own list; a search, a cadence or being overdue finds them too.
+    if (p.kind === "group" && !q && (filter === "important" || filter === "all")) return false;
     switch (filter) {
+      case "groups":
+        return p.kind === "group";
       case "all":
         return true;
       case "keep-in-touch":
@@ -199,6 +192,7 @@ export async function listPeople(db: Tx, query: PeopleQuery = {}): Promise<{ peo
   });
   if (filter === "overdue") shown.sort((a, b) => (b.overdue_by ?? 0) - (a.overdue_by ?? 0));
   if (filter === "birthdays") shown.sort((a, b) => (a.birthday_in ?? 0) - (b.birthday_in ?? 0));
+  if (filter === "groups") shown.sort((a, b) => (b.last.at ?? "").localeCompare(a.last.at ?? ""));
   const total = shown.length;
   shown = shown.slice(0, query.limit ?? 200);
   return { people: shown, total, shown: shown.length };

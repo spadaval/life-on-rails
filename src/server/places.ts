@@ -138,7 +138,7 @@ export async function listApps(db: Sql, days = 14, now = new Date()): Promise<Ap
   const rows = await db<{ app: string; name: string; hours: number; sessions: number }[]>`
     SELECT app, max(title) AS name, round((sum(extract(epoch FROM t_end - t_start)) / 3600)::numeric, 1)::float8 AS hours, count(*)::int AS sessions
     FROM observation
-    WHERE source = 'android' AND payload->>'kind' = 'app' AND app IS NOT NULL AND t_end IS NOT NULL
+    WHERE kind = 'app' AND app IS NOT NULL AND t_end IS NOT NULL
       AND t_start > ${new Date(now.getTime() - days * 86_400_000)}
     GROUP BY app ORDER BY sum(t_end - t_start) DESC LIMIT 40`;
   const rules = await db<{ match_app: string; title: string }[]>`

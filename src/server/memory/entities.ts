@@ -8,11 +8,11 @@ import { env } from "../env.js";
 import { BadInput, NotFound, Refused } from "../errors.js";
 import { type LastContact, lastContacts } from "../people.js";
 
-export const ENTITY_KINDS = ["person", "org", "place", "thing"] as const;
+export const ENTITY_KINDS = ["person", "org", "place", "thing", "group"] as const;
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 
 export interface Identifier {
-  kind: string; // email | phone | handle | domain
+  kind: string; // email | phone | handle | domain | whatsapp_group
   value: string;
 }
 
@@ -35,8 +35,16 @@ export interface EntityView {
   last_contact: LastContact | null;
   /** The latest mail with this entity, both ways (headers only; the mail itself is in Gmail). */
   recent_mail: { gmail_id: string; subject: string | null; at: string; direction: "in" | "sent" }[];
-  /** The latest texts and WhatsApp messages with this entity, text cut to a few hundred characters. */
-  recent_messages: { at: string; kind: string; direction: "in" | "out"; group: string | null; text: string | null }[];
+  /**
+   * The latest texts and WhatsApp messages with this entity, text cut to a few hundred characters:
+   * one-to-one both ways, what a person wrote in groups, and for a group, what was said in it.
+   * `from` is who wrote it (a name, else the number); null when the owner did.
+   */
+  recent_messages: { at: string; kind: string; direction: "in" | "out"; group: string | null; from: string | null; text: string | null }[];
+  /** For a group: its members, named when LoR knows them. */
+  members: { entity_id: string | null; name: string | null; identifier: string }[];
+  /** For anyone else: the groups they are in. */
+  groups: { id: string; name: string }[];
   updated_at: string;
 }
 
@@ -63,33 +71,55 @@ export function normalizeIdentifier(id: Identifier): Identifier {
   return { kind, value: id.value.trim().toLowerCase() };
 }
 
-/** Mail with this entity, both ways, matched by its addresses and domains at read time. */
+/** Mail with this entity, both ways (see observation_parties). */
 export async function recentMail(tx: Tx, entityId: string, limit = 10): Promise<EntityView["recent_mail"]> {
   const rows = await tx<{ gmail_id: string; subject: string | null; at: Date; direction: "in" | "sent" }[]>`
-    WITH ids AS (SELECT kind, value FROM entity_identifier WHERE entity_id = ${entityId} AND kind IN ('email', 'domain'))
+    WITH k AS (SELECT coalesce(array_agg(kind || ':' || value), '{}') AS keys FROM entity_identifier WHERE entity_id = ${entityId})
     SELECT o.payload->>'gmail_id' AS gmail_id, o.title AS subject, o.t_start AS at,
            coalesce(o.payload->>'direction', 'in') AS direction
-    FROM observation o
-    WHERE o.source = 'gmail' AND (
-      EXISTS (SELECT 1 FROM ids WHERE (ids.kind = 'email' AND ids.value = o.payload->>'from_email')
-                                   OR (ids.kind = 'domain' AND ids.value = split_part(o.payload->>'from_email', '@', 2)))
-      OR EXISTS (SELECT 1 FROM ids, jsonb_array_elements_text(coalesce(o.payload->'to_emails', '[]'::jsonb)) t
-                 WHERE (ids.kind = 'email' AND ids.value = t) OR (ids.kind = 'domain' AND ids.value = split_part(t, '@', 2))))
+    FROM observation o, k
+    WHERE o.kind = 'mail' AND o.parties && k.keys
     ORDER BY o.t_start DESC LIMIT ${limit}`;
   return rows.map((m) => ({ gmail_id: m.gmail_id, subject: m.subject, at: m.at.toISOString(), direction: m.direction }));
 }
 
-/** Texts and WhatsApp messages with this entity's numbers, newest first: one-to-one both ways, and what they wrote in groups. */
+/** Texts and WhatsApp messages with this entity or written by it, newest first. */
 export async function recentMessages(tx: Tx, entityId: string, limit = 10): Promise<EntityView["recent_messages"]> {
-  const rows = await tx<{ at: Date; kind: string; direction: "in" | "out"; grp: string | null; text: string | null }[]>`
-    SELECT o.t_start AS at, o.payload->>'kind' AS kind, o.payload->>'direction' AS direction,
-           CASE WHEN (o.payload->>'group')::boolean THEN coalesce(o.payload->>'chat_name', 'a group') END AS grp,
+  const rows = await tx<{ at: Date; kind: string; direction: "in" | "out"; grp: string | null; author: string | null; who: string | null; text: string | null }[]>`
+    WITH k AS (SELECT coalesce(array_agg(kind || ':' || value), '{}') AS keys FROM entity_identifier WHERE entity_id = ${entityId})
+    SELECT o.t_start AS at, o.kind, o.payload->>'direction' AS direction,
+           CASE WHEN o.payload->>'group' = 'true' THEN coalesce(o.payload->>'chat_name', 'a group') END AS grp,
+           o.author,
+           (SELECT e.name FROM entity_identifier i JOIN entity e ON e.id = i.entity_id WHERE i.kind || ':' || i.value = o.author LIMIT 1) AS who,
            left(o.payload->>'text', 300) AS text
-    FROM observation o
-    WHERE o.source = 'android' AND o.payload->>'kind' IN ('sms', 'whatsapp')
-      AND o.payload->>'phone' IN (SELECT value FROM entity_identifier WHERE entity_id = ${entityId} AND kind = 'phone')
+    FROM observation o, k
+    WHERE o.kind IN ('sms', 'whatsapp') AND (o.parties && k.keys OR o.author = ANY(k.keys))
     ORDER BY o.t_start DESC LIMIT ${limit}`;
-  return rows.map((m) => ({ at: m.at.toISOString(), kind: m.kind, direction: m.direction, group: m.grp, text: m.text }));
+  return rows.map((m) => ({
+    at: m.at.toISOString(), kind: m.kind, direction: m.direction, group: m.grp,
+    from: m.author ? (m.who ?? m.author.replace(/^[a-z_]+:/, "")) : null,
+    text: m.text,
+  }));
+}
+
+/** A group's members, named when one of their identifiers belongs to an entity. */
+export async function groupMembers(tx: Tx, groupId: string): Promise<EntityView["members"]> {
+  const rows = await tx<{ entity_id: string | null; name: string | null; kind: string; value: string }[]>`
+    SELECT e.id AS entity_id, e.name, m.kind, m.value FROM entity_member m
+    LEFT JOIN entity_identifier i ON i.kind = m.kind AND i.value = m.value
+    LEFT JOIN entity e ON e.id = i.entity_id
+    WHERE m.entity_id = ${groupId}
+    ORDER BY e.name IS NULL, lower(e.name), m.value`;
+  return rows.map((r) => ({ entity_id: r.entity_id, name: r.name, identifier: r.value }));
+}
+
+/** The groups an entity is a member of, by any of its identifiers. */
+export async function groupsOf(tx: Tx, entityId: string): Promise<EntityView["groups"]> {
+  return tx<{ id: string; name: string }[]>`
+    SELECT DISTINCT g.id, g.name FROM entity_identifier i
+    JOIN entity_member m ON m.kind = i.kind AND m.value = i.value
+    JOIN entity g ON g.id = m.entity_id
+    WHERE i.entity_id = ${entityId} ORDER BY g.name`;
 }
 
 export async function viewOf(tx: Tx, e: EntityRow): Promise<EntityView> {
@@ -110,6 +140,8 @@ export async function viewOf(tx: Tx, e: EntityRow): Promise<EntityView> {
     last_contact: (await lastContacts(tx, [e.id])).get(e.id) ?? null,
     recent_mail: await recentMail(tx, e.id),
     recent_messages: await recentMessages(tx, e.id),
+    members: e.kind === "group" ? await groupMembers(tx, e.id) : [],
+    groups: e.kind === "group" ? [] : await groupsOf(tx, e.id),
     updated_at: e.updated_at.toISOString(),
   };
 }

@@ -1,16 +1,18 @@
 // WhatsApp messages into LoR. The phone uploads WhatsApp's nightly local
 // backup, still encrypted (device.ts); this job decrypts it with the owner's
 // 64-digit backup key and records each new message as an observation, text
-// included, so it counts toward "last in touch" and can be searched.
+// included, so it counts toward "last in touch" and can be searched. Each
+// group becomes a group entity, with its current members.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Sql } from "../../db/client.js";
+import { uuidv7 } from "../../shared/ids.js";
 import { normalizePhone } from "../../shared/phone.js";
 import { env } from "../env.js";
 import { recordObservation, stableId } from "../observations.js";
 import { decryptCrypt15 } from "./crypt15.js";
-import { readMessages, type WaMessage } from "./msgstore.js";
+import { readGroups, readMessages, type WaGroup, type WaMessage } from "./msgstore.js";
 
 export const BACKUP_FILE = "msgstore.db.crypt15";
 const STATE_FILE = "state.json";
@@ -99,8 +101,10 @@ export async function importWhatsapp(db: Sql): Promise<Record<string, unknown>> 
   const dbPath = path.join(dir(), `msgstore-${process.pid}.db`);
   writeFileSync(dbPath, plain, { mode: 0o600 });
   let messages: WaMessage[];
+  let groups: WaGroup[];
   try {
     messages = readMessages(dbPath, Math.max(0, state.cursor_ms - OVERLAP_MS));
+    groups = readGroups(dbPath);
   } finally {
     rmSync(dbPath, { force: true });
   }
@@ -117,6 +121,44 @@ export async function importWhatsapp(db: Sql): Promise<Record<string, unknown>> 
       }
     });
   }
+  const g = await syncGroups(db, groups);
   writeState({ sha256, cursor_ms: cursor, device, imported_at: new Date().toISOString() });
-  return { read: messages.length, stored, newest: cursor ? new Date(cursor).toISOString() : null };
+  return { read: messages.length, stored, newest: cursor ? new Date(cursor).toISOString() : null, groups: groups.length, new_groups: g.created };
+}
+
+/**
+ * One group entity per WhatsApp group, found by its chat id. WhatsApp is the
+ * source of the name (a rename keeps the old one as an alias) and of who is in it.
+ */
+export async function syncGroups(db: Sql, groups: WaGroup[]): Promise<{ created: number }> {
+  let created = 0;
+  await db.begin(async (tx) => {
+    for (const g of groups) {
+      const jid = g.jid.toLowerCase();
+      const found = (
+        await tx<{ id: string; name: string; aliases: string[] }[]>`
+          SELECT e.id, e.name, e.aliases FROM entity e JOIN entity_identifier i ON i.entity_id = e.id
+          WHERE i.kind = 'whatsapp_group' AND i.value = ${jid}`
+      )[0];
+      let id: string;
+      if (!found) {
+        id = uuidv7();
+        created++;
+        await tx`INSERT INTO entity (id, kind, name) VALUES (${id}, 'group', ${g.name ?? `WhatsApp group ${jid.split("@")[0]!.slice(-6)}`})`;
+        await tx`INSERT INTO entity_identifier (entity_id, kind, value) VALUES (${id}, 'whatsapp_group', ${jid})`;
+      } else {
+        id = found.id;
+        if (g.name && g.name !== found.name) {
+          const aliases = [...new Set([...found.aliases, found.name])].filter((a) => a !== g.name);
+          await tx`UPDATE entity SET name = ${g.name}, aliases = ${aliases}, updated_at = now() WHERE id = ${id}`;
+        }
+      }
+      const phones = [...new Set(g.members.map((m) => normalizePhone(`+${m}`, env.LOR_PHONE_COUNTRY_CODE) ?? `+${m}`))];
+      await tx`DELETE FROM entity_member WHERE entity_id = ${id}`;
+      if (phones.length) {
+        await tx`INSERT INTO entity_member ${tx(phones.map((value) => ({ entity_id: id, kind: "phone", value })))} ON CONFLICT DO NOTHING`;
+      }
+    }
+  });
+  return { created };
 }

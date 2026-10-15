@@ -14,7 +14,7 @@ const Search = z.object({
   q: z.string().optional(),
   date: z.string().optional(),
   obs: z.string().optional(),
-  filter: z.enum(["important", "all", "keep-in-touch", "overdue", "birthdays"]).optional(),
+  filter: z.enum(["important", "all", "keep-in-touch", "overdue", "birthdays", "groups"]).optional(),
   pq: z.string().optional(),
 });
 
@@ -371,9 +371,10 @@ const FILTERS = [
   { id: "overdue", label: "Overdue" },
   { id: "birthdays", label: "Birthdays soon" },
   { id: "all", label: "Everyone" },
+  { id: "groups", label: "Groups" },
 ] as const;
 
-const VIA: Record<string, string> = { mail_in: "they emailed", mail_out: "you emailed", meeting: "you met", phone: "call or text" };
+const VIA: Record<string, string> = { mail_in: "they emailed", mail_out: "you emailed", meeting: "you met", phone: "call, text or WhatsApp" };
 
 function People({ data, act }: { data: Data; act: Act }) {
   const search = Route.useSearch();
@@ -408,7 +409,7 @@ function People({ data, act }: { data: Data; act: Act }) {
           ? filter === "important" && !search.pq
             ? "No one yet. People arrive from Google Contacts once LoR is signed in, and the agent adds people who matter."
             : "No one matches."
-          : `${total} ${total === 1 ? "person" : "people"}${total > people.length ? `, showing ${people.length}` : ""}`}
+          : `${total} ${filter === "groups" ? (total === 1 ? "group" : "groups") : total === 1 ? "person" : "people"}${total > people.length ? `, showing ${people.length}` : ""}`}
       </p>
       <ul className="space-y-2">
         {people.map((p) => (
@@ -491,7 +492,7 @@ function Timeline({ data, highlight }: { data: Data; highlight?: string }) {
       {data.timeline.length === 0 ? <p className="muted">Nothing was recorded on this day.</p> : null}
       <ul className="divide-y divide-black/10 dark:divide-white/10">
         {data.timeline.map((o) => (
-          <li key={o.id} className={`flex flex-wrap items-baseline gap-x-3 py-2 ${o.bulk ? "opacity-50" : ""} ${o.id === highlight ? "bg-warn/15" : ""}`}>
+          <li key={o.id} className={`flex flex-wrap items-baseline gap-x-3 py-2 ${o.bulk ? "opacity-50" : ""} ${highlight && o.ids.includes(highlight) ? "bg-warn/15" : ""}`}>
             <span className="muted w-20 shrink-0 text-sm tabular-nums">{clock(o.t)}</span>
             <span className="chip">{o.source}</span>
             <span className="min-w-0 flex-1">

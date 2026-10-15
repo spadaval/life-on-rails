@@ -226,7 +226,7 @@ export async function syncActivityFill(tx: Tx, from: Date, to: Date): Promise<Fi
   const lo = new Date(from.getTime() - LOOKBACK_MS);
   const rows = await tx<{ id: string; t_start: Date; t_end: Date; app: string | null; title: string | null; device: string }[]>`
     SELECT id, t_start, t_end, app, title, device FROM observation
-    WHERE source = 'android' AND payload->>'kind' = 'app' AND t_end IS NOT NULL AND t_start < ${to} AND t_end > ${lo}`;
+    WHERE kind = 'app' AND t_end IS NOT NULL AND t_start < ${to} AND t_end > ${lo}`;
   const sessions: AppSession[] = rows.map((r) => ({
     id: r.id, t: r.t_start.getTime(), tEnd: r.t_end.getTime(), app: r.app ?? "", name: r.title ?? r.app ?? "app", device: r.device,
   }));
@@ -246,7 +246,7 @@ export async function loadPlaces(tx: Tx): Promise<Place[]> {
 export async function loadFixes(tx: Tx, from: Date, to: Date): Promise<Fix[]> {
   const rows = await tx<{ id: string; t_start: Date; lat: number; lon: number; accuracy_m: number | null }[]>`
     SELECT id, t_start, (payload->>'lat')::float8 AS lat, (payload->>'lon')::float8 AS lon, (payload->>'accuracy_m')::float8 AS accuracy_m
-    FROM observation WHERE source = 'android' AND payload->>'kind' = 'location' AND t_start >= ${from} AND t_start < ${to}`;
+    FROM observation WHERE kind = 'location' AND t_start >= ${from} AND t_start < ${to}`;
   return rows.map((r) => ({ id: r.id, t: r.t_start.getTime(), lat: r.lat, lon: r.lon, accuracyM: r.accuracy_m ?? 100 }));
 }
 

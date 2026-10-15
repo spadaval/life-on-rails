@@ -2,12 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { sql } from "../../db/client.js";
 import { diffLines, renderDiff } from "../../shared/diff.js";
-import { addDays, localDayBounds } from "../../shared/localTime.js";
+import { addDays } from "../../shared/localTime.js";
 import { env } from "../env.js";
 import { NotFound } from "../errors.js";
 import { resolveDate } from "../memory/day.js";
+import { dayTimeline } from "../memory/timeline.js";
 import { updateEntity } from "../memory/entities.js";
-import { type PeopleFilter, listPeople } from "../people.js";
+import { PEOPLE_FILTERS, type PeopleFilter, listPeople } from "../people.js";
 import { createPage, listPages, pageHistory, readPage, revertPage, setInDigest, updatePage } from "../memory/pages.js";
 import { search } from "../memory/search.js";
 
@@ -19,7 +20,7 @@ const Query = z.object({
   version: z.number().int().optional(),
   q: z.string().optional(),
   date: z.string().optional(),
-  filter: z.enum(["important", "all", "keep-in-touch", "overdue", "birthdays"]).optional(),
+  filter: z.enum(PEOPLE_FILTERS).optional(),
   pq: z.string().optional(),
 });
 
@@ -53,16 +54,7 @@ export const getMemoryFn = createServerFn({ method: "GET" })
         : { people: [], total: 0, shown: 0 };
 
     const date = resolveDate(data.date);
-    let timeline: { id: string; t: string; source: string; title: string | null; detail: string | null; bulk: boolean }[] = [];
-    if (tab === "timeline") {
-      const { start, end } = localDayBounds(env.LOR_TZ, date);
-      const rows = await sql<{ id: string; t_start: Date; source: string; title: string | null; detail: string | null; bulk: boolean }[]>`
-        SELECT id, t_start, source, title,
-               coalesce(payload->>'from', app) AS detail,
-               coalesce((payload->>'bulk')::boolean, false) AS bulk
-        FROM observation WHERE t_start >= ${start} AND t_start < ${end} ORDER BY t_start DESC LIMIT 500`;
-      timeline = rows.map((r) => ({ id: r.id, t: r.t_start.toISOString(), source: r.source, title: r.title, detail: r.detail, bulk: r.bulk }));
-    }
+    const timeline = tab === "timeline" ? await dayTimeline(sql, date) : [];
 
     return { tab, q: data.q ?? "", results, pages, page, people, timeline, date, prev: addDays(date, -1), next: addDays(date, 1), timezone: env.LOR_TZ };
   });

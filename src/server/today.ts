@@ -241,7 +241,7 @@ export async function getToday(db: Tx, date: Ymd, now = new Date()): Promise<Tod
 
   const sessions = await db<{ id: string; t_start: Date; t_end: Date; app: string | null; title: string | null; device: string }[]>`
     SELECT id, t_start, t_end, app, title, device FROM observation
-    WHERE source = 'android' AND payload->>'kind' = 'app' AND t_end IS NOT NULL AND t_start < ${end} AND t_end > ${start}`;
+    WHERE kind = 'app' AND t_end IS NOT NULL AND t_start < ${end} AND t_end > ${start}`;
   const phone = sessions.length > 0
     ? phoneStats(sessions.map((s) => ({ id: s.id, t: s.t_start.getTime(), tEnd: s.t_end.getTime(), app: s.app ?? "", name: s.title ?? s.app ?? "app", device: s.device })), start.getTime(), end.getTime())
     : null;

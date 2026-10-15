@@ -163,10 +163,21 @@ export const observation = pgTable(
     ingestedAt: ts("ingested_at").notNull().defaultNow(),
     // Message text (texts, WhatsApp) is searchable along with the title.
     search: tsvector("search").generatedAlwaysAs(sql`to_tsvector('english', coalesce(title, '') || ' ' || coalesce(payload->>'text', ''))`),
+    // What it is: app, location, steps, call, sms, whatsapp, mail; null for calendar, agent and manual rows.
+    kind: text("kind").generatedAlwaysAs(sql`CASE WHEN source = 'gmail' THEN 'mail' ELSE payload->>'kind' END`),
+    // Who a call, text, WhatsApp message or mail was with, as entity identifiers ("phone:+1415…",
+    // "email:a@b.com", "domain:b.com", "whatsapp_group:…@g.us"). A group message is with the group,
+    // not with everyone in it. Derived by observation_parties() (migration 0010).
+    parties: text("parties").array().generatedAlwaysAs(sql`observation_parties(source, payload)`),
+    // Who wrote an incoming message or mail, as an identifier; null when the owner did.
+    author: text("author").generatedAlwaysAs(sql`observation_author(source, payload)`),
   },
   (t) => [
     index("observation_time_idx").on(t.tStart),
     index("observation_source_time_idx").on(t.source, t.tStart),
+    index("observation_kind_time_idx").on(t.kind, t.tStart),
+    index("observation_parties_idx").using("gin", t.parties),
+    index("observation_author_idx").on(t.author),
     index("observation_ingested_idx").on(t.ingestedAt),
     index("observation_search_idx").using("gin", t.search),
   ],
@@ -346,7 +357,7 @@ export const entity = pgTable(
   "entity",
   {
     id: uuid("id").primaryKey(),
-    kind: text("kind").notNull(), // person | org | place | thing
+    kind: text("kind").notNull(), // person | org | place | thing | group
     name: text("name").notNull(),
     aliases: text("aliases").array().notNull().default(sql`'{}'::text[]`),
     // Mail from this entity skips the wake debounce.
@@ -368,7 +379,7 @@ export const entity = pgTable(
   },
   (t) => [
     index("entity_name_trgm").using("gin", t.name.op("gin_trgm_ops")),
-    check("entity_kind_known", sql`${t.kind} IN ('person', 'org', 'place', 'thing')`),
+    check("entity_kind_known", sql`${t.kind} IN ('person', 'org', 'place', 'thing', 'group')`),
     check("entity_birthday_valid", sql`(${t.birthdayMonth} IS NULL) = (${t.birthdayDay} IS NULL) AND (${t.birthdayMonth} IS NULL OR (${t.birthdayMonth} BETWEEN 1 AND 12 AND ${t.birthdayDay} BETWEEN 1 AND 31))`),
     check("entity_keep_in_touch_positive", sql`${t.keepInTouchDays} IS NULL OR ${t.keepInTouchDays} > 0`),
   ],
@@ -388,10 +399,24 @@ export const entityIdentifier = pgTable(
     entityId: uuid("entity_id")
       .notNull()
       .references(() => entity.id, { onDelete: "cascade" }),
-    kind: text("kind").notNull(), // email | phone | handle | domain
+    kind: text("kind").notNull(), // email | phone | handle | domain | whatsapp_group
     value: text("value").notNull(), // lowercased
   },
   (t) => [primaryKey({ columns: [t.kind, t.value] }), index("entity_identifier_entity_idx").on(t.entityId)],
+);
+
+// Who belongs to a group, by identifier. Matched to people at read time, so a
+// member LoR does not know yet counts once they are added. Replaced on each import.
+export const entityMember = pgTable(
+  "entity_member",
+  {
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entity.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    value: text("value").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.entityId, t.kind, t.value] }), index("entity_member_value_idx").on(t.kind, t.value)],
 );
 
 // One page per subject. Plain markdown, complete in itself.

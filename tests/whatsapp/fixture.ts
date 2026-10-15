@@ -10,8 +10,8 @@ import { backupKey } from "../../src/server/whatsapp/crypt15.js";
 
 export const KEY = "0123456789abcdef".repeat(4);
 
-/** Builds msgstore.db: a one-to-one chat with Priya, a group, a chat known only by @lid, and noise to skip. */
-export function msgstore(): string {
+/** Builds msgstore.db: a one-to-one chat with Priya, a group with its members, a chat known only by @lid, and noise to skip. */
+export function msgstore(groupName = "Wedding planning"): string {
   const file = path.join(mkdtempSync(path.join(tmpdir(), "wa-")), "msgstore.db");
   const db = new DatabaseSync(file);
   db.exec(`
@@ -26,8 +26,11 @@ export function msgstore(): string {
                            (4, '987654321012345', 'lid', '987654321012345@lid'),
                            (5, '14155550111', 's.whatsapp.net', '14155550111@s.whatsapp.net'),
                            (6, 'status', 'broadcast', 'status@broadcast');
+    CREATE TABLE group_participant_user (_id INTEGER PRIMARY KEY, group_jid_row_id INTEGER, user_jid_row_id INTEGER, pending INTEGER);
     INSERT INTO jid_map VALUES (4, 5);
-    INSERT INTO chat VALUES (1, 1, NULL), (2, 2, 'Wedding planning'), (3, 4, NULL), (4, 6, NULL);
+    -- The group: Raj, someone known only by @lid, and an invite still pending.
+    INSERT INTO group_participant_user VALUES (1, 2, 3, 0), (2, 2, 4, 0), (3, 2, 1, 1);
+    INSERT INTO chat VALUES (1, 1, NULL), (2, 2, '${groupName}'), (3, 4, NULL), (4, 6, NULL);
     INSERT INTO message VALUES
       (1, 1, 0, 'A1', 0, 1760000000000, 0, 'Did you send the TDS form?'),
       (2, 1, 1, 'A2', 0, 1760000060000, 0, 'Yes, just now'),

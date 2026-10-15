@@ -46,7 +46,7 @@ deleting.
 | What you learned | Where it goes |
 | --- | --- |
 | About Sumeet: preferences, health, circumstances | The `me` page |
-| About a person, organisation, or place | The page for that entity (`people/...`, `orgs/...`, `places/...`) |
+| About a person, organisation, place, or group | The page for that entity (`people/...`, `orgs/...`, `places/...`, `groups/...`) |
 | About a goal or project: context, decisions and why | The page for that intent (`projects/...`, `goals/...`) |
 | Any other subject | A `topics/...` page |
 | What happened on a day or in a week | `days/YYYY-MM-DD`, `weeks/YYYY-Www` (the nightly run writes these) |
@@ -115,6 +115,7 @@ lor entity show priya@example.com              # also by name or phone number
 lor people --overdue                           # past the keep-in-touch cadence Sumeet set
 lor people --birthdays --days 14
 lor people "raman"                             # find someone
+lor people --groups                            # WhatsApp groups, most recently active first
 lor entity set priya@example.com --keep-in-touch 30     # or off
 lor entity set "Priya Raman" --birthday 03-14           # MM-DD or YYYY-MM-DD; or off
 lor entity upsert --kind person --name "Priya Raman" --email priya@example.com --alias "PR"
@@ -123,8 +124,13 @@ lor page create people/priya-raman --title "Priya Raman" --entity <entity_id> < 
 
 `lor entity show` includes when Sumeet was last in touch and how (they emailed, he emailed,
 they met, a call, text or WhatsApp message), and their latest texts and WhatsApp messages
-with the words (`recent_messages`; a group message names the group). Group chats do not count
-as being in touch. For a contact imported from Google, the name and birthday come
+with the words (`recent_messages`; a group message names the group, and `from` says who
+wrote it). Group chats do not count as being in touch with each member.
+
+Each WhatsApp group is an entity of kind `group`, named as in WhatsApp (old names stay as
+aliases). `lor entity show "<group>"` gives its `members` (named when LoR knows them),
+what was said in it lately, and when it was last active; a person's view lists the
+`groups` they are in. A group can have a page like anyone else: `groups/<slug>`. For a contact imported from Google, the name and birthday come
 from Google; change them there. Notes and addresses stay in Google: read them with `gog`.
 
 Entity first, then its page: the page is tied to the entity by `--entity`, and that is

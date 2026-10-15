@@ -19,6 +19,13 @@ export interface WaMessage {
   type: string;
 }
 
+export interface WaGroup {
+  jid: string;
+  name: string | null;
+  /** Current members' numbers, digits only (the owner is not listed). */
+  members: string[];
+}
+
 /** WhatsApp's message_type numbers, as words. Anything else is "other". */
 const TYPES: Record<number, string> = {
   0: "text",
@@ -116,6 +123,41 @@ export function readMessages(dbPath: string, sinceMs = 0): WaMessage[] {
         type: TYPES[r.message_type] ?? "other",
       };
     });
+  } finally {
+    db.close();
+  }
+}
+
+/** Groups with at least one message, and who is in each now. */
+export function readGroups(dbPath: string): WaGroup[] {
+  const db = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    const tables = tableNames(db);
+    const groups = db
+      .prepare(
+        `SELECT c._id AS chat_id, cj._id AS jid_id, (cj.user || '@' || cj.server) AS jid, c.subject
+         FROM chat c JOIN jid cj ON cj._id = c.jid_row_id
+         WHERE cj.server = 'g.us' AND EXISTS (SELECT 1 FROM message m WHERE m.chat_row_id = c._id AND m.message_type <> ${SYSTEM})`,
+      )
+      .all() as { chat_id: number; jid_id: number; jid: string; subject: string | null }[];
+    const members = new Map<number, string[]>();
+    if (tables.has("group_participant_user")) {
+      const mapped = tables.has("jid_map")
+        ? "(SELECT pj.user FROM jid_map m JOIN jid pj ON pj._id = m.jid_row_id WHERE m.lid_row_id = uj._id LIMIT 1)"
+        : "NULL";
+      const rows = db
+        .prepare(
+          `SELECT p.group_jid_row_id AS g, uj.user, uj.server, ${mapped} AS mapped
+           FROM group_participant_user p JOIN jid uj ON uj._id = p.user_jid_row_id
+           WHERE coalesce(p.pending, 0) = 0`,
+        )
+        .all() as { g: number; user: string | null; server: string | null; mapped: string | null }[];
+      for (const r of rows) {
+        const phone = phoneOf(r.user, r.server, r.mapped);
+        if (phone) members.set(r.g, [...(members.get(r.g) ?? []), phone]);
+      }
+    }
+    return groups.map((g) => ({ jid: g.jid, name: g.subject, members: [...new Set(members.get(g.jid_id) ?? [])].sort() }));
   } finally {
     db.close();
   }
