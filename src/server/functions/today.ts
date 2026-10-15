@@ -38,6 +38,9 @@ export const getTodayFn = createServerFn({ method: "GET" })
       WHERE i.type = 'metric' AND i.status = 'active'
         AND NOT EXISTS (SELECT 1 FROM commitment c WHERE c.intent_id = i.id AND c.kind = 'metric_value' AND c.t >= ${start} AND c.t < ${end})
       ORDER BY i.weight DESC, i.created_at LIMIT 1`;
+    const doneToday = new Set(
+      (await sql<{ intent_id: string }[]>`SELECT intent_id FROM commitment WHERE kind = 'task_done' AND t >= ${start} AND t < ${end}`).map((r) => r.intent_id),
+    );
     const system = await sql<{ id: string; title: string }[]>`SELECT id, title FROM intent WHERE system ORDER BY title`;
     // Time goes to goals, projects, habits, and tasks; a metric is a measurement, not somewhere time goes.
     const pickable = graph.nodes.filter((n) => (n.status === "active" || n.status === "waiting") && n.type !== "metric");
@@ -48,7 +51,19 @@ export const getTodayFn = createServerFn({ method: "GET" })
         ...system.map((s) => ({ id: s.id, title: s.title, type: "system" })),
       ],
       recent: recent.map((r) => ({ id: r.id, title: r.title })),
-      starving: graph.nodes.filter((n) => n.starving).map((n) => ({ id: n.id, title: n.title, hours: n.week_hours ?? 0, target: n.weekly_hour_target ?? 0 })),
+      goals: graph.nodes
+        .filter((n) => n.type === "goal" && n.status === "active" && n.weekly_hour_target)
+        .map((n) => ({ id: n.id, title: n.title, hours: n.week_hours ?? 0, target: n.weekly_hour_target ?? 0, starving: n.starving })),
+      // Open tasks by due date, then those finished today, so a mis-tap can be taken back.
+      tasks: [
+        ...graph.nodes
+          .filter((n) => n.type === "task" && (n.status === "active" || n.status === "waiting"))
+          .sort((a, b) => (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999") || a.title.localeCompare(b.title)),
+        ...graph.nodes.filter((n) => n.type === "task" && n.status === "done" && doneToday.has(n.id)),
+      ].map((n) => ({
+        id: n.id, title: n.title, done: n.status === "done", due: n.due_local, overdue: n.overdue, waiting: n.status === "waiting" ? (n.waiting_on ?? "someone") : null,
+        parent: n.parents[0]?.title ?? null, google: n.google_task_id !== null, agent: n.via === "agent", flagged: n.flagged_at !== null,
+      })),
       needsYou: (await needsOwner(sql)).map((n) => ({ id: n.id, title: n.title, note: n.flag_note ?? "", google: n.google_task_id !== null })),
       agentTasks: graph.nodes
         .filter((n) => n.type === "task" && n.assignee === "agent" && (n.status === "active" || n.status === "waiting"))

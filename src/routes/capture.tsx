@@ -1,100 +1,119 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { getCaptureStatus } from "../server/functions/cockpit.js";
 import { Ago } from "../components/Ago.js";
+import { PageHead, Panel } from "../components/ui.js";
+import { getCaptureStatus } from "../server/functions/cockpit.js";
+import { GlobalActions } from "./__root.js";
 
 export const Route = createFileRoute("/capture")({
   loader: () => getCaptureStatus(),
   component: Capture,
 });
 
-const STATE_CLASS: Record<string, string> = {
-  ok: "text-rail",
-  stale: "text-warn",
-  error: "text-bad",
-  never: "muted",
+const STATE: Record<string, { text: string; className: string }> = {
+  ok: { text: "ok", className: "text-mute" },
+  stale: { text: "late", className: "text-txt font-medium" },
+  error: { text: "failing", className: "text-bad" },
+  never: { text: "not run yet", className: "text-dim" },
 };
+
+const SOURCE: Record<string, string> = { android: "Phone", gmail: "Mail", calendar: "Calendar", agent: "Agent", manual: "You", google_tasks: "Google Tasks", system: "System" };
 
 function Capture() {
   const status = Route.useLoaderData();
   const router = useRouter();
+  const unwell = status.jobs.filter((j) => j.state === "stale" || j.state === "error");
+
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Capture</h1>
-        <button className="btn" onClick={() => router.invalidate()}>
+    <div className="space-y-[22px] pb-4">
+      <PageHead title="Capture" sub={unwell.length === 0 && status.db ? "every sense reporting" : `${unwell.length} ${unwell.length === 1 ? "job needs" : "jobs need"} a look`}>
+        <button className="btn btn-sm" onClick={() => router.invalidate()}>
           Refresh
         </button>
-      </header>
+        <GlobalActions />
+      </PageHead>
 
-      <section className="card">
-        <h2 className="text-lg font-semibold">Database</h2>
-        <p className={status.db ? "text-rail" : "text-bad"}>{status.db ? "up" : "down"}</p>
-      </section>
+      <Panel>
+        <dl className="grid gap-x-10 gap-y-3 text-[14px] md:grid-cols-[auto_1fr_auto_1fr_auto_1fr]">
+          <dt className="cond text-[13px] font-semibold text-mute">Database</dt>
+          <dd className={status.db ? "" : "text-bad"}>{status.db ? "Up, on this box's socket" : "Down"}</dd>
+          <dt className="cond text-[13px] font-semibold text-mute">Google</dt>
+          <dd>
+            {status.google.state === "ok" ? (
+              <>
+                Signed in
+                <span className="block text-[13px] text-dim">{status.google.scopes.map((x) => x.replace("https://www.googleapis.com/auth/", "")).join(" · ")}</span>
+              </>
+            ) : (
+              <span className="text-bad">
+                {status.google.state === "not-configured" ? "Not set up" : "Sign-in needed"}
+                <span className="block text-[13px] text-mute">
+                  {status.google.detail}. Run <code className="bg-raised px-1">pnpm google:auth</code> in the repo.
+                </span>
+              </span>
+            )}
+          </dd>
+          <dt className="cond text-[13px] font-semibold text-mute">Mail</dt>
+          <dd>
+            {status.mail.configured ? (
+              <>
+                {status.mail.queued_threads} waiting for the mail run
+                <span className="block text-[13px] text-dim">
+                  Checked <Ago iso={status.mail.last_check_at} />
+                </span>
+              </>
+            ) : (
+              <span className="text-mute">
+                Not set up. Run <code className="bg-raised px-1">pnpm google:auth --mail</code> in the repo.
+              </span>
+            )}
+          </dd>
+        </dl>
+      </Panel>
 
-      <section className="card">
-        <h2 className="text-lg font-semibold">Google</h2>
-        {status.google.state === "ok" ? (
-          <p className="text-rail">
-            signed in · {status.google.scopes.map((s) => s.replace("https://www.googleapis.com/auth/", "")).join(", ")}
-          </p>
-        ) : (
-          <>
-            <p className="font-semibold text-bad">
-              {status.google.state === "not-configured" ? "Not set up" : "Google auth required"}
-            </p>
-            <p className="muted text-sm">
-              {status.google.detail}. Run <code>pnpm google:auth</code> in the repo.
-            </p>
-          </>
-        )}
-      </section>
+      <div className="grid items-start gap-[22px] xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <Panel title="Jobs" aside={`${status.jobs.length}`}>
+          <table className="w-full text-left text-[14px]">
+            <thead>
+              <tr className="cond border-b border-line text-[12.5px] text-dim">
+                <th className="py-2 pr-4 font-medium">Job</th>
+                <th className="py-2 pr-4 font-medium">Runs</th>
+                <th className="py-2 pr-4 font-medium">State</th>
+                <th className="py-2 text-right font-medium">Last ok</th>
+              </tr>
+            </thead>
+            <tbody>
+              {status.jobs.map((j) => (
+                <tr key={j.name} className="border-b border-line align-top last:border-b-0">
+                  <td className="py-2 pr-4 font-medium">
+                    {j.name}
+                    {j.lastError ? <span className="block text-[13px] font-normal text-bad">{j.lastError}</span> : null}
+                  </td>
+                  <td className="py-2 pr-4 text-mute">{j.schedule}</td>
+                  <td className={`py-2 pr-4 ${STATE[j.state]!.className}`}>{STATE[j.state]!.text}</td>
+                  <td className="py-2 text-right text-mute">
+                    <Ago iso={j.lastOk} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Panel>
 
-      <section className="card">
-        <h2 className="text-lg font-semibold">Mail</h2>
-        {status.mail.configured ? (
-          <ul className="mt-1 text-sm">
-            <li>last check: <Ago iso={status.mail.last_check_at} /></li>
-            <li>waiting to reach the agent: {status.mail.queued_threads} thread(s)</li>
-          </ul>
-        ) : (
-          <p className="muted text-sm">
-            Not set up. Run <code>pnpm google:auth --mail</code> in the repo.
-          </p>
-        )}
-      </section>
-
-      <section className="card">
-        <h2 className="text-lg font-semibold">Jobs</h2>
-        <ul className="mt-2 divide-y divide-black/10 dark:divide-white/10">
-          {status.jobs.map((j) => (
-            <li key={j.name} className="flex flex-wrap items-baseline justify-between gap-x-4 py-2">
-              <span className="font-medium">{j.name}</span>
-              <span className="muted text-sm">{j.schedule}</span>
-              <span className={`${STATE_CLASS[j.state]} text-sm font-semibold`}>{j.state}</span>
-              <span className="text-sm">last ok <Ago iso={j.lastOk} /></span>
-              {j.lastError ? <span className="basis-full text-sm text-bad">{j.lastError}</span> : null}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="card">
-        <h2 className="text-lg font-semibold">Sources</h2>
-        {status.sources.length === 0 ? (
-          <p className="muted">Nothing has arrived yet.</p>
-        ) : (
-          <ul className="mt-2 divide-y divide-black/10 dark:divide-white/10">
+        <Panel title="Sources" aside="what has arrived">
+          {status.sources.length === 0 ? <p className="text-dim">Nothing has arrived yet.</p> : null}
+          <ul>
             {status.sources.map((s) => (
-              <li key={s.source} className="flex justify-between py-2">
-                <span className="font-medium">{s.source}</span>
-                <span className="text-sm">
-                  {s.count} · last <Ago iso={s.lastArrival} />
+              <li key={s.source} className="grid grid-cols-[1fr_auto_90px] items-baseline gap-4 border-b border-line py-2 last:border-b-0">
+                <span className="font-medium">{SOURCE[s.source] ?? s.source}</span>
+                <span className="text-right text-mute">{s.count.toLocaleString("en-US")}</span>
+                <span className="text-right text-[13.5px] text-mute">
+                  <Ago iso={s.lastArrival} />
                 </span>
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </Panel>
+      </div>
     </div>
   );
 }

@@ -1,90 +1,218 @@
 @import "tailwindcss";
+@import "@fontsource/saira/latin-400.css";
+@import "@fontsource/saira/latin-500.css";
+@import "@fontsource/saira/latin-600.css";
+@import "@fontsource/saira-condensed/latin-500.css";
+@import "@fontsource/saira-condensed/latin-600.css";
 /* The frozen 2023 app is full of class names; do not scan it. */
 @source not "../archive";
 @source not "../android";
 
+/* Elite: Mostly Harmless. Dark only; see docs/design/README.md. */
 @theme {
-  --color-ink: #16181d;
-  --color-paper: #fafaf7;
-  --color-rail: #2f6f5e;
-  --color-warn: #b7791f;
-  --color-bad: #b83232;
+  --color-bg: #0c0d12;
+  --color-panel: #111218;
+  --color-raised: #181920;
+  --color-well: #0f1016;
+  --color-frame: #4a2e14;
+  --color-edge: #3a3634;
+  --color-line: #1e2029;
+  --color-txt: #ece6dc;
+  --color-mute: #b1a596;
+  --color-dim: #928777;
+  --color-or: #f08a2c;
+  --color-or-deep: #9a5c22;
+  --color-cy: #6cc6ec;
+  --color-bad: #e0735a;
+  --font-sans: Saira, ui-sans-serif, system-ui, sans-serif;
+  --font-cond: "Saira Condensed", Saira, ui-sans-serif, sans-serif;
 }
 
 html {
-  color-scheme: light dark;
+  color-scheme: dark;
+  background: var(--color-bg);
 }
 
 body {
-  @apply bg-paper text-ink antialiased;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  @apply bg-bg font-sans text-txt antialiased;
+  font-size: 15px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #101214;
-    color: #e8e6e1;
+::selection {
+  background: rgb(240 138 44 / 0.35);
+  color: #fff;
+}
+
+* {
+  scrollbar-color: #3a3634 transparent;
+  scrollbar-width: thin;
+}
+
+:focus-visible {
+  outline: 1px solid var(--color-or);
+  outline-offset: 2px;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+/* Condensed caps: page titles, nav, section heads, big readouts. Nothing else. */
+@utility cond {
+  font-family: var(--font-cond);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.h-sec {
+  @apply cond text-[15px] font-semibold text-txt;
+}
+
+/* Components sit in their layer so utilities on an element can still adjust them. */
+@layer components {
+/* Buttons are sentence case. Solid orange only for the one primary action on a screen. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 border border-edge bg-transparent px-3 py-1 text-[13.5px] font-medium whitespace-nowrap text-txt transition-colors duration-150;
+  }
+  .btn:hover:not(:disabled) {
+    @apply border-or/70 bg-or/10;
+  }
+  .btn:disabled {
+    @apply cursor-default opacity-45;
+  }
+  .btn-primary {
+    @apply border-or bg-or font-semibold text-[#1a0d02];
+  }
+  .btn-primary:hover:not(:disabled) {
+    @apply border-[#ff9c45] bg-[#ff9c45];
+  }
+  .btn-danger {
+    @apply border-bad/60 text-bad;
+  }
+  .btn-danger:hover:not(:disabled) {
+    @apply border-bad bg-bad/10;
+  }
+  .btn-sm {
+    @apply px-2 py-0 text-[12.5px] leading-6;
+  }
+  .link {
+    @apply text-txt underline decoration-dim hover:decoration-or;
+  }
+  
+  /* A framed panel with 6px chamfers: the frame is the outer element, the face the inner. */
+  .panel {
+    --c: 6px;
+    @apply bg-frame p-px;
+    clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  }
+  .panel > .face {
+    @apply h-full bg-panel;
+    clip-path: inherit;
+  }
+  
+  .chip {
+    @apply inline-flex items-center gap-1 border border-edge px-1.5 text-[12px] leading-5 whitespace-nowrap text-mute;
+  }
+  .tag-agent {
+    @apply inline-flex items-center gap-1.5 text-[12px] leading-5 whitespace-nowrap text-cy/85;
+  }
+  
+  .input {
+    @apply w-full border border-edge bg-well px-2.5 py-1.5 text-[14px] text-txt placeholder:text-dim;
+  }
+  .input:focus {
+    @apply border-or/70 outline-none;
+  }
+  select.input {
+    @apply pr-7;
+  }
+  
+  /* The date and time pickers' glyphs, in the frame's orange-brown instead of the browser's black. */
+::-webkit-calendar-picker-indicator {
+  filter: invert(55%) sepia(40%) saturate(500%) hue-rotate(345deg);
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+    accent-color: var(--color-or);
+  }
+  
+  /* A selectable row: a quiet orange tint and edge, never a solid bar. */
+  .row-sel {
+    background: rgb(240 138 44 / 0.08);
+    box-shadow: inset 0 0 0 1px rgb(240 138 44 / 0.55);
   }
 }
 
-/* One column, large type, no hover-only actions: Today doubles as a kiosk. */
-.btn {
-  @apply inline-flex items-center justify-center rounded-lg border border-black/15 px-3 py-2 text-sm font-medium dark:border-white/20;
-}
-.btn-primary {
-  @apply border-transparent bg-rail text-white;
-}
-.btn-danger {
-  @apply border-transparent bg-bad text-white;
-}
-.card {
-  @apply rounded-xl border border-black/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5;
-}
-.muted {
-  @apply text-black/55 dark:text-white/55;
-}
-.chip {
-  @apply inline-flex items-center rounded-full border border-black/15 px-2 py-0.5 text-xs dark:border-white/20;
-}
-.input {
-  @apply w-full rounded-lg border border-black/20 bg-white px-3 py-2 text-base dark:border-white/20 dark:bg-white/10;
+/* Faint engraved grid, behind the arc and the star map only. */
+.grid-faint {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
 }
 
-/* Rendered pages. */
+/* Rendered pages. A reading measure, sentence case, the theme's colours. */
 .prose-lor {
-  @apply space-y-3 leading-relaxed;
+  @apply max-w-[72ch] space-y-3 text-[15.5px] leading-relaxed text-txt;
 }
 .prose-lor h1 {
-  @apply text-2xl font-bold;
+  @apply cond pb-1 text-[26px] font-semibold;
 }
 .prose-lor h2 {
-  @apply pt-2 text-xl font-semibold;
+  @apply cond pt-4 text-[19px] font-semibold text-txt;
 }
 .prose-lor h3 {
-  @apply text-lg font-semibold;
+  @apply pt-2 text-[16px] font-semibold;
 }
 .prose-lor ul {
-  @apply list-disc space-y-1 pl-6;
+  @apply list-disc space-y-1 pl-6 marker:text-or;
 }
 .prose-lor ol {
-  @apply list-decimal space-y-1 pl-6;
+  @apply list-decimal space-y-1 pl-6 marker:text-dim;
 }
 .prose-lor a {
-  @apply text-rail underline;
+  @apply text-or underline decoration-or/40 hover:decoration-or;
 }
 .prose-lor code {
-  @apply rounded bg-black/10 px-1 text-[0.9em] dark:bg-white/15;
+  @apply bg-raised px-1 text-[0.9em];
 }
 .prose-lor pre {
-  @apply overflow-x-auto rounded-lg bg-black/5 p-3 text-sm dark:bg-white/10;
+  @apply overflow-x-auto border border-line bg-well p-3 text-sm;
 }
 .prose-lor blockquote {
-  @apply border-l-4 border-black/20 pl-3 dark:border-white/25;
+  @apply border-l border-or/60 pl-3 text-mute;
 }
 .prose-lor table {
   @apply w-full text-sm;
 }
 .prose-lor th,
 .prose-lor td {
-  @apply border border-black/15 px-2 py-1 text-left dark:border-white/20;
+  @apply border border-line px-2 py-1 text-left;
+}
+.prose-lor th {
+  @apply bg-raised font-semibold;
+}
+.prose-lor .footnote-ref a {
+  @apply ml-px align-super text-[0.68em] no-underline;
+}
+.prose-lor details.footnotes {
+  @apply mt-8 border-t border-line pt-3 text-[13px] text-dim;
+}
+.prose-lor details.footnotes summary {
+  @apply cursor-pointer text-mute hover:text-txt;
+}
+.prose-lor details.footnotes ol {
+  @apply mt-2 space-y-0.5 pl-6;
+}
+.prose-lor details.footnotes p {
+  @apply break-words;
+}
+.prose-lor .footnote-backref {
+  @apply no-underline;
+}
+.prose-lor hr {
+  @apply border-line;
 }

@@ -48,3 +48,7 @@ The in-app browser preview may be off for a thread. `scripts/ui-server.sh` start
 ## Talking to the running service
 
 `lor` (symlinked from `cli/lor.mjs`) is the agent's CLI; `skill/SKILL.md` teaches it. `lor status` shows every job. Logs: `journalctl --user -u lor-web -f`; the unattended runs: `journalctl --user -u assistant-mail -u assistant-nightly`. An unattended run reaches the owner by flagging a task (`lor task flag`, or `--flag` on create).
+
+## Design
+
+The look is "Elite: Mostly Harmless": `DESIGN.md` is the system, `docs/design/README.md` the short history (including the unbuilt "Astral" alternative). The impeccable design skill is vendored at `.claude/skills/impeccable/`.

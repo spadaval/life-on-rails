@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Graph · Life on Rails</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Saira+Semi+Condensed:wght@500;600&family=Saira:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0c0d12;--panel:#111218;--frame:#4a2e14;--edge:#2c2a2c;--line:#1c1e26;--txt:#ece6dc;--mute:#b1a596;--dim:#928777;--or:#f08a2c;--tint:rgba(240,138,44,.1);--cy:#6cc6ec}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1440px;height:900px;overflow:hidden;background:var(--bg);color:var(--txt);font:400 14px/1.5 Saira,sans-serif;font-variant-numeric:tabular-nums}
+.cap{font:600 14px "Saira Condensed",sans-serif;text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
+button{font:500 13px Saira,sans-serif;color:var(--txt);background:transparent;border:1px solid #3a3634;padding:4px 13px;cursor:pointer}
+button.pri{background:var(--or);color:#1a0d02;border-color:var(--or);font-weight:600}
+button.sel{background:var(--tint);border-color:var(--or);color:var(--txt)}
+.ch{--c:6px;clip-path:polygon(var(--c) 0,100% 0,100% calc(100% - var(--c)),calc(100% - var(--c)) 100%,0 100%,0 var(--c))}
+.shell{display:grid;grid-template-columns:208px 1fr;height:900px}
+nav{border-right:1px solid var(--frame);padding:22px 0;display:flex;flex-direction:column;gap:3px}
+.brand{font:600 19px "Saira Condensed";letter-spacing:.1em;color:var(--or);margin:0 22px 2px}
+.stamp{font:500 13px "Saira Semi Condensed";color:var(--mute);margin:0 22px 24px}
+nav a{display:flex;justify-content:space-between;align-items:center;height:34px;padding:0 22px;font:600 15px "Saira Condensed";letter-spacing:.07em;text-transform:uppercase;color:var(--mute);text-decoration:none}
+nav a.on{background:var(--or);color:#1a0d02}
+nav a.sub{height:28px;padding-left:36px;font-size:13.5px}
+nav a span{font:500 13px "Saira Semi Condensed";color:var(--dim)}
+.health{margin-top:auto;padding:14px 22px 0;border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
+.sq{display:inline-block;width:6px;height:6px;background:var(--or);margin-right:8px;vertical-align:2px;border-radius:50%}
+main{padding:0 28px 22px;display:flex;flex-direction:column;min-width:0}
+.top{height:62px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line)}
+.top h1{font:600 22px "Saira Condensed";letter-spacing:.08em;text-transform:uppercase;margin-right:auto}
+.top h1 span{font:400 14px Saira;letter-spacing:0;text-transform:none;color:var(--mute);margin-left:14px}
+.top input{width:300px;background:var(--panel);border:1px solid var(--edge);color:var(--txt);font:14px Saira;padding:5px 11px}
+.top input::placeholder{color:var(--dim)}
+.top button{padding:6px 16px}
+.bar{display:flex;align-items:center;gap:6px;height:60px}
+.seg{display:inline-flex;gap:4px}
+.seg button{color:var(--mute);border-color:transparent;padding:4px 13px}
+.seg button.sel{color:var(--txt);border-color:var(--or)}
+.bar .sp{margin-left:auto}
+.work{display:grid;grid-template-columns:1fr 316px;gap:20px;flex:1;min-height:0}
+.p{background:var(--frame);padding:1px}
+.p>div,.p>aside{clip-path:inherit;height:100%;background:var(--panel);position:relative;overflow:hidden}
+.map{background:#0d0e14!important}
+.map svg{position:absolute;left:0;top:0}
+.map text{font:500 13px "Saira Semi Condensed";fill:#b1a596}
+.map .g{font:600 15px "Saira Semi Condensed";fill:#b1a596}.map .h{font:500 12.5px "Saira Semi Condensed";fill:#928777}
+.map .lit{fill:#ece6dc}.map .sel{fill:#f08a2c}.map .kid{fill:#ece6dc}.map .ax{font:500 11.5px "Saira Semi Condensed";fill:#6f6a66}
+.zoom{position:absolute;right:18px;bottom:18px;display:flex;gap:4px}
+.zoom button{min-width:34px;padding:3px 8px;background:var(--panel)}
+.legend{margin:0 14px 0 auto;font-size:13px;color:var(--mute)}
+.legend b{font-weight:500;color:var(--or)}
+aside{padding:20px 22px;display:flex;flex-direction:column}
+.hd{font:600 15px "Saira Condensed";letter-spacing:.08em;color:var(--mute)}
+aside h2{font:600 22px/1.2 "Saira Semi Condensed";margin:10px 0 14px}
+.kv{display:grid;grid-template-columns:96px 1fr;row-gap:5px;font-size:14px}
+.kv dt{font-size:13px;line-height:21px;color:var(--dim)}
+.meter{height:3px;background:var(--line);margin:16px 0 4px}
+aside h3{margin:18px 0 4px;display:flex;justify-content:space-between}
+.kid{display:flex;justify-content:space-between;gap:10px;padding:5px 0}
+.kid span{color:var(--mute);font-size:13px;white-space:nowrap}
+.tk{padding:1px 0 3px 16px;font-size:14px;color:var(--mute);display:flex;gap:8px;align-items:baseline}
+.tk i{flex:none;width:9px;height:9px;background:var(--or);clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
+.tk.done{text-decoration:line-through;color:var(--dim)}
+.acts{display:flex;gap:8px;margin-top:auto;padding-top:16px}
+</style></head><body><div class="shell">
+<nav>
+ <div class="brand">LIFE ON RAILS</div><div class="stamp">Wed 14 Oct · 16:40</div>
+ <a href="#">Today</a><a href="#">Tasks <span>11</span></a><a class="on" href="#">Graph</a>
+ <a href="#">Memory</a><a class="sub" href="#">Pages</a><a class="sub" href="#">People</a><a class="sub" href="#">Timeline</a>
+ <a href="#">Capture</a>
+ <div class="health"><span class="sq"></span>All senses reporting<br><span style="color:var(--dim)">phone 2m · mail 6m ago</span></div>
+</nav>
+<main>
+ <div class="top"><h1>Graph <span>7 goals · 12 projects · 6 habits · 6 open tasks</span></h1><input placeholder="Search pages, people, tasks"><button class="pri">Start timer</button></div>
+ <div class="bar">
+  <div class="seg"><button class="sel">All</button><button>Goals</button><button>Projects</button><button>Habits</button><button>Tasks</button></div>
+  <div class="legend">Star size: hours vs target · dot: project · ring: habit · <b>orange star</b>: flagged for you</div><div class="seg"><button class="sel">Map</button><button>Outline</button></div>
+ </div>
+ <div class="work">
+  <div class="p ch"><div class="map">
+   <svg width="838" height="760" viewBox="0 0 838 760" fill="none">
+    <defs><radialGradient id="halo"><stop offset="0" stop-color="#f08a2c" stop-opacity=".13"/><stop offset="1" stop-color="#f08a2c" stop-opacity="0"/></radialGradient></defs>
+    <path d="M120 24V740M240 24V740M360 24V740M480 24V740M600 24V740M720 24V740M24 140H814M24 280H814M24 420H814M24 560H814M24 700H814" stroke="#151821"/>
+    <path d="M24 70H814M24 210H814M24 350H814M24 490H814M24 630H814" stroke="#12141c" stroke-dasharray="2 5"/>
+    <path d="M24 24H814M24 24V740" stroke="#1f222c"/>
+    <g stroke="#3a2a1a"><path d="M120 24v5M240 24v5M360 24v5M480 24v5M600 24v5M720 24v5M24 140h5M24 280h5M24 420h5M24 560h5M24 700h5"/></g>
+    <g class="ax" text-anchor="middle"><text x="120" y="18" class="ax">sec 02</text><text x="240" y="18" class="ax">sec 04</text><text x="360" y="18" class="ax">sec 06</text><text x="480" y="18" class="ax">sec 08</text><text x="600" y="18" class="ax">sec 10</text><text x="720" y="18" class="ax">sec 12</text></g>
+    <g stroke="#3d3428" stroke-width="1">
+     <path d="M140 110L60 170M140 110L250 54"/>
+     <path d="M660 140L520 60M660 140L790 64M660 140L540 230M660 140L770 250"/>
+     <path d="M660 460L770 390"/>
+     <path d="M80 570L44 630M80 570L120 670"/>
+     <path d="M300 620L190 690M300 620L260 700M300 620L420 710"/>
+     <path d="M650 620L600 700M650 620L760 560"/>
+    </g>
+    <g stroke="#f08a2c" stroke-opacity=".55"><path d="M330 360L200 260M330 360L410 240M330 360L470 370M330 360L330 480"/></g>
+    <g stroke="#f08a2c" stroke-opacity=".3" stroke-dasharray="2 4"><path d="M200 260L60 215M200 260L70 305M410 240L340 182"/></g>
+    <circle cx="330" cy="360" r="46" fill="url(#halo)"/>
+    <circle cx="330" cy="360" r="13" stroke="#f08a2c" stroke-opacity=".7"/>
+    <g stroke="#f08a2c" stroke-width="1.3"><path d="M310 350v-8h8M342 342h8v8M350 370v8h-8M318 378h-8v-8"/></g>
+    <path d="M140 104L141.6 108.4L146 110L141.6 111.6L140 116L138.4 111.6L134 110L138.4 108.4Z" fill="#b1a596" fill-opacity=".6"/><path d="M660 134L661.6 138.4L666 140L661.6 141.6L660 146L658.4 141.6L654 140L658.4 138.4Z" fill="#b1a596" fill-opacity=".6"/><path d="M80 564L81.6 568.4L86 570L81.6 571.6L80 576L78.4 571.6L74 570L78.4 568.4Z" fill="#b1a596" fill-opacity=".6"/><path d="M650 614L651.6 618.4L656 620L651.6 621.6L650 626L648.4 621.6L644 620L648.4 618.4Z" fill="#b1a596" fill-opacity=".6"/>
+    <path d="M300 612L302.1 617.9L308 620L302.1 622.1L300 628L297.9 622.1L292 620L297.9 617.9Z" fill="#f08a2c" fill-opacity=".85"/>
+    <path d="M660 449L662.9 457.1L671 460L662.9 462.9L660 471L657.1 462.9L649 460L657.1 457.1Z" fill="#f6c48a"/>
+    <path d="M330 352L332.1 357.9L338 360L332.1 362.1L330 368L327.9 362.1L322 360L327.9 357.9Z" fill="#f08a2c" fill-opacity=".7"/>
+    <text class="g sel" x="302" y="356" text-anchor="end">Neha and the wedding</text><text class="h" x="302" y="373" text-anchor="end">0 / 5h · under target</text>
+    <text class="g" x="156" y="108">Body that works</text><text class="h" x="156" y="125">0 / 3h</text>
+    <text class="g" x="676" y="138">Make and play</text><text class="h" x="676" y="155">0 / 6h</text>
+    <text class="g lit" x="680" y="458">Tools that run my life</text><text class="h lit" x="680" y="475">2.7 / 4h</text>
+    <text class="g" x="96" y="568">New friends and staying close</text><text class="h" x="96" y="585">0 / 1.5h</text>
+    <text class="g lit" x="316" y="618">Life admin that doesn't pile up</text><text class="h lit" x="316" y="635">0.5 / 1h</text>
+    <text class="g" x="666" y="618">Move to San Jose</text><text class="h" x="666" y="635">0 / 2h</text>
+    <g fill="#ece6dc"><circle cx="200" cy="260" r="2.8"/><circle cx="410" cy="240" r="2.8"/><circle cx="470" cy="370" r="2.8"/></g>
+    <circle cx="330" cy="480" r="3" stroke="#ece6dc"/>
+    <g fill="#928777"><circle cx="520" cy="60" r="2.2"/><circle cx="790" cy="64" r="2.2"/><circle cx="540" cy="230" r="2.2"/><circle cx="770" cy="250" r="2.2"/><circle cx="770" cy="390" r="2.2"/><circle cx="260" cy="700" r="2.2"/><circle cx="420" cy="710" r="2.2"/><circle cx="600" cy="700" r="2.2"/><circle cx="760" cy="560" r="2.2"/></g>
+    <g stroke="#928777"><circle cx="60" cy="170" r="2.5"/><circle cx="250" cy="54" r="2.5"/><circle cx="44" cy="630" r="2.5"/><circle cx="120" cy="670" r="2.5"/><circle cx="190" cy="690" r="2.5"/></g>
+    <text class="kid" x="212" y="256">Ceremony venue</text><text class="kid" x="420" y="244">Wedding vendors</text>
+    <text class="kid" x="480" y="374">Pelli Panulu (wedding site)</text><text class="kid" x="342" y="485">Weekly wedding planning session with Neha</text>
+    <text x="70" y="175">PT exercises</text><text x="260" y="59">Walk or work out</text>
+    <text x="530" y="64">astromech (Elite Dangerous copilot)</text><text x="790" y="50" text-anchor="middle">The colony story</text>
+    <text x="550" y="234">Next cosplay (Starfleet uniform)</text><text x="770" y="272" text-anchor="middle">vkbdevcfg-explained</text>
+    <text x="770" y="378" text-anchor="middle">Life on Rails</text>
+    <text x="54" y="636">Call home</text><text x="130" y="674">Message a friend</text>
+    <text x="190" y="712" text-anchor="middle">Weekly admin sweep</text><text x="270" y="704">Immigration paperwork</text><text x="430" y="714">Nambiar flat (with Dad)</text>
+    <text x="612" y="704">Move timing and notice</text><text x="752" y="548" text-anchor="end">The move (housing, movers, car, utilities)</text>
+    <path d="M60 209L61.6 213.4L66 215L61.6 216.6L60 221L58.4 216.6L54 215L58.4 213.4Z" fill="#f08a2c"/>
+    <circle cx="70" cy="305" r="2" fill="#928777"/><circle cx="340" cy="182" r="2" fill="#ece6dc"/>
+    <text x="74" y="220" class="kid">Shortlist 5–8 ceremony venues</text>
+    <text x="80" y="310" text-decoration="line-through" style="fill:#928777">Sort lodging and a car for the SFO trip</text>
+    <text x="350" y="187" class="kid">Choose the wedding invitation vendor</text>
+    <path d="M600 694L601.6 698.4L606 700L601.6 701.6L600 706L598.4 701.6L594 700L598.4 698.4Z" fill="#f08a2c"/>
+   </svg>
+   <div class="zoom"><button>+</button><button>−</button><button>Fit</button></div>
+  </div></div>
+  <div class="p ch"><aside>
+   <div class="hd">SYSTEM INFO</div>
+   <h2>Neha and the wedding</h2>
+   <dl class="kv"><dt>Class</dt><dd>Goal</dd><dt>This week</dt><dd>0 / 5h</dd><dt>Status</dt><dd style="color:var(--mute)">Under target</dd><dt>Last logged</dt><dd>Sunday</dd><dt>Next</dt><dd>Tonight 18:30, weekly session</dd></dl>
+   <div class="meter"></div>
+   <h3 class="cap">Projects <span>3</span></h3>
+   <div class="kid">Ceremony venue<span>2 tasks</span></div>
+   <div class="tk"><i></i>Shortlist 5–8 ceremony venues · due 25 Oct</div>
+   <div class="tk done">Sort lodging and a car for the SFO trip</div>
+   <div class="kid">Wedding vendors<span>1 task</span></div>
+   <div class="tk">Choose the wedding invitation vendor</div>
+   <div class="kid">Pelli Panulu (wedding site)<span>no tasks</span></div>
+   <h3 class="cap">Habits <span>1</span></h3>
+   <div class="kid">Weekly wedding planning session with Neha<span>Wed</span></div>
+   <div class="acts"><button class="sel">Add task</button><button>Edit</button><button>Archive</button></div>
+  </aside></div>
+ </div>
+</main></div></body></html>

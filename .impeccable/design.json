@@ -1,0 +1,443 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T03:59:24+00:00",
+  "title": "Design System: Life on Rails",
+  "extensions": {
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "Deep Space",
+        "canonical": "oklch(16.0% 0.011 276.2)",
+        "tonalRamp": [
+          "#0a0b10",
+          "#222429",
+          "#3e3f46",
+          "#5c5d64",
+          "#7b7d84",
+          "#9c9ea5",
+          "#c2c4cb",
+          "#eceef6"
+        ]
+      },
+      "well": {
+        "role": "neutral",
+        "displayName": "Instrument Well",
+        "canonical": "oklch(17.5% 0.013 277.6)",
+        "tonalRamp": [
+          "#0a0b10",
+          "#22242a",
+          "#3e3f46",
+          "#5c5d65",
+          "#7b7d85",
+          "#9c9ea6",
+          "#c2c3cc",
+          "#eceef7"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel Face",
+        "canonical": "oklch(18.4% 0.012 277.7)",
+        "tonalRamp": [
+          "#0a0b10",
+          "#22242a",
+          "#3e3f46",
+          "#5c5d65",
+          "#7b7d85",
+          "#9c9ea6",
+          "#c2c3cc",
+          "#eceef7"
+        ]
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Raised Plate",
+        "canonical": "oklch(21.6% 0.014 278.8)",
+        "tonalRamp": [
+          "#0a0b11",
+          "#22232b",
+          "#3e3f47",
+          "#5c5d66",
+          "#7b7d86",
+          "#9c9ea7",
+          "#c2c3cd",
+          "#eceef8"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Engraved Line",
+        "canonical": "oklch(24.5% 0.017 275.2)",
+        "tonalRamp": [
+          "#090b13",
+          "#21232d",
+          "#3d3f49",
+          "#5b5d68",
+          "#7a7d88",
+          "#9b9eaa",
+          "#c1c3d0",
+          "#ebeefb"
+        ]
+      },
+      "edge": {
+        "role": "neutral",
+        "displayName": "Bulkhead Edge",
+        "canonical": "oklch(33.6% 0.007 48.5)",
+        "tonalRamp": [
+          "#0e0a09",
+          "#272321",
+          "#433f3d",
+          "#615d5a",
+          "#817c7a",
+          "#a29d9b",
+          "#c8c3c0",
+          "#f2edeb"
+        ]
+      },
+      "frame": {
+        "role": "neutral",
+        "displayName": "Frame Bronze",
+        "canonical": "oklch(33.0% 0.057 61.5)",
+        "tonalRamp": [
+          "#1a0500",
+          "#371d02",
+          "#55391f",
+          "#75563c",
+          "#96765b",
+          "#b9977b",
+          "#e0bc9f",
+          "#ffeada"
+        ]
+      },
+      "txt": {
+        "role": "neutral",
+        "displayName": "Starlight",
+        "canonical": "oklch(92.7% 0.015 80.7)",
+        "tonalRamp": [
+          "#0e0b05",
+          "#28231c",
+          "#443f37",
+          "#625d54",
+          "#827c74",
+          "#a39e94",
+          "#c9c3ba",
+          "#f4eee4"
+        ]
+      },
+      "mute": {
+        "role": "neutral",
+        "displayName": "Dust",
+        "canonical": "oklch(72.8% 0.025 73.5)",
+        "tonalRamp": [
+          "#120902",
+          "#2c2216",
+          "#483e31",
+          "#675c4e",
+          "#877b6d",
+          "#a89c8e",
+          "#cec2b3",
+          "#f9ecdc"
+        ]
+      },
+      "dim": {
+        "role": "neutral",
+        "displayName": "Far Dust",
+        "canonical": "oklch(62.9% 0.027 77.3)",
+        "tonalRamp": [
+          "#110901",
+          "#2b2215",
+          "#483e30",
+          "#665c4d",
+          "#867c6c",
+          "#a89d8c",
+          "#cec2b1",
+          "#f9eddb"
+        ]
+      },
+      "or": {
+        "role": "primary",
+        "displayName": "Drive Amber",
+        "canonical": "oklch(72.9% 0.159 57.6)",
+        "tonalRamp": [
+          "#1b0400",
+          "#3a1a00",
+          "#613100",
+          "#8c4a03",
+          "#b76514",
+          "#e6811e",
+          "#fcb178",
+          "#ffeadb"
+        ]
+      },
+      "or-deep": {
+        "role": "primary",
+        "displayName": "Banked Amber",
+        "canonical": "oklch(53.5% 0.108 59.6)",
+        "tonalRamp": [
+          "#1a0500",
+          "#3a1b00",
+          "#5f3304",
+          "#894c0c",
+          "#ac6c34",
+          "#d08e56",
+          "#f8b37b",
+          "#ffeada"
+        ]
+      },
+      "cy": {
+        "role": "secondary",
+        "displayName": "Nav-Beacon Cyan",
+        "canonical": "oklch(78.5% 0.102 227.7)",
+        "tonalRamp": [
+          "#000e17",
+          "#002938",
+          "#00475e",
+          "#006787",
+          "#2889ac",
+          "#50abd0",
+          "#78d1f8",
+          "#dbf3fe"
+        ]
+      },
+      "bad": {
+        "role": "tertiary",
+        "displayName": "Hull-Breach Coral",
+        "canonical": "oklch(67.6% 0.141 34.1)",
+        "tonalRamp": [
+          "#220000",
+          "#490500",
+          "#751902",
+          "#9d3720",
+          "#c25841",
+          "#e87a61",
+          "#feac99",
+          "#ffe9e4"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Readout",
+        "purpose": "The big remaining/recorded readout under the day arc's zenith; 62px from md."
+      },
+      "headline": {
+        "displayName": "Page Title",
+        "purpose": "Page head title, condensed caps."
+      },
+      "title": {
+        "displayName": "Section Head",
+        "purpose": "Panel heads and main nav items, condensed caps."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "All reading text, sentence case, tabular numerals."
+      },
+      "body-small": {
+        "displayName": "Meta",
+        "purpose": "Panel asides, metadata lines, legends, notes (13-14px)."
+      },
+      "label": {
+        "displayName": "Field Label",
+        "purpose": "Definition-list labels, table headers, subgroup heads; condensed caps in dim or mute."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Every button, sentence case; 12.5px in the small size, 600 on primary."
+      }
+    },
+    "shadows": [
+      {
+        "name": "selection-edge",
+        "value": "inset 0 0 0 1px rgb(240 138 44 / 0.55)",
+        "purpose": "The selected-row edge, paired with an 8% amber background. The system has no drop shadows."
+      }
+    ],
+    "motion": [
+      {
+        "name": "color-150",
+        "value": "150ms ease (colour, background, border)",
+        "purpose": "Button hover and press colour change. No other motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px",
+        "note": "Day arc replaces the phone bar"
+      },
+      {
+        "name": "md",
+        "value": "768px",
+        "note": "Left rail appears; readout grows to 62px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "note": "Global search; Today three-panel grid; Memory index column"
+      },
+      {
+        "name": "xl",
+        "value": "1280px",
+        "note": "Tasks and Graph sticky side panel"
+      }
+    ],
+    "chamfer": {
+      "value": "6px",
+      "corners": "top-left and bottom-right",
+      "purpose": "Outer framed panels only."
+    },
+    "engravedGrid": {
+      "value": "60px cells, white at 2.5-3% alpha",
+      "purpose": "Behind the day arc and the star map only."
+    }
+  },
+  "components": [
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default outlined button, sentence case; tints amber on hover.",
+      "html": "<button class=\"ds-btn\">Seen</button>",
+      "css": ".ds-btn { display:inline-flex; align-items:center; gap:6px; background:transparent; color:var(--color-txt); border:1px solid var(--color-edge); border-radius:0; padding:4px 12px; font-family:Saira, ui-sans-serif, sans-serif; font-size:13.5px; font-weight:500; transition:background-color .15s, border-color .15s; cursor:pointer; } .ds-btn:hover { border-color:rgb(240 138 44 / .7); background:rgb(240 138 44 / .1); } .ds-btn:focus-visible { outline:1px solid var(--color-or); outline-offset:2px; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one solid amber action on a screen (Start timer).",
+      "html": "<button class=\"ds-btn-primary\">Start timer</button>",
+      "css": ".ds-btn-primary { display:inline-flex; align-items:center; background:var(--color-or); color:#1a0d02; border:1px solid var(--color-or); border-radius:0; padding:4px 12px; font-family:Saira, ui-sans-serif, sans-serif; font-size:13.5px; font-weight:600; transition:background-color .15s, border-color .15s; cursor:pointer; } .ds-btn-primary:hover { background:#ff9c45; border-color:#ff9c45; } .ds-btn-primary:focus-visible { outline:1px solid var(--color-or); outline-offset:2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action; coral is reserved for this and for failures.",
+      "html": "<button class=\"ds-btn-danger\">Delete</button>",
+      "css": ".ds-btn-danger { background:transparent; color:var(--color-bad); border:1px solid rgb(224 115 90 / .6); border-radius:0; padding:4px 12px; font-family:Saira, ui-sans-serif, sans-serif; font-size:13.5px; font-weight:500; transition:background-color .15s, border-color .15s; cursor:pointer; } .ds-btn-danger:hover { border-color:var(--color-bad); background:rgb(224 115 90 / .1); } .ds-btn-danger:focus-visible { outline:1px solid var(--color-or); outline-offset:2px; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Recessed square field; amber border on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search pages, people, tasks\" />",
+      "css": ".ds-input { width:300px; background:var(--color-well); color:var(--color-txt); border:1px solid var(--color-edge); border-radius:0; padding:6px 10px; font-family:Saira, ui-sans-serif, sans-serif; font-size:14px; } .ds-input::placeholder { color:var(--color-dim); } .ds-input:focus { outline:none; border-color:rgb(240 138 44 / .7); }"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Left rail: condensed caps rows, the active one a solid amber bar.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item is-active\">Today</a><a class=\"ds-nav-item\">Tasks <span class=\"ds-nav-count\">10</span></a><a class=\"ds-nav-item\">Graph</a><a class=\"ds-nav-item\">Memory</a><a class=\"ds-nav-sub is-active\">Pages</a><a class=\"ds-nav-sub\">People</a></nav>",
+      "css": ".ds-nav { display:flex; flex-direction:column; gap:3px; width:208px; background:var(--color-bg); border-right:1px solid var(--color-frame); padding:12px 0; } .ds-nav-item { display:flex; align-items:center; justify-content:space-between; height:34px; padding:0 22px; font-family:'Saira Condensed', Saira, sans-serif; text-transform:uppercase; letter-spacing:.07em; font-size:15px; font-weight:600; color:var(--color-mute); cursor:pointer; } .ds-nav-item:hover { color:var(--color-txt); } .ds-nav-item.is-active { background:var(--color-or); color:#1a0d02; } .ds-nav-count { font-family:Saira, sans-serif; text-transform:none; font-size:13px; font-weight:500; opacity:.8; } .ds-nav-sub { display:flex; align-items:center; height:28px; padding-left:36px; font-family:'Saira Condensed', Saira, sans-serif; text-transform:uppercase; letter-spacing:.07em; font-size:13.5px; font-weight:500; color:var(--color-dim); cursor:pointer; } .ds-nav-sub:hover { color:var(--color-txt); } .ds-nav-sub.is-active { color:var(--color-or); }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Square bordered metadata chip; cyan variant for calendar events.",
+      "html": "<span class=\"ds-chip\">45m free at 15:00</span> <span class=\"ds-chip ds-chip-cal\">16:00 Standup</span>",
+      "css": ".ds-chip { display:inline-flex; align-items:center; gap:4px; border:1px solid var(--color-edge); padding:0 6px; font-family:Saira, sans-serif; font-size:12px; line-height:20px; color:var(--color-mute); white-space:nowrap; } .ds-chip-cal { border-color:rgb(108 198 236 / .5); color:var(--color-cy); }"
+    },
+    {
+      "name": "Framed Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Outer panel: 1px bronze frame, panel face, 6px two-corner chamfer, condensed caps head with a muted aside.",
+      "html": "<section class=\"ds-panel\"><div class=\"ds-panel-face\"><header class=\"ds-panel-head\"><h2>Goals this week</h2><span>hours / target</span></header><div class=\"ds-meter-row\"><span>Body that works</span><span class=\"ds-meter\"><span style=\"width:40%\"></span></span><span>1.2 / 3h</span></div><div class=\"ds-meter-row is-quiet\"><span>Move to San Jose</span><span class=\"ds-meter\"><span style=\"width:0\"></span></span><span>0 / 2h</span></div></div></section>",
+      "css": ".ds-panel { background:var(--color-frame); padding:1px; width:360px; clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); } .ds-panel-face { background:var(--color-panel); padding:16px 20px; color:var(--color-txt); font-family:Saira, sans-serif; font-size:15px; font-variant-numeric:tabular-nums; clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); } .ds-panel-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; } .ds-panel-head h2 { margin:0; font-family:'Saira Condensed', Saira, sans-serif; text-transform:uppercase; letter-spacing:.07em; font-size:15px; font-weight:600; } .ds-panel-head span { font-size:13px; color:var(--color-mute); } .ds-meter-row { display:grid; grid-template-columns:1fr 60px 56px; gap:12px; align-items:center; padding:7px 0; } .ds-meter-row > span:last-child { text-align:right; font-size:14px; } .ds-meter-row.is-quiet { color:var(--color-mute); } .ds-meter { position:relative; display:block; height:3px; background:var(--color-line); } .ds-meter > span { position:absolute; inset:0 auto 0 0; background:rgb(240 138 44 / .85); }"
+    },
+    {
+      "name": "Selection Row",
+      "kind": "custom",
+      "refersTo": "row-sel",
+      "description": "How anything is selected: 8% amber tint with a 1px inset amber edge, never a solid bar; hover is the raised plate.",
+      "html": "<ul class=\"ds-rows\"><li class=\"ds-row is-selected\">Ceremony venue <small>2 tasks</small></li><li class=\"ds-row\">Wedding vendors <small>1 task</small></li></ul>",
+      "css": ".ds-rows { list-style:none; margin:0; padding:0; width:320px; font-family:Saira, sans-serif; font-size:15px; color:var(--color-txt); } .ds-row { display:flex; justify-content:space-between; padding:6px 8px; cursor:pointer; } .ds-row small { font-size:13px; color:var(--color-mute); } .ds-row:hover { background:var(--color-raised); } .ds-row.is-selected { background:rgb(240 138 44 / .08); box-shadow:inset 0 0 0 1px rgb(240 138 44 / .55); }"
+    },
+    {
+      "name": "Agent Tag",
+      "kind": "chip",
+      "refersTo": "tag-agent",
+      "description": "Lowercase cyan 'agent' marker with one-tap undo; never a pill.",
+      "html": "<span class=\"ds-agent\">agent <button>undo</button></span>",
+      "css": ".ds-agent { display:inline-flex; align-items:center; gap:6px; font-family:Saira, sans-serif; font-size:12px; line-height:20px; color:rgb(108 198 236 / .85); } .ds-agent button { background:none; border:0; padding:0; font:inherit; color:var(--color-txt); text-decoration:underline; text-decoration-color:var(--color-dim); cursor:pointer; } .ds-agent button:hover { text-decoration-color:var(--color-cy); }"
+    },
+    {
+      "name": "Star and Reticle",
+      "kind": "custom",
+      "refersTo": "star",
+      "description": "The four-point star (goals, flags, now) inside the corner-bracket selection reticle, on the engraved grid.",
+      "html": "<div class=\"ds-sky\"><svg width=\"120\" height=\"90\" viewBox=\"-60 -40 120 90\"><g stroke=\"#f08a2c\" stroke-width=\"1.5\" fill=\"none\"><path d=\"M-20,-12 L-20,-20 L-12,-20\"/><path d=\"M20,-12 L20,-20 L12,-20\"/><path d=\"M20,12 L20,20 L12,20\"/><path d=\"M-20,12 L-20,20 L-12,20\"/></g><path d=\"M0,-10 L2.2,-2.2 L10,0 L2.2,2.2 L0,10 L-2.2,2.2 L-10,0 L-2.2,-2.2 Z\" transform=\"scale(1.4)\" fill=\"#f08a2c\"/><text x=\"0\" y=\"38\" text-anchor=\"middle\" fill=\"#f08a2c\" font-size=\"13\" font-weight=\"600\" letter-spacing=\"0.06em\" font-family=\"Saira Condensed, Saira, sans-serif\">NEHA AND THE WEDDING</text></svg></div>",
+      "css": ".ds-sky { display:inline-block; padding:12px 24px; background-color:var(--color-well); background-image:linear-gradient(to right, rgb(255 255 255 / .025) 1px, transparent 1px), linear-gradient(to bottom, rgb(255 255 255 / .025) 1px, transparent 1px); background-size:60px 60px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Elite: Mostly Harmless",
+    "overview": "A star atlas worn in the menu language of Elite: Dangerous, with the volume turned down. The waking day is a route you travel along; goals are stars you steer by. Space-black ground, panels held in thin orange-brown frames with clipped corners, condensed capitals for the instrument labels and plain sentence-case Saira for everything a person reads. It is a cockpit that never raises its voice: no alarms, no glow, no fake telemetry, nothing red for falling behind.\n\nDensity is operational, not airy: a fixed 208px left rail, a 62px page head, then framed panels in a 22px-gutter grid. One amber-orange carries every meaning of \"now, running, tracked, selected\"; one cyan carries \"planned\" and \"the agent\". Everything else is warm grey on blue-black. The two signature drawings, the day arc on Today and the star map on Graph, are the only places with the engraved grid and the only places with reticles.\n\nIt refuses the stretched single phone column and the grey-card planner. Dark only; there is no light theme and none is to be built.",
+    "keyCharacteristics": [
+      "Space black with a cool undertone, panels one step lighter, wells one step darker.",
+      "Orange-brown 1px frames with 6px chamfers on outer panels; everything else square.",
+      "Amber-orange means now / running / tracked / selected; cyan means calendar and agent.",
+      "Saira Condensed caps for titles, nav, section heads, field labels, big readouts; Saira sentence case for the rest, buttons included.",
+      "Four-point stars and corner-bracket reticles as the only ornament.",
+      "Under target is dim, never red."
+    ],
+    "rules": [
+      {
+        "name": "The Colour Has Jobs Rule",
+        "body": "Amber is now, running, tracked and selected. Cyan is planned and agent. Coral is broken. No colour is used for decoration or for categories.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Solid Fills Rule",
+        "body": "As a filled control, solid amber appears at most twice per screen: the active nav item and the one primary action. (Data marks, such as tracked time on the arc and the phone bar, are drawn in amber and do not count.) Every other selection is a quiet amber tint (8% alpha) with a 1px amber inset edge (55% alpha).",
+        "section": "colors"
+      },
+      {
+        "name": "The Never Red Rule",
+        "body": "Under target, behind, overdue and unstarted are shown dim (`mute` / `dim`), never coral. Coral is reserved for machinery that has failed.",
+        "section": "colors"
+      },
+      {
+        "name": "The Condensed Caps Are Instruments Rule",
+        "body": "Condensed caps are for page titles, nav, section heads, field labels and big readouts. Nothing else. Buttons, sentences, task and goal names in lists stay sentence case Saira. The one exception is goal names on the star map, which are labelled like stars.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Numerals are always tabular; time and hours never jitter.",
+        "section": "typography"
+      },
+      {
+        "name": "The No-Glow Rule",
+        "body": "Nothing glows, pulses or casts a shadow. Emphasis comes from colour and fill, never from blur.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Engraved-Grid Rule",
+        "body": "The faint 60px engraved grid (white at 2.5-3% alpha) sits behind the day arc and the star map only. Not behind panels, pages or lists.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do frame outer panels with the 1px `frame` shell and the 6px two-corner chamfer, and keep everything inside them square.",
+      "Do reserve solid amber for the active nav item and the one primary action on a screen; mark every other selection with the 8% amber tint and 1px 55% amber inset edge.",
+      "Do use cyan only for calendar (planned) time and for the agent.",
+      "Do set page titles, nav, section heads, field labels and big readouts in Saira Condensed caps (0.07-0.08em tracking), and everything else, buttons included, in sentence-case Saira.",
+      "Do show under-target and unstarted as dim text and less amber, never as an alert.",
+      "Do use the four-point star and the corner-bracket reticle as the world's only glyphs for goals, flags, now and selection.",
+      "Do keep numerals tabular."
+    ],
+    "donts": [
+      "Don't add a light theme.",
+      "Don't use shadows, glows, blur, scanlines or pulsing; the selected star's reticle is the strongest emphasis the world has.",
+      "Don't put fake HUD numbers, decorative telemetry or invented coordinates on screen; every figure is real data.",
+      "Don't use coral for overdue, behind, or under target; coral means a machine has failed.",
+      "Don't round corners on buttons, inputs, chips or panels; the only round shapes are status dots and map bodies.",
+      "Don't spread the engraved grid beyond the day arc and the star map.",
+      "Don't stretch a single phone-width column across the desktop or fall back to grey rounded cards."
+    ]
+  }
+}

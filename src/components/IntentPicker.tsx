@@ -39,10 +39,10 @@ export function IntentPicker({ intents, recent, onPick, inputId }: {
         {matches.map((i) => (
           <button key={i.id} type="button" className="btn" onClick={() => onPick(i)}>
             {i.title}
-            {i.type && i.type !== "system" ? <span className="muted ml-1 text-xs">{i.type}</span> : null}
+            {i.type && i.type !== "system" ? <span className="ml-1 text-xs text-dim">{i.type}</span> : null}
           </button>
         ))}
-        {matches.length === 0 ? <span className="muted text-sm">No match.</span> : null}
+        {matches.length === 0 ? <span className="text-sm text-dim">No match.</span> : null}
       </div>
     </div>
   );

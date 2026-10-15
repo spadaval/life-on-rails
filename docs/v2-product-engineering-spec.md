@@ -448,12 +448,15 @@ Every run uses the owner's one `gog` login.
 
 ## UI
 
+Desktop first, with a left rail; on a phone the rail becomes a top strip and the screens stack. Dark only. The look is "Elite: Mostly Harmless" (`docs/design/README.md`): a star atlas in Elite: Dangerous's menu language, turned down.
+
 | Route | What |
 | --- | --- |
-| `/` Today | See "Today" above. |
-| `/graph` | Intents grouped by type, with links, score chips, and starve flags. A plain list, no canvas. |
-| `/memory` | **Pages:** a tree by slug prefix, a reader that renders links and footnotes, a markdown editor that saves through the same `--base` check as the agent (a refused save keeps the text and offers to save it on top), history with diff and revert, one-tap undo of the agent's last edit, the `in_digest` toggle, and who last changed each `in_digest` page. **People:** who matters, keeping in touch, overdue, birthdays soon, and everyone; for each, when the owner was last in touch and how, the birthday, a cadence picker, and the `priority` flag. **Timeline:** every observation for a day. |
-| `/capture` | The cockpit: jobs, sources, Google auth, the last mail check. |
+| `/` Today | See "Today" above. The waking day is an arc from rising to setting with the remaining time under it (a straight bar on a phone); planned and actual lanes; Needs you, Due soon (check and un-check), and Goals this week. |
+| `/tasks` | Every task: add one (title, what it counts toward, due), check or un-check it, edit it in the side panel. Views: Open (needs you, past due, this week, later on, no date), Waiting, With the agent, Later, Done. |
+| `/graph` | The intents as a star map (goals as stars sized by the week's hours against target, projects and habits around them, tasks around the selected goal; pan, zoom, click to focus) or as an outline by goal. A System info panel for the selected one: its facts, children, Did it / Done, Add task, and the editor. |
+| `/memory` | **Pages:** an index beside the reader, a markdown editor that saves through the same `--base` check as the agent (a refused save keeps the text and offers to save it on top), history with diff and revert, one-tap undo of the agent's last edit, the `in_digest` toggle, and who last changed each `in_digest` page. **People:** a table of who matters, keeping in touch, due a hello, birthdays soon, and everyone; for each, when the owner was last in touch and how, the birthday, a cadence picker, and the `priority` flag. **Timeline:** every observation for a day. |
+| `/capture` | The cockpit: database, Google auth, mail, jobs, sources. The rail's foot says whether every job is healthy. |
 
 There is no chat screen: the conversation is a T3 thread.
 

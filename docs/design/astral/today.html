@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Today · Life on Rails</title>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Alegreya+Sans+SC:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#0f1324;--panel:#161c30;--raised:#1f2744;--line:#2a3352;--faint:#212943;--grid:#18203a;--text:#ece6d6;--muted:#a3adc6;--dim:#8a95b3;--amber:#d4ad62;--blue:#86aee6;--coral:#e07a5f}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1440px;height:900px;overflow:hidden;background:var(--ground);color:var(--text);font:15px/1.42 "Alegreya Sans",sans-serif;font-variant-numeric:tabular-nums}
+.cap{font-family:"Alegreya Sans SC";font-size:13px;letter-spacing:.09em;text-transform:lowercase;color:var(--dim);font-weight:500}
+button{font:500 14px "Alegreya Sans",sans-serif;color:var(--text);background:var(--raised);border:1px solid var(--line);border-radius:6px;padding:4px 11px;cursor:pointer}
+button.pri{background:var(--amber);color:#14182a;border-color:var(--amber);font-weight:700}
+.shell{display:grid;grid-template-columns:208px 1fr;height:900px}
+nav{border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:1px}
+.brand{font-family:"Alegreya Sans SC";font-size:19px;font-weight:700;margin:0 10px 24px;letter-spacing:.04em}.brand small{display:block;font:13px "Alegreya Sans";letter-spacing:0;color:var(--muted);font-weight:400;margin-top:2px}
+nav a{display:flex;justify-content:space-between;color:var(--muted);text-decoration:none;padding:7px 10px;border-radius:6px}
+nav a.on{background:var(--raised);color:var(--text)}nav a.sub{padding:5px 10px 5px 24px;font-size:13px}
+nav a span{font-size:12px;color:var(--dim)}
+nav .health{margin-top:auto;font-size:12px;color:var(--muted);padding:12px 10px 0;border-top:1px solid var(--line)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--amber);margin-right:7px;vertical-align:1px}
+main{padding:0 24px 18px;display:flex;flex-direction:column;min-width:0}
+.top{height:60px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
+.top h1{font-size:23px;font-weight:500;margin-right:auto}.top h1 span{color:var(--amber);font-size:15px;font-weight:400;margin-left:12px}
+.top input{width:300px;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);font:14px "Alegreya Sans";padding:6px 11px}
+.top input::placeholder{color:var(--dim)}
+.sky{position:relative;height:300px}
+.sky svg{position:absolute;left:0;top:0}
+.sky text{font-family:"Alegreya Sans";font-size:13px}.sky .sc{font-family:"Alegreya Sans SC";font-size:13px;letter-spacing:.08em}
+.center{position:absolute;left:296px;width:600px;top:112px;text-align:center}
+.left{font-size:58px;font-weight:500;line-height:1;letter-spacing:-.01em}
+.left small{display:block;font-size:14.5px;font-weight:400;color:var(--muted);letter-spacing:0;margin-top:8px}
+.timer{margin:18px auto 0;display:inline-flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 8px 7px 14px}
+.timer b{font-weight:500}.timer .el{color:var(--amber);font-size:19px;font-weight:700;min-width:40px}
+.lanes{display:grid;grid-template-columns:70px 1fr;row-gap:5px;padding-top:16px}
+.lab{align-self:center}
+.track{position:relative;height:22px;border-top:1px solid var(--faint);border-bottom:1px solid var(--faint);background:repeating-linear-gradient(90deg,var(--grid) 0 1px,transparent 1px 4.1667%)}
+.b{position:absolute;top:5px;bottom:5px;border-radius:2px;min-width:2px}
+.pl{background:rgba(134,174,230,.2);border:1px solid rgba(134,174,230,.7)}
+.ok{background:#ddd5bf}
+.tent{border:1px dashed #7381a6}
+.run{background:var(--amber)}
+.nowline{position:absolute;top:-3px;bottom:-3px;left:69.444%;width:1px;background:var(--amber)}
+.hours{position:relative;height:16px;font-size:12px;color:var(--dim)}.hours span{position:absolute;transform:translateX(-50%)}
+.hours span:first-child{transform:none}.hours span:last-child{transform:translateX(-100%)}
+.foot{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);padding:8px 0 0 70px}
+.foot b{color:var(--muted);font-weight:500}
+.cols{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:16px;margin-top:16px;flex:1;min-height:0}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow:hidden}
+section h2{font-size:18px;font-weight:500;margin-bottom:6px;display:flex;justify-content:space-between;align-items:baseline}
+section h2 span{font:500 13px "Alegreya Sans SC";letter-spacing:.07em;color:var(--dim)}
+.row{padding:11px 0;border-top:1px solid var(--line)}.row:first-of-type{border-top:0}
+.row .t{font-weight:500;display:flex;gap:9px;align-items:baseline}
+.flag{flex:none;width:10px;height:10px;background:var(--coral);clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);transform:translateY(0)}
+.why{font-size:14px;color:var(--muted);margin:2px 0 8px 19px}.acts{display:flex;gap:6px;margin-left:19px;align-items:center}
+.agent{font:500 12px "Alegreya Sans SC";letter-spacing:.05em;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 6px;margin-left:auto}.agent u{color:var(--text);margin-left:5px;text-decoration-color:var(--dim)}
+.task{display:flex;gap:11px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.task:first-of-type{border-top:0}
+.task input{accent-color:var(--amber);width:15px;height:15px;margin-top:2px;flex:none}
+.task small{display:block;font-size:13px;color:var(--muted)}.task.done>span{text-decoration:line-through;color:var(--muted)}
+.goal{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:10px;padding:6px 0}
+.goal i{position:relative;width:18px;height:18px;border-radius:50%;border:1px solid #2f3a5c}
+.goal i:after{content:"";position:absolute;left:50%;top:50%;width:var(--s);height:var(--s);transform:translate(-50%,-50%);clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);background:var(--c);opacity:var(--o)}
+.goal span{color:var(--muted)}.goal.lit span{color:var(--text)}
+.goal em{font-style:normal;font-size:14px;color:var(--muted)}
+.key{font-size:13px;color:var(--dim);margin-top:8px}
+</style></head><body><div class="shell">
+<nav>
+ <div class="brand">Life on Rails<small>Wed 14 Oct · 16:40</small></div>
+ <a class="on" href="#">Today</a><a href="#">Tasks <span>11</span></a><a href="#">Graph</a>
+ <a href="#">Memory</a><a class="sub" href="#">Pages</a><a class="sub" href="#">People</a><a class="sub" href="#">Timeline</a>
+ <a href="#">Capture</a>
+ <div class="health"><span class="dot"></span>All senses reporting<br><span style="color:var(--dim)">phone 2m ago · mail 6m ago</span></div>
+</nav>
+<main>
+ <div class="top"><h1>Today <span>Wednesday, 14 October</span></h1><input placeholder="Search pages, people, tasks"><button class="pri">Start timer</button></div>
+ <div class="sky">
+  <svg width="1192" height="300" viewBox="0 -32 1192 300" fill="none">
+   <defs><pattern id="grid" width="49.67" height="48" patternUnits="userSpaceOnUse" x="0" y="-22"><path d="M0 0H49.67M0 0V48" stroke="#1a2240"/></pattern><clipPath id="in"><rect x="4" y="-24" width="1184" height="281"/></clipPath></defs>
+   <rect x="4" y="-24" width="1184" height="281" fill="url(#grid)"/>
+   <g clip-path="url(#in)" stroke="#232c4b"><circle cx="596" cy="829" r="700"/><circle cx="596" cy="829" r="611"/><path d="M596 829L196 -100M596 829L996 -100M596 829V-100"/></g>
+   <rect x=".5" y="-28.5" width="1191" height="289" stroke="#34406a"/><rect x="4.5" y="-24.5" width="1183" height="281" stroke="#2a3352"/>
+   <path d="M4 -26.5H1188M4 258.5H1188" stroke="#3d4a78" stroke-width="3" stroke-dasharray="1 23.67"/>
+   <path d="M4 250H1188" stroke="#2a3352"/>
+   <path d="M196.8 153.1L192.7 146.2M349 83.9L346.5 76.3M512.4 48.5L511.6 40.5M679.6 48.5L680.4 40.5M843 83.9L845.5 76.3M995.2 153.1L999.3 146.2" stroke="#55628c"/>
+   <path d="M60 250A789 789 0 0 1 263 113.7" stroke="#3a4670"/>
+   <path d="M263 113.7A789 789 0 0 1 321.3 89.4M491.1 47A789 789 0 0 1 539.9 42M596 40A789 789 0 0 1 604.4 40" stroke="#a3adc6" stroke-width="1.5" stroke-dasharray="3 3"/>
+   <path d="M327.9 87A789 789 0 0 1 484.1 48M539.9 42A789 789 0 0 1 589 40M624.1 40.5A789 789 0 0 1 680 44.5" stroke="#ece6d6" stroke-width="2.5"/>
+   <path d="M680 44.5A789 789 0 0 1 735.6 52.4" stroke="#d4ad62" stroke-width="3"/>
+   <path d="M735.6 52.4A789 789 0 0 1 1132 250" stroke="#8a95b3" stroke-width="1.6" stroke-dasharray="0.5 7" stroke-linecap="round"/>
+   <path d="M150.3 158.7A805 805 0 0 1 186.6 135.9M425.5 42.3A805 805 0 0 1 467.7 34.3" stroke="#86aee6" stroke-opacity=".5" stroke-width="2"/>
+   <path d="M889.7 79.5A805 805 0 0 1 967.8 115" stroke="#86aee6" stroke-width="2"/>
+   <text x="980" y="98" fill="#86aee6">18:30 Wedding planning with Neha</text>
+   <circle cx="735.6" cy="52.4" r="14" fill="#d4ad62" fill-opacity=".1"/>
+   <path d="M735.6 44.4l1.9 6.1 6.1 1.9-6.1 1.9-1.9 6.1-1.9-6.1-6.1-1.9 6.1-1.9z" fill="#d4ad62"/>
+   <path d="M738 38L741 12" stroke="#d4ad62" stroke-opacity=".6"/>
+   <text x="748" y="10" fill="#d4ad62" class="sc" font-weight="700">16:40 now</text>
+   <circle cx="60" cy="250" r="2.5" fill="#8a95b3"/><circle cx="1132" cy="250" r="2.5" fill="#8a95b3"/>
+   <text x="72" y="244" fill="#8a95b3" class="sc">rising 08:00</text>
+   <text x="1120" y="244" fill="#8a95b3" class="sc" text-anchor="end">setting 22:00</text>
+  </svg>
+  <div class="center">
+   <div class="left">5h 20m<small>of the waking day left · next in 1h 50m</small></div>
+   <div class="timer"><span class="dot"></span><b>Life on Rails — redesign</b><span class="el">0:42</span><button>Pause</button><button>Stop</button></div>
+  </div>
+ </div>
+ <div class="lanes">
+  <div></div><div class="hours"><span style="left:0">00</span><span style="left:16.667%">04</span><span style="left:33.333%">08</span><span style="left:50%">12</span><span style="left:66.667%">16</span><span style="left:83.333%">20</span><span style="left:100%">24</span></div>
+  <div class="lab cap">Planned</div>
+  <div class="track"><div class="b pl" style="left:39.583%;width:2.083%" title="Standup"></div><div class="b pl" style="left:54.167%;width:2.083%" title="1:1 with Priya"></div><div class="b pl" style="left:77.083%;width:4.167%" title="Wedding planning with Neha"></div><div class="nowline"></div></div>
+  <div class="lab cap">Actual</div>
+  <div class="track">
+   <div class="b tent" style="left:0;width:2px"></div>
+   <div class="b tent" style="left:8.333%;width:3.125%"></div>
+   <div class="b tent" style="left:45.486%;width:3.125%"></div>
+   <div class="b ok" style="left:48.958%;width:7.986%"></div>
+   <div class="b tent" style="left:57.292%;width:2.431%"></div>
+   <div class="b ok" style="left:59.722%;width:2.431%"></div>
+   <div class="b tent" style="left:62.5%;width:.417%"></div>
+   <div class="b ok" style="left:63.889%;width:2.778%"></div>
+   <div class="b run" style="left:66.667%;width:2.778%"></div>
+   <div class="nowline"></div>
+  </div>
+ </div>
+ <div class="foot"><span>Solid: confirmed, At Cisco Building 6 · dashed: phone, not yet confirmed · gold: running</span><span>Phone today <b>2h 35m</b> on screen · <b>38</b> pickups · <b>24</b> glances · most T3 Code, YouTube, Reddit</span></div>
+ <div class="cols">
+  <section><h2>Needs you <span>3 flagged by the agent</span></h2>
+   <div class="row"><div class="t"><i class="flag"></i>Confirm tonight's LastPass login attempt was you</div><div class="why">Blocked login 9:02pm from Cary. Probably you on a new device.</div><div class="acts"><button>Done</button><button>Seen</button><span class="agent">agent<u>undo</u></span></div></div>
+   <div class="row"><div class="t"><i class="flag"></i>Give Hawthorne at Parkside written notice to vacate</div><div class="why">Notice is due by 6 Nov for the move to San Jose.</div><div class="acts"><button>Done</button><button>Seen</button><span class="agent">agent<u>undo</u></span></div></div>
+   <div class="row"><div class="t"><i class="flag"></i>Shortlist 5–8 ceremony venues</div><div class="why">Due 25 Oct, and you fly to SFO on 23 Oct.</div><div class="acts"><button>Done</button><button>Seen</button><span class="agent">agent<u>undo</u></span></div></div>
+  </section>
+  <section><h2>Tasks due soon <span>View all</span></h2>
+   <label class="task"><input type="checkbox"><span>PT follow-up at B.E.S.T Physical Therapy<small>Fri 6 Nov, 11:00</small></span></label>
+   <label class="task"><input type="checkbox"><span>Choose the wedding invitation vendor<small>Neha and the wedding</small></span></label>
+   <label class="task"><input type="checkbox"><span>Check the H-1B change of status took effect<small>Life admin · <span class="agent" style="margin:0">agent<u>undo</u></span></small></span></label>
+   <label class="task done"><input type="checkbox" checked><span>Sort lodging and a car for the SFO trip<small>Done today, 14:31</small></span></label>
+  </section>
+  <section><h2>Goals this week <span>hours / target</span></h2>
+   <div class="goal"><i style="--s:8px;--o:.6;--c:#a9c4ea"></i><span>Body that works</span><em>0 / 3h</em></div>
+   <div class="goal"><i style="--s:8px;--o:.6;--c:#e8cf94"></i><span>Make and play</span><em>0 / 6h</em></div>
+   <div class="goal"><i style="--s:8px;--o:.6;--c:#f1e9d6"></i><span>Move to San Jose</span><em>0 / 2h</em></div>
+   <div class="goal"><i style="--s:8px;--o:.6;--c:#e9b7b0"></i><span>Neha and the wedding</span><em>0 / 5h</em></div>
+   <div class="goal"><i style="--s:8px;--o:.6;--c:#a9c4ea"></i><span>New friends and staying close</span><em>0 / 1.5h</em></div>
+   <div class="goal lit"><i style="--s:16px;--o:1;--c:#f6eedb"></i><span>Tools that run my life</span><em>2.7 / 4h</em></div>
+   <div class="goal lit"><i style="--s:12px;--o:.9;--c:#e8cf94"></i><span>Life admin that doesn't pile up</span><em>0.5 / 1h</em></div>
+   <div class="key">Star size and brightness: hours so far. Ring: the week's target. A dim star is under target, not failing.</div>
+  </section>
+ </div>
+</main></div></body></html>

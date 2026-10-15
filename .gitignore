@@ -10,3 +10,11 @@ src/routeTree.gen.ts
 .DS_Store
 *.local
 coverage/
+
+# Impeccable scratch: decision sketches and review screenshots (real data)
+.impeccable/mocks/
+.impeccable/review/
+.impeccable/build/
+.impeccable/*.json.local
+.impeccable/questions/
+.impeccable/decision-*.json

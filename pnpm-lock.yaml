@@ -166,6 +166,12 @@ importers:
 
   .:
     dependencies:
+      '@fontsource/saira':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource/saira-condensed':
+        specifier: 5.3.0
+        version: 5.3.0
       '@tanstack/react-router':
         specifier: 1.170.42
         version: 1.170.42(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -178,6 +184,9 @@ importers:
       markdown-it:
         specifier: 15.0.2
         version: 15.0.2
+      markdown-it-footnote:
+        specifier: 4.0.0
+        version: 4.0.0
       postgres:
         specifier: 3.4.9
         version: 3.4.9
@@ -206,6 +215,9 @@ importers:
       '@types/markdown-it':
         specifier: 14.2.0
         version: 14.2.0
+      '@types/markdown-it-footnote':
+        specifier: 3.0.4
+        version: 3.0.4
       '@types/node':
         specifier: 26.6.5
         version: 26.6.5
@@ -761,6 +773,12 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@fontsource/saira-condensed@5.3.0':
+    resolution: {integrity: sha512-e5ZTpIy/pE8CbB23mpm1b+dCmeapNheSrtQDXtbfDbGpm1r2oIfs5TzTpY2nzETEwei3DEFL9smm0rmFURzJtw==}
+
+  '@fontsource/saira@5.3.0':
+    resolution: {integrity: sha512-Sbc9SUZsXjULjzjDbBYicL+gQSdLlqwEiyHi6Gs5R9PSsdUWTmTa77jH1a8MalWWHafoq6SK/G3ovyIbGEN5Ww==}
+
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
 
@@ -1133,6 +1151,9 @@ packages:
 
   '@types/linkify-it@5.0.0':
     resolution: {integrity: sha512-sVDA58zAw4eWAffKOaQH5/5j3XeayukzDk+ewSsnv3p4yJEZHCCzMDiZM8e0OUrRvmpGZ85jf4yDHkHsgBNr9Q==}
+
+  '@types/markdown-it-footnote@3.0.4':
+    resolution: {integrity: sha512-XJ6n+v+2u+2gmYLSHcxyoNT/YrgrKvHuDJQlykFjuxCQCr86P2/fx1V6/0lcKxv5cSIlCaJ6sUcNS3zDI7I+LA==}
 
   '@types/markdown-it@14.2.0':
     resolution: {integrity: sha512-NoQ2yGlLWj4wpxMs+TYmRKk3thDrQ97agr7sFqfLsAlvoS8SNQuTrlObhFqG9iugdTtgOE9jpJ6FNM4ZGsa5xQ==}
@@ -1611,6 +1632,9 @@ packages:
 
   magic-string@1.4.3:
     resolution: {integrity: sha512-z12OxmaPGE0F4xlpGdjuAUckipLpQlTAuAmyGhNoD7ODpYUzvDfvtxUbjM/jwznyP178oju/KDdyi220wNJ0RQ==}
+
+  markdown-it-footnote@4.0.0:
+    resolution: {integrity: sha512-WYJ7urf+khJYl3DqofQpYfEYkZKbmXmwxQV8c8mO/hGIhgZ1wOe7R4HLFNwqx7TjILbnC98fuyeSsin19JdFcQ==}
 
   markdown-it@15.0.2:
     resolution: {integrity: sha512-q4IGxMv56jCqT4OCRCADBoDP3LO4MhmTXjFbphHPXs4g3j9Xg5RDnxqN8IF/3vIWEU+VCnUq+7JUg/cfy2E6Qw==}
@@ -2262,6 +2286,10 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
+  '@fontsource/saira-condensed@5.3.0': {}
+
+  '@fontsource/saira@5.3.0': {}
+
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
@@ -2642,6 +2670,10 @@ snapshots:
 
   '@types/linkify-it@5.0.0': {}
 
+  '@types/markdown-it-footnote@3.0.4':
+    dependencies:
+      '@types/markdown-it': 14.2.0
+
   '@types/markdown-it@14.2.0':
     dependencies:
       '@types/linkify-it': 5.0.0
@@ -2992,6 +3024,8 @@ snapshots:
   magic-string@1.4.3:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
+
+  markdown-it-footnote@4.0.0: {}
 
   markdown-it@15.0.2:
     dependencies:

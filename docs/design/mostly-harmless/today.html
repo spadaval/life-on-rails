@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Today · Life on Rails</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Saira+Semi+Condensed:wght@500;600&family=Saira:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0c0d12;--panel:#111218;--frame:#4a2e14;--edge:#2c2a2c;--line:#1c1e26;--txt:#ece6dc;--mute:#b1a596;--dim:#928777;--or:#f08a2c;--tint:rgba(240,138,44,.1);--cy:#6cc6ec}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1440px;height:900px;overflow:hidden;background:var(--bg);color:var(--txt);font:400 14px/1.5 Saira,sans-serif;font-variant-numeric:tabular-nums}
+button{font:500 13px Saira,sans-serif;color:var(--txt);background:transparent;border:1px solid #3a3634;padding:3px 13px;cursor:pointer}
+button.pri{background:var(--or);color:#1a0d02;border-color:var(--or);font-weight:600}
+.ch{--c:6px;clip-path:polygon(var(--c) 0,100% 0,100% calc(100% - var(--c)),calc(100% - var(--c)) 100%,0 100%,0 var(--c))}
+.shell{display:grid;grid-template-columns:208px 1fr;height:900px}
+nav{border-right:1px solid var(--frame);padding:22px 0;display:flex;flex-direction:column;gap:3px}
+.brand{font:600 19px "Saira Condensed";letter-spacing:.1em;color:var(--or);margin:0 22px 2px}
+.stamp{font:500 13px "Saira Semi Condensed";color:var(--mute);margin:0 22px 24px}
+nav a{display:flex;justify-content:space-between;align-items:center;height:34px;padding:0 22px;font:600 15px "Saira Condensed";letter-spacing:.07em;text-transform:uppercase;color:var(--mute);text-decoration:none}
+nav a.on{background:var(--or);color:#1a0d02}
+nav a.sub{height:28px;padding-left:36px;font-size:13.5px}
+nav a span{font:500 13px "Saira Semi Condensed";color:var(--dim)}
+.health{margin-top:auto;padding:14px 22px 0;border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
+.sq{display:inline-block;width:6px;height:6px;background:var(--or);margin-right:8px;vertical-align:2px;border-radius:50%}
+main{padding:0 30px 22px;display:flex;flex-direction:column;min-width:0}
+.top{height:62px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line)}
+.top h1{font:600 22px "Saira Condensed";letter-spacing:.08em;text-transform:uppercase;margin-right:auto}
+.top h1 span{font:400 14px Saira;letter-spacing:0;text-transform:none;color:var(--mute);margin-left:14px}
+.top input{width:300px;background:var(--panel);border:1px solid var(--edge);color:var(--txt);font:14px Saira;padding:5px 11px}
+.top input::placeholder{color:var(--dim)}
+.top button{padding:6px 16px}
+.sky{position:relative;height:296px}
+.sky svg{position:absolute;left:0;top:0}
+.sky text{font-family:"Saira Semi Condensed";font-size:13px}
+.center{position:absolute;left:286px;width:600px;top:118px;text-align:center}
+.left{font:600 62px/1 "Saira Condensed";letter-spacing:.03em}
+.left em{font-style:normal;font:500 20px "Saira Condensed";color:var(--or);letter-spacing:.08em;margin-left:10px}
+.left small{display:block;font:400 14px Saira;color:var(--mute);letter-spacing:0;margin-top:9px}
+.timer{margin:18px auto 0;display:inline-flex;align-items:center;gap:12px;border:1px solid var(--edge);background:rgba(17,18,24,.85);padding:7px 9px 7px 15px}
+.timer b{font-weight:500}.timer .el{font:600 21px/1 "Saira Condensed";color:var(--or);letter-spacing:.03em;min-width:42px}
+.lanes{display:grid;grid-template-columns:66px 1fr;row-gap:6px;padding-top:4px}
+.lab{align-self:center;font-size:13px;color:var(--mute)}
+.track{position:relative;height:22px;background:repeating-linear-gradient(90deg,transparent 0 calc(100%/24 - 1px),#171920 calc(100%/24 - 1px) calc(100%/24)),#0f1016}
+.b{position:absolute;top:5px;bottom:5px;min-width:2px}
+.pl{background:rgba(108,198,236,.12);border:1px solid rgba(108,198,236,.8)}
+.ok{background:#9a5c22}
+.tent{border:1px dashed #7a5530}
+.run{background:var(--tint);border:1px solid var(--or)}
+.nowline{position:absolute;top:-3px;bottom:-3px;left:69.444%;width:1px;background:var(--or)}
+.hours{position:relative;height:16px;font:500 12.5px "Saira Semi Condensed";color:var(--dim)}.hours span{position:absolute;transform:translateX(-50%)}
+.hours span:first-child{transform:none}.hours span:last-child{transform:translateX(-100%)}
+.foot{display:flex;justify-content:space-between;font-size:13px;color:var(--mute);padding:10px 0 0 66px}
+.foot b{color:var(--txt);font-weight:500}
+.cols{display:grid;grid-template-columns:1.22fr 1fr 1.08fr;gap:22px;margin-top:20px;flex:1;min-height:0}
+.p{background:var(--frame);padding:1px}
+.p>section{clip-path:inherit;height:100%;background:var(--panel);padding:16px 22px;overflow:hidden}
+h2{font:600 16px "Saira Condensed";letter-spacing:.08em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+h2 span{font:400 13px Saira;letter-spacing:0;text-transform:none;color:var(--mute)}
+.row{padding:9px 0 9px}
+.row .t{font-weight:500;display:flex;gap:10px;align-items:baseline}
+.flag{flex:none;width:9px;height:9px;background:var(--or);clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
+.why{font-size:14px;color:var(--mute);margin:1px 0 8px 19px}.acts{display:flex;gap:8px;margin-left:19px;align-items:center}
+.agent{font:500 12px Saira;color:var(--cy);border:1px solid rgba(108,198,236,.4);padding:0 7px;margin-left:auto}.agent u{color:var(--txt);margin-left:6px;text-decoration-color:var(--dim)}
+.task{display:flex;gap:12px;align-items:flex-start;padding:9px 0}
+.task input{accent-color:#a0703f;width:15px;height:15px;margin-top:4px;flex:none}
+.task small{display:block;font-size:13px;color:var(--mute)}.task.done>span{text-decoration:line-through;color:var(--dim)}
+.goal{display:grid;grid-template-columns:1fr 50px 52px;align-items:center;gap:12px;padding:7px 0}
+.goal span{color:var(--mute)}.goal.lit span{color:var(--txt)}
+.goal i{height:3px;background:#1f2129;position:relative}.goal i:after{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--w);background:var(--or);opacity:.85}
+.goal em{font:500 14px "Saira Semi Condensed";font-style:normal;text-align:right;color:var(--mute)}.goal.lit em{color:var(--txt)}
+.key{font-size:13px;color:var(--dim);margin-top:10px}
+</style></head><body><div class="shell">
+<nav>
+ <div class="brand">LIFE ON RAILS</div><div class="stamp">Wed 14 Oct · 16:40</div>
+ <a class="on" href="#">Today</a><a href="#">Tasks <span>11</span></a><a href="#">Graph</a>
+ <a href="#">Memory</a><a class="sub" href="#">Pages</a><a class="sub" href="#">People</a><a class="sub" href="#">Timeline</a>
+ <a href="#">Capture</a>
+ <div class="health"><span class="sq"></span>All senses reporting<br><span style="color:var(--dim)">phone 2m · mail 6m ago</span></div>
+</nav>
+<main>
+ <div class="top"><h1>Today <span>Wednesday, 14 October</span></h1><input placeholder="Search pages, people, tasks"><button class="pri">Start timer</button></div>
+ <div class="sky">
+  <svg width="1170" height="296" viewBox="0 -24 1170 296" fill="none">
+   <g stroke="#151821"><path d="M73 -24V250M146 -24V250M219 -24V250M292 -24V250M365 -24V250M438 -24V250M511 -24V250M584 -24V250M657 -24V250M730 -24V250M803 -24V250M876 -24V250M949 -24V250M1022 -24V250M1095 -24V250M0 26H1170M0 88H1170M0 150H1170M0 212H1170"/></g>
+   <g stroke="#1b1f2a"><path d="M73 -24v5M219 -24v5M365 -24v5M511 -24v5M657 -24v5M803 -24v5M949 -24v5M1095 -24v5"/></g>
+   <path d="M0 250H1170" stroke="#1f2129"/>
+   <path d="M53.8 243.4L66.1 256.5M121 192.2L127 200.2M188.9 141.9L198.1 157.4M265.5 106.2L269.6 115.3M342.5 71.6L348.2 88.6M424.9 53L427 62.8M507.5 35.5L509.5 53.4M592 35L592 45M676.5 35.5L674.5 53.4M759.1 53L757 62.8M841.5 71.6L835.8 88.6M918.5 106.2L914.4 115.3M995.1 141.9L985.9 157.4M1063 192.2L1057 200.2M1130.2 243.4L1117.9 256.5" stroke="#5a3a1c"/>
+   <path d="M60 250A779 779 0 0 1 1124 250" stroke="#4f4238" stroke-dasharray="2 6"/>
+   <path d="M261.2 113.7A779 779 0 0 1 319 89.4M487.7 47A779 779 0 0 1 536.3 42M592 40A779 779 0 0 1 600.4 40" stroke="#a0662e" stroke-width="1.5" stroke-dasharray="2 3"/>
+   <path d="M325.6 87A779 779 0 0 1 480.8 48M536.3 42A779 779 0 0 1 585 40M619.9 40.5A779 779 0 0 1 675.5 44.5" stroke="#f08a2c" stroke-opacity=".8" stroke-width="2.5"/>
+   <path d="M675.5 44.5A779 779 0 0 1 730.7 52.4" stroke="#f08a2c" stroke-width="3.5"/>
+   <path d="M148.1 157.1A797 797 0 0 1 184.3 134.2M422.1 40.3A797 797 0 0 1 464.2 32.3M884.6 77.6A797 797 0 0 1 962.4 113.3" stroke="#6cc6ec" stroke-opacity=".5"/>
+   <g fill="#0c0d12" stroke="#6cc6ec" stroke-width="1.3"><path d="M148.1 151.1l6 6-6 6-6-6z"/><path d="M422.1 34.3l6 6-6 6-6-6z"/><path d="M884.6 71.6l6 6-6 6-6-6z" fill="#6cc6ec"/></g>
+   <text x="134" y="140" fill="#6cc6ec" text-anchor="end">09:30 Standup</text>
+   <text x="422" y="22" fill="#6cc6ec" text-anchor="middle">13:00 1:1 with Priya</text>
+   <text x="902" y="70" fill="#6cc6ec">18:30 Wedding planning with Neha</text>
+   <g stroke="#f08a2c" stroke-width="1.3"><path d="M719.7 47.4v-6h6M735.7 41.4h6v6M741.7 57.4v6h-6M725.7 63.4h-6v-6"/></g>
+   <circle cx="730.7" cy="52.4" r="2.3" fill="#f08a2c"/>
+   <text x="752" y="40" fill="#f08a2c" font-weight="600">16:40 now</text>
+   <g fill="#928777" text-anchor="middle"><text x="206.8" y="176">10</text><text x="353.6" y="108">12</text><text x="511.3" y="74">14</text><text x="672.7" y="74">16</text><text x="830.4" y="108">18</text><text x="977.2" y="176">20</text></g>
+   <circle cx="60" cy="250" r="2.3" fill="#b1a596"/><circle cx="1124" cy="250" r="2.3" fill="#b1a596"/>
+   <text x="60" y="268" fill="#b1a596">Rising 08:00</text>
+   <text x="1124" y="268" fill="#b1a596" text-anchor="end">Setting 22:00</text>
+  </svg>
+  <div class="center">
+   <div class="left">5H 20M<em>REMAINING</em><small>of the waking day · next jump 18:30, in 1h 50m</small></div>
+   <div class="timer"><span class="sq"></span><b>Life on Rails — redesign</b><span class="el">0:42</span><button>Pause</button><button>Stop</button></div>
+  </div>
+ </div>
+ <div class="lanes">
+  <div></div><div class="hours"><span style="left:0">00</span><span style="left:16.667%">04</span><span style="left:33.333%">08</span><span style="left:50%">12</span><span style="left:66.667%">16</span><span style="left:83.333%">20</span><span style="left:100%">24</span></div>
+  <div class="lab">Planned</div>
+  <div class="track"><div class="b pl" style="left:39.583%;width:2.083%"></div><div class="b pl" style="left:54.167%;width:2.083%"></div><div class="b pl" style="left:77.083%;width:4.167%"></div><div class="nowline"></div></div>
+  <div class="lab">Actual</div>
+  <div class="track">
+   <div class="b tent" style="left:0;width:2px"></div>
+   <div class="b tent" style="left:8.333%;width:3.125%"></div>
+   <div class="b tent" style="left:45.486%;width:3.125%"></div>
+   <div class="b ok" style="left:48.958%;width:7.986%"></div>
+   <div class="b tent" style="left:57.292%;width:2.431%"></div>
+   <div class="b ok" style="left:59.722%;width:2.431%"></div>
+   <div class="b tent" style="left:62.5%;width:.417%"></div>
+   <div class="b ok" style="left:63.889%;width:2.778%"></div>
+   <div class="b run" style="left:66.667%;width:2.778%"></div>
+   <div class="nowline"></div>
+  </div>
+ </div>
+ <div class="foot"><span>Solid: confirmed, At Cisco Building 6 · dashed: phone, not yet confirmed · outlined: running</span><span>Phone today <b>2h 35m</b> on screen · <b>38</b> pickups · <b>24</b> glances · most T3 Code, YouTube, Reddit</span></div>
+ <div class="cols">
+  <div class="p ch"><section><h2>Needs you <span>3 flagged by the agent</span></h2>
+   <div class="row"><div class="t"><i class="flag"></i>Confirm tonight's LastPass login attempt was you</div><div class="why">Blocked login 9:02pm from Cary. Probably you on a new device.</div><div class="acts"><button>Done</button><button>Seen</button><span class="agent">agent<u>undo</u></span></div></div>
+   <div class="row"><div class="t"><i class="flag"></i>Give Hawthorne at Parkside written notice to vacate</div><div class="why">Notice is due by 6 Nov for the move to San Jose.</div><div class="acts"><button>Done</button><button>Seen</button><span class="agent">agent<u>undo</u></span></div></div>
+   <div class="row"><div class="t"><i class="flag"></i>Shortlist 5–8 ceremony venues</div><div class="why">Due 25 Oct, and you fly to SFO on 23 Oct.</div><div class="acts"><button>Done</button><button>Seen</button><span class="agent">agent<u>undo</u></span></div></div>
+  </section></div>
+  <div class="p ch"><section><h2>Due soon <span>View all</span></h2>
+   <label class="task"><input type="checkbox"><span>PT follow-up at B.E.S.T Physical Therapy<small>Fri 6 Nov, 11:00</small></span></label>
+   <label class="task"><input type="checkbox"><span>Choose the wedding invitation vendor<small>Neha and the wedding</small></span></label>
+   <label class="task"><input type="checkbox"><span>Check the H-1B change of status took effect<small>Life admin · <span class="agent" style="margin:0">agent<u>undo</u></span></small></span></label>
+   <label class="task done"><input type="checkbox" checked><span>Sort lodging and a car for the SFO trip<small>Done today, 14:31</small></span></label>
+  </section></div>
+  <div class="p ch"><section><h2>Goals this week <span>hours / target</span></h2>
+   <div class="goal"><span>Body that works</span><i style="--w:0"></i><em>0 / 3h</em></div>
+   <div class="goal"><span>Make and play</span><i style="--w:0"></i><em>0 / 6h</em></div>
+   <div class="goal"><span>Move to San Jose</span><i style="--w:0"></i><em>0 / 2h</em></div>
+   <div class="goal"><span>Neha and the wedding</span><i style="--w:0"></i><em>0 / 5h</em></div>
+   <div class="goal"><span>New friends and staying close</span><i style="--w:0"></i><em>0 / 1.5h</em></div>
+   <div class="goal lit"><span>Tools that run my life</span><i style="--w:67.5%"></i><em>2.7 / 4h</em></div>
+   <div class="goal lit"><span>Life admin that doesn't pile up</span><i style="--w:50%"></i><em>0.5 / 1h</em></div>
+   <div class="key">Quiet rows have no hours yet this week.</div>
+  </section></div>
+ </div>
+</main></div></body></html>
