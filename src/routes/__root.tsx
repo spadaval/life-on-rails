@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Link, Outlet, createRootRoute, HeadContent, Scripts, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, Outlet, createRootRoute, HeadContent, Scripts, useNavigate, useRouter } from "@tanstack/react-router";
 import { duration } from "../components/format.js";
 import { Key, QuickAddDialog, openQuickAdd } from "../components/QuickAdd.js";
 import { getShellFn } from "../server/functions/shell.js";
@@ -29,21 +29,13 @@ export type Shell = Awaited<ReturnType<typeof getShellFn>>;
 const NAV = [
   { to: "/", label: "Today" },
   { to: "/tasks", label: "Tasks" },
-  { to: "/graph", label: "Graph" },
-  { to: "/memory", label: "Memory" },
-  { to: "/capture", label: "Capture" },
-] as const;
-
-const MEMORY_TABS = [
-  { tab: "pages", label: "Pages" },
-  { tab: "people", label: "People" },
-  { tab: "timeline", label: "Timeline" },
+  { to: "/goals", label: "Goals" },
+  { to: "/people", label: "People" },
+  { to: "/notes", label: "Notes" },
 ] as const;
 
 function RootComponent() {
   const shell = Route.useLoaderData();
-  const location = useLocation();
-  const memoryTab = location.pathname === "/memory" ? ((location.search as { tab?: string }).tab ?? "pages") : null;
   const stamp = useStamp();
 
   return (
@@ -58,29 +50,16 @@ function RootComponent() {
           </p>
           <nav className="flex flex-col gap-[3px]" aria-label="Main">
             {NAV.map((n) => (
-              <div key={n.to}>
-                <Link
-                  to={n.to}
-                  className="cond flex h-[34px] items-center justify-between px-[22px] text-[15px] font-semibold text-mute hover:text-txt"
-                  activeProps={{ className: "!bg-or !text-[#1a0d02]" }}
-                  activeOptions={{ exact: n.to === "/", includeSearch: false }}
-                >
-                  {n.label}
-                  {n.to === "/tasks" && shell.openTasks > 0 ? <span className="font-sans text-[13px] font-medium normal-case opacity-80">{shell.openTasks}</span> : null}
-                </Link>
-                {n.to === "/memory"
-                  ? MEMORY_TABS.map((t) => (
-                      <Link
-                        key={t.tab}
-                        to="/memory"
-                        search={{ tab: t.tab }}
-                        className={`cond flex h-7 items-center pl-9 text-[13.5px] font-medium hover:text-txt ${memoryTab === t.tab ? "text-or" : "text-dim"}`}
-                      >
-                        {t.label}
-                      </Link>
-                    ))
-                  : null}
-              </div>
+              <Link
+                key={n.to}
+                to={n.to}
+                className="cond flex h-[34px] items-center justify-between px-[22px] text-[15px] font-semibold text-mute hover:text-txt"
+                activeProps={{ className: "!bg-or !text-[#1a0d02]" }}
+                activeOptions={{ exact: n.to === "/", includeSearch: false }}
+              >
+                {n.label}
+                {n.to === "/tasks" && shell.openTasks > 0 ? <span className="font-sans text-[13px] font-medium normal-case opacity-80">{shell.openTasks}</span> : null}
+              </Link>
             ))}
           </nav>
           <Health unwell={shell.unwell} className="mt-auto border-t border-line px-[22px] pt-3.5" />
@@ -101,6 +80,7 @@ function RootComponent() {
               {n.label}
             </Link>
           ))}
+          <Health unwell={shell.unwell} className="ml-auto py-3 pl-3 whitespace-nowrap" />
         </header>
 
         <main className="min-w-0 px-4 pb-10 md:px-[30px]">
@@ -125,7 +105,7 @@ function useStamp(): string {
 function Health({ unwell, className }: { unwell: Shell["unwell"]; className: string }) {
   const ok = unwell !== null && unwell.length === 0;
   return (
-    <Link to="/capture" className={`block text-[13px] text-mute hover:text-txt ${className}`}>
+    <Link to="/status" className={`block text-[13px] text-mute hover:text-txt ${className}`}>
       <span className={`mr-2 inline-block size-1.5 rounded-full align-[2px] ${ok ? "bg-or" : "bg-bad"}`} />
       {unwell === null ? "Database unreachable" : ok ? "All senses reporting" : `${unwell.length} ${unwell.length === 1 ? "job needs" : "jobs need"} a look`}
     </Link>
@@ -151,10 +131,10 @@ export function GlobalActions() {
         className="hidden lg:block"
         onSubmit={(e) => {
           e.preventDefault();
-          if (q.trim()) void navigate({ to: "/memory", search: { q: q.trim() } });
+          if (q.trim()) void navigate({ to: "/search", search: { q: q.trim() } });
         }}
       >
-        <input className="input w-[300px]" placeholder="Search pages, people, tasks" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search everything" />
+        <input className="input w-[300px]" placeholder="Search notes, people, tasks" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search everything" />
       </form>
       {run ? (
         <Link to="/" className="flex items-center gap-2 border border-or/60 bg-or/10 px-3 py-1 text-[13.5px] hover:bg-or/15">

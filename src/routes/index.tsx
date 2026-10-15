@@ -5,6 +5,7 @@ import { DayArc } from "../components/DayArc.js";
 import { duration, pct, shortDate } from "../components/format.js";
 import { TaskCheck } from "../components/IntentEditor.js";
 import { IntentPicker, type PickIntent } from "../components/IntentPicker.js";
+import { Markdown } from "../components/Markdown.js";
 import { Empty, Meter, Notice, PageHead, Panel, Star } from "../components/ui.js";
 import { metricFn, resetVisibilityFn, taskDoneFn, unflagFn } from "../server/functions/graph.js";
 import {
@@ -13,9 +14,9 @@ import {
 import { GlobalActions } from "./__root.js";
 
 export const Route = createFileRoute("/")({
-  validateSearch: (search) => z.object({ date: z.string().optional() }).parse(search),
-  loaderDeps: ({ search }) => ({ date: search.date }),
-  loader: ({ deps }) => getTodayFn({ data: { date: deps.date } }),
+  validateSearch: (search) => z.object({ date: z.string().optional(), obs: z.string().uuid().optional() }).parse(search),
+  loaderDeps: ({ search }) => ({ date: search.date, obs: search.obs }),
+  loader: ({ deps }) => getTodayFn({ data: { date: deps.date, obs: deps.obs } }),
   component: Today,
 });
 
@@ -42,6 +43,7 @@ function useNow(everyMs: number, initial: string): number {
 function Today() {
   const data = Route.useLoaderData();
   const { today: t } = data;
+  const search = Route.useSearch();
   const router = useRouter();
   const now = useNow(20_000, t.now);
   const [selected, setSelected] = useState<string | null>(null);
@@ -200,6 +202,8 @@ function Today() {
           <p className="mt-2 text-[13px] text-dim">Enter accepts everything labelled.</p>
         </Panel>
       ) : null}
+
+      {data.record && t.date <= data.yesterday ? <DayRecord record={data.record} timezone={t.timezone} highlight={search.obs} /> : null}
 
       <div className="grid gap-[22px] lg:grid-cols-[1.22fr_1fr_1.08fr]">
         <NeedsYou data={data} busy={busy} act={act} />
@@ -487,11 +491,13 @@ function DueSoon({ data, busy, act }: { data: Data; busy: boolean; act: Act }) {
 function Goals({ goals }: { goals: Data["goals"] }) {
   return (
     <Panel title="Goals this week" aside="hours / target">
-      {goals.length === 0 ? <Empty>No goals with an hour target yet. Set one in the Graph.</Empty> : null}
+      {goals.length === 0 ? <Empty>No goals with an hour target yet. Set one in Goals.</Empty> : null}
       <ul>
         {goals.map((g) => (
           <li key={g.id} className="grid grid-cols-[1fr_60px_56px] items-center gap-3 py-[7px]">
-            <span className={g.hours > 0 ? "text-txt" : "text-mute"}>{g.title}</span>
+            <Link to="/goals" search={{ id: g.id }} className={`hover:text-or ${g.hours > 0 ? "text-txt" : "text-mute"}`}>
+              {g.title}
+            </Link>
             <Meter value={g.hours} target={g.target} />
             <span className={`text-right text-[14px] ${g.hours > 0 ? "text-txt" : "text-mute"}`}>
               {round1(g.hours)} / {round1(g.target)}h
@@ -505,6 +511,49 @@ function Goals({ goals }: { goals: Data["goals"] }) {
 }
 
 const round1 = (n: number) => String(Math.round(n * 10) / 10);
+
+const SOURCE: Record<string, string> = { android: "phone", gmail: "mail", calendar: "calendar", agent: "agent", manual: "you", google_tasks: "tasks", system: "system" };
+
+/** A day gone by: what the nightly run wrote about it, and everything recorded on it. */
+function DayRecord({ record, timezone, highlight }: { record: NonNullable<Data["record"]>; timezone: string; highlight?: string }) {
+  const clock = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
+  return (
+    <div className="grid items-start gap-[22px] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <Panel
+        title="The day, written up"
+        aside={
+          record.page ? (
+            <Link to="/notes" search={{ slug: record.page.slug }} className="btn btn-sm">
+              Open in Notes
+            </Link>
+          ) : undefined
+        }
+        bodyClass="px-7 py-5"
+      >
+        {record.page ? <Markdown source={record.page.body} /> : <Empty>The nightly run did not write this day up.</Empty>}
+      </Panel>
+      <Panel title="Recorded" aside={record.timeline.length ? `${record.timeline.length}` : undefined}>
+        {record.timeline.length === 0 ? <Empty>Nothing was recorded on this day.</Empty> : null}
+        <ul>
+          {record.timeline.map((o) => (
+            <li
+              key={o.id}
+              className={`grid grid-cols-[48px_72px_minmax(0,1fr)] items-baseline gap-x-3 border-t border-line py-1.5 first:border-t-0 ${o.bulk ? "opacity-50" : ""} ${highlight && o.ids.includes(highlight) ? "row-sel" : ""}`}
+            >
+              <span className="text-[13.5px] text-mute">{clock(o.t)}</span>
+              <span className={`text-[12.5px] ${o.source === "agent" ? "text-cy" : "text-dim"}`}>{SOURCE[o.source] ?? o.source}</span>
+              <span className="min-w-0">
+                {o.title ?? "(untitled)"}
+                {o.detail ? <span className="text-mute"> · {o.detail}</span> : null}
+                {o.bulk ? <span className="text-dim"> · bulk</span> : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+    </div>
+  );
+}
 
 function BlockPanel({ block: b, data, busy, act, clock, onClose }: {
   block: Block; data: Data; busy: boolean; act: Act; clock: (iso: string) => string; onClose: () => void;

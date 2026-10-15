@@ -39,7 +39,7 @@ Single-user self-hosted personal OS. The design and the state of the build are i
 
 ## Checking the screens
 
-The in-app browser preview may be off for a thread. `scripts/ui-server.sh` starts a throwaway server on the **test** database at `:3857`, and `node scripts/ui-check.mjs <graph|today|memory> <out-dir>` drives it in the system Chrome and writes screenshots. Never point either at the real database.
+The in-app browser preview may be off for a thread. `scripts/ui-server.sh` starts a throwaway server on the **test** database at `:3857`, and `node scripts/ui-check.mjs <tasks|goals|people|notes|today> <out-dir>` drives it in the system Chrome and writes screenshots. Never point either at the real database. Both serve `dist/` of the checkout they run from, and `pnpm build` in the repo swaps the assets under the running `lor-web` (blank pages until it restarts), so to check unfinished work, rsync the repo (without `node_modules`, `dist`, `.git`) to `/tmp/lor-ui`, symlink `node_modules`, and build and run the scripts there.
 
 ## The phone app
 

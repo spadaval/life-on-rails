@@ -291,7 +291,7 @@ Priya moved to Austin in March [^move] and prefers calls to email [^calls]. See 
 [^calls]: thread:3f3320a0 @2026-10-13
 ```
 
-Citation targets are `mail:<gmail-id>`, `obs:<id>`, `thread:<id>`, and `url:<https://…>`. The server stores these as written and keeps no index of them; the Memory UI turns them into links when it renders. The one check is a warning in the reply to a write when a marker has no definition or a definition has no marker. Cite sources, never another page.
+Citation targets are `mail:<gmail-id>`, `obs:<id>`, `thread:<id>`, and `url:<https://…>`. The server stores these as written and keeps no index of them; the Notes screen turns them into links when it renders. The one check is a warning in the reply to a write when a marker has no definition or a definition has no marker. Cite sources, never another page.
 
 Write rules:
 
@@ -416,7 +416,7 @@ The people in the owner's life are entities. Google Contacts is where the owner 
 
 ### Agent runs
 
-The owner talks to the agent in T3: the project `assistant`, rooted at `~/google/assistant/`, whose `AGENTS.md` says to load the `lor` skill, run `lor context`, and follow the `agent` page. Unattended runs start in the same directory as headless Claude Code (`claude -p`, Opus, permissions bypassed), so they have the same skills and page. What each run does is written on the `agent` page, so the owner can change it in the Memory screen.
+The owner talks to the agent in T3: the project `assistant`, rooted at `~/google/assistant/`, whose `AGENTS.md` says to load the `lor` skill, run `lor context`, and follow the `agent` page. Unattended runs start in the same directory as headless Claude Code (`claude -p`, Opus, permissions bypassed), so they have the same skills and page. What each run does is written on the `agent` page, so the owner can change it in Notes.
 
 | Run | Started by | Does |
 | --- | --- | --- |
@@ -452,12 +452,14 @@ Desktop first, with a left rail; on a phone the rail becomes a top strip and the
 
 | Route | What |
 | --- | --- |
-| `/` Today | See "Today" above. The waking day is an arc from rising to setting with the remaining time under it (a straight bar on a phone); planned and actual lanes; Needs you, Due soon (check and un-check), and Goals this week. |
+| `/` Today | See "Today" above. A day gone by also shows the nightly `days/<date>` page and the Timeline: every observation recorded that day (`/?obs=<id>` opens the day of one). The waking day is an arc from rising to setting with the remaining time under it (a straight bar on a phone); planned and actual lanes; Needs you, Due soon (check and un-check), and Goals this week. |
 | `/tasks` | Every task, Linear-style. Views: Open, Waiting, With the agent, Later, Done. Filters: what it counts toward (a goal includes its projects' tasks), due, who added it, needs you, text. Group by due, what it counts toward, status, or nothing; sort by due, newest, recently changed, title. Keys: `j`/`k`, `Enter`, `x` select, `d` done, `/` filter, `Esc`. Several selected change together: done, due, Later (until a date), what it counts toward, whose, delete. The side panel edits in place and says who added the task and when. Tasks from Google Tasks keep their title, notes, due date and deletion in Google. |
 | Quick add | `q` on any screen, or the box at the top of Tasks, after Todoist: one line, with the understood parts marked as they are typed. `#name` what it counts toward (suggested as typed), `@agent` gives it to the agent, `@person` makes it waiting on them, and a date in words (`today`, `fri`, `next fri`, `in 2 weeks`, `oct 20`, `10/20`; `sat`, `sun` and `wed` only after `on`/`by`/`due`/`next`). Each understood part is a chip whose × keeps it as text. `src/shared/quickAdd.ts`, pure. |
-| `/graph` | The intents as a star map (goals as stars sized by the week's hours against target, projects and habits around them, tasks around the selected goal; pan, zoom, click to focus) or as an outline by goal. A System info panel for the selected one: its facts, children, Did it / Done, Add task, and the editor. |
-| `/memory` | **Pages:** an index beside the reader, a markdown editor that saves through the same `--base` check as the agent (a refused save keeps the text and offers to save it on top), history with diff and revert, one-tap undo of the agent's last edit, the `in_digest` toggle, and who last changed each `in_digest` page. **People:** a table of who matters, keeping in touch, due a hello, birthdays soon, and everyone; for each, when the owner was last in touch and how, the birthday, a cadence picker, and the `priority` flag. **Timeline:** every observation for a day. |
-| `/capture` | The cockpit: database, Google auth, mail, jobs, sources. The rail's foot says whether every job is healthy. |
+| `/goals` | What the time is for: each goal with its week's hours against target, and the projects, habits and metrics under it. Tasks show only as counts that open Tasks filtered to that goal or project. A side panel for the selected one: its facts, Did it, and the editor. |
+| `/people` | A table of who matters, keeping in touch, due a hello, birthdays soon, everyone, and groups: when the owner was last in touch and how, the birthday, a cadence picker, and the `priority` flag. Each person has a hub (`/people?id=`): their page, last in touch by channel, what waits on them, their latest messages and mail headers, and their groups or members. |
+| `/notes` | The wiki. An index by folder (dated folders folded, newest first) with a filter, the reader with what links here and what it links to, a markdown editor that saves through the same `--base` check as the agent (a refused save keeps the text and offers to save it on top), history with diff and revert, taking back the agent's last edit, the `in_digest` toggle. **Graph:** every page as a body on a star map, every `[[link]]` a line, laid out by a deterministic force layout on the server (`src/shared/wiki.ts`). |
+| `/search` | One search over notes, people, goals and tasks, and the record; the global search box lands here. |
+| `/status` | The cockpit: database, Google auth, mail, jobs, sources. Linked from the rail's foot, which says whether every job is healthy. |
 
 There is no chat screen: the conversation is a T3 thread.
 
@@ -476,7 +478,7 @@ There is no chat screen: the conversation is a T3 thread.
 | Location (off by default) | The fused location provider | One fix per sync: `kind: "location"`, latitude, longitude, accuracy. |
 | WhatsApp (off by default) | WhatsApp's nightly local backup, `Android/media/com.whatsapp/WhatsApp/Databases/msgstore.db.crypt15` (All files access) | Not an observation on the phone: when the file changes and the network is unmetered, the app uploads it, still encrypted, to `POST /device/whatsapp-backup?device=`. The server keeps only the newest (`LOR_WHATSAPP_DIR`), and the `whatsapp_import` job decrypts it with the owner's 64-digit backup key (`LOR_WHATSAPP_KEY_FILE`, the key alone, 0600) and records one observation per message: `{kind: "whatsapp", direction, phone, chat, chat_name, group, type, text}`, id from WhatsApp's own message id, re-reading a day behind the newest one recorded. The backup must be WhatsApp's end-to-end encrypted one with the 64-digit key: with a password the key stays with Meta, and without end-to-end encryption it stays in WhatsApp's private folder. |
 
-**Messages.** Texts and WhatsApp messages keep their words (product rule 6). They count toward "last in touch" through the phone number, except group chats; message text is in `observation.search`; `lor entity show` lists the latest few with each person or group (`recent_messages`, text cut to 300 characters, with who wrote each), a group's `members`, and the `groups` a person is in. The Memory timeline shows a day's messages as one line per conversation, with a count. Digests and `lor changes` show counts and numbers, never the words.
+**Messages.** Texts and WhatsApp messages keep their words (product rule 6). They count toward "last in touch" through the phone number, except group chats; message text is in `observation.search`; `lor entity show` lists the latest few with each person or group (`recent_messages`, text cut to 300 characters, with who wrote each), a group's `members`, and the `groups` a person is in. The day view's timeline shows a day's messages as one line per conversation, with a count. Digests and `lor changes` show counts and numbers, never the words.
 
 **How it gets to LoR.** Every 15 minutes (WorkManager's shortest period) each sensor collects what is new since its own cursor into a local queue, and the queue is uploaded to `POST /device/ingest` in batches. Every observation has a stable id derived from what it is (a call-log row, an app session's start), so a retry or a re-read is the same row, and a session that grew longer extends its row. The queue keeps working offline. The server accepts only device sources, checks the batch's device name, and stores phone numbers in E.164 so calls and texts count toward "last in touch".
 
@@ -503,7 +505,7 @@ Privacy of the owner's own data is not a constraint: collecting everything is th
 | --- | --- |
 | **A crafted email steers the agent into acting.** | **Accepted by the owner.** Every run reads full third-party text and holds read-write Google access through `gog`. The mitigations are soft: the skill says such text is data, the one rule says to ask before anything irreversible, and bulk mail never reaches a model. Nothing prevents it. Do not add a permission layer. |
 | The agent does something unwanted | The one rule. Accepted. What it writes in LoR is versioned or undoable and badged. |
-| The agent, or text from an email, rewrites what every run loads | Only the owner sets `in_digest`. The content is not locked: unattended runs are told not to edit those pages, the Memory UI shows who last changed each, and the morning brief reports changes. |
+| The agent, or text from an email, rewrites what every run loads | Only the owner sets `in_digest`. The content is not locked: unattended runs are told not to edit those pages, Notes shows who last changed each, and the morning brief reports changes. |
 | LoR's credentials in git or logs | Credential files are 0600 and outside the repo. `scrubLog` on structured logs. Never stored in tables. Codes and links inside the owner's own messages and mail are his data, not LoR's credentials, and are stored like the rest. |
 | Reachable by others | Binds loopback by default. `/api/v1` also checks the source address. Off-box access is by Tailscale identity only. |
 | LoR writing to Google or reading mail | Not possible with its scopes. |

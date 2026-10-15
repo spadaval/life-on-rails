@@ -137,7 +137,7 @@ components:
 
 A star atlas worn in the menu language of Elite: Dangerous, with the volume turned down. The waking day is a route you travel along; goals are stars you steer by. Space-black ground, panels held in thin orange-brown frames with clipped corners, condensed capitals for the instrument labels and plain sentence-case Saira for everything a person reads. It is a cockpit that never raises its voice: no alarms, no glow, no fake telemetry, nothing red for falling behind.
 
-Density is operational, not airy: a fixed 208px left rail, a 62px page head, then framed panels in a 22px-gutter grid. One amber-orange carries every meaning of "now, running, tracked, selected"; one cyan carries "planned" and "the agent". Everything else is warm grey on blue-black. The two signature drawings, the day arc on Today and the star map on Graph, are the only places with the engraved grid and the only places with reticles.
+Density is operational, not airy: a fixed 208px left rail, a 62px page head, then framed panels in a 22px-gutter grid. One amber-orange carries every meaning of "now, running, tracked, selected"; one cyan carries "planned" and "the agent". Everything else is warm grey on blue-black. The two signature drawings, the day arc on Today and the star map of the wiki in Notes, are the only places with the engraved grid and the only places with reticles.
 
 It refuses the stretched single phone column and the grey-card planner. Dark only; there is no light theme and none is to be built.
 
@@ -206,9 +206,9 @@ A near-monochrome blue-black instrument panel with warm grey type, lit by one am
 
 ## Layout
 
-Desktop first. A two-column shell at md and up: a sticky full-height left rail (208px) with the amber wordmark, a live date-time stamp, the nav (34px rows, Memory's three sub-tabs indented beneath it at 28px rows), and system health pinned to its foot; then the main column with 30px side padding. Below md the rail becomes a horizontally scrolling top bar of condensed nav links, the active one in amber text instead of a fill, and main padding drops to 16px.
+Desktop first. A two-column shell at md and up: a sticky full-height left rail (208px) with the amber wordmark, a live date-time stamp, the nav (34px rows: Today, Tasks, Goals, People, Notes), and system health pinned to its foot; then the main column with 30px side padding. Below md the rail becomes a horizontally scrolling top bar of condensed nav links, the active one in amber text instead of a fill, and main padding drops to 16px.
 
-Every page opens with the page head: min 62px tall, a `line` rule beneath, title then a muted sub, and the global actions (search input, 300px, from lg; the Start timer primary or the running-timer pill) pushed right. Page sections stack at 20-22px. Panel grids use a 22px gutter: Today's three panels at 1.22fr / 1fr / 1.08fr from lg; Tasks and Graph pair a fluid main column with a 400-440px sticky side panel from xl; Memory pairs a 320px index with the reading column from lg.
+Every page opens with the page head: min 62px tall, a `line` rule beneath, title then a muted sub, and the global actions (search input, 300px, from lg; the Start timer primary or the running-timer pill) pushed right. Page sections stack at 20-22px. Panel grids use a 22px gutter: Today's three panels at 1.22fr / 1fr / 1.08fr from lg; Tasks, Goals and the Notes graph pair a fluid main column with a 360-440px sticky side panel from xl; Notes pairs a 300px index with the reading column from lg.
 
 The day arc is a 1200x300 drawing capped at 1240px wide; on phones it is replaced by a straight 12px bar with Rising and Setting under it. Planned/Actual lanes use a 66px label column and 26px tracks with a faint 24-hour rhythm. The star map fills its framed panel at 62vh, or the viewport height minus the page chrome on xl.
 
@@ -261,10 +261,10 @@ Quiet, rectangular, sentence case. They outline until touched.
 - **Native controls:** checkboxes take the amber accent; date and time picker glyphs are filtered to the bronze-orange of the frame.
 
 ### Navigation
-- **Rail:** condensed 15px 600 caps in `mute`, 34px rows with 22px side padding, hover to `txt`. Active is a full-width solid amber bar with near-black text. The Tasks item carries its open count right-aligned in sentence-case Saira at 80% opacity. Memory's sub-tabs are 13.5px condensed caps, `dim`, indented 36px, active in amber text (no fill).
+- **Rail:** condensed 15px 600 caps in `mute`, 34px rows with 22px side padding, hover to `txt`. Active is a full-width solid amber bar with near-black text. The Tasks item carries its open count right-aligned in sentence-case Saira at 80% opacity.
 - **Health foot:** a 6px dot (amber when all senses report, coral otherwise) and a 13px `mute` sentence.
 - **Mobile:** a top bar of condensed links, active in amber text, rule in `frame` below.
-- **Segmented controls** (filters, Map/Outline, Memory tabs): adjacent text buttons divided by 1px `edge` rules; the selected one takes the quiet amber selection treatment, not a fill.
+- **Segmented controls** (filters, Pages/Graph): adjacent text buttons divided by 1px `edge` rules; the selected one takes the quiet amber selection treatment, not a fill.
 
 ### Selection row
 The system's selection everywhere a list or block is chosen: 8% amber background with a 1px inset amber edge at 55%. Also used as the Notice strip (a status line with a "dismiss" link) and as the selected filter segment. Hovered unselected rows go to `raised`.

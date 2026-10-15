@@ -4,9 +4,9 @@ import { PageHead, Panel } from "../components/ui.js";
 import { getCaptureStatus } from "../server/functions/cockpit.js";
 import { GlobalActions } from "./__root.js";
 
-export const Route = createFileRoute("/capture")({
+export const Route = createFileRoute("/status")({
   loader: () => getCaptureStatus(),
-  component: Capture,
+  component: Status,
 });
 
 const STATE: Record<string, { text: string; className: string }> = {
@@ -18,14 +18,14 @@ const STATE: Record<string, { text: string; className: string }> = {
 
 const SOURCE: Record<string, string> = { android: "Phone", gmail: "Mail", calendar: "Calendar", agent: "Agent", manual: "You", google_tasks: "Google Tasks", system: "System" };
 
-function Capture() {
+function Status() {
   const status = Route.useLoaderData();
   const router = useRouter();
   const unwell = status.jobs.filter((j) => j.state === "stale" || j.state === "error");
 
   return (
     <div className="space-y-[22px] pb-4">
-      <PageHead title="Capture" sub={unwell.length === 0 && status.db ? "every sense reporting" : `${unwell.length} ${unwell.length === 1 ? "job needs" : "jobs need"} a look`}>
+      <PageHead title="Status" sub={unwell.length === 0 && status.db ? "every sense reporting" : `${unwell.length} ${unwell.length === 1 ? "job needs" : "jobs need"} a look`}>
         <button className="btn btn-sm" onClick={() => router.invalidate()}>
           Refresh
         </button>

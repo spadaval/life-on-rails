@@ -11,11 +11,17 @@ import { BadInput } from "../errors.js";
 import { getGraph } from "../graph.js";
 import { needsOwner } from "../intents.js";
 import { resolveDate } from "../memory/day.js";
+import { dayTimeline } from "../memory/timeline.js";
 import { getToday } from "../today.js";
 
 const ui = { via: "ui" as const };
 const Hm = z.string().regex(/^\d{2}:\d{2}$/);
 const DateInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+async function dayRecord(date: Ymd) {
+  const page = (await sql<{ slug: string; body: string }[]>`SELECT slug, body FROM page WHERE slug = ${`days/${date}`}`)[0] ?? null;
+  return { page, timeline: await dayTimeline(sql, date) };
+}
 
 /** A wall-clock time on the day being viewed; an early-morning time before the day's blocks means the next day. */
 function onDay(date: Ymd, hm: string): Date {
@@ -23,10 +29,12 @@ function onDay(date: Ymd, hm: string): Date {
 }
 
 export const getTodayFn = createServerFn({ method: "GET" })
-  .inputValidator((d: unknown) => z.object({ date: z.string().optional() }).parse(d ?? {}))
+  .inputValidator((d: unknown) => z.object({ date: z.string().optional(), obs: z.string().uuid().optional() }).parse(d ?? {}))
   .handler(async ({ data }) => {
     const now = new Date();
-    const date = resolveDate(data.date, now);
+    // A link to one record opens the day it happened on.
+    const at = data.obs && !data.date ? (await sql<{ t_start: Date }[]>`SELECT t_start FROM observation WHERE id = ${data.obs}`)[0]?.t_start : undefined;
+    const date = at ? localYmd(env.LOR_TZ, at) : resolveDate(data.date, now);
     const [today, graph] = await Promise.all([getToday(sql, date, now), getGraph(sql, now)]);
     const { start, end } = localDayBounds(env.LOR_TZ, date);
     const recent = await sql<{ id: string; title: string }[]>`
@@ -71,6 +79,8 @@ export const getTodayFn = createServerFn({ method: "GET" })
       metricPrompt: prompt[0] ? { id: prompt[0].id, title: prompt[0].title } : null,
       localHour: Number(new Intl.DateTimeFormat("en-GB", { timeZone: env.LOR_TZ, hour: "2-digit", hourCycle: "h23" }).format(now)),
       yesterday: addDays(localYmd(env.LOR_TZ, now), -1),
+      // A day gone by: what the nightly run wrote about it, and everything recorded on it.
+      record: today.is_today ? null : await dayRecord(date),
     };
   });
 

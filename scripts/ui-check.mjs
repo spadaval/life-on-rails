@@ -118,54 +118,65 @@ const flows = {
     await shot("tasks-9-agent");
   },
   async people() {
-    psql(`DELETE FROM page WHERE slug NOT IN ('agent', 'me', 'inbox'); DELETE FROM entity_identifier; DELETE FROM entity; DELETE FROM observation WHERE source = 'gmail';`);
+    psql(`DELETE FROM page WHERE slug NOT IN ('agent', 'me', 'inbox'); UPDATE intent SET waiting_on_entity_id = NULL; DELETE FROM entity_identifier; DELETE FROM entity; DELETE FROM observation WHERE source = 'gmail';`);
     const priya = JSON.parse(lor(["entity", "upsert", "--kind", "person", "--name", "Priya Raman", "--email", "priya@example.com"]));
     lor(["entity", "upsert", "--kind", "person", "--name", "Jo Bloggs", "--email", "jo@example.com"]);
     lor(["entity", "upsert", "--kind", "org", "--name", "Acme", "--id", "domain:acme.com"]);
     const soon = new Date(Date.now() + 2 * 86400000);
     lor(["entity", "set", priya.id, "--keep-in-touch", "30", "--birthday", `${String(soon.getMonth() + 1).padStart(2, "0")}-${String(soon.getDate()).padStart(2, "0")}`]);
     lor(["entity", "set", "jo@example.com", "--keep-in-touch", "14"]);
+    lor(["page", "create", "people/priya-raman", "--title", "Priya Raman", "--entity", priya.id], "# Priya Raman\n\nMoved to Austin in March. Prefers calls to email. Old friend from [[me]].\n");
+    lor(["intent", "create", "--type", "task", "--title", "Get the deposit back from Priya", "--waiting-on", priya.id, "--due", new Date(Date.now() + 86400000).toISOString()]);
     psql(`INSERT INTO observation (id, t_start, t_end, device, source, title, payload) VALUES
       (gen_random_uuid(), now() - interval '45 days', now() - interval '45 days', 'buildbot', 'gmail', 'Lunch?', '{"direction":"in","from_email":"priya@example.com","gmail_id":"a1"}'),
       (gen_random_uuid(), now() - interval '3 days', now() - interval '3 days', 'buildbot', 'gmail', 'Re: plans', '{"direction":"sent","to_emails":["jo@example.com"],"gmail_id":"a2"}'),
       (gen_random_uuid(), now() - interval '1 days', now() - interval '1 days', 'buildbot', 'gmail', 'Invoice', '{"direction":"in","from_email":"billing@acme.com","gmail_id":"a3"}')`);
-    console.log(lor(["people", "--overdue", "--md"]).trim());
-    console.log(lor(["context", "--md"]).split("## People")[1]?.split("## ")[0]?.trim());
-    await page.goto(`${BASE}/memory?tab=people`);
+    await page.setViewportSize({ width: 1500, height: 950 });
+    await page.goto(`${BASE}/people`);
     await settle();
     await shot("people-1-who-matters");
-    await page.click('a:has-text("Overdue")');
+    await page.click('a:has-text("Due a hello")');
     await page.waitForURL(/filter=overdue/);
     await settle();
     await shot("people-2-overdue");
-    await page.goto(`${BASE}/memory?tab=people&filter=all`);
+    await page.goto(`${BASE}/people?filter=all`);
     await settle();
-    await page.selectOption('li:has-text("Acme") select[aria-label="Keep in touch"]', { label: "every 3 months" });
-    await page.waitForFunction(() => [...document.querySelectorAll("li")].some((li) => li.textContent?.includes("Acme") && li.querySelector("select")?.value === "90"));
+    await page.selectOption('select[aria-label="Keep in touch with Acme"]', { label: "Every 3 months" });
+    await page.waitForFunction(() => document.querySelector('select[aria-label="Keep in touch with Acme"]')?.value === "90");
     console.log("acme cadence:", psql("SELECT keep_in_touch_days FROM entity WHERE name = 'Acme'").trim());
-    await shot("people-3-everyone");
+    await page.click('a:has-text("Priya Raman")');
+    await page.waitForSelector("text=Waiting on them");
+    await settle();
+    await shot("people-3-hub");
+    console.log("hub waiting:", await page.locator('section:has-text("Waiting on them") li').allInnerTexts());
+    console.log("hub mail:", await page.locator('section:has(h2:text("Mail")) li').allInnerTexts());
   },
 
-  async memory() {
-    psql(`DELETE FROM page WHERE slug NOT IN ('agent', 'me', 'inbox'); DELETE FROM entity; DELETE FROM observation;`);
+  async notes() {
+    psql(`DELETE FROM page WHERE slug NOT IN ('agent', 'me', 'inbox'); UPDATE intent SET waiting_on_entity_id = NULL; DELETE FROM entity_identifier; DELETE FROM entity; DELETE FROM observation;`);
     const entity = JSON.parse(lor(["entity", "upsert", "--kind", "person", "--name", "Priya Raman", "--email", "priya@example.com"]));
     lor(["page", "create", "people/priya-raman", "--title", "Priya Raman", "--entity", entity.id],
-      "# Priya Raman\n\nMoved to Austin in March [^move] and prefers calls to email. See [[me]].\n\n[^move]: mail:18c2f4a9d0e1b2c3 \"we close on the house March 3\"\n");
+      "# Priya Raman\n\nMoved to Austin in March [^move] and prefers calls to email. See [[me]] and [[topics/austin]].\n\n[^move]: mail:18c2f4a9d0e1b2c3 \"we close on the house March 3\"\n");
     lor(["page", "update", "people/priya-raman", "--base", "1", "--find", "prefers calls to email", "--replace", "HATES phone calls", "--note", "a wrong edit"]);
-    lor(["log", "Looked up Priya's new address in Austin"]);
+    lor(["page", "create", "topics/austin", "--title", "Austin"], "# Austin\n\nWhere [[people/priya-raman|Priya]] lives now. Trip ideas in [[topics/travel]].\n");
+    lor(["page", "create", "topics/travel", "--title", "Travel"], "# Travel\n\nPlaces: [[topics/austin]].\n");
+    lor(["page", "create", "projects/wedding", "--title", "Wedding"], "# Wedding\n\nVenues, vendors. Ask [[people/priya-raman]].\n");
+    const y = new Date(Date.now() - 86400000 - 7 * 3600000).toISOString().slice(0, 10);
+    lor(["page", "create", `days/${y}`, "--title", y], `# ${y}\n\nA quiet day. Called [[people/priya-raman|Priya]] about the [[projects/wedding|wedding]].\n`);
 
-    await page.goto(`${BASE}/memory`);
+    await page.setViewportSize({ width: 1500, height: 950 });
+    await page.goto(`${BASE}/notes`);
     await settle();
-    await shot("memory-1-pages");
+    await shot("notes-1-index");
     await page.click('a:has-text("Priya Raman")');
     await page.waitForSelector("text=HATES phone calls");
-    await shot("memory-2-page");
-    console.log("gmail link:", await page.locator('a[href*="mail.google.com"]').getAttribute("href"));
-    console.log("wiki link:", await page.locator('.prose-lor a[href*="slug=me"]').getAttribute("href"));
+    await settle();
+    await shot("notes-2-page");
+    console.log("gmail link:", await page.locator('a[href*="mail.google.com"]').first().getAttribute("href"));
+    console.log("links here:", await page.locator('section:has(h4:has-text("Links here")) li').allInnerTexts());
 
-    await page.click(`button:has-text("Undo the agent's last edit")`);
+    await page.click(`button:has-text("Take back the agent's last edit")`);
     await page.waitForSelector("text=prefers calls to email");
-    console.log("after undo:", (await page.locator("article .muted").first().innerText()).trim());
 
     // The owner edits while the agent writes: the save is refused, nothing is lost.
     await page.click('button:has-text("Edit")');
@@ -173,33 +184,29 @@ const flows = {
     lor(["page", "update", "people/priya-raman", "--append"], "- The agent added this meanwhile.\n");
     await page.click('button:has-text("Save")');
     await page.waitForSelector("text=Save mine on top");
-    console.log("conflict notice:", (await page.locator('[role="status"]').innerText()).replace(/\s+/g, " ").slice(0, 110));
-    await shot("memory-3-conflict");
     console.log("textarea kept:", (await page.locator('textarea[aria-label="Page body"]').inputValue()).includes("Owner's version"));
     await page.click('button:has-text("Save mine on top")');
     await page.waitForSelector("text=Saved.");
-    console.log("after save on top:", (await page.locator("article .muted").first().innerText()).trim());
-
-    await page.goto(`${BASE}/memory?slug=people/priya-raman&version=2`);
-    await settle();
-    await shot("memory-4-old-version");
-    await page.click('button:has-text("Revert to this version")');
-    await page.waitForSelector("text=Reverted to version 2");
     console.log("versions:", psql("SELECT string_agg(version || ':' || via, ' ' ORDER BY version) FROM page_version v JOIN page p ON p.id = v.page_id WHERE p.slug = 'people/priya-raman'").trim());
 
-    await page.goto(`${BASE}/memory?tab=people`);
+    await page.goto(`${BASE}/notes?view=graph`);
     await settle();
-    await page.click('input[type="checkbox"]');
-    await page.waitForFunction(() => document.querySelector('input[type="checkbox"]')?.checked === true);
-    await shot("memory-5-people");
-    console.log("priority:", psql("SELECT priority FROM entity").trim());
-    await page.goto(`${BASE}/memory?tab=timeline`);
+    await shot("notes-3-graph");
+    await page.locator('[data-slug="topics/austin"]').click();
+    await page.waitForURL(/slug=topics/);
     await settle();
-    await shot("memory-6-timeline");
-    await page.goto(`${BASE}/memory?q=austin`);
+    await shot("notes-4-graph-selected");
+    await page.locator('[data-slug="topics/austin"]').click();
+    await page.waitForSelector("text=Trip ideas");
+    console.log("opened from graph:", page.url());
+
+    await page.goto(`${BASE}/?date=${y}`);
     await settle();
-    await shot("memory-7-search");
-    console.log("search kinds:", await page.locator("section.card .chip").allInnerTexts());
+    await shot("notes-5-day-record");
+    await page.goto(`${BASE}/search?q=austin`);
+    await settle();
+    await shot("notes-6-search");
+    console.log("search kinds:", await page.locator("li .chip").allInnerTexts());
   },
 
   async today() {
@@ -249,39 +256,38 @@ const flows = {
     await shot("today-5-yesterday");
   },
 
-  async graph() {
-    await page.goto(`${BASE}/graph`);
+  async goals() {
+    psql(`DELETE FROM intent_link; DELETE FROM proposal; UPDATE time_block SET commitment_id = NULL; DELETE FROM commitment; DELETE FROM time_block_observation; DELETE FROM time_block; DELETE FROM attribution_rule; DELETE FROM intent WHERE NOT system;`);
+    const id = (s) => JSON.parse(s).id;
+    const wedding = id(lor(["intent", "create", "--type", "goal", "--title", "Neha and the wedding", "--hours", "6"]));
+    const vendors = id(lor(["intent", "create", "--type", "project", "--title", "Wedding vendors", "--parent", wedding]));
+    lor(["intent", "create", "--type", "task", "--title", "Shortlist venues", "--parent", vendors]);
+    lor(["intent", "create", "--type", "task", "--title", "Call the florist", "--parent", vendors]);
+    lor(["intent", "create", "--type", "task", "--title", "Book flights", "--parent", wedding]);
+    id(lor(["intent", "create", "--type", "habit", "--title", "Call Neha", "--parent", wedding, "--frequency", "1"]));
+    lor(["intent", "create", "--type", "project", "--title", "Health admin"]);
+
+    await page.setViewportSize({ width: 1500, height: 950 });
+    await page.goto(`${BASE}/goals`);
     await settle();
-    // A goal with an hour target, a habit under it, a task under it.
-    await page.selectOption('select[aria-label="Type"]', "goal");
+    await shot("goals-1");
+    console.log("goal card:", (await page.locator('section:has-text("Neha and the wedding")').first().innerText()).replace(/\s+/g, " "));
+    await page.click('button:has-text("New goal, project or habit")');
+    await page.selectOption('select[aria-label="Kind"]', "goal");
     await page.fill('input[aria-label="Title"]', "Ship Life on Rails");
-    await page.fill('input[placeholder="hours / week"]', "10");
-    await page.click('button:has-text("Add")');
-    await page.waitForSelector('li:has-text("Ship Life on Rails")');
-    await page.selectOption('select[aria-label="Type"]', "habit");
-    await page.fill('input[aria-label="Title"]', "Daily deep work");
-    await page.selectOption('select[aria-label="Parent"]', { label: "goal: Ship Life on Rails" });
-    await page.click('button:has-text("Add")');
-    await page.waitForSelector('li:has-text("Daily deep work")');
-    await page.selectOption('select[aria-label="Type"]', "task");
-    await page.fill('input[aria-label="Title"]', "Write the fill sync");
-    await page.selectOption('select[aria-label="Parent"]', { label: "goal: Ship Life on Rails" });
-    await page.click('button:has-text("Add")');
-    await page.waitForSelector('li:has-text("Write the fill sync")');
-    await settle();
-    await shot("graph-1-added");
-    await page.click('button:has-text("Did it")');
+    await page.fill('input[aria-label="Hours a week"]', "10");
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.waitForSelector('button:has-text("Ship Life on Rails")');
+    await page.locator("li", { hasText: "Call Neha" }).getByRole("button", { name: "Did it" }).first().click();
     await page.waitForSelector("text=Logged");
-    await page.click('li >> button:has-text("Daily deep work")');
-    await page.click('button:has-text("Explain score")');
-    await page.waitForSelector("pre");
-    await shot("graph-2-habit-explained");
-    await page.click('li:has-text("Write the fill sync") >> button:has-text("Done")');
+    await page.click('button:has-text("Wedding vendors")');
     await settle();
-    await page.click('button:has-text("Show done and later")');
-    await page.waitForSelector('li:has-text("Write the fill sync")');
-    await shot("graph-3-task-done");
-    console.log("goal chip:", await page.locator('li:has-text("Ship Life on Rails")').first().innerText());
+    await shot("goals-2-selected");
+    await page.click('aside a:has-text("2 tasks")');
+    await page.waitForURL(/\/tasks\?for=/);
+    await settle();
+    console.log("tasks for vendors:", (await page.locator("main").innerText()).match(/Shortlist venues|Call the florist|Book flights/g));
+    await shot("goals-3-tasks");
   },
 };
 

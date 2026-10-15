@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import MarkdownIt from "markdown-it";
 import footnote from "markdown-it-footnote";
+import { replaceWikiLinks } from "../shared/wiki.js";
 
 // Raw HTML stays off: pages can carry text that came from email or the web.
 const md = new MarkdownIt({ html: false, linkify: true, breaks: false }).use(footnote as unknown as (md: InstanceType<typeof MarkdownIt>) => void);
@@ -18,14 +19,12 @@ export function linkify(source: string): string {
     const [, key, rest] = def;
     const target = rest!
       .replace(/^mail:([A-Za-z0-9]+)/, (_m, id: string) => `[mail:${id}](https://mail.google.com/mail/u/0/#all/${id})`)
-      .replace(/^obs:([0-9a-f-]{36})/, (_m, id: string) => `[obs:${id.slice(0, 8)}](/memory?tab=timeline&obs=${id})`)
+      .replace(/^obs:([0-9a-f-]{36})/, (_m, id: string) => `[obs:${id.slice(0, 8)}](/?obs=${id})`)
       .replace(/^thread:(\S+)/, (_m, id: string) => `[thread:${id}](t3-thread://v1/${id})`)
       .replace(/^url:(\S+)/, (_m, url: string) => `[${url}](${url})`);
     return `[^${key}]: ${target}`;
   });
-  return lines
-    .join("\n")
-    .replace(/\[\[([a-z0-9][a-z0-9/-]*)(?:\|([^\]]+))?\]\]/g, (_m, slug: string, label?: string) => `[${label ?? slug}](/memory?slug=${enc(slug)})`);
+  return replaceWikiLinks(lines.join("\n"), (slug, label) => `[${label ?? slug}](/notes?slug=${enc(slug)})`);
 }
 
 /** Sources fold away under the page: they are for checking, not reading. */
