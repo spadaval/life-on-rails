@@ -51,7 +51,7 @@ The in-app browser preview may be off for a thread. `scripts/ui-server.sh` start
 
 ## The wall display
 
-A TRMNL X (10.3" e-paper, 1872x1404) on the fridge, pointed at LoR as its own server. Every 15 minutes it calls `/api/display`; LoR draws `src/server/trmnl/frame.ts` in the system Chrome (`playwright-core`) and serves a 2-bit grayscale PNG. Three screens: a timed wake draws Today; a tap on the middle of the touch bar steps to Goals, then Tasks, for five minutes; left and right flip through the device's own cache of them and never reach LoR. Check a change with `pnpm test` (`tests/trmnl`) and by rendering a frame to a file; the firmware source is `github.com/usetrmnl/trmnl-firmware`.
+A TRMNL X (10.3" e-paper, 1872x1404) on the fridge, pointed at LoR as its own server. Every 15 minutes it calls `/api/display`; LoR draws `src/server/trmnl/frame.ts` in the system Chrome (`playwright-core`) and serves a 2-bit grayscale PNG. Three screens: a timed wake draws Today; a tap on the middle of the touch bar redraws what is up, and taps right after it step to Goals, then Tasks, for five minutes; left and right flip through the device's own cache of them and never reach LoR. Check a change with `pnpm test` (`tests/trmnl`) and by rendering a frame to a file; the firmware source is `github.com/usetrmnl/trmnl-firmware`.
 
 ## Design
 

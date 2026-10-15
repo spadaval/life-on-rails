@@ -288,7 +288,7 @@ The one place LoR is not dark: Today on the TRMNL X on the fridge, e-paper read 
 - **Colour jobs become ink jobs.** Amber (now, running, tracked) is solid black carried by line weight: the running block heaviest, then confirmed, then unconfirmed; bare phone or place time is dashed `#555`. Cyan (planned) is hollow: events are outlined waypoint diamonds on the route. Coral (broken) is a reversed black chip in the head ("2 jobs need a look", "Battery 12%"). Dim is `#555`.
 - **One black slab:** the running timer, the paper version of the one solid amber fill.
 - **For distance:** nothing under 22px; the readout is 150px. Today holds only the arc, what is left of the day, the running block, the next three events, and what the agent flagged; no lanes, no buttons, and the to-confirm count is a note.
-- **Three screens, one at a time.** Today is home. Goals (hours in the last 7 days against each weekly target, as thick meters) and Tasks (open tasks by due date, flagged ones starred) are a tap away. A foot over the touch bar names all three, the current one in black and underlined.
+- **Three screens, one at a time.** Today is home. A tap redraws whatever is up; taps right after it reach Goals (hours in the last 7 days against each weekly target, as thick meters) and Tasks (open tasks by due date, flagged ones starred). A foot over the touch bar names all three, the current one in black and underlined.
 - **Clock times over countdowns** ("since 13:20", "until 22:00"), and "Updated HH:MM" in the head, because each frame stays up for a quarter of an hour.
 - Chart crosses stand in for the engraved grid.
 

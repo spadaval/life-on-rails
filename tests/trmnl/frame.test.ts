@@ -1,6 +1,6 @@
 import { inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { goalsHtml, nextScreen, tasksHtml, todayHtml } from "../../src/server/trmnl/frame.js";
+import { FRESH_MS, goalsHtml, nextScreen, tasksHtml, todayHtml } from "../../src/server/trmnl/frame.js";
 import { grayPng2 } from "../../src/server/trmnl/png.js";
 import { sample, sampleGoals, sampleTasks } from "./sample.js";
 
@@ -65,13 +65,18 @@ describe("todayHtml", () => {
 });
 
 describe("screens", () => {
-  it("a timer always draws Today; a tap on the middle steps through and wraps", () => {
-    expect(nextScreen("tasks", "timer")).toBe("today");
-    expect(nextScreen("goals", "powercycle")).toBe("today");
-    expect(nextScreen("goals", null)).toBe("today");
-    expect(nextScreen("today", "button")).toBe("goals");
-    expect(nextScreen("goals", "button")).toBe("tasks");
-    expect(nextScreen("tasks", "button")).toBe("today");
+  it("a timer always draws Today", () => {
+    expect(nextScreen("tasks", "timer", 0)).toBe("today");
+    expect(nextScreen("goals", "powercycle", 0)).toBe("today");
+    expect(nextScreen("goals", null, 600_000)).toBe("today");
+  });
+
+  it("a tap redraws what is up; a tap right after steps through and wraps", () => {
+    expect(nextScreen("today", "button", 600_000)).toBe("today");
+    expect(nextScreen("goals", "button", FRESH_MS)).toBe("goals");
+    expect(nextScreen("today", "button", 5_000)).toBe("goals");
+    expect(nextScreen("goals", "button", 5_000)).toBe("tasks");
+    expect(nextScreen("tasks", "button", 5_000)).toBe("today");
   });
 
   it("marks the current screen in the foot", () => {

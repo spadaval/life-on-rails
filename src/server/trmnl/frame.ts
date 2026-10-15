@@ -2,7 +2,8 @@
 // rendered at 1.8x to the TRMNL X's 1872x1404. Four grays, read from across a
 // kitchen. Today is home: the day arc, what is left of it, what is running,
 // what comes next, and what the agent flagged. A tap on the middle of the
-// touch bar steps to Goals, then Tasks. Pure: no database, no clock.
+// touch bar redraws it; taps right after step to Goals, then Tasks. Pure: no
+// database, no clock.
 import { dueLabel, duration } from "../../components/format.js";
 
 export const FRAME_W = 1040;
@@ -15,9 +16,17 @@ export type Screen = (typeof SCREENS)[number];
 /** The wake reasons that are a touch: the middle of the bar (left and right are handled on the device). */
 const TOUCH = new Set(["button", "EXT0", "EXT1"]);
 
-/** The screen a wake should draw: Today on a timer, the next one on a tap. */
-export function nextScreen(current: Screen, updateSource: string | null): Screen {
+/** A frame younger than this counts as just drawn: another tap moves on instead of redrawing it. */
+export const FRESH_MS = 90_000;
+
+/**
+ * The screen a wake should draw. A timer always draws Today. A tap redraws
+ * what is up with fresh data, unless it was just drawn; then it steps to the
+ * next screen. So the first tap refreshes and the ones after it page.
+ */
+export function nextScreen(current: Screen, updateSource: string | null, sinceDrawnMs: number): Screen {
   if (!TOUCH.has(updateSource ?? "")) return "today";
+  if (sinceDrawnMs >= FRESH_MS) return current;
   return SCREENS[(SCREENS.indexOf(current) + 1) % SCREENS.length]!;
 }
 

@@ -5,8 +5,9 @@
 // every later request must carry that key.
 //
 // Screens: a timed wake always draws Today. A tap on the middle of the touch
-// bar wakes the device and calls /api/display (Update-Source "button"), which
-// steps to the next screen and comes back to Today after a few minutes. Left
+// bar wakes the device and calls /api/display (Update-Source "button"): it
+// redraws what is up, or, if that was drawn moments ago, steps to the next
+// screen; a stepped-to screen gives way to Today after a few minutes. Left
 // and right never reach us: the firmware flips through the frames it cached,
 // one per screen, kept apart by the first 14 characters of the filename.
 import { timingSafeEqual } from "node:crypto";
@@ -43,6 +44,7 @@ const keyOk = (request: Request) => env.LOR_TRMNL_KEY !== "" && sameText(request
 /** The last frame drawn of each screen; the device fetches it by name right after /api/display. */
 const latest = new Map<Screen, { name: string; png: Buffer }>();
 let shown: Screen = "today";
+let shownAt = 0;
 
 /** "plugin-today0-1771674964": the firmware's own shape, so its cache keeps one frame per screen and ages them out. */
 const frameName = (screen: Screen, now: Date) => `plugin-${screen.padEnd(6, "0")}-${Math.floor(now.getTime() / 1000)}`;
@@ -141,7 +143,7 @@ export async function trmnlDisplay(request: Request): Promise<Response> {
   const h = (k: string) => request.headers.get(k);
   const pct = Number(h("percent-charged"));
   const charging = h("usb-connected") === "true" || h("battery-charging") === "1";
-  const screen = nextScreen(shown, h("update-source"));
+  const screen = nextScreen(shown, h("update-source"), Date.now() - shownAt);
   log("info", "trmnl display", { screen, source: h("update-source"), battery: h("percent-charged") ?? h("battery-voltage"), usb: h("usb-connected"), rssi: h("rssi"), fw: h("fw-version") });
   const alerts = Number.isFinite(pct) && pct > 0 && pct < LOW_BATTERY_PCT && !charging ? [`Battery ${Math.round(pct)}%`] : [];
   try {
@@ -155,6 +157,7 @@ export async function trmnlDisplay(request: Request): Promise<Response> {
   const frame = latest.get(screen);
   if (!frame) return json(500, { status: 500, error: "No frame yet" });
   shown = screen;
+  shownAt = Date.now();
   const origin = new URL(request.url).origin;
   return json(200, {
     status: 0,
