@@ -8,7 +8,7 @@ import { env } from "../env.js";
 import { NotFound } from "../errors.js";
 import { showEntity, updateEntity } from "../memory/entities.js";
 import { PEOPLE_FILTERS, type PeopleFilter, listPeople } from "../people.js";
-import { createPage, listPages, pageHistory, readPage, revertPage, setInDigest, updatePage } from "../memory/pages.js";
+import { createPage, listPages, pageAuthors, pageHistory, readPage, revertPage, setInDigest, takeBackVersion, updatePage } from "../memory/pages.js";
 import { search } from "../memory/search.js";
 
 const ui = { via: "ui" as const };
@@ -38,7 +38,9 @@ export const getNotesFn = createServerFn({ method: "GET" })
         }
         const backlinks = pages.filter((p) => p.links.includes(view.slug)).map((p) => ({ slug: p.slug, title: p.title }));
         const missing = wikiLinks(view.body).filter((l) => !linksOf.has(l));
-        page = { view, history, diff, backlinks, missing };
+        // Who wrote each line now, so the editor can mark the agent's. Only for the newest version.
+        const authors = view.version === view.head_version ? (await pageAuthors(sql, data.slug)).map((a) => (a.via === "agent" ? a.version : 0)) : [];
+        page = { view, history, diff, backlinks, missing, authors };
       } catch (err) {
         if (!(err instanceof NotFound)) throw err;
       }
@@ -82,15 +84,25 @@ export const getPersonFn = createServerFn({ method: "GET" })
   });
 
 export const savePageFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
-    z.object({ slug: z.string(), base: z.number().int(), body: z.string(), title: z.string().optional(), note: z.string().optional(), force: z.boolean().optional() }).parse(d),
-  )
+  .inputValidator((d: unknown) => z.object({ slug: z.string(), base: z.number().int(), body: z.string() }).parse(d))
   .handler(async ({ data }) => {
-    const { force, ...input } = data;
-    // "Save mine on top": write over whatever is newest. The version it replaces stays in the history.
-    if (force) input.base = (await readPage(sql, input.slug)).head_version;
-    const r = await updatePage(sql, { ...input, ...ui });
+    const r = await updatePage(sql, { ...data, ...ui });
     return { version: r.page.version, changed: r.changed, warnings: r.warnings };
+  });
+
+/** The page as it is now: what a refused save merges with. */
+export const pageHeadFn = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) => z.object({ slug: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    const p = await readPage(sql, data.slug);
+    return { version: p.head_version, body: p.body, via: p.via, authors: (await pageAuthors(sql, data.slug)).map((a) => (a.via === "agent" ? a.version : 0)) };
+  });
+
+export const takeBackFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ slug: z.string(), version: z.number().int() }).parse(d))
+  .handler(async ({ data }) => {
+    const r = await takeBackVersion(sql, data.slug, data.version, ui);
+    return { version: r.page.version };
   });
 
 export const createPageFn = createServerFn({ method: "POST" })

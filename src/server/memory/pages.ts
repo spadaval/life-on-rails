@@ -3,6 +3,7 @@
 // server does not parse. The UI and the agent both write through here.
 import type { Sql, Tx } from "../../db/client.js";
 import { diffLines, renderDiff } from "../../shared/diff.js";
+import { type Author, blame, takeBack } from "../../shared/merge.js";
 import { uuidv7 } from "../../shared/ids.js";
 import { BadInput, NotFound, Refused } from "../errors.js";
 
@@ -363,4 +364,30 @@ export async function searchPages(db: Tx, query: string, limit = 10): Promise<Pa
     ORDER BY score DESC, p.updated_at DESC
     LIMIT ${limit}`;
   return rows.map((r) => ({ ...r, updated_at: r.updated_at.toISOString() }));
+}
+
+/** Who last wrote each line of the page as it is now. */
+export async function pageAuthors(db: Tx, slug: string): Promise<Author[]> {
+  const page = await loadPage(db, slug);
+  const versions = await db<{ version: number; via: string; body: string }[]>`
+    SELECT version, via, body FROM page_version WHERE page_id = ${page.id} ORDER BY version`;
+  return blame(versions);
+}
+
+/**
+ * Undo what one version changed and keep every edit since, as a new version. Refused when a
+ * later edit touched the same lines; then the way back is a whole revert.
+ */
+export async function takeBackVersion(db: Sql, slug: string, version: number, meta: WriteMeta): Promise<UpdateResult> {
+  const page = await loadPage(db, slug);
+  const versions = await db<{ version: number }[]>`
+    SELECT version FROM page_version WHERE page_id = ${page.id} AND version < ${version} ORDER BY version DESC LIMIT 1`;
+  if (!versions[0]) throw new BadInput(`version ${version} is where the page began; there is nothing before it to go back to`);
+  const before = await loadVersion(db, page.id, versions[0].version);
+  const after = await loadVersion(db, page.id, version);
+  const body = takeBack(before.body, after.body, page.body);
+  if (body === null) {
+    throw new Refused("overlapping-edits", `later edits changed the same lines as version ${version}; revert to an older version instead, or edit by hand`);
+  }
+  return updatePage(db, { slug, base: page.head_version, body, via: meta.via, sourceRef: meta.sourceRef, note: meta.note ?? `took back version ${version}` });
 }

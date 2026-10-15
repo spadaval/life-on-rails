@@ -9,8 +9,11 @@ export interface DiffLine {
 const MAX_CELLS = 4_000_000;
 
 export function diffLines(before: string, after: string): DiffLine[] {
-  const a = before.split("\n");
-  const b = after.split("\n");
+  return diffSeq(before.split("\n"), after.split("\n"));
+}
+
+/** The same diff over any sequence of strings (lines, words). */
+export function diffSeq(a: string[], b: string[]): DiffLine[] {
   if (a.length * b.length > MAX_CELLS) {
     return [...a.map((text) => ({ op: "-" as const, text })), ...b.map((text) => ({ op: "+" as const, text }))];
   }

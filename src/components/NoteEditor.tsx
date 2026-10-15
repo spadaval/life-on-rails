@@ -9,7 +9,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/language";
 import { searchKeymap } from "@codemirror/search";
-import { Annotation, EditorState, type Range, StateEffect } from "@codemirror/state";
+import { Annotation, Compartment, EditorState, type Range, StateEffect, StateField, type Text } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate, WidgetType, keymap } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import type { MarkdownConfig } from "@lezer/markdown";
@@ -93,6 +93,38 @@ function sourceUrl(kind: string, id: string): string | null {
 }
 
 const hide = Decoration.replace({});
+
+/** Per line, the version the agent wrote it in, or 0 for anyone else. */
+const setAuthors = StateEffect.define<number[]>();
+
+function authorDecos(doc: Text, authors: number[]): DecorationSet {
+  const out: Range<Decoration>[] = [];
+  authors.forEach((v, i) => {
+    if (v && i < doc.lines) out.push(Decoration.line({ class: "cm-by-agent", attributes: { title: `Written by the agent (version ${v})` } }).range(doc.line(i + 1).from));
+  });
+  return Decoration.set(out);
+}
+
+/** The agent's lines, marked; a line you change becomes yours. */
+const authorField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    deco = deco.map(tr.changes);
+    if (tr.docChanged && !tr.annotation(fromOutside)) {
+      const touched = new Set<number>();
+      tr.changes.iterChangedRanges((_fa, _ta, fb, tb) => {
+        for (let n = tr.state.doc.lineAt(fb).number; n <= tr.state.doc.lineAt(tb).number; n++) touched.add(tr.state.doc.line(n).from);
+      });
+      deco = deco.update({ filter: (from) => !touched.has(from) });
+    }
+    for (const e of tr.effects) if (e.is(setAuthors)) deco = authorDecos(tr.state.doc, e.value);
+    return deco;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+const editable = new Compartment();
+const lockedTo = (readOnly: boolean) => [EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)];
 /** A change that came from the server, not the keyboard: not a reason to save. */
 const fromOutside = Annotation.define<boolean>();
 const refresh = StateEffect.define<null>();
@@ -266,7 +298,8 @@ const theme = EditorView.theme(
     "&.cm-focused": { outline: "none" },
     ".cm-scroller": { fontFamily: "var(--font-sans)", lineHeight: "1.65" },
     ".cm-content": { maxWidth: "72ch", padding: "0 0 6em", caretColor: "var(--color-or)" },
-    ".cm-line": { padding: "1px 0" },
+    // Room on the left for the mark on the agent's lines.
+    ".cm-line": { padding: "1px 0 1px 12px" },
     ".cm-cursor": { borderLeftColor: "var(--color-or)", borderLeftWidth: "2px" },
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": { backgroundColor: "rgb(240 138 44 / 0.3) !important" },
     ".cm-h": { fontFamily: "var(--font-cond)", fontWeight: "600", letterSpacing: "0.02em" },
@@ -278,7 +311,7 @@ const theme = EditorView.theme(
     ".cm-strike": { textDecoration: "line-through", color: "var(--color-mute)" },
     ".cm-icode": { backgroundColor: "var(--color-raised)", fontFamily: "ui-monospace, monospace", fontSize: "0.9em", padding: "0 2px" },
     ".cm-codeblock": { backgroundColor: "var(--color-well)", fontFamily: "ui-monospace, monospace", fontSize: "13.5px" },
-    ".cm-quote": { borderLeft: "1px solid rgb(240 138 44 / 0.6)", paddingLeft: "12px", color: "var(--color-mute)" },
+    ".cm-quote": { borderLeft: "1px solid rgb(240 138 44 / 0.6)", color: "var(--color-mute)" },
     ".cm-hr": { color: "var(--color-dim)" },
     ".cm-bullet": { color: "var(--color-or)", padding: "0 2px" },
     ".cm-link, .cm-wikilink": { color: "var(--color-or)", textDecoration: "underline", textDecorationColor: "rgb(240 138 44 / 0.4)", textUnderlineOffset: "3px", cursor: "pointer" },
@@ -287,6 +320,7 @@ const theme = EditorView.theme(
     ".cm-fnref": { color: "var(--color-or)", fontSize: "0.68em", verticalAlign: "super", padding: "0 1px", marginLeft: "2px" },
     ".cm-fnref + .cm-fnref::before": { content: "\",\"", color: "var(--color-dim)", marginRight: "2px" },
     ".cm-fnref-raw": { color: "var(--color-dim)" },
+    ".cm-by-agent": { boxShadow: "inset 2px 0 0 rgb(108 198 236 / 0.55)" },
     ".cm-fndef": { color: "var(--color-dim)", fontSize: "13px" },
     ".cm-tooltip.cm-tooltip-autocomplete": { border: "1px solid var(--color-edge)", backgroundColor: "var(--color-raised)" },
     ".cm-tooltip.cm-tooltip-autocomplete > ul": { fontFamily: "var(--font-sans)", maxHeight: "18em" },
@@ -299,11 +333,15 @@ const theme = EditorView.theme(
   { dark: true },
 );
 
-export function NoteEditor({ initial, external, pages, onChange, onFollow, onSave }: {
+export function NoteEditor({ initial, authors, external, readOnly = false, pages, onChange, onFollow, onSave }: {
   /** The text the editor opens with. */
   initial: string;
-  /** Text to replace everything with (the agent's newer version); applied when `n` changes. */
-  external: { text: string; n: number };
+  /** Per line of `initial`, the version the agent wrote it in, or 0. */
+  authors: number[];
+  /** Text to replace everything with (a merge, the agent's newer version); applied when `n` changes. */
+  external: { text: string; n: number; authors: number[] };
+  /** While a clash is being settled. */
+  readOnly?: boolean;
   pages: LinkTarget[];
   onChange: (text: string) => void;
   /** A link was followed: an existing page, or one to start. `label` is what the link said. */
@@ -349,6 +387,8 @@ export function NoteEditor({ initial, external, pages, onChange, onFollow, onSav
           markdown({ base: markdownLanguage, extensions: [WikiLinks] }),
           syntaxHighlighting(highlight),
           livePreview(() => pagesRef.current),
+          authorField,
+          editable.of(lockedTo(readOnly)),
           autocompletion({ override: [complete], icons: false }),
           keymap.of([
             { key: "Mod-s", preventDefault: true, run: () => (cb.current.onSave(), true) },
@@ -390,6 +430,7 @@ export function NoteEditor({ initial, external, pages, onChange, onFollow, onSav
       }),
     });
     view.current = v;
+    v.dispatch({ effects: setAuthors.of(authors) });
     return () => v.destroy();
   }, []);
 
@@ -404,10 +445,22 @@ export function NoteEditor({ initial, external, pages, onChange, onFollow, onSav
     const v = view.current;
     if (!v || external.n === seen.current) return;
     seen.current = external.n;
-    if (v.state.doc.toString() === external.text) return;
+    if (v.state.doc.toString() === external.text) {
+      v.dispatch({ effects: setAuthors.of(external.authors) });
+      return;
+    }
     const head = Math.min(v.state.selection.main.head, external.text.length);
-    v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: external.text }, selection: { anchor: head }, annotations: fromOutside.of(true) });
+    v.dispatch({
+      changes: { from: 0, to: v.state.doc.length, insert: external.text },
+      selection: { anchor: head },
+      effects: setAuthors.of(external.authors),
+      annotations: fromOutside.of(true),
+    });
   }, [external]);
+
+  useEffect(() => {
+    view.current?.dispatch({ effects: editable.reconfigure(lockedTo(readOnly)) });
+  }, [readOnly]);
 
   return <div ref={host} className="min-h-[50vh]" />;
 }

@@ -211,17 +211,55 @@ const flows = {
     await page.waitForSelector(".cm-content >> text=The agent added this meanwhile");
     console.log("agent edit picked up:", true);
 
-    // The agent writes while there is unsaved typing: asked, nothing lost.
+    console.log("agent lines marked:", await page.locator(".cm-by-agent").count());
+
+    // The agent writes elsewhere while there is unsaved typing: merged, nothing asked.
     await page.locator(".cm-line", { hasText: "Ask about" }).click();
     await page.keyboard.press("End");
     await page.keyboard.type(" Mine.");
     lor(["page", "update", "people/priya-raman", "--append"], "- And this, too.\n");
-    await page.waitForSelector("text=The agent changed this page while you were writing");
-    await shot("notes-2d-conflict");
-    await page.click('button:has-text("Keep mine")');
-    await page.waitForSelector("text=Saved");
-    await page.waitForTimeout(500);
-    console.log("kept mine:", psql("SELECT body FROM page WHERE slug = 'people/priya-raman'").includes("Mine."));
+    await page.waitForSelector("text=Merged with the agent's edit");
+    await page.waitForFunction(() => document.body.innerText.includes("Saved") && !document.body.innerText.includes("Saving"));
+    await page.waitForTimeout(400);
+    const body = psql("SELECT body FROM page WHERE slug = 'people/priya-raman'");
+    console.log("merged:", body.includes("Mine.") && body.includes("And this, too."));
+
+    // Different words of one paragraph: merged, nothing asked.
+    await page.locator(".cm-line", { hasText: "Biscuit" }).click();
+    await page.keyboard.press("Control+End");
+    await page.keyboard.type("\nShe walks him at seven.");
+    const head0 = psql("SELECT head_version FROM page WHERE slug = 'people/priya-raman'").trim();
+    lor(["page", "update", "people/priya-raman", "--base", head0, "--find", "called Biscuit", "--replace", "called Biscotti"]);
+    await page.waitForFunction(() => document.body.innerText.includes("Saved") && !document.body.innerText.includes("Saving"));
+    await page.waitForTimeout(400);
+    const words = psql("SELECT body FROM page WHERE slug = 'people/priya-raman'");
+    console.log("word-level merge:", words.includes("Biscotti") && words.includes("walks him at seven"));
+
+    // The same words changed both ways: only that passage is put to you.
+    await page.locator(".cm-line", { hasText: "walks him" }).click();
+    await page.keyboard.press("Home");
+    await page.keyboard.press("Shift+End");
+    await page.keyboard.type("She walks him at eight.");
+    const head = psql("SELECT head_version FROM page WHERE slug = 'people/priya-raman'").trim();
+    lor(["page", "update", "people/priya-raman", "--base", head, "--find", "at seven", "--replace", "at six"]);
+    await page.waitForSelector('section[aria-label="Settle the clash"]');
+    await shot("notes-2d-clash");
+    await page.click('button:has-text("Keep yours")');
+    await page.click('section[aria-label="Settle the clash"] button:has-text("Done")');
+    await page.waitForFunction(() => document.body.innerText.includes("Saved") && !document.body.innerText.includes("Saving"));
+    await page.waitForTimeout(400);
+    const settled = psql("SELECT body FROM page WHERE slug = 'people/priya-raman'");
+    console.log("clash settled as mine:", settled.includes("at eight") && !settled.includes("at six") && settled.includes("Biscotti"));
+
+    // Take back one old agent edit, keeping everything since.
+    const agentV = psql("SELECT min(v.version) FROM page_version v JOIN page p ON p.id = v.page_id WHERE p.slug = 'people/priya-raman' AND v.via = 'agent' AND v.body LIKE '%meanwhile%'").trim();
+    await page.click('button:has-text("History")');
+    await page.locator("li", { hasText: `Version ${agentV}` }).getByRole("button", { name: "take back" }).click();
+    await page.waitForSelector(`text=Took back version ${agentV}`);
+    await page.waitForTimeout(800);
+    const after = psql("SELECT body FROM page WHERE slug = 'people/priya-raman'");
+    console.log("took back:", !after.includes("meanwhile") && after.includes("Biscotti") && after.includes("And this, too."));
+    await shot("notes-2e-history");
     console.log("versions:", versions());
 
     // A link to a page nobody wrote starts it.

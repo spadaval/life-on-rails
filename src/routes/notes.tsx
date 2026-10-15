@@ -7,7 +7,8 @@ import { Ago } from "../components/Ago.js";
 import { Markdown } from "../components/Markdown.js";
 import { StarMap } from "../components/StarMap.js";
 import { Empty, Notice, PageHead, Panel, Star } from "../components/ui.js";
-import { createPageFn, getNotesFn, revertPageFn, savePageFn, setInDigestFn } from "../server/functions/memory.js";
+import { createPageFn, getNotesFn, pageHeadFn, revertPageFn, savePageFn, setInDigestFn, takeBackFn } from "../server/functions/memory.js";
+import { type Merge, carry, join, merge3 } from "../shared/merge.js";
 import { NoteEditor } from "../components/NoteEditor.js";
 import { folderOf, titleFromSlug } from "../shared/wiki.js";
 import { GlobalActions } from "./__root.js";
@@ -332,7 +333,7 @@ function PageView({ page, pages, act, onFollow }: { page: NonNullable<Data["page
           ) : null}
 
           {isHead ? (
-            <LiveBody key={view.slug} view={view} pages={pages} onFollow={onFollow} />
+            <LiveBody key={view.slug} view={view} authors={page.authors} pages={pages} onFollow={onFollow} />
           ) : (
             <Markdown source={view.body} />
           )}
@@ -355,7 +356,7 @@ function PageView({ page, pages, act, onFollow }: { page: NonNullable<Data["page
                 {showHistory ? "Hide history" : `History (${history.length})`}
               </button>
               {history.length > 1 && history[0]!.via === "agent" ? (
-                <button className="btn" onClick={() => act(() => revertPageFn({ data: { slug: view.slug, version: history[1]!.version } }), "Took back the agent's last edit.")}>
+                <button className="btn" onClick={() => act(() => takeBackFn({ data: { slug: view.slug, version: history[0]!.version } }), "Took back the agent's last edit.")}>
                   Take back the agent's last edit
                 </button>
               ) : null}
@@ -375,9 +376,20 @@ function PageView({ page, pages, act, onFollow }: { page: NonNullable<Data["page
                   <Link to="/notes" search={{ slug: view.slug, version: h.version }} className={`link ${h.version === view.version ? "font-semibold text-or" : ""}`}>
                     Version {h.version}
                   </Link>
-                  <span className="text-[13px] text-mute">
-                    {h.via}
-                    {h.note ? ` · ${h.note}` : ""} · <Ago iso={h.created_at} />
+                  <span className="flex items-baseline gap-3 text-[13px] text-mute">
+                    <span>
+                      {h.via}
+                      {h.note ? ` · ${h.note}` : ""} · <Ago iso={h.created_at} />
+                    </span>
+                    {h.version !== history[history.length - 1]!.version ? (
+                      <button
+                        className="text-dim underline decoration-dim hover:text-txt"
+                        title="Undo what this version changed, and keep every edit since"
+                        onClick={() => act(() => takeBackFn({ data: { slug: view.slug, version: h.version } }), `Took back version ${h.version}.`)}
+                      >
+                        take back
+                      </button>
+                    ) : null}
                   </span>
                 </li>
               ))}
@@ -425,23 +437,36 @@ function PageView({ page, pages, act, onFollow }: { page: NonNullable<Data["page
 }
 
 type View = NonNullable<Data["page"]>["view"];
-type SaveState = "saved" | "unsaved" | "saving" | "conflict" | "error";
+type SaveState = "saved" | "unsaved" | "saving" | "clash" | "error";
+interface Head {
+  version: number;
+  body: string;
+  via: string;
+  authors: number[];
+}
+type Pick = "mine" | "theirs" | "both";
 
 /**
  * The page as you write it. Saves a moment after you stop typing (a run of typing is one
- * version), picks up the agent's edits when you have nothing unsaved, and stops to ask when
- * you both changed it.
+ * version). When someone else wrote meanwhile, their edit and yours are merged line by
+ * line; only the passages you both changed are put to you.
  */
-function LiveBody({ view, pages, onFollow }: { view: View; pages: Page[]; onFollow: (slug: string, label: string | null) => void }) {
+function LiveBody({ view, authors, pages, onFollow }: { view: View; authors: number[]; pages: Page[]; onFollow: (slug: string, label: string | null) => void }) {
   const router = useRouter();
   const base = useRef(view.head_version);
+  /** The text of the base version: what both your typing and any other edit started from. */
   const saved = useRef(view.body);
   const current = useRef(view.body);
+  const marks = useRef(authors);
   const timer = useRef<number | undefined>(undefined);
   const inflight = useRef(false);
   const [state, setState] = useState<SaveState>("saved");
   const [problem, setProblem] = useState<string | null>(null);
-  const [external, setExternal] = useState({ text: view.body, n: 0 });
+  const [merged, setMerged] = useState<string | null>(null);
+  const [clash, setClash] = useState<{ merge: Merge; head: Head; picks: (Pick | null)[] } | null>(null);
+  const [external, setExternal] = useState({ text: view.body, n: 0, authors });
+  const clashOpen = useRef(false);
+  clashOpen.current = clash !== null;
   const targets = useMemoPages(pages);
 
   const schedule = () => {
@@ -449,15 +474,46 @@ function LiveBody({ view, pages, onFollow }: { view: View; pages: Page[]; onFoll
     timer.current = window.setTimeout(() => void save(), 1200);
   };
 
-  const save = async (force = false) => {
+  const show = (text: string, head: Head) => {
+    marks.current = carry(head.authors, head.body, text, 0);
+    setExternal((e) => ({ text, n: e.n + 1, authors: marks.current }));
+  };
+
+  /** Bring a newer version in under what is typed here. */
+  const mergeWith = (head: Head) => {
+    if (head.version <= base.current) return;
+    const m = merge3(saved.current, current.current, head.body);
+    const who = head.via === "agent" ? "the agent's" : "another";
+    if (m.text === null) {
+      clashOpen.current = true;
+      setClash({ merge: m, head, picks: m.chunks.filter((c) => c.kind === "conflict").map(() => null) });
+      setState("clash");
+      return;
+    }
+    const mine = m.text !== head.body;
+    base.current = head.version;
+    saved.current = head.body;
+    current.current = m.text;
+    show(m.text, head);
+    if (mine) {
+      setMerged(`Merged with ${who} edit.`);
+      setState("unsaved");
+      schedule();
+    } else {
+      setState("saved");
+    }
+  };
+
+  const save = async () => {
     window.clearTimeout(timer.current);
     if (inflight.current) return schedule();
     const body = current.current;
-    if (body === saved.current && !force) return;
+    // Nothing is saved while a clash is open; settling it saves.
+    if (body === saved.current || clashOpen.current) return;
     inflight.current = true;
     setState("saving");
     try {
-      const r = await savePageFn({ data: { slug: view.slug, base: base.current, body, force } });
+      const r = await savePageFn({ data: { slug: view.slug, base: base.current, body } });
       base.current = r.version;
       saved.current = body;
       setProblem(null);
@@ -470,8 +526,8 @@ function LiveBody({ view, pages, onFollow }: { view: View; pages: Page[]; onFoll
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (/is at version/.test(msg)) {
-        setState("conflict");
-        void router.invalidate();
+        inflight.current = false;
+        mergeWith(await pageHeadFn({ data: { slug: view.slug } }));
       } else {
         setState("error");
         setProblem(msg);
@@ -481,19 +537,23 @@ function LiveBody({ view, pages, onFollow }: { view: View; pages: Page[]; onFoll
     }
   };
 
-  const takeTheirs = () => {
-    base.current = view.head_version;
-    saved.current = current.current = view.body;
-    setExternal((e) => ({ text: view.body, n: e.n + 1 }));
-    setState("saved");
+  const settle = () => {
+    if (!clash || clash.picks.some((p) => p === null)) return;
+    const text = join(clash.merge.chunks, (c, i) => (clash.picks[i] === "mine" ? c.mine : clash.picks[i] === "theirs" ? c.theirs : [...c.mine, ...c.theirs]));
+    base.current = clash.head.version;
+    saved.current = clash.head.body;
+    current.current = text;
+    show(text, clash.head);
+    clashOpen.current = false;
+    setClash(null);
+    setState("unsaved");
+    void save();
   };
 
-  // Someone else wrote (the agent, a revert): take it if nothing here is unsaved, else ask.
+  // A newer version arrived with the page (the agent, a take-back, another window).
   useEffect(() => {
-    if (view.head_version <= base.current) return;
-    if (current.current === saved.current && !inflight.current) takeTheirs();
-    else setState("conflict");
-  }, [view.head_version, view.body]);
+    if (!inflight.current) mergeWith({ version: view.head_version, body: view.body, via: view.via, authors });
+  }, [view.head_version]);
 
   // Coming back to the tab is when an agent edit is most likely waiting.
   useEffect(() => {
@@ -516,40 +576,80 @@ function LiveBody({ view, pages, onFollow }: { view: View; pages: Page[]; onFoll
 
   return (
     <div>
-      {state === "conflict" ? (
-        <div role="status" className="row-sel mb-4 flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[14px]">
-          <span>The agent changed this page while you were writing. Your text is still here.</span>
-          <span className="flex gap-2">
-            <button className="btn btn-sm border-or text-or" onClick={() => void save(true)}>
-              Keep mine
-            </button>
-            <button className="btn btn-sm" onClick={takeTheirs}>
-              Take theirs
-            </button>
-          </span>
-        </div>
+      {clash ? <Clash clash={clash} onPick={(i, p) => setClash({ ...clash, picks: clash.picks.map((x, n) => (n === i ? p : x)) })} onDone={settle} /> : null}
+      {merged && !clash ? (
+        <p role="status" className="row-sel mb-3 flex items-center justify-between px-3 py-1.5 text-[13.5px]">
+          {merged}
+          <button className="text-[13px] text-mute underline hover:text-txt" onClick={() => setMerged(null)}>
+            dismiss
+          </button>
+        </p>
       ) : null}
       <NoteEditor
         initial={view.body}
+        authors={authors}
         external={external}
+        readOnly={clash !== null}
         pages={targets}
         onChange={(text) => {
           current.current = text;
-          if (state !== "conflict") {
-            setState("unsaved");
-            schedule();
-          }
+          setState("unsaved");
+          schedule();
         }}
         onFollow={onFollow}
         onSave={() => void save()}
       />
       <p className="mt-2 text-[12.5px] text-dim" aria-live="polite">
-        {state === "saving" ? "Saving…" : state === "unsaved" ? "Not saved yet" : state === "error" ? `Not saved: ${problem}` : state === "conflict" ? "Not saved" : "Saved"}
+        {state === "saving" ? "Saving…" : state === "unsaved" ? "Not saved yet" : state === "error" ? `Not saved: ${problem}` : state === "clash" ? "Not saved" : "Saved"}
         <span className="ml-3">
-          <code>[[</code> links a page · a link opens on a click, or Ctrl-click while you type it
+          <code>[[</code> links a page · a link opens on a click, or Ctrl-click while you type it ·{" "}
+          <span className="border-l-2 border-cy/55 pl-1.5">the agent wrote this</span>
         </span>
       </p>
     </div>
+  );
+}
+
+/** The passages both you and someone else changed, one choice each. Everything else is already merged. */
+function Clash({ clash, onPick, onDone }: {
+  clash: { merge: Merge; head: Head; picks: (Pick | null)[] };
+  onPick: (i: number, p: Pick) => void;
+  onDone: () => void;
+}) {
+  const theirs = clash.head.via === "agent" ? "The agent's" : "The other edit";
+  const conflicts = clash.merge.chunks.filter((c): c is Extract<Merge["chunks"][number], { kind: "conflict" }> => c.kind === "conflict");
+  const block = (lines: string[]) => <pre className="font-sans text-[14px] whitespace-pre-wrap">{lines.join("\n") || "(removed)"}</pre>;
+  return (
+    <section className="mb-4 border border-or/50 bg-or/5 p-3" aria-label="Settle the clash">
+      <p className="mb-3 text-[14px]">
+        {clash.head.via === "agent" ? "The agent" : "Someone else"} changed this page while you were writing. Everything else is merged;{" "}
+        {conflicts.length === 1 ? "one passage was" : `${conflicts.length} passages were`} changed by both of you.
+      </p>
+      {conflicts.map((c, i) => (
+        <div key={i} className="mb-3 border-t border-line pt-2">
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <h4 className="cond mb-1 text-[12.5px] font-semibold text-mute">Yours</h4>
+              {block(c.mine)}
+            </div>
+            <div>
+              <h4 className="cond mb-1 text-[12.5px] font-semibold text-cy">{theirs}</h4>
+              {block(c.theirs)}
+            </div>
+          </div>
+          <div className="mt-2 flex gap-2">
+            {(["mine", "theirs", "both"] as const).map((p) => (
+              <button key={p} className={`btn btn-sm ${clash.picks[i] === p ? "border-or text-or" : ""}`} onClick={() => onPick(i, p)}>
+                {p === "mine" ? "Keep yours" : p === "theirs" ? `Keep ${theirs.toLowerCase()}` : "Keep both"}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+      <button className="btn border-or text-or" disabled={clash.picks.some((p) => p === null)} onClick={onDone}>
+        Done
+      </button>
+    </section>
   );
 }
 

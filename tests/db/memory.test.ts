@@ -5,7 +5,7 @@ import { BadInput, NotFound, Refused } from "../../src/server/errors.js";
 import { getChanges } from "../../src/server/memory/changes.js";
 import { getContext } from "../../src/server/memory/context.js";
 import { entityForEmail, showEntity, upsertEntity } from "../../src/server/memory/entities.js";
-import { createPage, pageHistory, readPage, revertPage, searchPages, updatePage } from "../../src/server/memory/pages.js";
+import { createPage, pageAuthors, pageHistory, readPage, revertPage, searchPages, takeBackVersion, updatePage } from "../../src/server/memory/pages.js";
 import { search } from "../../src/server/memory/search.js";
 import { dbDescribe } from "./helpers.js";
 
@@ -119,6 +119,26 @@ dbDescribe("pages", () => {
     const mine = await updatePage(sql, { slug: "topics/typing", base: 4, body: "mine\n", via: "ui" });
     expect((await pageHistory(sql, "topics/typing")).map((v) => v.version)).toEqual([5, 4, 3, 1]);
     expect(mine.page.version).toBe(5);
+  });
+
+  it("takes back one old change and keeps the edits since; says so when they overlap", async () => {
+    await createPage(sql, { slug: "topics/tb", title: "TB", body: "Venue: open\nCaterer: open\nFlorist: open\n", via: "ui" });
+    await updatePage(sql, { slug: "topics/tb", base: 1, find: "Florist: open", replace: "Florist: WRONG", ...agent });
+    await updatePage(sql, { slug: "topics/tb", base: 2, find: "Venue: open", replace: "Venue: Sunol", note: "venue", via: "ui" });
+    const r = await takeBackVersion(sql, "topics/tb", 2, { via: "ui" });
+    expect(r.page).toMatchObject({ version: 4, body: "Venue: Sunol\nCaterer: open\nFlorist: open\n", note: "took back version 2" });
+    expect((await pageAuthors(sql, "topics/tb")).map((a) => a.via)).toEqual(["ui", "ui", "ui", "ui"]);
+
+    await updatePage(sql, { slug: "topics/tb", base: 4, find: "Caterer: open", replace: "Caterer: X", ...agent });
+    await updatePage(sql, { slug: "topics/tb", base: 5, find: "Caterer: X", replace: "Caterer: Y", note: "fix", via: "ui" });
+    expect((await refusal(takeBackVersion(sql, "topics/tb", 5, { via: "ui" }))).code).toBe("overlapping-edits");
+    await expect(takeBackVersion(sql, "topics/tb", 1, { via: "ui" })).rejects.toBeInstanceOf(BadInput);
+  });
+
+  it("credits each line to whoever last wrote it", async () => {
+    await createPage(sql, { slug: "topics/who", title: "Who", body: "mine\n", via: "ui" });
+    await updatePage(sql, { slug: "topics/who", append: "theirs\n", ...agent });
+    expect((await pageAuthors(sql, "topics/who")).map((a) => `${a.via}${a.version}`)).toEqual(["ui1", "ui1", "agent2", "agent2"]); // mine, a blank line, theirs, the final newline
   });
 
   it("two concurrent updates from the same base: one wins, one is refused", async () => {
