@@ -3,7 +3,13 @@
 // sleeps. scripts/serve.mjs maps /api/{setup,display,log} on the LAN listener
 // to /trmnl/* here. One device: LOR_TRMNL_MAC gets LOR_TRMNL_KEY at setup, and
 // every later request must carry that key.
-import { randomUUID, timingSafeEqual } from "node:crypto";
+//
+// Screens: a timed wake always draws Today. A tap on the middle of the touch
+// bar wakes the device and calls /api/display (Update-Source "button"), which
+// steps to the next screen and comes back to Today after a few minutes. Left
+// and right never reach us: the firmware flips through the frames it cached,
+// one per screen, kept apart by the first 14 characters of the filename.
+import { timingSafeEqual } from "node:crypto";
 import { sql } from "../../db/client.js";
 import { addDays, localTimeOnDay, localYmd } from "../../shared/localTime.js";
 import { env } from "../env.js";
@@ -11,11 +17,17 @@ import { needsOwner } from "../intents.js";
 import { errorMessage, log } from "../log.js";
 import { jobStatuses } from "../status.js";
 import { getToday, wakeWindow } from "../today.js";
-import { FRAME_H, FRAME_SCALE, FRAME_W, type FrameInput, frameHtml } from "./frame.js";
+import { getGraph } from "../graph.js";
+import {
+  FRAME_H, FRAME_SCALE, FRAME_W, type GoalsInput, type Screen, type Shell, type TasksInput, type TodayInput,
+  goalsHtml, nextScreen, tasksHtml, todayHtml,
+} from "./frame.js";
 import { grayPng2 } from "./png.js";
 import { frameFonts, renderFrame } from "./render.js";
 
 const REFRESH_S = 900;
+/** How long a screen someone tapped to stays up before Today comes back. */
+const TAPPED_S = 300;
 const LOW_BATTERY_PCT = 20;
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -28,12 +40,47 @@ const sameText = (a: string, b: string) => {
 const normMac = (s: string | null) => (s ?? "").trim().toUpperCase();
 const keyOk = (request: Request) => env.LOR_TRMNL_KEY !== "" && sameText(request.headers.get("access-token") ?? "", env.LOR_TRMNL_KEY);
 
-/** The last frame drawn; the device fetches it by name right after /api/display. */
-let latest: { name: string; png: Buffer } | null = null;
+/** The last frame drawn of each screen; the device fetches it by name right after /api/display. */
+const latest = new Map<Screen, { name: string; png: Buffer }>();
+let shown: Screen = "today";
 
-export async function frameInput(now: Date, alerts: string[]): Promise<FrameInput> {
-  const date = localYmd(env.LOR_TZ, now);
-  const [today, needs, jobs] = await Promise.all([getToday(sql, date, now), needsOwner(sql), jobStatuses(now)]);
+/** "plugin-today0-1771674964": the firmware's own shape, so its cache keeps one frame per screen and ages them out. */
+const frameName = (screen: Screen, now: Date) => `plugin-${screen.padEnd(6, "0")}-${Math.floor(now.getTime() / 1000)}`;
+
+async function shellInput(now: Date, alerts: string[]): Promise<Shell> {
+  const jobs = await jobStatuses(now);
+  const unwell = jobs.filter((j) => j.state === "stale" || j.state === "error").length;
+  return {
+    now,
+    timezone: env.LOR_TZ,
+    date: localYmd(env.LOR_TZ, now),
+    alerts: [...(unwell > 0 ? [`${unwell} ${unwell === 1 ? "job needs" : "jobs need"} a look`] : []), ...alerts],
+    fontCss: frameFonts(),
+  };
+}
+
+export async function goalsInput(shell: Shell): Promise<GoalsInput> {
+  const graph = await getGraph(sql, shell.now);
+  const goals = graph.nodes
+    .filter((n) => n.type === "goal" && n.status === "active" && n.weekly_hour_target)
+    .map((n) => ({ title: n.title, hours: n.week_hours ?? 0, target: n.weekly_hour_target ?? 0, starving: n.starving }));
+  return { ...shell, goals };
+}
+
+export async function tasksInput(shell: Shell): Promise<TasksInput> {
+  const graph = await getGraph(sql, shell.now);
+  const tasks = graph.nodes
+    .filter((n) => n.type === "task" && (n.status === "active" || n.status === "waiting") && n.assignee !== "agent")
+    .sort((a, b) => (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999") || a.title.localeCompare(b.title))
+    .map((n) => ({
+      title: n.title, due: n.due_local, overdue: n.overdue, waiting: n.status === "waiting" ? (n.waiting_on ?? "someone") : null, flagged: n.flagged_at !== null,
+    }));
+  return { ...shell, tasks };
+}
+
+export async function todayInput(shell: Shell): Promise<TodayInput> {
+  const { now, date } = shell;
+  const [today, needs] = await Promise.all([getToday(sql, date, now), needsOwner(sql)]);
   const wake = wakeWindow(date);
   const hours: Date[] = [];
   for (let d = 0; d < 2; d++) {
@@ -49,12 +96,9 @@ export async function frameInput(now: Date, alerts: string[]): Promise<FrameInpu
     const z = Math.min(b.t_end ? new Date(b.t_end).getTime() : now.getTime(), dayEnd);
     return s + Math.max(0, z - a) / 1000;
   }, 0);
-  const unwell = jobs.filter((j) => j.state === "stale" || j.state === "error").length;
   const r = today.running;
   return {
-    now,
-    timezone: env.LOR_TZ,
-    date,
+    ...shell,
     wakeStart: wake.start,
     wakeEnd: wake.end,
     hours,
@@ -70,9 +114,13 @@ export async function frameInput(now: Date, alerts: string[]): Promise<FrameInpu
     recordedS,
     needsYou: needs.map((n) => n.title),
     toConfirm: today.to_confirm,
-    alerts: [...(unwell > 0 ? [`${unwell} ${unwell === 1 ? "job needs" : "jobs need"} a look`] : []), ...alerts],
-    fontCss: frameFonts(),
   };
+}
+
+async function screenHtml(screen: Screen, shell: Shell): Promise<string> {
+  if (screen === "goals") return goalsHtml(await goalsInput(shell));
+  if (screen === "tasks") return tasksHtml(await tasksInput(shell));
+  return todayHtml(await todayInput(shell));
 }
 
 export async function trmnlSetup(request: Request): Promise<Response> {
@@ -93,22 +141,26 @@ export async function trmnlDisplay(request: Request): Promise<Response> {
   const h = (k: string) => request.headers.get(k);
   const pct = Number(h("percent-charged"));
   const charging = h("usb-connected") === "true" || h("battery-charging") === "1";
-  log("info", "trmnl display", { battery: h("percent-charged") ?? h("battery-voltage"), usb: h("usb-connected"), rssi: h("rssi"), fw: h("fw-version") });
+  const screen = nextScreen(shown, h("update-source"));
+  log("info", "trmnl display", { screen, source: h("update-source"), battery: h("percent-charged") ?? h("battery-voltage"), usb: h("usb-connected"), rssi: h("rssi"), fw: h("fw-version") });
   const alerts = Number.isFinite(pct) && pct > 0 && pct < LOW_BATTERY_PCT && !charging ? [`Battery ${Math.round(pct)}%`] : [];
   try {
-    const png = await renderFrame(frameHtml(await frameInput(new Date(), alerts)));
-    latest = { name: randomUUID(), png };
+    const now = new Date();
+    const png = await renderFrame(await screenHtml(screen, await shellInput(now, alerts)));
+    latest.set(screen, { name: frameName(screen, now), png });
   } catch (err) {
     // The last frame stays up with its own "Updated" time, which is the honest thing to show.
-    log("error", "trmnl render failed", { err: errorMessage(err) });
-    if (!latest) return json(500, { status: 500, error: "No frame yet" });
+    log("error", "trmnl render failed", { screen, err: errorMessage(err) });
   }
+  const frame = latest.get(screen);
+  if (!frame) return json(500, { status: 500, error: "No frame yet" });
+  shown = screen;
   const origin = new URL(request.url).origin;
   return json(200, {
     status: 0,
-    image_url: `${origin}/trmnl/image/${latest!.name}.png`,
-    filename: latest!.name,
-    refresh_rate: REFRESH_S,
+    image_url: `${origin}/trmnl/image/${frame.name}.png`,
+    filename: frame.name,
+    refresh_rate: screen === "today" ? REFRESH_S : TAPPED_S,
     update_firmware: false,
     reset_firmware: false,
   });
@@ -123,8 +175,9 @@ export function trmnlImage(request: Request, name: string): Response {
     blank ??= grayPng2(w, h, new Uint8Array(w * h).fill(3));
     return new Response(new Uint8Array(blank), { headers: { "content-type": "image/png", "content-length": String(blank.length) } });
   }
-  if (!keyOk(request) || !latest || latest.name !== name) return new Response("not found\n", { status: 404 });
-  return new Response(new Uint8Array(latest.png), { headers: { "content-type": "image/png", "content-length": String(latest.png.length) } });
+  const frame = [...latest.values()].find((f) => f.name === name);
+  if (!keyOk(request) || !frame) return new Response("not found\n", { status: 404 });
+  return new Response(new Uint8Array(frame.png), { headers: { "content-type": "image/png", "content-length": String(frame.png.length) } });
 }
 
 export async function trmnlLog(request: Request): Promise<Response> {

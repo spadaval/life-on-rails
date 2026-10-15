@@ -8,7 +8,7 @@ async function handle(request: Request): Promise<Response> {
     if (request.method === "GET" && path === "/setup") return await trmnlSetup(request);
     if (request.method === "GET" && path === "/display") return await trmnlDisplay(request);
     if (request.method === "POST" && path === "/log") return await trmnlLog(request);
-    const image = /^\/image\/([0-9a-f-]{36}|setup)\.png$/.exec(path);
+    const image = /^\/image\/(plugin-[a-z0]{6}-\d+|setup)\.png$/.exec(path);
     if (request.method === "GET" && image) return trmnlImage(request, image[1]!);
     return new Response("not found\n", { status: 404 });
   } catch (err) {
