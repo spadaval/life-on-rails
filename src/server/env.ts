@@ -40,6 +40,11 @@ const Env = z.object({
   // WhatsApp: the phone uploads its encrypted nightly backup here; the key is the 64-digit backup key, alone in its file (0600).
   LOR_WHATSAPP_DIR: z.string().default(path.join(homedir(), ".local/share/life-on-rails/whatsapp")),
   LOR_WHATSAPP_KEY_FILE: z.string().default(path.join(homedir(), ".config/life-on-rails/whatsapp-key")),
+  // The TRMNL X on the wall: the LAN address its listener binds (empty: off), the device's MAC, and the key it is given.
+  LOR_TRMNL_BIND: z.string().default(""),
+  LOR_TRMNL_PORT: z.coerce.number().int().default(3849),
+  LOR_TRMNL_MAC: z.string().default(""),
+  LOR_TRMNL_KEY: z.string().default(""),
   GOOGLE_ACCOUNT: z.string().default(""),
   GOOGLE_OAUTH_CLIENT: z.string().default(path.join(homedir(), ".config/life-on-rails/google-client.json")),
   GOOGLE_TOKEN_FILE: z.string().default(path.join(homedir(), ".config/life-on-rails/google-token.json")),

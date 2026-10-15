@@ -88,6 +88,8 @@ manual timer (UI)       ────────┘        ▲
 - `127.0.0.1:3847` serves everything (UI, `/api/v1`, `/health`) with no identity check. It is for use on the box and is never a Serve target.
 - `127.0.0.1:3848` is for the owner's other devices. It serves the UI and `/ingest` only, and refuses any request whose `Tailscale-User-Login` header is not `LOR_OWNER_LOGIN`. It is published on its own Serve port, `tailscale serve --bg --http=3847 http://127.0.0.1:3848`, so the dashboard is `http://buildbot:3847`. A port, not a path under T3 Code's `/`: a path prefix would send the app's asset requests to T3. This listener cannot exempt loopback, because Serve's proxy connects from loopback.
 
+**The wall display's listener.** When `LOR_TRMNL_BIND` is set, a third listener on `LOR_TRMNL_BIND:LOR_TRMNL_PORT` (3849) serves the TRMNL X on the home network, which cannot join the tailnet. It routes only the firmware's `/api/setup`, `/api/display`, `/api/log` (to `/trmnl/*`) and `/trmnl/image/*`. Setup hands `LOR_TRMNL_KEY` to the MAC in `LOR_TRMNL_MAC` only (a refused setup logs the MAC); display, log, and the frame image all require it as `Access-Token`. Each display call renders a fresh frame and answers with `refresh_rate` 900; if rendering fails, the last frame stays up with its own "Updated" time.
+
 **Local dates.** Neither Node on this box has `Temporal`. One helper module (`src/shared/localTime.ts`) answers "which local day is this instant" and "when does local day D start" using `Intl` in `LOR_TZ`, and everything that needs a day boundary uses it. Days are 23 or 25 hours long twice a year.
 
 **`pnpm dev` is UI only.** Vite's reloads would kill the clock, so the scheduler is started only from the production entry.

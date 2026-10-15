@@ -281,6 +281,16 @@ The waking day as a half-ellipse route from Rising (left) to Setting (right) ove
 ### Star Map (signature)
 The intent graph as a pannable, zoomable sky on `well` with the engraved grid, inside a chamfered panel. Goals are amber four-point stars sized 8-16px by this week's hours against target (unfed goals in a muddy bronze, #8a6a4a), named below in 15px condensed caps with an "h / target" line in `mute`. Projects are 7px `mute` dots, habits 7px hollow squares, tasks 4px `txt` dots, flagged tasks small amber stars; all linked to their parent by 1px `frame` lines. Selecting a body draws a reticle, lights its constellation's links in amber, dims every other goal, and frames the constellation; labels hold their screen size at any zoom. A legend sits bottom-left on a translucent well strip, square zoom buttons bottom-right. Beside it on xl, a System Info panel shows the selection's fields as a condensed-label definition list.
 
+## Paper (the wall display)
+
+The one place LoR is not dark: Today on the TRMNL X on the fridge, e-paper read from across a kitchen. It is the same atlas printed rather than lit. Four grays only (black, `#555`, `#aaa`, white), no dithering, laid out at 1040x780 and rendered at 1.8x.
+
+- **Colour jobs become ink jobs.** Amber (now, running, tracked) is solid black carried by line weight: the running block heaviest, then confirmed, then unconfirmed; bare phone or place time is dashed `#555`. Cyan (planned) is hollow: events are outlined waypoint diamonds on the route. Coral (broken) is a reversed black chip in the head ("2 jobs need a look", "Battery 12%"). Dim is `#555`.
+- **One black slab:** the running timer, the paper version of the one solid amber fill.
+- **For distance:** nothing under 22px; the readout is 150px. Only the arc, what is left of the day, the running block, the next three events, and what the agent flagged. No lanes, no goals, no buttons; the to-confirm count is a note.
+- **Clock times over countdowns** ("since 13:20", "until 22:00"), and "Updated HH:MM" in the head, because each frame stays up for a quarter of an hour.
+- Chart crosses stand in for the engraved grid.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -293,7 +303,7 @@ The intent graph as a pannable, zoomable sky on `well` with the engraved grid, i
 - **Do** keep numerals tabular.
 
 ### Don't:
-- **Don't** add a light theme.
+- **Don't** add a light theme. The paper frame on the wall display is not one; it is a separate drawing.
 - **Don't** use shadows, glows, blur, scanlines or pulsing; the selected star's reticle is the strongest emphasis the world has.
 - **Don't** put fake HUD numbers, decorative telemetry or invented coordinates on screen; every figure is real data.
 - **Don't** use coral for overdue, behind, or under target; coral means a machine has failed.

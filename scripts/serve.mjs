@@ -7,6 +7,8 @@
 //   127.0.0.1:LOR_SERVE_PORT UI and /ingest for the owner's other devices,
 //                            published by `tailscale serve`. Every request must
 //                            carry the owner's Tailscale login. /api/ is not routed.
+//   LOR_TRMNL_BIND:LOR_TRMNL_PORT  the TRMNL X on the home network, when set: only
+//                            the firmware's three calls and its image, keyed.
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -60,4 +62,22 @@ if (owner) {
   };
   serve({ hostname: "127.0.0.1", port: servePort, fetch, middleware: [ownerOnly, assets], silent: true });
   console.log(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: "listening (owner only)", hostname: "127.0.0.1", port: servePort }));
+}
+
+// The wall display cannot join the tailnet. Its firmware calls /api/setup,
+// /api/display and /api/log at the base URL it was given; nothing else is routed.
+const trmnlBind = (process.env.LOR_TRMNL_BIND || "").trim();
+if (trmnlBind) {
+  const trmnlPort = Number(process.env.LOR_TRMNL_PORT || 3849);
+  const FIRMWARE = { "/api/setup": "/trmnl/setup", "/api/display": "/trmnl/display", "/api/log": "/trmnl/log" };
+  const trmnlFetch = async (request) => {
+    const url = new URL(request.url);
+    const to = FIRMWARE[url.pathname] ?? (url.pathname.startsWith("/trmnl/image/") ? url.pathname : null);
+    if (!to) return new Response("not found\n", { status: 404 });
+    url.pathname = to;
+    const body = request.method === "POST" ? await request.text() : undefined;
+    return app.fetch(new Request(url, { method: request.method, headers: request.headers, body }));
+  };
+  serve({ hostname: trmnlBind, port: trmnlPort, fetch: trmnlFetch, silent: true });
+  console.log(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: "listening (trmnl)", hostname: trmnlBind, port: trmnlPort }));
 }
