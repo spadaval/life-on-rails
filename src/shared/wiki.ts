@@ -88,3 +88,40 @@ export function wikiLayout(nodes: { id: string; group: string }[], edges: [strin
   // Rounded so server and browser draw the same thing.
   return new Map(ids.map((p, i) => [p.id, { x: Math.round(pos[i]!.x * 10) / 10, y: Math.round(pos[i]!.y * 10) / 10 }]));
 }
+
+/** A page title for a slug nobody has written yet: its last part, words spaced, first letter up. */
+export function titleFromSlug(slug: string): string {
+  const last = slug.slice(slug.lastIndexOf("/") + 1).replace(/-+/g, " ").trim();
+  return last ? last[0]!.toUpperCase() + last.slice(1) : slug;
+}
+
+/** A slug from words typed after [[: kept as a path if it already looks like one. */
+export function slugFromText(text: string): string {
+  return text
+    .toLowerCase()
+    .split("/")
+    .map((part) => part.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""))
+    .filter(Boolean)
+    .join("/");
+}
+
+/** Pages for the [[ menu: title or slug starting with the query first, then anywhere in either. */
+export function linkChoices<P extends { slug: string; title: string }>(query: string, pages: P[], limit = 12): P[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return pages.slice(0, limit);
+  const rank = (p: P) => {
+    const t = p.title.toLowerCase();
+    const s = p.slug.toLowerCase();
+    const leaf = s.slice(s.lastIndexOf("/") + 1);
+    if (t.startsWith(q) || leaf.startsWith(q) || s.startsWith(q)) return 0;
+    if (t.split(/\s+/).some((w) => w.startsWith(q))) return 1;
+    if (t.includes(q) || s.includes(q)) return 2;
+    return 3;
+  };
+  return pages
+    .map((p) => [rank(p), p] as const)
+    .filter(([r]) => r < 3)
+    .sort((a, b) => a[0] - b[0] || a[1].title.localeCompare(b[1].title))
+    .slice(0, limit)
+    .map(([, p]) => p);
+}

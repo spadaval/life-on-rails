@@ -1,6 +1,6 @@
 // Notes: the wiki the agent and the owner both write. An index by folder, the
 // reader with what links here, and the whole wiki as a star map.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import { Ago } from "../components/Ago.js";
@@ -8,7 +8,8 @@ import { Markdown } from "../components/Markdown.js";
 import { StarMap } from "../components/StarMap.js";
 import { Empty, Notice, PageHead, Panel, Star } from "../components/ui.js";
 import { createPageFn, getNotesFn, revertPageFn, savePageFn, setInDigestFn } from "../server/functions/memory.js";
-import { folderOf } from "../shared/wiki.js";
+import { NoteEditor } from "../components/NoteEditor.js";
+import { folderOf, titleFromSlug } from "../shared/wiki.js";
 import { GlobalActions } from "./__root.js";
 
 const Search = z.object({
@@ -54,6 +55,15 @@ function Notes() {
   };
   const graph = search.view === "graph";
 
+  // Following a link to a page nobody has written yet starts it.
+  const follow = async (slug: string, label: string | null) => {
+    if (!data.pages.some((p) => p.slug === slug)) {
+      const title = label ?? titleFromSlug(slug);
+      if (!(await act(() => createPageFn({ data: { slug, title, body: `# ${title}\n\n` } }), `Started “${title}”.`))) return;
+    }
+    void navigate({ search: { slug } });
+  };
+
   return (
     <div className="space-y-5 pb-4">
       <PageHead title="Notes" sub={`${data.pages.length} pages`}>
@@ -89,7 +99,7 @@ function Notes() {
 
       <Notice text={notice} onClose={() => setNotice(null)} />
 
-      {graph ? <GraphView data={data} selected={search.slug ?? null} /> : <PagesView data={data} act={act} />}
+      {graph ? <GraphView data={data} selected={search.slug ?? null} /> : <PagesView data={data} act={act} onFollow={follow} />}
     </div>
   );
 }
@@ -153,7 +163,7 @@ function LinkList({ title, pages, graph = false }: { title: string; pages: { slu
   );
 }
 
-function PagesView({ data, act }: { data: Data; act: Act }) {
+function PagesView({ data, act, onFollow }: { data: Data; act: Act; onFollow: (slug: string, label: string | null) => void }) {
   const current = data.page?.view.slug ?? null;
   const [filter, setFilter] = useState("");
   const f = filter.trim().toLowerCase();
@@ -210,7 +220,13 @@ function PagesView({ data, act }: { data: Data; act: Act }) {
       </Panel>
 
       {data.page ? (
-        <PageView key={`${data.page.view.slug}@${data.page.view.version}`} page={data.page} pages={data.pages} act={act} />
+        <PageView
+          key={`${data.page.view.slug}@${data.page.view.version === data.page.view.head_version ? "head" : data.page.view.version}`}
+          page={data.page}
+          pages={data.pages}
+          act={act}
+          onFollow={onFollow}
+        />
       ) : (
         <Panel title="Recently changed">
           <ul>
@@ -278,21 +294,12 @@ function NewPage({ onCreate, onCancel }: { onCreate: (input: { slug: string; tit
   );
 }
 
-function PageView({ page, pages, act }: { page: NonNullable<Data["page"]>; pages: Page[]; act: Act }) {
+function PageView({ page, pages, act, onFollow }: { page: NonNullable<Data["page"]>; pages: Page[]; act: Act; onFollow: (slug: string, label: string | null) => void }) {
   const { view, history, diff, backlinks, missing } = page;
   const navigate = useNavigate({ from: "/notes" });
-  const [editing, setEditing] = useState(false);
-  const [body, setBody] = useState(view.body);
   const [showHistory, setShowHistory] = useState(view.version !== view.head_version);
-  const [conflict, setConflict] = useState(false);
   const isHead = view.version === view.head_version;
   const linksOut = (pages.find((p) => p.slug === view.slug)?.links ?? []).map((l) => pages.find((p) => p.slug === l)!).filter(Boolean);
-
-  const save = async (force = false) => {
-    const ok = await act(() => savePageFn({ data: { slug: view.slug, base: view.head_version, body, force } }), "Saved.");
-    if (ok) setEditing(false);
-    else setConflict(true);
-  };
 
   return (
     <div className="grid items-start gap-[22px] 2xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -324,34 +331,8 @@ function PageView({ page, pages, act }: { page: NonNullable<Data["page"]>; pages
             </div>
           ) : null}
 
-          {editing ? (
-            <div className="space-y-2">
-              <textarea className="input min-h-[60vh] font-mono text-[13.5px] leading-relaxed" value={body} onChange={(e) => setBody(e.target.value)} aria-label="Page body" />
-              <div className="flex flex-wrap items-center gap-2">
-                <button className="btn border-or text-or" onClick={() => save()}>
-                  Save
-                </button>
-                {conflict ? (
-                  <button className="btn" onClick={() => save(true)}>
-                    Save mine on top
-                  </button>
-                ) : null}
-                <button
-                  className="btn"
-                  onClick={() => {
-                    setBody(view.body);
-                    setEditing(false);
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-              <p className="text-[13px] text-mute">
-                {conflict
-                  ? "The page changed while you were editing. Your text is still here. “Save mine on top” makes it the newest version; the other change stays in the history."
-                  : "Link another page with [[slug]] or [[slug|words]]. If the agent saves a change while you are editing, your save is refused and your text stays here."}
-              </p>
-            </div>
+          {isHead ? (
+            <LiveBody key={view.slug} view={view} pages={pages} onFollow={onFollow} />
           ) : (
             <Markdown source={view.body} />
           )}
@@ -368,16 +349,13 @@ function PageView({ page, pages, act }: { page: NonNullable<Data["page"]>; pages
               </>
             ) : null}
           </p>
-          {isHead && !editing ? (
+          {isHead ? (
             <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-line pt-3">
-              <button className="btn" onClick={() => setEditing(true)}>
-                Edit
-              </button>
               <button className="btn" onClick={() => setShowHistory((v) => !v)}>
                 {showHistory ? "Hide history" : `History (${history.length})`}
               </button>
               {history.length > 1 && history[0]!.via === "agent" ? (
-                <button className="btn" onClick={() => act(() => revertPageFn({ data: { slug: view.slug, version: view.head_version - 1 } }), "Took back the agent's last edit.")}>
+                <button className="btn" onClick={() => act(() => revertPageFn({ data: { slug: view.slug, version: history[1]!.version } }), "Took back the agent's last edit.")}>
                   Take back the agent's last edit
                 </button>
               ) : null}
@@ -444,4 +422,140 @@ function PageView({ page, pages, act }: { page: NonNullable<Data["page"]>; pages
       </Panel>
     </div>
   );
+}
+
+type View = NonNullable<Data["page"]>["view"];
+type SaveState = "saved" | "unsaved" | "saving" | "conflict" | "error";
+
+/**
+ * The page as you write it. Saves a moment after you stop typing (a run of typing is one
+ * version), picks up the agent's edits when you have nothing unsaved, and stops to ask when
+ * you both changed it.
+ */
+function LiveBody({ view, pages, onFollow }: { view: View; pages: Page[]; onFollow: (slug: string, label: string | null) => void }) {
+  const router = useRouter();
+  const base = useRef(view.head_version);
+  const saved = useRef(view.body);
+  const current = useRef(view.body);
+  const timer = useRef<number | undefined>(undefined);
+  const inflight = useRef(false);
+  const [state, setState] = useState<SaveState>("saved");
+  const [problem, setProblem] = useState<string | null>(null);
+  const [external, setExternal] = useState({ text: view.body, n: 0 });
+  const targets = useMemoPages(pages);
+
+  const schedule = () => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => void save(), 1200);
+  };
+
+  const save = async (force = false) => {
+    window.clearTimeout(timer.current);
+    if (inflight.current) return schedule();
+    const body = current.current;
+    if (body === saved.current && !force) return;
+    inflight.current = true;
+    setState("saving");
+    try {
+      const r = await savePageFn({ data: { slug: view.slug, base: base.current, body, force } });
+      base.current = r.version;
+      saved.current = body;
+      setProblem(null);
+      if (current.current === body) setState("saved");
+      else {
+        setState("unsaved");
+        schedule();
+      }
+      void router.invalidate();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/is at version/.test(msg)) {
+        setState("conflict");
+        void router.invalidate();
+      } else {
+        setState("error");
+        setProblem(msg);
+      }
+    } finally {
+      inflight.current = false;
+    }
+  };
+
+  const takeTheirs = () => {
+    base.current = view.head_version;
+    saved.current = current.current = view.body;
+    setExternal((e) => ({ text: view.body, n: e.n + 1 }));
+    setState("saved");
+  };
+
+  // Someone else wrote (the agent, a revert): take it if nothing here is unsaved, else ask.
+  useEffect(() => {
+    if (view.head_version <= base.current) return;
+    if (current.current === saved.current && !inflight.current) takeTheirs();
+    else setState("conflict");
+  }, [view.head_version, view.body]);
+
+  // Coming back to the tab is when an agent edit is most likely waiting.
+  useEffect(() => {
+    const onFocus = () => void router.invalidate();
+    const onLeave = (e: BeforeUnloadEvent) => {
+      if (current.current !== saved.current) e.preventDefault();
+    };
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("beforeunload", onLeave);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("beforeunload", onLeave);
+      window.clearTimeout(timer.current);
+      // Leaving the page with typing not yet saved: save it on the way out.
+      if (current.current !== saved.current && !inflight.current) {
+        void savePageFn({ data: { slug: view.slug, base: base.current, body: current.current } }).catch(() => undefined);
+      }
+    };
+  }, []);
+
+  return (
+    <div>
+      {state === "conflict" ? (
+        <div role="status" className="row-sel mb-4 flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[14px]">
+          <span>The agent changed this page while you were writing. Your text is still here.</span>
+          <span className="flex gap-2">
+            <button className="btn btn-sm border-or text-or" onClick={() => void save(true)}>
+              Keep mine
+            </button>
+            <button className="btn btn-sm" onClick={takeTheirs}>
+              Take theirs
+            </button>
+          </span>
+        </div>
+      ) : null}
+      <NoteEditor
+        initial={view.body}
+        external={external}
+        pages={targets}
+        onChange={(text) => {
+          current.current = text;
+          if (state !== "conflict") {
+            setState("unsaved");
+            schedule();
+          }
+        }}
+        onFollow={onFollow}
+        onSave={() => void save()}
+      />
+      <p className="mt-2 text-[12.5px] text-dim" aria-live="polite">
+        {state === "saving" ? "Saving…" : state === "unsaved" ? "Not saved yet" : state === "error" ? `Not saved: ${problem}` : state === "conflict" ? "Not saved" : "Saved"}
+        <span className="ml-3">
+          <code>[[</code> links a page · a link opens on a click, or Ctrl-click while you type it
+        </span>
+      </p>
+    </div>
+  );
+}
+
+function useMemoPages(pages: Page[]) {
+  const key = pages.map((p) => `${p.slug}\t${p.title}`).join("\n");
+  const ref = useRef<{ key: string; list: { slug: string; title: string }[] }>({ key: "", list: [] });
+  if (ref.current.key !== key) ref.current = { key, list: pages.map((p) => ({ slug: p.slug, title: p.title })) };
+  return ref.current.list;
 }

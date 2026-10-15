@@ -30,8 +30,10 @@ export const getNotesFn = createServerFn({ method: "GET" })
         const history = await pageHistory(sql, data.slug);
         // What this version changed, against the one before it.
         let diff: string | null = null;
-        if (view.version > 1) {
-          const before = await readPage(sql, data.slug, view.version - 1);
+        // Versions can skip numbers (a run of typing is one version), so "before" is the next one down.
+        const prev = history.find((h) => h.version < view.version);
+        if (prev) {
+          const before = await readPage(sql, data.slug, prev.version);
           diff = renderDiff(diffLines(before.body, view.body), 1);
         }
         const backlinks = pages.filter((p) => p.links.includes(view.slug)).map((p) => ({ slug: p.slug, title: p.title }));

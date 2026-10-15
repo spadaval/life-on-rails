@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { folderOf, replaceWikiLinks, wikiLayout, wikiLinks } from "../../src/shared/wiki.js";
+import { folderOf, linkChoices, replaceWikiLinks, slugFromText, titleFromSlug, wikiLayout, wikiLinks } from "../../src/shared/wiki.js";
 
 describe("wiki links", () => {
   it("reads each linked page once, with or without a label", () => {
@@ -30,5 +30,26 @@ describe("wiki layout", () => {
     expect(dist(p, "me", "people/a")).toBeLessThan(dist(p, "me", "topics/y"));
     expect(dist(p, "topics/x", "topics/y")).toBeLessThan(dist(p, "topics/y", "people/c"));
     for (const a of nodes) for (const b of nodes) if (a !== b) expect(dist(p, a.id, b.id)).toBeGreaterThan(20);
+  });
+});
+
+describe("writing links", () => {
+  const pages = [
+    { slug: "people/neha-pendem", title: "Neha Pendem" },
+    { slug: "projects/wedding", title: "Wedding (18 April 2027)" },
+    { slug: "topics/nambiar-apartment", title: "Nambiar District 25 flat" },
+    { slug: "me", title: "Sumeet" },
+  ];
+  it("finds pages by title or slug, best first", () => {
+    expect(linkChoices("neh", pages).map((p) => p.slug)).toEqual(["people/neha-pendem"]);
+    expect(linkChoices("wed", pages).map((p) => p.slug)).toEqual(["projects/wedding"]);
+    expect(linkChoices("apart", pages).map((p) => p.slug)).toEqual(["topics/nambiar-apartment"]);
+    expect(linkChoices("people/", pages).map((p) => p.slug)).toEqual(["people/neha-pendem"]);
+    expect(linkChoices("", pages)).toHaveLength(4);
+  });
+  it("makes a slug and a title for a page not written yet", () => {
+    expect(slugFromText("Home Network")).toBe("home-network");
+    expect(slugFromText("topics/Home Network!")).toBe("topics/home-network");
+    expect(titleFromSlug("topics/home-network")).toBe("Home network");
   });
 });

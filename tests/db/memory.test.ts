@@ -99,10 +99,26 @@ dbDescribe("pages", () => {
   it("history keeps every version and revert writes a new one", async () => {
     await createPage(sql, { slug: "topics/h", title: "H", body: "first\n", ...agent });
     await updatePage(sql, { slug: "topics/h", base: 1, body: "second\n", via: "ui" });
+    // A revert carries a note, so it is its own version even straight after typing.
     const reverted = await revertPage(sql, "topics/h", 1, { via: "ui" });
     expect(reverted.page).toMatchObject({ version: 3, body: "first\n", note: "revert to version 1" });
     expect((await pageHistory(sql, "topics/h")).map((v) => [v.version, v.via])).toEqual([[3, "ui"], [2, "ui"], [1, "agent"]]);
     expect((await readPage(sql, "topics/h", 2)).body).toBe("second\n");
+  });
+
+  it("a run of the owner's typing is one version, and still moves the number on", async () => {
+    await createPage(sql, { slug: "topics/typing", title: "T", body: "a\n", ...agent });
+    await updatePage(sql, { slug: "topics/typing", base: 1, body: "ab\n", via: "ui" });
+    const again = await updatePage(sql, { slug: "topics/typing", base: 2, body: "abc\n", via: "ui" });
+    expect(again.page).toMatchObject({ version: 3, body: "abc\n" });
+    expect((await pageHistory(sql, "topics/typing")).map((v) => [v.version, v.via])).toEqual([[3, "ui"], [1, "agent"]]);
+    // The agent read version 2, which the typing replaced: refused, not silently overwritten.
+    expect((await refusal(updatePage(sql, { slug: "topics/typing", base: 2, body: "x\n", ...agent }))).code).toBe("stale-base");
+    // After the agent writes, the owner's next save starts a new version.
+    await updatePage(sql, { slug: "topics/typing", base: 3, append: "- agent\n", ...agent });
+    const mine = await updatePage(sql, { slug: "topics/typing", base: 4, body: "mine\n", via: "ui" });
+    expect((await pageHistory(sql, "topics/typing")).map((v) => v.version)).toEqual([5, 4, 3, 1]);
+    expect(mine.page.version).toBe(5);
   });
 
   it("two concurrent updates from the same base: one wins, one is refused", async () => {

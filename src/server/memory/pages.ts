@@ -198,6 +198,9 @@ export function footnoteWarnings(body: string): string[] {
   return out;
 }
 
+/** Saves from the owner's editor this close to the last one fold into it. */
+const AMEND_WINDOW_MS = 10 * 60_000;
+
 const LIST_LINE = /^\s*(?:[-*+]\s|\d+\.\s)/;
 const FOOTNOTE_LINE = /^\[\^[^\]\s]+\]:/;
 
@@ -259,8 +262,16 @@ export async function updatePage(db: Sql, input: UpdatePageInput): Promise<Updat
     }
 
     const next = page.head_version + 1;
-    await tx`INSERT INTO page_version (page_id, version, title, body, via, source_ref, note)
-      VALUES (${page.id}, ${next}, ${title}, ${body}, ${input.via}, ${input.sourceRef ?? null}, ${input.note ?? null})`;
+    // The owner's editor saves as they type. A run of that typing is one version: the head is
+    // rewritten and renumbered, so a reader holding the old number is still refused as stale.
+    const amend = input.via === "ui" && input.body !== undefined && !input.note && head.via === "ui" && !head.note && Date.now() - head.created_at.getTime() < AMEND_WINDOW_MS;
+    if (amend) {
+      await tx`UPDATE page_version SET version = ${next}, title = ${title}, body = ${body}, created_at = now()
+        WHERE page_id = ${page.id} AND version = ${page.head_version}`;
+    } else {
+      await tx`INSERT INTO page_version (page_id, version, title, body, via, source_ref, note)
+        VALUES (${page.id}, ${next}, ${title}, ${body}, ${input.via}, ${input.sourceRef ?? null}, ${input.note ?? null})`;
+    }
     await tx`UPDATE page SET title = ${title}, body = ${body}, head_version = ${next}, updated_at = now()
       WHERE id = ${page.id}`;
     const fresh = await loadPage(tx, page.slug);

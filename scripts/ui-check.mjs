@@ -172,22 +172,68 @@ const flows = {
     await page.waitForSelector("text=HATES phone calls");
     await settle();
     await shot("notes-2-page");
-    console.log("gmail link:", await page.locator('a[href*="mail.google.com"]').first().getAttribute("href"));
+    console.log("gmail link:", await page.locator('[data-url*="mail.google.com"]').first().getAttribute("data-url"));
     console.log("links here:", await page.locator('section:has(h4:has-text("Links here")) li').allInnerTexts());
 
     await page.click(`button:has-text("Take back the agent's last edit")`);
     await page.waitForSelector("text=prefers calls to email");
 
-    // The owner edits while the agent writes: the save is refused, nothing is lost.
-    await page.click('button:has-text("Edit")');
-    await page.fill('textarea[aria-label="Page body"]', "# Priya Raman\n\nOwner's version.\n");
+    // Typing saves by itself, and a run of typing is one version.
+    const ed = page.locator(".cm-content");
+    const versions = () => psql("SELECT string_agg(version || ':' || via, ' ' ORDER BY version) FROM page_version v JOIN page p ON p.id = v.page_id WHERE p.slug = 'people/priya-raman'").trim();
+    await page.locator(".cm-line", { hasText: "Moved to Austin" }).click();
+    await page.keyboard.press("End");
+    await page.keyboard.type(" She has a dog called Biscuit.");
+    await page.waitForSelector("text=Saved", { timeout: 5000 });
+    await page.keyboard.type(" And a cat.");
+    await page.waitForFunction(() => document.body.innerText.includes("Saved") && !document.body.innerText.includes("Saving"));
+    await page.waitForTimeout(1600);
+    console.log("versions after typing:", versions());
+
+    // [[ suggests pages; the link reads as the page's title once the cursor leaves the line.
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Ask about [[trav");
+    await page.waitForSelector(".cm-tooltip-autocomplete");
+    await shot("notes-2b-suggest");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type(" and [[Home Network");
+    await page.waitForSelector('.cm-tooltip-autocomplete li:has-text("New page")');
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("ArrowUp");
+    await page.waitForTimeout(1600);
+    console.log("body now:", JSON.stringify(psql("SELECT body FROM page WHERE slug = 'people/priya-raman'").trim()));
+    await shot("notes-2c-links");
+
+    // The agent writes while this page is open and nothing is unsaved: it simply appears.
     lor(["page", "update", "people/priya-raman", "--append"], "- The agent added this meanwhile.\n");
-    await page.click('button:has-text("Save")');
-    await page.waitForSelector("text=Save mine on top");
-    console.log("textarea kept:", (await page.locator('textarea[aria-label="Page body"]').inputValue()).includes("Owner's version"));
-    await page.click('button:has-text("Save mine on top")');
-    await page.waitForSelector("text=Saved.");
-    console.log("versions:", psql("SELECT string_agg(version || ':' || via, ' ' ORDER BY version) FROM page_version v JOIN page p ON p.id = v.page_id WHERE p.slug = 'people/priya-raman'").trim());
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await page.waitForSelector(".cm-content >> text=The agent added this meanwhile");
+    console.log("agent edit picked up:", true);
+
+    // The agent writes while there is unsaved typing: asked, nothing lost.
+    await page.locator(".cm-line", { hasText: "Ask about" }).click();
+    await page.keyboard.press("End");
+    await page.keyboard.type(" Mine.");
+    lor(["page", "update", "people/priya-raman", "--append"], "- And this, too.\n");
+    await page.waitForSelector("text=The agent changed this page while you were writing");
+    await shot("notes-2d-conflict");
+    await page.click('button:has-text("Keep mine")');
+    await page.waitForSelector("text=Saved");
+    await page.waitForTimeout(500);
+    console.log("kept mine:", psql("SELECT body FROM page WHERE slug = 'people/priya-raman'").includes("Mine."));
+    console.log("versions:", versions());
+
+    // A link to a page nobody wrote starts it.
+    await page.locator(".cm-wikilink-missing").first().click();
+    await page.waitForURL(/slug=home-network/);
+    await page.waitForSelector(".cm-content >> text=Home Network");
+    console.log("started:", psql("SELECT slug || ' / ' || title FROM page WHERE slug = 'home-network'").trim());
+    await page.goBack();
+    await page.waitForSelector(".cm-wikilink >> text=Travel");
+    await page.locator(".cm-wikilink", { hasText: "Travel" }).click();
+    await page.waitForURL(/slug=topics%2Ftravel/);
+    console.log("followed to:", page.url());
 
     await page.goto(`${BASE}/notes?view=graph`);
     await settle();
