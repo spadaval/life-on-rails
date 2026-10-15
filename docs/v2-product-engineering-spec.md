@@ -187,7 +187,7 @@ A user-visible interval is always a `time_block`. Accepting its proposal inserts
 - **Reset Visibility:** moves overdue active tasks and projects (and any task the owner selects) to `status=later` or sets `snoozed_until`. Goals, habits, and metrics are never moved. Nothing is deleted.
 - **Needs you:** tasks the agent flagged (`--flag`), each with why, until the owner marks it Done or Seen. The phone notifies once per flag.
 - **With the agent:** tasks assigned to the agent and their state.
-- Rows written by the agent are badged and have one-tap undo.
+- What the agent wrote says so, and can be deleted like anything else: deleting and undoing an addition are the same act. (Reverting a page edit and un-confirming a block are different, and keep their own controls.)
 
 ### State machine
 
@@ -365,7 +365,7 @@ lor metric <intent_id> <value> [--date <date>]
 - **The owner's to confirm:** what the owner did. Time blocks, habit completions, and metric values become commitments in the evening confirm, or when the owner asks for it in the thread. Unattended runs do not write these.
 - **Tasks assigned to the agent** are the agent's to close with `lor done`.
 
-The API cannot tell an instructed call from an uninstructed one, so this is auditable rather than enforced: every agent write records `via` and the thread, the UI badges those rows, and each has one-tap undo.
+The API cannot tell an instructed call from an uninstructed one, so this is auditable rather than enforced: every agent write records `via` and the thread, the UI says who made each row, and anything can be deleted (or archived, when time or check-ins were recorded against it).
 
 ---
 
@@ -453,7 +453,8 @@ Desktop first, with a left rail; on a phone the rail becomes a top strip and the
 | Route | What |
 | --- | --- |
 | `/` Today | See "Today" above. The waking day is an arc from rising to setting with the remaining time under it (a straight bar on a phone); planned and actual lanes; Needs you, Due soon (check and un-check), and Goals this week. |
-| `/tasks` | Every task: add one (title, what it counts toward, due), check or un-check it, edit it in the side panel. Views: Open (needs you, past due, this week, later on, no date), Waiting, With the agent, Later, Done. |
+| `/tasks` | Every task, Linear-style. Views: Open, Waiting, With the agent, Later, Done. Filters: what it counts toward (a goal includes its projects' tasks), due, who added it, needs you, text. Group by due, what it counts toward, status, or nothing; sort by due, newest, recently changed, title. Keys: `j`/`k`, `Enter`, `x` select, `d` done, `/` filter, `Esc`. Several selected change together: done, due, Later (until a date), what it counts toward, whose, delete. The side panel edits in place and says who added the task and when. Tasks from Google Tasks keep their title, notes, due date and deletion in Google. |
+| Quick add | `q` on any screen, or the box at the top of Tasks, after Todoist: one line, with the understood parts marked as they are typed. `#name` what it counts toward (suggested as typed), `@agent` gives it to the agent, `@person` makes it waiting on them, and a date in words (`today`, `fri`, `next fri`, `in 2 weeks`, `oct 20`, `10/20`; `sat`, `sun` and `wed` only after `on`/`by`/`due`/`next`). Each understood part is a chip whose × keeps it as text. `src/shared/quickAdd.ts`, pure. |
 | `/graph` | The intents as a star map (goals as stars sized by the week's hours against target, projects and habits around them, tasks around the selected goal; pan, zoom, click to focus) or as an outline by goal. A System info panel for the selected one: its facts, children, Did it / Done, Add task, and the editor. |
 | `/memory` | **Pages:** an index beside the reader, a markdown editor that saves through the same `--base` check as the agent (a refused save keeps the text and offers to save it on top), history with diff and revert, one-tap undo of the agent's last edit, the `in_digest` toggle, and who last changed each `in_digest` page. **People:** a table of who matters, keeping in touch, due a hello, birthdays soon, and everyone; for each, when the owner was last in touch and how, the birthday, a cadence picker, and the `priority` flag. **Timeline:** every observation for a day. |
 | `/capture` | The cockpit: database, Google auth, mail, jobs, sources. The rail's foot says whether every job is healthy. |

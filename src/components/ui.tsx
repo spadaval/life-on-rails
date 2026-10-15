@@ -57,19 +57,6 @@ export function Star({ size = 10, className = "", fill = "currentColor" }: { siz
 
 export const STAR_PATH = "M0,-10 L2.2,-2.2 L10,0 L2.2,2.2 L0,10 L-2.2,2.2 L-10,0 L-2.2,-2.2 Z";
 
-export function AgentTag({ onUndo }: { onUndo?: () => void }) {
-  return (
-    <span className="tag-agent">
-      agent
-      {onUndo ? (
-        <button className="text-txt underline decoration-dim hover:decoration-cy" onClick={onUndo}>
-          undo
-        </button>
-      ) : null}
-    </span>
-  );
-}
-
 /** A thin hours-against-target bar. Under target is dim, never red. */
 export function Meter({ value, target }: { value: number; target: number }) {
   const w = target > 0 ? Math.min(1, value / target) : 0;

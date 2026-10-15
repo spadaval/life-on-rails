@@ -35,6 +35,88 @@ const lor = (args, input) =>
   execFileSync("node", ["cli/lor.mjs", ...args], { encoding: "utf8", input, env: { ...process.env, LOR_PORT: new URL(BASE).port, LOR_THREAD: "ui-check-thread" } });
 
 const flows = {
+  async tasks() {
+    psql(`DELETE FROM intent_link; DELETE FROM proposal; UPDATE time_block SET commitment_id = NULL; DELETE FROM commitment; DELETE FROM time_block_observation; DELETE FROM time_block; DELETE FROM attribution_rule; DELETE FROM intent WHERE NOT system; DELETE FROM entity_identifier; DELETE FROM entity;`);
+    const id = (s) => JSON.parse(s).id;
+    const goal = id(lor(["intent", "create", "--type", "goal", "--title", "Neha and the wedding"]));
+    const vendors = id(lor(["intent", "create", "--type", "project", "--title", "Wedding vendors", "--parent", goal]));
+    id(lor(["intent", "create", "--type", "project", "--title", "Life on Rails"]));
+    lor(["entity", "upsert", "--kind", "person", "--name", "Dad"]);
+    lor(["intent", "create", "--type", "task", "--title", "Shortlist ceremony venues", "--parent", vendors, "--due", new Date(Date.now() + 3 * 86400000).toISOString(), "--flag", "You fly out on the 23rd: a shortlist first means you can visit them."]);
+    lor(["intent", "create", "--type", "task", "--title", "Check the H-1B change of status took effect", "--due", new Date(Date.now() - 2 * 86400000).toISOString()]);
+    lor(["intent", "create", "--type", "task", "--title", "Choose the invitation vendor", "--parent", vendors]);
+    psql(`INSERT INTO intent (id, type, title, google_task_id, via) VALUES (gen_random_uuid(), 'task', 'Renew passport (from Google)', 'g-ui', 'job')`);
+
+    await page.setViewportSize({ width: 1500, height: 950 });
+    await page.goto(`${BASE}/tasks`);
+    await settle();
+    await shot("tasks-1-open");
+
+    // Quick add: parent, date and agent in one line, with a suggestion picked by keyboard.
+    const qa = page.getByRole("combobox", { name: "Add a task" });
+    await qa.click();
+    await qa.pressSequentially("Ask the florist about peonies #wedd");
+    await page.waitForSelector("#quick-add-choices");
+    await shot("tasks-2-suggest");
+    await qa.press("Enter");
+    await qa.pressSequentially("next fri @agent");
+    await shot("tasks-3-parsed");
+    const chips = await page.locator(".chip").allInnerTexts();
+    console.log("chips:", chips.join(" | "));
+    await qa.press("Enter");
+    await page.waitForSelector('li:has-text("Ask the florist about peonies")', { state: "attached" }).catch(() => {});
+    await settle();
+    const row = psql(`SELECT title, assignee, to_char(due_at AT TIME ZONE 'America/New_York', 'Dy') FROM intent WHERE title LIKE 'Ask the florist%'`);
+    console.log("created:", row.trim());
+    const linked = psql(`SELECT p.title FROM intent_link l JOIN intent p ON p.id = l.to_id JOIN intent t ON t.id = l.from_id WHERE t.title LIKE 'Ask the florist%'`);
+    console.log("counts toward:", linked.trim());
+
+    // Waiting on a person, and a dismissed date word.
+    await qa.pressSequentially("Get the deposit back @Dad tomorrow");
+    await qa.press("Enter");
+    await settle();
+    await qa.pressSequentially("Watch Friday Night Lights");
+    await page.locator('.chip:has-text("Due") button').click();
+    await qa.press("Enter");
+    await settle();
+    console.log("waiting:", psql(`SELECT title, status FROM intent WHERE title LIKE 'Get the deposit%'`).trim());
+    console.log("literal:", psql(`SELECT title, due_at IS NULL FROM intent WHERE title LIKE 'Watch%'`).trim());
+
+    // The global dialog from another screen.
+    await page.goto(`${BASE}/`);
+    await settle();
+    await page.keyboard.press("q");
+    await page.getByRole("dialog").waitFor();
+    await shot("tasks-4-dialog");
+    await page.keyboard.press("Escape");
+
+    // Filters, keyboard, the panel.
+    await page.goto(`${BASE}/tasks?for=${goal}`);
+    await settle();
+    await shot("tasks-5-filter-goal");
+    console.log("under the goal:", (await page.locator("li[id^=task-]").allInnerTexts()).map((t) => t.split("\n")[0]).join(" | "));
+    await page.goto(`${BASE}/tasks?group=for`);
+    await settle();
+    await page.keyboard.press("j");
+    await page.keyboard.press("Enter");
+    await settle();
+    await shot("tasks-6-panel");
+
+    // Bulk: select two with x, reschedule them.
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("x");
+    await page.keyboard.press("j");
+    await page.keyboard.press("x");
+    await shot("tasks-7-bulk");
+    await page.locator('label:has(select[aria-label="Due"])').last().locator("select").selectOption({ label: "Tomorrow" });
+    await settle();
+    console.log("notice:", await page.getByRole("status").innerText().catch(() => "(none)"));
+    await shot("tasks-8-after-bulk");
+
+    await page.goto(`${BASE}/tasks?view=agent`);
+    await settle();
+    await shot("tasks-9-agent");
+  },
   async people() {
     psql(`DELETE FROM page WHERE slug NOT IN ('agent', 'me', 'inbox'); DELETE FROM entity_identifier; DELETE FROM entity; DELETE FROM observation WHERE source = 'gmail';`);
     const priya = JSON.parse(lor(["entity", "upsert", "--kind", "person", "--name", "Priya Raman", "--email", "priya@example.com"]));

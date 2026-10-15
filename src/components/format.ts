@@ -24,3 +24,23 @@ export function duration(seconds: number): string {
 export function pct(x: number | null | undefined): string {
   return x === null || x === undefined ? "—" : `${Math.round(x * 100)}%`;
 }
+
+const ymdUtc = (ymd: string) => new Date(`${ymd}T12:00:00Z`);
+const dayDiff = (a: string, b: string) => Math.round((ymdUtc(a).getTime() - ymdUtc(b).getTime()) / 86_400_000);
+
+/** "15 Oct", for a local calendar date. */
+export const shortDate = (ymd: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "numeric", month: "short" }).format(ymdUtc(ymd));
+
+/** A due date the way a list reads it: Today, Tomorrow, a weekday within the week, else the date. */
+export function dueLabel(ymd: string, today: string): string {
+  const d = dayDiff(ymd, today);
+  if (d === 0) return "Today";
+  if (d === 1) return "Tomorrow";
+  if (d === -1) return "Yesterday";
+  if (d > 1 && d < 7) return new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "short" }).format(ymdUtc(ymd));
+  return shortDate(ymd);
+}
+
+/** "Fri 16 Oct". */
+export const longDate = (ymd: string) =>
+  new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(ymdUtc(ymd));

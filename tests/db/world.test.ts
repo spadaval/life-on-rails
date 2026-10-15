@@ -5,7 +5,7 @@ import { Refused } from "../../src/server/errors.js";
 import { getGraph, getIntentDetail, taskContextMarkdown } from "../../src/server/graph.js";
 import {
   archiveIntent, assignTask, commitHabit, commitMetric, completeTask, createIntent, flagTask, linkIntents, needsOwner,
-  reopenTask, resetVisibility, takeNotifications, undoCommitment, undoIntent, unflagTask, updateIntent,
+  reopenTask, resetVisibility, takeNotifications, undoCommitment, deleteIntent, unflagTask, updateIntent, wakeSnoozed,
 } from "../../src/server/intents.js";
 import { getContext } from "../../src/server/memory/context.js";
 import { createPage } from "../../src/server/memory/pages.js";
@@ -80,13 +80,33 @@ dbDescribe("intents", () => {
     expect((err as Refused).code).toBe("google-task");
   });
 
+  it("delete is the same for anyone's intents: gone, or archived with history; Google tasks are deleted in Google", async () => {
+    const mine = await createIntent(sql, { type: "task", title: "Mine", assignee: "agent" }, ui);
+    expect(mine.assignee).toBe("agent");
+    expect(await deleteIntent(sql, mine.id)).toEqual({ removed: "deleted" });
+    await sql`INSERT INTO intent (id, type, title, google_task_id, via) VALUES (gen_random_uuid(), 'task', 'From Google', 'g-1', 'job')`;
+    const [g] = await sql<{ id: string }[]>`SELECT id FROM intent WHERE google_task_id = 'g-1'`;
+    const err = await deleteIntent(sql, g!.id).catch((e: unknown) => e);
+    expect((err as Refused).code).toBe("google-task");
+  });
+
+  it("Later can carry a date it comes back on, and leaving Later clears it", async () => {
+    const t = await createIntent(sql, { type: "task", title: "Not now" }, ui);
+    const monday = new Date(Date.now() - 60_000);
+    expect((await updateIntent(sql, t.id, { status: "later", snoozedUntil: monday })).snoozed_until).toBe(monday.toISOString());
+    expect((await updateIntent(sql, t.id, { title: "Not now, really" })).snoozed_until).toBe(monday.toISOString());
+    expect(await wakeSnoozed(sql)).toBe(1);
+    expect((await updateIntent(sql, t.id, { status: "later", snoozedUntil: monday })).status).toBe("later");
+    expect((await updateIntent(sql, t.id, { status: "active" })).snoozed_until).toBeNull();
+  });
+
   it("undo removes what the agent wrote: an intent with no history is deleted, a done mark is reversed", async () => {
     const stray = await createIntent(sql, { type: "task", title: "Agent's idea" }, agent);
-    expect(await undoIntent(sql, stray.id)).toEqual({ removed: "deleted" });
+    expect(await deleteIntent(sql, stray.id)).toEqual({ removed: "deleted" });
 
     const used = await createIntent(sql, { type: "habit", title: "Stretch", frequency: 1 }, agent);
     const { id: cid } = await commitHabit(sql, used.id, agent);
-    expect(await undoIntent(sql, used.id)).toEqual({ removed: "archived" });
+    expect(await deleteIntent(sql, used.id)).toEqual({ removed: "archived" });
 
     const task = await createIntent(sql, { type: "task", title: "T" }, ui);
     await completeTask(sql, task.id, agent);

@@ -114,6 +114,8 @@ export interface IntentInput {
   metricMax?: number | null;
   estimateHours?: number | null;
   dueAt?: Date | null;
+  /** With status `later`: when it comes back by itself. */
+  snoozedUntil?: Date | null;
   waitingOnEntityId?: string | null;
   assignee?: "owner" | "agent";
   threadRef?: string | null;
@@ -179,6 +181,7 @@ export async function updateIntent(db: Sql, id: string, patch: IntentPatch): Pro
       metric_max = ${has("metricMax") ? (patch.metricMax ?? null) : current.metric_max},
       estimate_hours = ${has("estimateHours") ? (patch.estimateHours ?? null) : current.estimate_hours},
       due_at = ${has("dueAt") ? (patch.dueAt ?? null) : current.due_at ? new Date(current.due_at) : null},
+      snoozed_until = ${status !== "later" ? null : has("snoozedUntil") ? (patch.snoozedUntil ?? null) : current.snoozed_until ? new Date(current.snoozed_until) : null},
       waiting_on_entity_id = ${waitingOn},
       waiting_since = ${status === "waiting" ? (becameWaiting ? new Date() : current.waiting_since ? new Date(current.waiting_since) : new Date()) : null},
       assignee = ${patch.assignee ?? current.assignee},
@@ -371,12 +374,17 @@ export async function commitMetric(db: Sql, id: string, value: number, opts: { d
   return { id: cid };
 }
 
-// ---- undo, for what the agent wrote ----
+// ---- delete ----
 
-/** Remove an intent the agent created. With history it is archived instead. */
-export async function undoIntent(db: Sql, id: string): Promise<{ removed: "deleted" | "archived" }> {
+/**
+ * Delete an intent, whoever wrote it. With history (time or commitments on it)
+ * it is archived instead, because history cannot vanish. A Google task is
+ * deleted in Google: the next poll would bring it back.
+ */
+export async function deleteIntent(db: Sql, id: string): Promise<{ removed: "deleted" | "archived" }> {
   const current = await getIntent(db, id);
   if (current.system) throw new Refused("system-intent", "system intents cannot be removed");
+  if (current.google_task_id) throw new Refused("google-task", `“${current.title}” lives in Google Tasks: delete it there`);
   const history = await db<{ n: number }[]>`
     SELECT (SELECT count(*) FROM commitment WHERE intent_id = ${id})::int
          + (SELECT count(*) FROM time_block WHERE intent_id = ${id})::int AS n`;

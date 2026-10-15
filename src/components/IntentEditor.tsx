@@ -2,7 +2,7 @@
 // type allows. Shared by Tasks and Graph.
 import { type ReactNode, useState } from "react";
 import {
-  archiveIntentFn, assignFn, explainFn, type getGraphFn, linkFn, metricFn, saveIntentFn, taskDoneFn, unlinkFn,
+  assignFn, deleteIntentFn, explainFn, type getGraphFn, linkFn, metricFn, saveIntentFn, taskDoneFn, unlinkFn,
 } from "../server/functions/graph.js";
 
 type GraphData = Awaited<ReturnType<typeof getGraphFn>>;
@@ -186,8 +186,13 @@ export function IntentEditor({ node: n, nodes, entities, act }: { node: GraphNod
             Explain score
           </button>
         )}
-        <button className="btn btn-danger ml-auto" onClick={() => act(() => archiveIntentFn({ data: { id: n.id } }), `Archived “${n.title}”.`)}>
-          Archive
+        <button
+          className="btn btn-danger ml-auto"
+          disabled={n.google_task_id !== null}
+          title={n.google_task_id ? "Lives in Google Tasks: delete it there" : "Deleted, or archived if time or check-ins were recorded against it"}
+          onClick={() => confirm(`Delete “${n.title}”?`) && act(() => deleteIntentFn({ data: { id: n.id } }), `Deleted “${n.title}”.`)}
+        >
+          Delete
         </button>
       </div>
       {explain ? <pre className="overflow-x-auto border border-line bg-well p-3 text-xs text-mute">{explain}</pre> : null}

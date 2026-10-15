@@ -3,10 +3,10 @@ import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { z } from "zod";
 import { type GraphNode, IntentEditor, TaskCheck, numOrNull, parentChoices } from "../components/IntentEditor.js";
 import { type MapFilter, StarMap } from "../components/StarMap.js";
-import { AgentTag, Empty, Meter, Notice, PageHead, Panel, Star } from "../components/ui.js";
-import { getGraphFn, habitFn, saveIntentFn, taskDoneFn, undoIntentFn } from "../server/functions/graph.js";
+import { Empty, Meter, Notice, PageHead, Panel, Star } from "../components/ui.js";
+import { getGraphFn, habitFn, saveIntentFn, taskDoneFn } from "../server/functions/graph.js";
 import { GlobalActions } from "./__root.js";
-import { shortDate } from "./index.js";
+import { shortDate } from "../components/format.js";
 
 const Search = z.object({
   view: z.enum(["map", "outline"]).optional(),
@@ -162,7 +162,7 @@ function SystemInfo({ node: n, nodes, entities, act, onSelect, onClose }: {
     <Panel title={n.title} aside={<button className="btn btn-sm" onClick={onClose}>Close</button>}>
       {n.via === "agent" ? (
         <p className="mt-1.5">
-          <AgentTag onUndo={() => act(() => undoIntentFn({ data: { id: n.id } }), `Removed “${n.title}”.`).then(onClose)} />
+          <span className="tag-agent">added by the agent</span>
         </p>
       ) : null}
       <dl className="mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[14px]">

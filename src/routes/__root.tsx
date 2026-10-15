@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { Link, Outlet, createRootRoute, HeadContent, Scripts, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { duration } from "../components/format.js";
+import { Key, QuickAddDialog, openQuickAdd } from "../components/QuickAdd.js";
 import { getShellFn } from "../server/functions/shell.js";
 import { timerFn } from "../server/functions/today.js";
 import appCss from "../styles.css?url";
@@ -105,6 +106,7 @@ function RootComponent() {
         <main className="min-w-0 px-4 pb-10 md:px-[30px]">
           <Outlet />
         </main>
+        <QuickAddDialog />
       </div>
     </RootDocument>
   );
@@ -142,6 +144,9 @@ export function GlobalActions() {
 
   return (
     <>
+      <button className="btn" onClick={openQuickAdd} title="Add a task (q)">
+        Add task <Key>q</Key>
+      </button>
       <form
         className="hidden lg:block"
         onSubmit={(e) => {

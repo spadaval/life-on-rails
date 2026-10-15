@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import { DayArc } from "../components/DayArc.js";
-import { duration, pct } from "../components/format.js";
+import { duration, pct, shortDate } from "../components/format.js";
 import { TaskCheck } from "../components/IntentEditor.js";
 import { IntentPicker, type PickIntent } from "../components/IntentPicker.js";
 import { Empty, Meter, Notice, PageHead, Panel, Star } from "../components/ui.js";
@@ -505,8 +505,6 @@ function Goals({ goals }: { goals: Data["goals"] }) {
 }
 
 const round1 = (n: number) => String(Math.round(n * 10) / 10);
-export const shortDate = (ymd: string) =>
-  new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "numeric", month: "short" }).format(new Date(`${ymd}T12:00:00Z`));
 
 function BlockPanel({ block: b, data, busy, act, clock, onClose }: {
   block: Block; data: Data; busy: boolean; act: Act; clock: (iso: string) => string; onClose: () => void;

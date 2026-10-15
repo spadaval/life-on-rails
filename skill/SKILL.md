@@ -195,8 +195,8 @@ lor places                                     # named places, and unnamed ones 
 lor place add "Office" --at 35.8553,-78.8752 --intent <goal_id>
 ```
 
-You may create and link tasks, goals, and projects freely; they are badged as yours and
-Sumeet can undo them. You may propose what a block of his time was.
+You may create and link tasks, goals, and projects freely; they are marked as yours and
+Sumeet can delete them. You may propose what a block of his time was.
 
 **What Sumeet did is his to confirm.** Only when he asks you to in this thread:
 
