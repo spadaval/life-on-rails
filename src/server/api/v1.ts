@@ -15,7 +15,7 @@ import { errorMessage, log } from "../log.js";
 import { getGraph, getIntentDetail, renderGraph, taskContextMarkdown } from "../graph.js";
 import {
   INTENT_TYPES, LINK_KINDS, assignTask, commitHabit, commitMetric, completeTask, createIntent, flagTask, linkIntents,
-  unlinkEnds,
+  unlinkEnds, updateIntent,
 } from "../intents.js";
 import { agentLog } from "../memory/agentLog.js";
 import { getChanges } from "../memory/changes.js";
@@ -386,6 +386,12 @@ route("POST", /^\/intents\/([0-9a-f-]{36})\/assign$/, async ({ params, body }) =
 route("POST", /^\/intents\/([0-9a-f-]{36})\/flag$/, async ({ params, body }) => {
   const d = z.object({ note: z.string(), thread: Thread }).parse(body);
   return flagTask(sql, params[0]!, d.note);
+});
+
+// Only when Sumeet asks in the thread: pause, shelve, archive, or bring back a goal, project, or task.
+route("POST", /^\/intents\/([0-9a-f-]{36})\/status$/, async ({ params, body }) => {
+  const d = z.object({ status: z.enum(["active", "paused", "later", "archived"]), thread: Thread }).parse(body);
+  return updateIntent(sql, params[0]!, { status: d.status });
 });
 
 route("POST", /^\/intents\/([0-9a-f-]{36})\/done$/, async ({ params, body }) => {

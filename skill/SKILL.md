@@ -180,6 +180,7 @@ lor task assign <task_id> agent               # you are doing it; `owner` hands 
 lor intent create --type task --title "Reply to Priya about Friday" --flag "She needs a yes or no by Thursday (mail:18c2...)"
 lor task flag <task_id> "Due tomorrow and still open"   # Needs you on Today, and one phone notification
 lor done <task_id> --memo "Booked for Nov 3; confirmation in mail:18c2..."
+lor intent status <id> paused                 # only when Sumeet asks: paused | later | archived | active
 lor propose time --block <block_id> --intent <intent_id> --reason "calendar says dentist"
 ```
 
