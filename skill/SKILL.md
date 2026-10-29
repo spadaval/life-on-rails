@@ -33,21 +33,17 @@ What changes by thread is how much you load up front:
 - **A worker thread on one LoR task:** run `lor context --task <id> --md` instead (see
   below). It gives that task's context, not his whole life.
 - **Any other thread** (coding, research, a general question): load nothing up front, and
-  search LoR the moment you need something about him. Writing still needs the thread id
-  (Start, step 2).
+  search LoR the moment you need something about him. Writes work here too.
 
 ## Start
 
 1. Run `lor context --md`. It prints the `agent` page (who you are and the one rule), the
    `me` page (what is durably true about Sumeet), today, and what changed recently. Follow
    the `agent` page.
-2. If `LOR_THREAD` is already set, you are an unattended run and it is your id; skip this
-   step. Otherwise find your T3 thread id once: call T3's `t3_thread_configuration` tool with no arguments
-   and take `threadId` exactly as returned (it may look like `mcp:8fec4b1f-...` or be a bare
-   UUID; both are right). The tool may be listed as `mcp__t3-code__t3_thread_configuration`
-   and may need loading through tool search first. Every write must carry that id: either
-   pass `--thread '<threadId>'`, or set `export LOR_THREAD='<threadId>'` in each shell
-   command that writes. LoR refuses writes without one. Never invent an id.
+2. Writes carry your thread id, and `lor` finds it on its own: `LOR_THREAD` in an
+   unattended run, `T3CODE_THREAD_ID` in a T3 thread. You only pass `--thread` if neither
+   is set (then ask Sumeet; never invent an id). To cite your thread, `echo
+   $T3CODE_THREAD_ID`.
 
 Dates are Sumeet's local dates. The first line of `lor context` gives today's date and the
 time zone; use that date, not the machine's UTC clock.
@@ -114,7 +110,7 @@ Priya moved to Austin in March [^move] and prefers calls to email [^calls].
 [^calls]: thread:5534374d-adbc-4a28-9872-235fe9e18571 @2026-10-13
 ```
 
-The part after `thread:` is your thread id as T3 gave it, prefix and all.
+The part after `thread:` is your thread id (`$T3CODE_THREAD_ID`, or `LOR_THREAD` in an unattended run).
 
 Targets are `mail:<gmail-id>`, `obs:<observation-id>`, `thread:<t3-thread-id>`,
 `url:<https://...>`. Cite sources, never another page. Things Sumeet tells you in the

@@ -354,7 +354,7 @@ lor metric <intent_id> <value> [--date <date>]
 - **`lor context`** returns the `in_digest` pages, today's plan and running block, starving goals, the agent's open tasks, waiting tasks, pending proposals, and the titles of recently changed pages. Keep it short; add a size budget when a digest is actually too long. `--task <id>` returns the `agent` page, the task, its parent and linked intents, and the pages for the entities and projects it touches.
 - **`lor search`** runs `websearch_to_tsquery` against each requested table's `search` column plus trigram matches on entity names and page titles, merges by rank with a recency boost, and returns ids and snippets, never full bodies.
 - **`lor changes`** keys on arrival time, so something recorded late is not missed. The caller remembers its own last run time.
-- Every write takes `--thread <id>` (or `LOR_THREAD` in the environment). A thread learns its own id by calling T3's `t3_thread_configuration` tool with no arguments; the runner sets `LOR_THREAD=claude:<session id>` for headless runs.
+- Every write takes `--thread <id>` (or `LOR_THREAD` in the environment). In a T3 thread the CLI falls back to `T3CODE_THREAD_ID`, which T3 sets in every thread's shell; the runner sets `LOR_THREAD=claude:<session id>` for headless runs.
 - Verbs are added with the code behind them.
 
 **`/api/v1`** is one server route with one endpoint per verb. Handlers call the same functions as the UI, so each write has one implementation. Auth is a loopback source address and `Authorization: Bearer $LOR_AGENT_TOKEN`. Requests are stamped `via=agent`.

@@ -65,7 +65,7 @@ the owner's evidence (only when the owner asks in the current thread)
   lor metric <intent_id> <value> [--date <date>]
 
 A body comes from stdin, or from --file <path>.
---thread may also be set once as LOR_THREAD in the environment.
+--thread defaults to LOR_THREAD, then to T3CODE_THREAD_ID (set in every T3 thread).
 `;
 
 const BOOLEAN_FLAGS = new Set(["md", "history", "append", "dry-run", "all", "starving", "waiting", "help", "overdue", "birthdays", "groups"]);
@@ -148,7 +148,7 @@ const list = (value) => (typeof value === "string" ? value.split(",").map((s) =>
 /** Turn a command line into one HTTP call. */
 function plan(positionals, flags) {
   const [a, b, c, d] = positionals;
-  const thread = flags.thread ?? process.env.LOR_THREAD;
+  const thread = flags.thread ?? process.env.LOR_THREAD ?? process.env.T3CODE_THREAD_ID;
   const write = (body) => ({ ...body, thread });
   const q = (params) => {
     const sp = new URLSearchParams();
@@ -379,7 +379,7 @@ async function main() {
   }
   const call = plan(positionals, flags);
   if (call.method !== "GET" && !call.body?.thread) {
-    throw new Usage("writes need --thread <your T3 thread id> (or LOR_THREAD)");
+    throw new Usage("writes need --thread <your T3 thread id> (or LOR_THREAD / T3CODE_THREAD_ID)");
   }
   const config = loadConfig();
   const base = config.url || `http://127.0.0.1:${config.port}`;
