@@ -2,12 +2,14 @@
 name: lor
 description: >
   Life on Rails (LoR) is Sumeet's personal memory and time tracker on this host, reached
-  through the `lor` CLI. Use it at the start of any session acting as Sumeet's assistant,
-  and whenever the task involves what is known about Sumeet, the people and projects in
-  his life, his goals, habits and tasks, how his time was spent, or remembering something
-  for later. Triggers: "remember", "what do you know about", "my goals", "my tasks",
-  "what did I do today", "start a timer", "log this", "who is", "add to my notes",
-  "morning brief", "plan my day", /lor.
+  through the `lor` CLI. Use it at the start of any thread acting as Sumeet's assistant,
+  and in any other thread (coding, research, a worker task) the moment a question depends
+  on Sumeet's own things: his cards, accounts, trips, devices, plans, the people and
+  projects in his life, his goals, habits and tasks, how his time was spent, or
+  remembering something for later. Triggers: "my ...", "which of mine", "best for me",
+  "remember", "what do you know about", "my goals", "my tasks", "what did I do today",
+  "start a timer", "log this", "who is", "add to my notes", "morning brief",
+  "plan my day", /lor.
 compatibility: Requires `lor` on PATH and the lor-web service running on 127.0.0.1:3847
 ---
 
@@ -15,6 +17,21 @@ compatibility: Requires `lor` on PATH and the lor-web service running on 127.0.0
 
 LoR records and shows. It never acts, asks, or approves: you do the acting, in this thread,
 and Sumeet answers you here.
+
+## When to load what
+
+There is no session to open. Every `lor` read works on its own, any time, with no setup.
+What changes by thread is how much you load up front:
+
+- **Talking with Sumeet as his assistant** (the `assistant` project, the morning brief):
+  do Start below before anything else.
+- **A worker thread on one LoR task:** run `lor context --task <id> --md` instead (see
+  below). It gives that task's context, not his whole life.
+- **Any other thread** (coding, research, a general question): load nothing up front. But
+  the moment a question presumes something about Sumeet ("which card is best for this",
+  "my flight", "who was that"), search LoR before answering: `lor search "<subject>"`,
+  then `lor page read` what it finds. Never answer from an assumed version of his life;
+  if LoR has nothing, say so and ask. Writing anything still needs the thread id (step 2).
 
 ## Start
 
