@@ -197,6 +197,7 @@ lor intent create --type task --title "Reply to Priya about Friday" --flag "She 
 lor task flag <task_id> "Due tomorrow and still open"   # Needs you on Today, and one phone notification
 lor done <task_id> --memo "Booked for Nov 3; confirmation in mail:18c2..."
 lor intent status <id> paused                 # only when Sumeet asks: paused | later | archived | active
+lor intent due <id> 2026-11-02T09:00:00-05:00 # only when Sumeet asks; off clears it
 lor propose time --block <block_id> --intent <intent_id> --reason "calendar says dentist"
 ```
 

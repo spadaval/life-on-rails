@@ -49,6 +49,7 @@ write (free for the agent; every write needs --thread <your T3 thread id>)
   lor link --from <id> --to <id> --kind measures|blocks|derived_from [--weight N]
   lor unlink --from <id> --to <id> --kind measures|blocks|derived_from
   lor intent status <id> active|paused|later|archived   only when Sumeet asks
+  lor intent due <id> <t>|off             only when Sumeet asks
   lor task assign <id> owner|agent
   lor task flag <id> "<why it needs Sumeet>"   Needs you on Today, and one phone notification
   lor done <task_id> [--memo "..."]
@@ -293,6 +294,10 @@ function plan(positionals, flags) {
           return { method: "GET", path: `/intents/${need(c, "<id>")}` };
         case "status":
           return { method: "POST", path: `/intents/${need(c, "<id>")}/status`, body: write({ status: need(d, "active|paused|later|archived") }) };
+        case "due": {
+          const t = need(d, "<t>|off");
+          return { method: "POST", path: `/intents/${need(c, "<id>")}/due`, body: write({ due_at: t === "off" ? null : t }) };
+        }
         case "create":
           return {
             method: "POST",

@@ -393,6 +393,11 @@ route("POST", /^\/intents\/([0-9a-f-]{36})\/status$/, async ({ params, body }) =
   const d = z.object({ status: z.enum(["active", "paused", "later", "archived"]), thread: Thread }).parse(body);
   return updateIntent(sql, params[0]!, { status: d.status });
 });
+// Only when Sumeet asks in the thread: move a task's due time, or clear it with "off".
+route("POST", /^\/intents\/([0-9a-f-]{36})\/due$/, async ({ params, body }) => {
+  const d = z.object({ due_at: z.string().nullable(), thread: Thread }).parse(body);
+  return updateIntent(sql, params[0]!, { dueAt: parseTime(d.due_at, "<t>") });
+});
 
 route("POST", /^\/intents\/([0-9a-f-]{36})\/done$/, async ({ params, body }) => {
   const d = z.object({ memo: z.string().nullish(), thread: Thread }).parse(body);
