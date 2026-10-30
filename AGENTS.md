@@ -1,16 +1,12 @@
 # Life on Rails v2 — agent notes
 
-Single-user self-hosted personal OS. The design and the state of the build are in `docs/v2-product-engineering-spec.md`; read it first.
+Single-user self-hosted personal OS. What LoR is, what it is not, and how it sits next to T3 Code and the agent are in `docs/v2-product-engineering-spec.md` ("Who is who", "Settled choices"), with the state of the build; read it first. A change that crosses one of those decisions changes the spec too.
 
 ## Rules
 
 - Personal project, one box, no users: no PR plan, review gate, or staged rollout. Work goes to `main` when it works.
 - Prefer the simplest shape: no fallbacks, watchdogs, retention, or permission layers until their absence is felt.
 - Add a table when the code that uses it is written.
-- T3 Code is where the owner talks to the agent. Unattended runs (nightly, mail) are headless Claude Code started by systemd timers from `runner/`, which is not part of LoR. LoR is the agent's memory, the owner's dashboard, and the senses; it never calls T3. Do not add chat, an approval queue, or a model runtime to LoR. Its one notification is the phone app's "Needs you": tasks the agent flagged, each notified once.
-- A `proposal` is only LoR suggesting what a block of the owner's time was.
-- LoR does not mirror the mailbox: it records that a message arrived (headers, never a body) and queues it until the mail run takes it (`lor mail pending` / `lor mail done`).
-- LoR talks to Google through its own read-only OAuth login and never runs `gog`.
 - Never import from `archive/2023/` (frozen 2023 draft).
 - `pnpm dev` is UI-only. The scheduler starts only from `scripts/serve.mjs`.
 - Scoring reads **commitments only**, never observations. `time_block.committed` is denormalized; truth = `commitment`.
