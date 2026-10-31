@@ -12,6 +12,7 @@ import { uuidv7 } from "../shared/ids.js";
 const SEED_PAGES = [
   { slug: "agent", title: "The agent", file: "agent.md", inDigest: true },
   { slug: "me", title: "Sumeet", file: "me.md", inDigest: true },
+  { slug: "messaging-rules", title: "When to message Sumeet", file: "messaging-rules.md", inDigest: true },
   { slug: "inbox", title: "Inbox", file: "inbox.md", inDigest: false },
 ];
 

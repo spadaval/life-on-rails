@@ -1,6 +1,8 @@
 // The job list. Each build step adds its jobs here.
 import { sql } from "../../db/client.js";
 import { applyAutoRules, fillWindow } from "../attribution/blocks.js";
+import { channelConfigured, lastChannelPoll, pendingFlags, sendFlags } from "../channel/channel.js";
+import { whatsappChannel } from "../channel/client.js";
 import { lockBlocks, syncFill } from "../attribution/fill.js";
 import { env } from "../env.js";
 import { syncCalendars } from "../google/calendarSync.js";
@@ -27,7 +29,27 @@ export function mailConfigured(): boolean {
   return hasScope(SCOPES.gmail);
 }
 
+/** The channel long-polls on its own; these report on it and send what the agent flags. */
+const CHANNEL_JOBS: Job[] = [
+  {
+    name: "channel",
+    everyS: 300,
+    run: async () => {
+      const age = Date.now() - lastChannelPoll();
+      if (age > 120_000) throw new Error("no answer from WhatsApp for over two minutes");
+      return { last_poll_s: Math.round(age / 1000) };
+    },
+  },
+  {
+    name: "channel_flags",
+    everyS: 30,
+    shouldRun: async () => (await pendingFlags(sql)).length > 0,
+    run: async () => sendFlags(sql, whatsappChannel),
+  },
+];
+
 export const JOBS: Job[] = [
+  ...(channelConfigured() ? CHANNEL_JOBS : []),
   {
     name: "heartbeat",
     everyS: 300,

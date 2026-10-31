@@ -43,6 +43,8 @@ write (free for the agent; every write needs --thread <your T3 thread id>)
   lor entity merge <keep> <merge-in>       fold the second into the first (identifiers, messages, page, tasks); the second is deleted
   lor log "<text>" [--intent <id>]
   lor mail done <observation_id>...       take handled mail off the queue
+  lor message "<text>" [--attach <file>] [--intent <id>]   reaches Sumeet on WhatsApp; - reads the text from stdin
+  lor message history [--since <t|24h|7d>] [--search "..."] [--around <id>] [--limit N]   what was said, newest last
   lor intent create --type goal|project|habit|task|metric --title "..." [--parent <id>]
         [--due <t>] [--waiting-on <entity_id>] [--assign agent] [--weight N] [--hours N] [--description "..."]
         [--flag "<why it needs Sumeet>"]
@@ -50,8 +52,12 @@ write (free for the agent; every write needs --thread <your T3 thread id>)
   lor unlink --from <id> --to <id> --kind measures|blocks|derived_from
   lor intent status <id> active|paused|later|archived   only when Sumeet asks
   lor intent due <id> <t>|off             only when Sumeet asks
-  lor task assign <id> owner|agent
-  lor task flag <id> "<why it needs Sumeet>"   Needs you on Today, and one phone notification
+  lor task assign <id> owner|agent        you are doing it now, or hand it back
+  lor task queue <id>                     for the agent to do later on its own: the work run starts a thread on it
+  lor work next                           the oldest queued task
+  lor work claim <id>                     this thread has started it
+  lor task flag <id> "<why it needs Sumeet>"   Needs you on Today, and one WhatsApp message
+  lor task unflag <id>                    off Needs you; the task stays
   lor done <task_id> [--memo "..."]
   lor propose time --block <id> --intent <id> [--reason "..."]
   lor place add "<name>" --at <lat>,<lon> [--radius <m>] [--intent <id>]
@@ -185,6 +191,22 @@ function plan(positionals, flags) {
       if (b === "add") return { method: "POST", path: "/rules", body: write({ app: flags.app, title: flags.title, place: flags.place, intent_id: need(flags.intent, "--intent") }) };
       if (b === "delete") return { method: "DELETE", path: `/rules/${need(c, "<rule_id>")}`, body: write({}) };
       break;
+    case "message":
+      if (b === "history") {
+        return {
+          method: "GET",
+          path: `/messages${q({ since: flags.since ? sinceTime(flags.since) : undefined, q: flags.search, around: flags.around, limit: int(flags.limit, "limit") })}`,
+        };
+      }
+      return {
+        method: "POST",
+        path: "/messages",
+        body: write({
+          text: b === "-" ? readBody(flags) : need(positionals.slice(1).join(" "), '"<text>"'),
+          attach: flags.attach ? path.resolve(flags.attach) : undefined,
+          intent_id: flags.intent,
+        }),
+      };
     case "mail":
       if (b === "pending") return { method: "GET", path: "/mail/pending" };
       if (b === "done") {
@@ -332,7 +354,13 @@ function plan(positionals, flags) {
         path: "/links/remove",
         body: write({ from_id: need(flags.from, "--from"), to_id: need(flags.to, "--to"), kind: need(flags.kind, "--kind") }),
       };
+    case "work":
+      if (b === "next") return { method: "GET", path: "/work/next" };
+      if (b === "claim") return { method: "POST", path: `/intents/${need(c, "<id>")}/claim`, body: write({}) };
+      break;
     case "task":
+      if (b === "unflag") return { method: "POST", path: `/intents/${need(c, "<id>")}/unflag`, body: write({}) };
+      if (b === "queue") return { method: "POST", path: `/intents/${need(c, "<id>")}/queue`, body: write({}) };
       if (b === "assign") return { method: "POST", path: `/intents/${need(c, "<id>")}/assign`, body: write({ assignee: need(d, "owner|agent") }) };
       if (b === "flag") return { method: "POST", path: `/intents/${need(c, "<id>")}/flag`, body: write({ note: need(positionals.slice(3).join(" "), '"<why it needs Sumeet>"') }) };
       break;

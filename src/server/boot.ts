@@ -3,6 +3,7 @@
 // so a dev server can never own the clock.
 import { sql } from "../db/client.js";
 import { ensureSeed } from "../db/seed.js";
+import { channelConfigured, runChannelLoop } from "./channel/channel.js";
 import { JOBS } from "./jobs/registry.js";
 import { registerJobs, startScheduler } from "./jobs/scheduler.js";
 import { errorMessage, log } from "./log.js";
@@ -22,6 +23,7 @@ async function start(): Promise<void> {
   }
   registerJobs(JOBS);
   await startScheduler();
+  if (channelConfigured()) void runChannelLoop(sql);
 }
 
 export function boot(): void {

@@ -17,7 +17,7 @@ When he opens the dashboard he is doing one of four jobs:
 1. **See today:** what is happening now and next, the remaining waking day as a quantity, and what the agent flagged as needing him.
 2. **Manage tasks and goals:** create, complete, un-complete, snooze, and reorganize tasks, habits, projects, and goals; see which goals are starving.
 3. **Browse memory:** read and edit the wiki pages the agent keeps, the people in his life, and a day's timeline of everything the sensors saw.
-4. **Review and confirm time:** the evening confirm, recategorizing blocks, hours against goals over the week.
+4. **Fix time when he cares to:** the agent labels the day; he relabels or undoes a block, and sees hours against goals over the week.
 
 ## Product Purpose
 
@@ -31,10 +31,10 @@ It is not a to-do app or a time tracker with a dashboard: it is one person's who
 
 ## Operating Context
 
-- Talking to the agent happens in T3 Code, never in LoR. LoR has no chat, no approval queue, and runs no model.
-- Unattended agent runs (nightly, mail) reach the owner only by flagging a task, which shows under "Needs you" and notifies the phone once.
+- Talking to the agent happens on WhatsApp and in T3 Code. LoR carries the WhatsApp channel and has an Ask box, but no chat screen and no approval queue, and it holds no agent loop.
+- Unattended agent runs reach the owner with a WhatsApp message, or by flagging a task, which shows under "Needs you" and is sent once.
 - Data arrives from Google (calendar, tasks, contacts, mail headers), the phone app (app use, calls, texts, WhatsApp, health, location), and the agent.
-- The evening confirm is the only daily tax.
+- There is no daily tax: nobody is asked to account for his time.
 
 ## Capabilities and Constraints
 

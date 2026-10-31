@@ -86,6 +86,8 @@ export const intent = pgTable(
     flaggedAt: ts("flagged_at"),
     flagNote: text("flag_note"),
     notifiedAt: ts("notified_at"),
+    // Waiting for the work run to start a thread on it; cleared when one does.
+    queuedAt: ts("queued_at"),
     via: text("via").notNull().default("ui"), // ui | agent | job: who created it
     sourceRef: text("source_ref"),
     meta: jsonb("meta").notNull().default({}),

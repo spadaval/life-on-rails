@@ -14,7 +14,7 @@ import { BadInput, NotFound, Refused } from "../errors.js";
 import { errorMessage, log } from "../log.js";
 import { getGraph, getIntentDetail, renderGraph, taskContextMarkdown } from "../graph.js";
 import {
-  INTENT_TYPES, LINK_KINDS, assignTask, commitHabit, commitMetric, completeTask, createIntent, flagTask, linkIntents,
+  INTENT_TYPES, LINK_KINDS, getIntent, unflagTask, assignTask, claimTask, nextQueuedTask, queueTask, commitHabit, commitMetric, completeTask, createIntent, flagTask, linkIntents,
   unlinkEnds, updateIntent,
 } from "../intents.js";
 import { agentLog } from "../memory/agentLog.js";
@@ -30,6 +30,8 @@ import { SEARCH_KINDS, search } from "../memory/search.js";
 import "../memory/worldSections.js";
 import { explainScore, recomputeScores } from "../scoring/recompute.js";
 import { markMailHandled, pendingMail } from "../mail/wake.js";
+import { messageHistory, sendMessage } from "../channel/channel.js";
+import { whatsappChannel } from "../channel/client.js";
 import { addPlace, addRule, deleteRule, listApps, listPlaces, listRules } from "../places.js";
 import { getStatus } from "../status.js";
 import { getToday, renderToday } from "../today.js";
@@ -299,6 +301,50 @@ route("GET", /^\/mail\/pending$/, async () => pendingMail(sql, { quietS: env.LOR
 const MailDone = z.object({ observation_ids: z.array(Uuid).min(1), thread: Thread });
 
 route("POST", /^\/mail\/done$/, async ({ body }) => markMailHandled(sql, MailDone.parse(body).observation_ids));
+
+route("POST", /^\/intents\/([0-9a-f-]{36})\/unflag$/, async ({ params, body }) => {
+  z.object({ thread: Thread }).parse(body);
+  await unflagTask(sql, params[0]!);
+  return getIntent(sql, params[0]!);
+});
+
+// ---- the agent's own work ----
+
+route("GET", /^\/work\/next$/, async () => ({ task: await nextQueuedTask(sql) }));
+route("POST", /^\/intents\/([0-9a-f-]{36})\/queue$/, async ({ params, body }) => {
+  z.object({ thread: Thread }).parse(body);
+  return queueTask(sql, params[0]!);
+});
+route("POST", /^\/intents\/([0-9a-f-]{36})\/claim$/, async ({ params, body }) =>
+  claimTask(sql, params[0]!, z.object({ thread: Thread }).parse(body).thread),
+);
+
+// ---- the channel ----
+
+const MessageSend = z.object({
+  text: z.string().trim().min(1),
+  attach: z.string().min(1).nullish(),
+  intent_id: Uuid.nullish(),
+  thread: Thread,
+});
+
+route("POST", /^\/messages$/, async ({ body }) => {
+  const d = MessageSend.parse(body);
+  return sendMessage(sql, whatsappChannel, { text: d.text, thread: d.thread, intentId: d.intent_id, attach: d.attach });
+});
+
+route("GET", /^\/messages$/, async ({ query }) => {
+  const around = query.get("around");
+  const since = query.get("since");
+  return {
+    results: await messageHistory(sql, {
+      since: since ? new Date(since) : null,
+      search: query.get("q"),
+      around: around ? Uuid.parse(around) : null,
+      limit: query.get("limit") ? z.coerce.number().int().min(1).parse(query.get("limit")) : undefined,
+    }),
+  };
+});
 
 // ---- the world model ----
 

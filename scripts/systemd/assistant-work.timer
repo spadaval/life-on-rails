@@ -1,0 +1,9 @@
+[Unit]
+Description=Assistant: check for work queued for the agent
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+
+[Install]
+WantedBy=timers.target

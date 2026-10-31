@@ -9,7 +9,7 @@ import { Markdown } from "../components/Markdown.js";
 import { Empty, Meter, Notice, PageHead, Panel, Star } from "../components/ui.js";
 import { metricFn, resetVisibilityFn, taskDoneFn, unflagFn } from "../server/functions/graph.js";
 import {
-  confirmFn, deleteBlockFn, editBlockFn, getTodayFn, recategorizeFn, splitBlockFn, timerFn, uncommitFn,
+  askAgentFn, confirmFn, deleteBlockFn, editBlockFn, getTodayFn, recategorizeFn, splitBlockFn, timerFn, uncommitFn,
 } from "../server/functions/today.js";
 import { GlobalActions } from "./__root.js";
 
@@ -73,21 +73,11 @@ function Today() {
     return () => clearInterval(id);
   }, [router]);
 
-  // A block belongs to the day it starts, the same rule "Accept all" uses.
-  const toConfirm = t.actual.filter(
-    (b) => b.proposal && b.t_end && new Date(b.t_end).getTime() <= now && new Date(b.t_start).getTime() >= new Date(t.day_start).getTime(),
-  );
-  const acceptAll = () => act(() => confirmFn({ data: { date: t.date, all: true } }), "Confirmed.");
-
-  // Enter confirms everything labelled; `r` jumps to relabelling. Never while typing.
+  // `r` jumps to relabelling. Never while typing.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.tagName === "BUTTON")) return;
-      if (e.key === "Enter" && toConfirm.length > 0) {
-        e.preventDefault();
-        void acceptAll();
-      }
       if (e.key === "r") {
         const target = selected ?? t.running?.id ?? null;
         if (!target) return;
@@ -170,40 +160,11 @@ function Today() {
         <BlockPanel key={selectedBlock.id} block={selectedBlock} data={data} busy={busy} act={act} clock={clock} onClose={() => setSelected(null)} />
       ) : null}
 
-      {toConfirm.length > 0 ? (
-        <Panel
-          title={`${toConfirm.length} to confirm`}
-          aside={
-            <button className="btn border-or text-or" disabled={busy} onClick={acceptAll}>
-              Accept all
-            </button>
-          }
-        >
-          <ul>
-            {toConfirm.map((b) => (
-              <li key={b.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line py-2 first:border-t-0">
-                <span className="w-28 shrink-0 text-[13.5px] text-mute">
-                  {clock(b.t_start)}–{clock(b.t_end!)}
-                </span>
-                <button className="min-w-0 flex-1 text-left hover:text-or" onClick={() => setSelected(b.id)}>
-                  <span className="font-medium">{b.intent ?? "Unlabelled"}</span>
-                  {b.title ? <span className="text-mute"> · {b.title}</span> : null}
-                  {b.proposal?.via === "agent" ? <span className="tag-agent ml-2">agent suggests</span> : null}
-                </button>
-                <button className="btn btn-sm" disabled={busy} onClick={() => act(() => confirmFn({ data: { date: t.date, accept: [b.proposal!.id] } }))}>
-                  Yes
-                </button>
-                <button className="btn btn-sm" disabled={busy} onClick={() => act(() => confirmFn({ data: { date: t.date, reject: [b.proposal!.id] } }))}>
-                  No
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-[13px] text-dim">Enter accepts everything labelled.</p>
-        </Panel>
-      ) : null}
+      {data.brief ? <Brief body={data.brief} /> : null}
 
       {data.record && t.date <= data.yesterday ? <DayRecord record={data.record} timezone={t.timezone} highlight={search.obs} /> : null}
+
+      <AskAgent about={`Today, ${t.date}`} busy={busy} act={act} setNotice={setNotice} />
 
       <div className="grid gap-[22px] lg:grid-cols-[1.22fr_1fr_1.08fr]">
         <NeedsYou data={data} busy={busy} act={act} />
@@ -384,7 +345,7 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
         </Track>
       </div>
       <div className="flex flex-wrap justify-between gap-x-6 gap-y-1 pl-[66px] text-[13px] text-mute">
-        <span>Solid: confirmed · dashed: not yet confirmed · faint: unlabelled phone or place · outlined: running. Click a block to label it.</span>
+        <span>Solid: counted · dashed: a suggestion · faint: unlabelled phone or place · outlined: running. Click a block to label it.</span>
         {t.phone ? (
           <span>
             Phone today <b className="font-medium text-txt">{duration(t.phone.screen_s)}</b> on screen · <b className="font-medium text-txt">{t.phone.pickups}</b> pickups ·{" "}
@@ -416,6 +377,40 @@ function Track({ children, showNow, nowX }: { children: React.ReactNode; showNow
       {children}
       {showNow ? <span className="pointer-events-none absolute -top-1 -bottom-1 w-px bg-or" style={{ left: nowX }} /> : null}
     </div>
+  );
+}
+
+function Brief({ body }: { body: string }) {
+  return (
+    <Panel title="This morning" aside="from the agent">
+      <div className="whitespace-pre-wrap text-[14.5px] leading-relaxed">{body.trim()}</div>
+    </Panel>
+  );
+}
+
+/** Goes to the agent's thread; the answer comes to WhatsApp. */
+function AskAgent({ about, busy, act, setNotice }: { about: string; busy: boolean; act: Act; setNotice: (s: string) => void }) {
+  const [text, setText] = useState("");
+  const send = () => {
+    const question = text.trim();
+    if (!question) return;
+    void act(async () => {
+      await askAgentFn({ data: { text: question, about } });
+      setText("");
+      setNotice("Sent. The answer will come to WhatsApp.");
+    });
+  };
+  return (
+    <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
+      <input
+        className="input min-w-0 flex-1"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Ask the agent, or hand it something"
+        aria-label="Ask the agent"
+      />
+      <button className="btn" disabled={busy || !text.trim()}>Send</button>
+    </form>
   );
 }
 

@@ -339,6 +339,5 @@ export function renderToday(t: TodayView): string {
     for (const g of t.gaps) out.push(`- ${hm(g.t_start, t.timezone)}–${hm(g.t_end, t.timezone)} (${g.minutes} min)${g.fits ? `, could go to: ${g.fits}` : ""}`);
   }
   if (t.phone) out.push("", `Phone: ${phoneLine(t.phone)}.`);
-  out.push("", `To confirm: ${t.to_confirm}. Calendar-confirm rate so far: ${t.confirm_rate === null ? "—" : `${Math.round(t.confirm_rate * 100)}%`}.`);
   return out.join("\n") + "\n";
 }

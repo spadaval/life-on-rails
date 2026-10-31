@@ -6,7 +6,7 @@
 | **Rewritten** | 2026-10-14, as one description of the current design; updated the same day as it was built |
 | **Repo** | `/home/supadava/projects/life-on-rails` |
 | **Runs on** | `buildbot` (Ubuntu 26.04, headless, Tailscale `buildbot.tail47515a.ts.net`) |
-| **State** | Built and running on `buildbot` through the overnight close. Signed in to Google (calendar, tasks, contacts, mail headers) on 2026-10-14. See "State of the build". |
+| **State** | Running on `buildbot`. On 2026-10-31 the pieces were joined into one persistent agent: a WhatsApp channel, a morning brief, time labelled by inference, and a work queue. See "State of the build". |
 
 This is a personal project on one box with one user. There is no PR plan, review gate, or staged rollout: work goes to `main` when it works. The earlier, much longer spec (history, superseded decisions, the 2023 post-mortem) is not carried here; the v1 text is in git at `e050ace`.
 
@@ -16,37 +16,38 @@ This is a personal project on one box with one user. There is no PR plan, review
 
 Life on Rails (LoR) closes the loop between what the owner intends and what the owner actually does. It has two jobs:
 
-1. **A time tracker that knows intent.** It replaces Toggl. It knows the calendar, the goals, and which goals are starving, and it asks for about 30 seconds of confirmation each evening.
-2. **The memory and senses of a personal agent.** An assistant the owner talks to in T3 Code reads and writes LoR through a `lor` CLI: a wiki of what it knows, the owner's tasks and goals, the people in the owner's life, and a record of what happened. LoR notices things (calendar, tasks, contacts, mail arriving, phone activity) and holds mail that needs attention until the agent's mail run takes it.
+1. **A time tracker that knows intent.** It replaces Toggl. It knows the calendar, the goals, and which goals are starving. The agent works out where the time went from what was recorded; nobody is asked to account for it, and the dashboard is where a wrong guess gets fixed.
+2. **The memory, senses and voice of a persistent personal agent.** An assistant reads and writes LoR through a `lor` CLI: a wiki of what it knows, the owner's tasks and goals, the people in the owner's life, and a record of what happened. LoR notices things (calendar, tasks, contacts, mail arriving, phone activity), holds mail until the agent's mail run takes it, and carries the WhatsApp channel the owner and the agent reach each other on.
 
 The owner has executive dysfunction, so the system must cost less to keep up than to abandon. That drives the product rules below.
 
 ## Who is who
 
-- **T3 Code** is where the owner talks to the agent: threads, devices, auth, models, delegation, the morning brief. Every question the agent has for the owner is asked in a thread.
-- **The runner** (`runner/`, systemd timers) starts the unattended runs, nightly and mail, as headless Claude Code. It is not part of LoR and does not touch T3: what needs the owner it flags in LoR.
-- **LoR** is what the agent knows, the owner's dashboard, and the senses. It records, shows, and notices, and decides by fixed rules when mail is ready for the agent. It runs no model and calls nobody. It never acts, asks, or approves.
+- **T3 Code** is the engine of the conversation: threads, models, tools, delegation. It runs on this box like Postgres does, so LoR may call it directly and plans no fallback for its absence.
+- **The channel** is how the owner and the agent reach each other from anywhere: a private WhatsApp contact. LoR owns it; the conversation behind it is one long-running T3 thread. See "The channel".
+- **The runner** (`runner/`, systemd timers) starts the unattended runs: nightly and queued work as T3 threads, mail as headless Claude Code.
+- **LoR** is what the agent knows, the owner's dashboard, the senses, and the channel. It records, shows, notices, and decides by fixed rules when mail is ready. It may start agent work through T3 and make one-shot model calls with no tools whose output is data (none yet; add one when a screen has to wait for an answer). It never holds an agent loop, acts on anything itself, or approves anything.
 - **The agent** is a role, not a program: any session (a T3 thread or a headless run) that has the skills and has run `lor context`. Its standing instructions are the `agent` wiki page, served by `lor context`.
 - **`gog`** is the agent's Google tool, signed in with broad access. LoR never runs it.
 
-Do not add chat, an approval queue, or a model runtime to LoR. LoR may notify the owner, on the phone, about what the agent flagged for him ("Needs you"). Every notification has to earn its place: few, never guilt-shaped, and each opens the thing it is about. Nothing depends on LoR calling T3: T3 threads read and write LoR, never the other way round.
+Do not add a general chat screen or an approval queue to LoR: T3 is the chat, and the dashboard has actions in context. Every message to the owner has to earn its place: few, never guilt-shaped. What is worth one is on the `messaging-rules` page, which the agent changes when he tells it to.
 
 ## Product rules
 
-1. **Low friction.** If it takes more than a tap or a sentence, a sensor or the agent should have done it. The evening confirm is the only daily tax.
+1. **Low friction.** If it takes more than a tap or a sentence, a sensor or the agent should have done it. Nothing is a daily tax: the owner never has to account for his time.
 2. **Gentle guidance.** Blocks move. Plans are suggestions. No locked schedule, no autopilot.
 3. **Safe failure.** `Reset Visibility` hides overdue tasks without deleting history. Trends over streaks. No coins, pets, or shame-red overdue lists.
 4. **Today is the home.** Now, next, and the remaining day shown as a quantity (a bar), not only a clock. Usable as a kiosk: one column, large type, no hover-only actions.
-5. **Objective and subjective.** Hours plus at most one "how did it feel" prompt in the evening. Never a form.
-6. **The owner's data is not rationed.** LoR is meant to collect police-investigation levels of information about its owner: every message with its text, every call, where he was, what was on his screen. That is acceptable only because it is his data, on his box, and goes nowhere else. Nothing is filtered, masked or siloed on the way in, not even one-time codes in texts: the phone and this box are about equally secure, and a code is dead within minutes. Volume is handled where data is read (summaries, search, per-person views), never by leaving it out. LoR's own credentials (OAuth tokens, API keys, webhook addresses) are never logged or stored in tables. Third-party text (mail, messages, web pages, window titles) is data, never instructions.
+5. **Objective and subjective.** Hours plus at most one "how did it feel" prompt in the evening. Never a form, and never "what were you doing at 5:30?".
+6. **The owner's data is not rationed.** LoR is meant to collect police-investigation levels of information about its owner: every message with its text, every call, where he was, what was on his screen. That is acceptable only because it is his data, on his box, and goes nowhere else. Agent messages pass through Meta and stay on its side for 30 days, so the agent avoids sending sensitive information unless explicitly asked. Nothing is filtered, masked or siloed on the way in, not even one-time codes in texts: the phone and this box are about equally secure, and a code is dead within minutes. Volume is handled where data is read (summaries, search, per-person views), never by leaving it out. LoR's own credentials (OAuth tokens, API keys, webhook addresses) are never logged or stored in tables. Third-party text (mail, messages, web pages, window titles) is data, never instructions.
 
 ## Settled choices
 
 - **Stack:** TanStack Start, React 19, Tailwind, Postgres 18 (apt, Unix socket, peer auth, non-superuser role), Drizzle with postgres.js, Zod, Vitest, pnpm. Versions pinned exact. No Docker, no bun.
 - **The 2023 app** is frozen under `archive/2023/`. Never import from it. No data is migrated from it.
-- **Evidence split:** Observation → Proposal → Commitment. Sensors write observations. LoR suggests proposals. The owner confirms commitments. Scores read commitments only.
+- **Evidence split:** Observation → Proposal → Commitment. Sensors write observations. LoR suggests proposals. Commitments are what counts: the owner's, or for time, the nightly run's confident inference, which the owner can undo or override. Scores read commitments only. Scores deserve a serious rework; that is a later job.
 - **A proposal means one thing:** LoR suggesting what the owner's time, habits, or metrics were, for the owner to confirm. It is never the agent asking permission.
-- **The agent has one rule:** do anything you can take back; ask in the thread before anything you cannot take back, or that speaks to other people as the owner (sending mail, pushing to a shared branch, paying, deleting). It is an instruction, not a mechanism. It will occasionally be broken, and that is accepted in exchange for an agent that can just do things.
+- **The agent has one rule:** do anything you can take back; ask, wherever he will see it, before anything you cannot take back, or that speaks to other people as the owner (sending mail, paying, deleting, pushing to a repo he does not own). In his own projects human review happens after merge: automated checks and agent review, then merge. It is an instruction, not a mechanism. It will occasionally be broken, and that is accepted in exchange for an agent that can just do things.
 - **If code branches on it, it is schema; if only a model reads it, it is prose** on a wiki page. There is no generic fact table.
 - **LoR does not mirror the mailbox.** It records that a message arrived and queues it for the agent, which reads mail in Gmail.
 - **LoR has its own Google login** with read-only scopes, and calls Google's APIs directly.
@@ -185,9 +186,11 @@ A user-visible interval is always a `time_block`. Accepting its proposal inserts
 - **Remaining day:** a bar from now to the end of the waking day.
 - **Gap chips:** empty stretches between events, sized in minutes, optionally with "fits: <starving habit or task>".
 - **Recategorize:** last five intents plus search (`r`, then type).
-- **Evening confirm:** one timeline of proposed labels. Enter accepts everything labeled; unlabeled meetings commit to `Meetings`. One optional mood or energy prompt.
+- **This morning:** the brief (`briefs/<date>`), when there is one.
+- **Ask the agent:** a box that sends a question into the channel's thread; the answer comes to WhatsApp.
+- **Fixing time:** there is no confirm step. A block the nightly run got wrong is relabelled or undone in its panel; low-confidence blocks stay grey. One optional mood or energy prompt.
 - **Reset Visibility:** moves overdue active tasks and projects (and any task the owner selects) to `status=later` or sets `snoozed_until`. Goals, habits, and metrics are never moved. Nothing is deleted.
-- **Needs you:** tasks the agent flagged (`--flag`), each with why, until the owner marks it Done or Seen. The phone notifies once per flag.
+- **Needs you:** tasks the agent flagged (`--flag`), each with why, until the owner marks it Done or Seen. The channel sends each flag once.
 - **With the agent:** tasks assigned to the agent and their state.
 - What the agent wrote says so, and can be deleted like anything else: deleting and undoing an addition are the same act. (Reverting a page edit and un-confirming a block are different, and keep their own controls.)
 
@@ -238,7 +241,7 @@ Google gives every instance of a recurring event its own id, so `google_event` i
 
 All counts are unique wall-clock seconds after merging overlapping intervals, never a sum of block durations.
 
-- **Calendar-confirm rate** = `(|C ∩ E| + |M \ E|) / (|E| + |M \ E|)`, where `E` is timed non-cancelled events in the waking day, `C` is committed seconds, and `M` is committed manual seconds. Undefined (shown as `—`) on an empty day. Target: 0.8 confirmed the same evening.
+- **Calendar-confirm rate** (counts the nightly run's labels too) = `(|C ∩ E| + |M \ E|) / (|E| + |M \ E|)`, where `E` is timed non-cancelled events in the waking day, `C` is committed seconds, and `M` is committed manual seconds. Undefined (shown as `—`) on an empty day. Target: 0.8 confirmed the same evening.
 - **Attribution coverage** = committed seconds linked to an intent ÷ waking seconds. Shown as `—` until an activity sensor exists. Target then: 0.7 on weekdays.
 - **Goal hours adequacy** = committed hours on a goal ÷ its weekly target. Every goal with `weight ≥ 2` has a target and a starve flag below 50%.
 
@@ -364,7 +367,7 @@ lor metric <intent_id> <value> [--date <date>]
 ### Who may write what
 
 - **Free for the agent:** pages, entities, `source=agent` observations, intents, links, and proposals about the owner's time.
-- **The owner's to confirm:** what the owner did. Time blocks, habit completions, and metric values become commitments in the evening confirm, or when the owner asks for it in the thread. Unattended runs do not write these.
+- **Time:** the nightly run labels blocks it is confident about, as commitments credited to it; `uncommitBlock` undoes one and the owner's label overrides it. **The owner's:** habit completions and metric values, only when he asks. Unattended runs do not write these.
 - **Tasks assigned to the agent** are the agent's to close with `lor done`.
 
 The API cannot tell an instructed call from an uninstructed one, so this is auditable rather than enforced: every agent write records `via` and the thread, the UI says who made each row, and anything can be deleted (or archived, when time or check-ins were recorded against it).
@@ -416,35 +419,30 @@ The people in the owner's life are entities. Google Contacts is where the owner 
 - **Groups.** Each WhatsApp group with a message becomes a `group` entity, found by its chat id. WhatsApp is the source of its name (a rename keeps the old name as an alias) and of its current members, refreshed on each import into `entity_member`. Groups are their own list on the People screen, not among the people; a cadence works on a group too.
 - **CLI:** `lor people [--overdue | --birthdays | --groups | --all] [<search>]`, `lor entity set <who> --keep-in-touch <days>|off --birthday MM-DD|off --priority on|off`; `lor entity show` includes the last contact.
 
+### The channel
+
+A private contact in the owner's WhatsApp (the WhatsApp Agent Platform, `src/server/channel/`), which only he can message. There is no webhook: `runChannelLoop` long-polls from `lor-web`, so nothing reaches in from outside. Config: `LOR_CHANNEL_KEY` (the API key) and `LOR_CHANNEL_THREAD` (the T3 thread); with either empty the channel is off.
+
+- **Incoming.** Each message is handed to the thread with `t3 thread send`, then recorded as an observation (`source=channel`, `kind=channel`), then the position (`sync_cursor`) moves. A crash can hand one over twice, which is harmless; none is lost. Voice notes and files are saved under `LOR_CHANNEL_DIR` and the agent is told the path.
+- **What the thread receives** (`wrapInbound`) carries, every time, that he is not reading the thread and only `lor message` reaches him, because a thread's first instructions do not survive compaction. It also carries what other runs sent him since his last message, so a one-word reply means something. A message typed in the T3 thread has no header, and the agent answers it there.
+- **Outgoing.** One verb, from any run: `lor message "<text>" [--attach <file>]`. LoR sends one at a time, splits at 4096 characters, retries only what the API says was not sent, and records it. WhatsApp only lets the agent reach the latest `from` it saw, so he has to message it once first, and again after a phone change (which may also need a new key).
+- **History.** `lor message history [--since] [--search] [--around]`. Compaction fails quietly, so the agent looks up what it does not remember. Transcripts say why a run did something; history says what was said, across runs.
+- **Flags** go out over the channel, once each (`channel_flags`), with the task id, so "done" can be acted on.
+- **Rules.** The `messaging-rules` page: time-sensitive now, the rest in the brief, sensitive information only if asked. The agent changes it when he tells it to; unattended runs are told not to (an instruction, not a mechanism).
+
 ### Agent runs
 
-The owner talks to the agent in T3: the project `assistant`, rooted at `~/google/assistant/`, whose `AGENTS.md` says to load the `lor` skill, run `lor context`, and follow the `agent` page. Unattended runs start in the same directory as headless Claude Code (`claude -p`, Opus, permissions bypassed), so they have the same skills and page. What each run does is written on the `agent` page, so the owner can change it in Notes.
+The owner's assistant lives in the T3 project `assistant`, rooted at `~/google/assistant/`, whose `AGENTS.md` says to load the `lor` skill, run `lor context`, and follow the `agent` page. What each run does is written on that page, so the owner can change it in Notes. Any thread that has run `lor context` is the agent; there is no "main thread". Mail stays headless (`claude -p`) because ten threads a day would be clutter.
 
 | Run | Started by | Does |
 | --- | --- | --- |
-| Main thread (T3) | The owner | The conversation. Updates pages, creates and links tasks, drafts replies, asks before sending. Hands errands to workers. |
-| Worker (T3) | The main thread | One task assigned to the agent, in whichever project the work belongs to. Starts with `lor context --task <id>`, ends with `lor done <id> --memo "…"`. LoR stores the worker's thread on the task. |
-| Morning brief (T3) | 08:00, a T3 schedule bound to the main thread | Today's plan, the starving goal, the first action, tasks due or stale, mail noted overnight, and any change to an `in_digest` page. |
-| Nightly (headless) | `assistant-nightly.timer`, 02:00 Eastern | Writes the day page; files `inbox` entries; links unlinked tasks; notes stale waiting tasks. Reads `lor changes --since 24h`. |
-| Mail (headless) | `assistant-mail.timer`, every 2 min, only when `lor mail pending` is due | Reads the new mail in Gmail; does nothing, notes it for the brief, acts, or flags a task for the owner. |
+| Conversation | A message on the channel, or the dashboard's Ask box | One long-running T3 thread (`LOR_CHANNEL_THREAD`). Compaction is Claude Code's. |
+| Morning brief | 08:00, a T3 schedule, a new thread each day | Writes `briefs/<date>`, whose first line is the one next action (Today and the wall display show it), and sends it with `lor message`. |
+| Nightly | `assistant-nightly.timer`, 02:00, `t3 thread start` | The day page, `inbox`, task links, app rules, time labels, and following up open flags. The timer stays in systemd because T3 skips a fixed-time run it missed. |
+| Queued work | `assistant-work.timer`, every 15 min, `t3 thread start` | The oldest task queued for the agent (`lor task queue`, or giving it to the agent on Tasks). Starts with `lor context --task <id>`, ends with `lor done <id> --memo "…"`. One per tick. |
+| Mail (headless) | `assistant-mail.timer`, every 2 min, only when `lor mail pending` is due | Reads the new mail in Gmail; does nothing, logs it for the brief, acts, messages him, or flags a task. |
 
 Every run uses the owner's one `gog` login.
-
-**Why headless.** Unattended runs in T3 were turns in a chat thread: the mail ones would have filled the main thread, and LoR depended on a T3 hook address and T3's scheduler. Now the conversation is T3's and nothing else is. A headless run's record is what it wrote to LoR (credited to `claude:<session id>`); its transcript is in `~/.claude/projects/`, and `claude -r <session id>` in `~/google/assistant` reopens it. Logs: `journalctl --user -u assistant-mail -u assistant-nightly`.
-
-**Reaching the owner.** A run that needs the owner flags a task: `lor intent create --type task --title "..." --flag "<why>"` or `lor task flag <id> "<why>"`. It shows under Needs you on Today and in `lor context` (so any T3 thread knows), and the phone app notifies once: each sync calls `POST /device/notifications`, which hands over flagged tasks not yet handed over and marks them (`intent.notified_at`). The phone syncs about every 15 minutes, so that is the latency; nothing pushes. The app asks for none of these until notifications are allowed on the phone.
-
---- | --- | --- |
-| Main thread | The owner, or a mail wake | The conversation. Updates pages, creates and links tasks, reads new mail, drafts replies, asks before sending. Hands errands to workers. |
-| Worker | The main thread | One task assigned to the agent, in whichever project the work belongs to. Starts with `lor context --task <id>`, ends with `lor done <id> --memo "…"`. LoR stores the worker's thread on the task. |
-| Nightly | 02:00 local, a fresh thread | Writes the day page; files `inbox` entries; links unlinked tasks; notes stale waiting tasks. Reads `lor changes --since 24h`. |
-| Morning brief | Start of the waking day, in the main thread | Today's plan, the starving goal, the first action, tasks due or stale, mail noted overnight, and any change to an `in_digest` page. |
-
-Every run uses the owner's one `gog` login.
-
-**Schedules are created from the main thread,** by the agent, with T3's `schedule_task`, so they inherit that thread's model. LoR does not create them.
-
-**The mail wake** is a T3 webhook task created from the main thread, so its runs are queued into that thread. T3 serves the hook on the box at `http://127.0.0.1:3773/api/hooks/<id>/<token>`; the address contains the token, so it is a secret. T3 tells an agent the address only when T3 Connect is on; otherwise the owner copies it from T3's scheduled-task settings. The hook is tied to one thread: if the owner starts a new main thread, the hook is recreated there. That thread grows with every wake, which is the reason to add a triage tier if it becomes a problem.
 
 ---
 
@@ -463,11 +461,11 @@ Desktop first, with a left rail; on a phone the rail becomes a top strip and the
 | `/search` | One search over notes, people, goals and tasks, and the record; the global search box lands here. |
 | `/status` | The cockpit: database, Google auth, mail, jobs, sources. Linked from the rail's foot, which says whether every job is healthy. |
 
-There is no chat screen: the conversation is a T3 thread.
+There is no chat screen: the conversation is the channel and a T3 thread.
 
 ## The phone
 
-`buildbot` is headless, so the owner's day happens on the phone. The phone runs a small app of its own, `android/` in this repo: Kotlin and Jetpack Compose, sideloaded, package `com.spadaval.lor`. Besides the sensors and the timer it shows the "Needs you" notifications (see "Agent runs"), once the owner allows notifications in its Settings.
+`buildbot` is headless, so the owner's day happens on the phone. The phone runs a small app of its own, `android/` in this repo: Kotlin and Jetpack Compose, sideloaded, package `com.spadaval.lor`.
 
 **What it collects** (each sensor can be switched off in the app, and each needs a permission the owner grants there):
 
@@ -512,7 +510,7 @@ Privacy of the owner's own data is not a constraint: collecting everything is th
 | Reachable by others | Binds loopback by default. `/api/v1` also checks the source address. Off-box access is by Tailscale identity only. |
 | LoR writing to Google or reading mail | Not possible with its scopes. |
 
-LoR's only egress is Google's APIs.
+LoR's egress is Google's APIs and `api.whatsapp.com`.
 
 ## Tests and backup
 
@@ -565,8 +563,10 @@ Built on 2026-10-14, in this order, each checked as described.
 | 14 | Messages: texts keep their words (whole SMS store on first run); WhatsApp's encrypted backup uploaded by the phone, decrypted and imported by `whatsapp_import`; message text searchable; `recent_messages` on entities; group chats left out of last in touch | Pure tests for crypt15 (format checked against wa-crypt-tools' source: varint header size, IV in field 3, HKDF key) and for reading msgstore (groups, @lid, system notices); database tests for search, recent messages and a repeat import; a 300 MB upload streamed to disk; on the emulator against the test server, a sync uploaded a text with its words and a backup that the job imported. Installed on the phone; the first real backup (14 Oct) imported 164,982 messages from 248 chats. |
 | 15 | One model for who an exchange was with: generated `observation.kind`, `parties` and `author`, indexed; last in touch, recent mail and recent messages read them. WhatsApp groups as `group` entities with members (`entity_member`); `lor people --groups`; the timeline groups messages by conversation | Database tests for groups (members, @lid, pending invites, rename), the timeline and mail parties; the people tests unchanged and passing. |
 | 13 | Activity blocks: phone app use and stays at known places fill the actual lane by precedence; glances counted | Pure tests for grouping, stays, unknown places, and phone stats; a database test of precedence, rules, the agent's label surviving a re-sync, and "remember"; a browser pass; run over two real days (11 phone blocks). |
-| 12 | Needs you: flagged tasks on Today, in the digest, and as phone notifications; unattended runs no longer touch T3 | Tests for flag, notify-once, done, and seen; a browser pass over the Today card; on the emulator against the test server, a sync showed the notification. |
+| 12 | Needs you: flagged tasks on Today, in the digest, and as phone notifications (since replaced by the channel); unattended runs no longer touch T3 | Tests for flag, notify-once, done, and seen; a browser pass over the Today card; on the emulator against the test server, a sync showed the notification. |
 | 11 | The phone app: app usage, calls, texts, Health Connect, location, the timer tile, settings | JVM tests for session building; on the emulator, a sync uploaded app sessions and calls to the test database and the tile started and stopped a timer. Installed on the phone over wireless adb; permissions are granted on the phone. |
+
+| 16 | The persistent agent: the WhatsApp channel, `lor message`, history, flags over the channel, the brief on Today and the wall, the Ask box, nightly as a T3 thread with time inference and flag follow-up, the work queue; the phone's notifications and the evening confirm removed | Tests for receive, hand-off failure, recipient changes, what other runs sent, flags, history and the dashboard; a systemd unit ran `t3 thread start --wait`. |
 
 **Waiting on the owner**
 
@@ -582,14 +582,14 @@ Not scheduled. Each is written when its absence is felt.
 
 - **Wiki maintenance:** rename and merge (rewriting inbound links), backlinks, lint, entity merge. These are what a server-side index of links and citations is for; add `page_link` and `page_citation` then.
 - **Library:** books, articles, and papers as `document` rows with text stored per part, cited down to the page with quotes checked against the source. Until then the agent reads a PDF with `pdftotext` and cites it as `url:` or a thread.
-- **A mail triage tier:** a cheaper model reading each batch before it reaches the main thread, if mail clutters that thread.
+- **A mail triage tier:** a tool-less model reading each batch before an agent with real access does, if mail runs prove costly.
 - **Weekly review:** weekly hour adequacy, applying `seeds/*.json` from the UI, a settings screen, a graph canvas, a life-in-weeks strip.
 - **Desktop activity:** a Linux agent if a desktop session ever exists, and a Windows agent on `legend`, both on the phone's ingest path. Idle detection comes with them.
 - **A digest size budget, retention, embeddings:** when a digest is too long, the disk notices, or search demonstrably misses things.
 
 ## Not doing
 
-Multi-user, billing, or hosting for anyone else. A mail client. A contacts editor (contacts are edited in Google). Two-way Tasks sync. Writing to Google from LoR. Calendar push. Calendar autopilot. iOS. Keystroke, clipboard, or microphone capture for now. Local-first sync, CRDTs, Flutter. Any agent framework in LoR.
+A scoring rework is a later job, not this one. Multi-user, billing, or hosting for anyone else. A mail client. A contacts editor (contacts are edited in Google). Two-way Tasks sync. Writing to Google from LoR. Calendar push. Calendar autopilot. iOS. Keystroke, clipboard, or microphone capture for now. Local-first sync, CRDTs, Flutter. Any agent framework in LoR.
 
 ## Open questions
 

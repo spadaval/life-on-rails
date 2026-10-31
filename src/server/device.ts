@@ -16,7 +16,6 @@ import { fillWindow, pauseRunningBlock, resumeRunningBlock, startManualBlock, st
 import { lockBlocks, syncFill } from "./attribution/fill.js";
 import { env } from "./env.js";
 import { BadInput } from "./errors.js";
-import { takeNotifications } from "./intents.js";
 import { recordObservation } from "./observations.js";
 import { BACKUP_FILE, noteUploader } from "./whatsapp/import.js";
 
@@ -138,11 +137,6 @@ const TimerBody = z.object({
   title: z.string().max(200).nullish(),
   device: z.string().nullish(),
 });
-
-/** What to notify on the phone: tasks the agent flagged, each handed over once. */
-export async function deviceNotifications(): Promise<{ notifications: { id: string; title: string; note: string }[] }> {
-  return { notifications: await takeNotifications(sql) };
-}
 
 export async function deviceTimer(body: unknown, login: string): Promise<DeviceState> {
   const d = TimerBody.parse(body);

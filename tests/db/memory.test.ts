@@ -22,12 +22,13 @@ async function refusal(p: Promise<unknown>): Promise<Refused> {
 }
 
 dbDescribe("seed pages", () => {
-  it("creates agent, me, and inbox; agent and me are in the digest", async () => {
+  it("creates agent, me, messaging-rules, and inbox; all but inbox are in the digest", async () => {
     const rows = await sql<{ slug: string; in_digest: boolean }[]>`SELECT slug, in_digest FROM page ORDER BY slug`;
     expect(rows).toEqual([
       { slug: "agent", in_digest: true },
       { slug: "inbox", in_digest: false },
       { slug: "me", in_digest: true },
+      { slug: "messaging-rules", in_digest: true },
     ]);
     expect((await readPage(sql, "agent")).body).toMatch(/The one rule/);
   });
@@ -213,7 +214,7 @@ dbDescribe("search, context, changes", () => {
   it("the digest carries the in_digest pages and lists other recent pages by title only", async () => {
     await createPage(sql, { slug: "topics/secret-recipe", title: "Secret recipe", body: "Eleven herbs.\n", ...agent });
     const ctx = await getContext(sql);
-    expect(ctx.pages.map((p) => p.slug)).toEqual(["agent", "me"]);
+    expect(ctx.pages.map((p) => p.slug)).toEqual(["agent", "me", "messaging-rules"]);
     expect(ctx.markdown).toContain("The one rule");
     expect(ctx.markdown).toContain("topics/secret-recipe");
     expect(ctx.markdown).not.toContain("Eleven herbs");

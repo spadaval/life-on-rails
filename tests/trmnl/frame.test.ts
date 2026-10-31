@@ -47,7 +47,7 @@ describe("todayHtml", () => {
 
   it("caps Needs you at three and says how many more", () => {
     const t = text(todayHtml(sample({ needsYou: ["a", "b", "c", "d", "e"] })));
-    expect(t).toContain("2 more · 4 to confirm");
+    expect(t).toContain("2 more");
     expect(t).not.toContain(" d ");
   });
 

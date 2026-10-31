@@ -25,7 +25,7 @@ export function sample(over: Partial<TodayInput> = {}): TodayInput {
     running: { name: "Thesis", since: at("13:20").toISOString() },
     recordedS: 5 * 3600,
     needsYou: ["Reply to Priya about the lease renewal", "Approve the dentist reschedule"],
-    toConfirm: 4,
+    brief: "Send the Hawthorne notice",
     ...over,
   };
 }

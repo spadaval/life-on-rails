@@ -1,0 +1,7 @@
+[Unit]
+Description=Assistant: start a thread on the oldest task queued for the agent
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/opt/node/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/projects/life-on-rails/runner/work.sh

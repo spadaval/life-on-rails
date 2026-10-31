@@ -1,0 +1,1 @@
+ALTER TABLE "intent" ADD COLUMN "queued_at" timestamp with time zone;

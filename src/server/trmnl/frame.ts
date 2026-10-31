@@ -52,7 +52,8 @@ export interface TodayInput extends Shell {
   running: { name: string; since: string } | null;
   recordedS: number;
   needsYou: string[];
-  toConfirm: number;
+  /** The first line of this morning's brief: the one next action. */
+  brief: string | null;
 }
 
 export interface GoalsInput extends Shell {
@@ -248,13 +249,14 @@ export function todayHtml(input: TodayInput): string {
   const next = input.events.filter((e) => new Date(e.t_start).getTime() > now).slice(0, 3);
   const needs = input.needsYou.slice(0, 3);
   const more = input.needsYou.length - needs.length;
-  const aside = [more > 0 ? `${more} more` : null, input.toConfirm > 0 ? `${input.toConfirm} to confirm` : null].filter(Boolean).join(" · ");
+  const aside = more > 0 ? `${more} more` : "";
 
   return doc(input, "today", TODAY_CSS, `
 <div class="arc">${arcSvg(input, hm)}
 <div class="read">
 <p class="big cond">${esc(big)}<em>${esc(unit)}</em></p>
 <p class="sub">${esc(sub)}</p>
+${input.brief ? `<p class="sub">${esc(input.brief)}</p>` : ""}
 ${input.running ? `<div class="slab"><b>${esc(input.running.name)}</b><span>since ${hm(new Date(input.running.since))}</span></div>` : ""}
 </div></div>
 <div class="cols">

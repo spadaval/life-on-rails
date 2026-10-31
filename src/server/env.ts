@@ -45,6 +45,12 @@ const Env = z.object({
   LOR_TRMNL_PORT: z.coerce.number().int().default(3849),
   LOR_TRMNL_MAC: z.string().default(""),
   LOR_TRMNL_KEY: z.string().default(""),
+  // The owner's WhatsApp channel: the agent contact's API key (empty: off), the T3 thread the conversation lives in, and where files he sends are kept.
+  LOR_CHANNEL_KEY: z.string().default(""),
+  LOR_CHANNEL_THREAD: z.string().default(""),
+  LOR_CHANNEL_DIR: z.string().default(path.join(homedir(), ".local/share/life-on-rails/channel")),
+  LOR_T3_BIN: z.string().default(path.join(homedir(), ".local/bin/t3")),
+  LOR_ASSISTANT_DIR: z.string().default(path.join(homedir(), "google/assistant")),
   GOOGLE_ACCOUNT: z.string().default(""),
   GOOGLE_OAUTH_CLIENT: z.string().default(path.join(homedir(), ".config/life-on-rails/google-client.json")),
   GOOGLE_TOKEN_FILE: z.string().default(path.join(homedir(), ".config/life-on-rails/google-token.json")),

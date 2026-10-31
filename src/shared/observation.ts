@@ -11,6 +11,7 @@ export const ObservationSource = z.enum([
   "windows_activity",
   "manual",
   "agent",
+  "channel",
   "system",
 ]);
 export type ObservationSource = z.infer<typeof ObservationSource>;

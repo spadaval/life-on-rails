@@ -264,7 +264,29 @@ export async function assignTask(db: Sql, id: string, assignee: "owner" | "agent
   const current = await getIntent(db, id);
   if (current.type !== "task") throw new BadInput("only a task can be assigned");
   await db`UPDATE intent SET assignee = ${assignee}, thread_ref = ${assignee === "agent" ? (threadRef ?? current.thread_ref) : null},
-    updated_at = now() WHERE id = ${id}`;
+    queued_at = NULL, updated_at = now() WHERE id = ${id}`;
+  return getIntent(db, id);
+}
+
+/** Give a task to the agent to do on its own: the work run starts a thread on the oldest one. */
+export async function queueTask(db: Sql, id: string): Promise<IntentView> {
+  const current = await getIntent(db, id);
+  if (current.type !== "task") throw new BadInput("only a task can be queued");
+  if (current.status !== "active" && current.status !== "waiting") throw new BadInput(`this task is ${current.status}`);
+  await db`UPDATE intent SET assignee = 'agent', queued_at = now(), updated_at = now() WHERE id = ${id}`;
+  return getIntent(db, id);
+}
+
+/** The oldest queued task nobody has started. */
+export async function nextQueuedTask(db: Sql): Promise<{ id: string; title: string } | null> {
+  const rows = await db<{ id: string; title: string }[]>`
+    SELECT id, title FROM intent WHERE queued_at IS NOT NULL AND status IN ('active', 'waiting') ORDER BY queued_at LIMIT 1`;
+  return rows[0] ?? null;
+}
+
+/** A worker thread took it. */
+export async function claimTask(db: Sql, id: string, threadRef: string): Promise<IntentView> {
+  await db`UPDATE intent SET queued_at = NULL, thread_ref = ${threadRef}, updated_at = now() WHERE id = ${id}`;
   return getIntent(db, id);
 }
 
@@ -305,8 +327,8 @@ export async function reopenTask(db: Sql, id: string): Promise<IntentView> {
 
 /**
  * The agent asks for the owner's attention on a task: it shows under "Needs
- * you" on Today and in the digest, and the phone notifies once. Flagging again
- * (with a new reason) notifies again.
+ * you" on Today and in the digest, and the channel sends it once. Flagging again
+ * (with a new reason) sends it again.
  */
 export async function flagTask(db: Sql, id: string, note: string): Promise<IntentView> {
   const current = await getIntent(db, id);
@@ -329,14 +351,6 @@ export async function needsOwner(tx: Tx): Promise<IntentView[]> {
   return rows.map(toView);
 }
 
-/** Flagged tasks the phone has not been handed yet. Handing them over marks them, so each notifies once. */
-export async function takeNotifications(db: Sql): Promise<{ id: string; title: string; note: string }[]> {
-  const rows = await db<{ id: string; title: string; note: string }[]>`
-    UPDATE intent SET notified_at = now()
-    WHERE flagged_at IS NOT NULL AND notified_at IS NULL AND status IN ('active', 'waiting')
-    RETURNING id, title, flag_note AS note`;
-  return [...rows];
-}
 
 /** Outcome memos on a task, newest first (what `lor done --memo` recorded). */
 export async function taskOutcome(tx: Tx, id: string): Promise<{ memo: string | null; at: string; via: string; source_ref: string | null } | null> {

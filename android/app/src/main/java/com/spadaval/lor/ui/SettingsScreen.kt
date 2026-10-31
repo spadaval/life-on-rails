@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import com.spadaval.lor.BuildInfo
 import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.net.LorClient
-import com.spadaval.lor.notify.NeedsYou
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -41,8 +40,6 @@ fun SettingsScreen() {
     var server by remember { mutableStateOf(prefs.serverUrl) }
     var device by remember { mutableStateOf(prefs.deviceName) }
     var result by remember { mutableStateOf<String?>(null) }
-    var notify by remember { mutableStateOf(NeedsYou.permitted(context)) }
-    val askNotify = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { notify = it }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Section("Server") {
@@ -73,14 +70,6 @@ fun SettingsScreen() {
                 }) { Text("Test connection") }
             }
             result?.let { Text(it, modifier = Modifier.padding(top = 8.dp)) }
-        }
-        Section("Notifications") {
-            Text(
-                "When the agent flags something as needing your reply or decision, the phone tells you at its next sync (within about 15 minutes). Tapping it opens Today.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
-            if (notify) Text("On.") else Button(onClick = { askNotify.launch(Manifest.permission.POST_NOTIFICATIONS) }) { Text("Allow notifications") }
         }
         Section("About") {
             Text("Life on Rails ${BuildInfo.VERSION}", style = MaterialTheme.typography.bodyMedium)

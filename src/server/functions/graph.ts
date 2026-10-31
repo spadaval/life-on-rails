@@ -6,7 +6,7 @@ import { env } from "../env.js";
 import { BadInput } from "../errors.js";
 import { getGraph } from "../graph.js";
 import {
-  INTENT_STATUSES, INTENT_TYPES, LINK_KINDS, assignTask, commitHabit, commitMetric, completeTask, createIntent,
+  INTENT_STATUSES, INTENT_TYPES, LINK_KINDS, assignTask, queueTask, commitHabit, commitMetric, completeTask, createIntent,
   deleteIntent, getIntent, linkIntents, reopenTask, resetVisibility, unflagTask, unlinkIntents, updateIntent,
 } from "../intents.js";
 import { entityNames } from "../memory/entities.js";
@@ -118,7 +118,7 @@ export const bulkTasksFn = createServerFn({ method: "POST" })
       } else if (a.op === "due") await updateIntent(sql, id, { dueAt: parseDue(a.due) ?? null });
       else if (a.op === "later") await updateIntent(sql, id, { status: "later", snoozedUntil: a.until ? localTimeOnDay(env.LOR_TZ, checkYmd(a.until), "00:00") : null });
       else if (a.op === "active") await updateIntent(sql, id, { status: t.waiting_on_entity_id ? "waiting" : "active" });
-      else if (a.op === "assign") await assignTask(sql, id, a.assignee);
+      else if (a.op === "assign") await (a.assignee === "agent" ? queueTask(sql, id) : assignTask(sql, id, a.assignee));
       else if (a.op === "parent") {
         const links = await sql<{ id: string }[]>`
           SELECT l.id FROM intent_link l JOIN intent p ON p.id = l.to_id WHERE l.from_id = ${id} AND l.kind = 'measures'`;
@@ -159,7 +159,7 @@ export const unflagFn = createServerFn({ method: "POST" })
 export const assignFn = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), assignee: z.enum(["owner", "agent"]) }).parse(d))
   .handler(async ({ data }) => {
-    await assignTask(sql, data.id, data.assignee);
+    await (data.assignee === "agent" ? queueTask(sql, data.id) : assignTask(sql, data.id, data.assignee));
     return { ok: true };
   });
 

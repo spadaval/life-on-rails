@@ -6,6 +6,7 @@ import {
   confirmDay, deleteBlock, editBlock, pauseRunningBlock, recategorizeBlock, resumeRunningBlock, splitBlock,
   startManualBlock, stopRunningBlock, uncommitBlock,
 } from "../attribution/blocks.js";
+import { askFromDashboard, channelConfigured, t3Handoff } from "../channel/channel.js";
 import { env } from "../env.js";
 import { BadInput } from "../errors.js";
 import { getGraph } from "../graph.js";
@@ -72,6 +73,7 @@ export const getTodayFn = createServerFn({ method: "GET" })
         id: n.id, title: n.title, done: n.status === "done", due: n.due_local, overdue: n.overdue, waiting: n.status === "waiting" ? (n.waiting_on ?? "someone") : null,
         parent: n.parents[0]?.title ?? null, google: n.google_task_id !== null, agent: n.via === "agent", flagged: n.flagged_at !== null,
       })),
+      brief: (await sql<{ body: string }[]>`SELECT body FROM page WHERE slug = ${`briefs/${date}`}`)[0]?.body ?? null,
       needsYou: (await needsOwner(sql)).map((n) => ({ id: n.id, title: n.title, note: n.flag_note ?? "", google: n.google_task_id !== null })),
       agentTasks: graph.nodes
         .filter((n) => n.type === "task" && n.assignee === "agent" && (n.status === "active" || n.status === "waiting"))
@@ -136,5 +138,13 @@ export const deleteBlockFn = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ blockId: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     await deleteBlock(sql, data.blockId);
+    return { ok: true };
+  });
+
+export const askAgentFn = createServerFn({ method: "POST" })
+  .validator(z.object({ text: z.string().trim().min(1), about: z.string().nullish() }))
+  .handler(async ({ data }) => {
+    if (!channelConfigured()) throw new BadInput("the agent's channel is not set up");
+    await askFromDashboard(sql, t3Handoff, data.text, data.about);
     return { ok: true };
   });

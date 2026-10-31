@@ -115,7 +115,7 @@ export async function todayInput(shell: Shell): Promise<TodayInput> {
     running: r ? { name: r.intent ?? r.title ?? "Unlabelled", since: r.t_start } : null,
     recordedS,
     needsYou: needs.map((n) => n.title),
-    toConfirm: today.to_confirm,
+    brief: (await sql<{ body: string }[]>`SELECT body FROM page WHERE slug = ${`briefs/${today.date}`}`)[0]?.body.trim().split("\n")[0]?.slice(0, 120) ?? null,
   };
 }
 
