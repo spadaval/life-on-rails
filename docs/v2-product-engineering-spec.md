@@ -437,7 +437,7 @@ The owner's assistant lives in the T3 project `assistant`, rooted at `~/google/a
 | Run | Started by | Does |
 | --- | --- | --- |
 | Conversation | A message on the channel, or the dashboard's Ask box | One long-running T3 thread (`LOR_CHANNEL_THREAD`). Compaction is Claude Code's. |
-| Morning brief | 08:00, a T3 schedule, a new thread each day | Writes `briefs/<date>`, whose first line is the one next action (Today and the wall display show it), and sends it with `lor message`. |
+| Morning brief | `assistant-brief.timer`, 08:00, `t3 thread start`, a new thread each day | Writes `briefs/<date>`, whose first line is the one next action (Today and the wall display show it), and sends it with `lor message`. In systemd like the nightly, and because a T3 schedule prepares a worktree, which the assistant directory (not a git repo) cannot have. |
 | Nightly | `assistant-nightly.timer`, 02:00, `t3 thread start` | The day page, `inbox`, task links, app rules, time labels, and following up open flags. The timer stays in systemd because T3 skips a fixed-time run it missed. |
 | Queued work | `assistant-work.timer`, every 15 min, `t3 thread start` | The oldest task queued for the agent (`lor task queue`, or giving it to the agent on Tasks). Starts with `lor context --task <id>`, ends with `lor done <id> --memo "…"`. One per tick. |
 | Mail (headless) | `assistant-mail.timer`, every 2 min, only when `lor mail pending` is due | Reads the new mail in Gmail; does nothing, logs it for the brief, acts, messages him, or flags a task. |

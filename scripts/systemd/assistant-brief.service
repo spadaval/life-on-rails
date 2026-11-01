@@ -1,0 +1,7 @@
+[Unit]
+Description=Assistant: morning brief (T3 thread)
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/opt/node/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/projects/life-on-rails/runner/brief.sh
