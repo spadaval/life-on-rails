@@ -36,7 +36,7 @@ describe("todayHtml", () => {
     expect(t).toContain("16:00 Supervisor meeting");
     expect(t).toContain("19:30 Dinner with Sam");
     expect(t).not.toContain("Lab standup");
-    expect(t).toContain("4 to confirm");
+    expect(t).toContain("Send the Hawthorne notice");
     expect(t).toContain("Approve the dentist reschedule");
   });
 
