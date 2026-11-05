@@ -10,6 +10,8 @@ The intent is in [strategy.md](strategy.md). This file holds the decisions, incr
 - Nothing goes on Sumeet's phone unless he says so in the current thread. The Fold arrives 2026-11-05, but he said to stick to the emulator for now. Steps that need the real Fold carry **[real Fold]** and wait for him.
 - Before building any ordinary launcher part, look at how Lawnchair or Kvaesitso does it (D1).
 
+**Builds, 2026-11-05.** A Gradle init script on buildbot refuses local builds unless `T3_ALLOW_LOCAL_GRADLE=1`, which only Sumeet may set. The trial has ended. Sumeet allowed boat on the paid plan (551 included hours) and asked for a spike on whether boat is needed at all. Builds run on a small VM of their own, `lor-android-build` (`bx_fxc6p2bw`, `default`), with JDK 21, platform 37 and build-tools 37 in `~/opt`, and a copy of buildbot's `~/.android/debug.keystore`, so its APKs update the installed app. Spike on that VM (4 vCPU): a cold first build with dependency downloads took 1m25s. A clean build on a fresh daemon took 24 s, 73 CPU-seconds and about 2.5 GB of memory (the Gradle and Kotlin daemons). A warm rebuild after a Kotlin change took 2 s. A round trip through boat (sync, build, copy back) adds about 20 s. Whether to build locally instead is Sumeet's call (the guard).
+
 ## Decisions
 
 ### D1: What the launcher is built on. Status: done
@@ -34,7 +36,7 @@ The intent is in [strategy.md](strategy.md). This file holds the decisions, incr
 
 ## Increments
 
-### Increment 1: A third-party home works on the Fold. Status: todo
+### Increment 1: A third-party home works on the Fold. Status: active
 
 **Goal.** Before any heavy work, find out whether a home app we build stays usable on One UI 9: gesture navigation feels acceptable, the app stays the default home with Unrestricted battery, and it behaves on both screens. D1 is settled, so the Lawnchair comparison only calibrates gesture feel.
 
@@ -44,7 +46,7 @@ The intent is in [strategy.md](strategy.md). This file holds the decisions, incr
 - Whether a foldable emulator image is available on this host. The current AVD is a plain phone on API 35.
 - Whether the side key can open a third-party default assistant on One UI 9.
 
-#### 1.1 A minimal home app, checked on the emulator. Status: todo
+#### 1.1 A minimal home app, checked on the emulator. Status: active (built and checked 2026-11-05, review pending)
 
 - **Goal.** Give LoR's app the least that lets it be chosen as home: an activity with `MAIN` + `HOME` + `DEFAULT`, showing every launchable app (`LauncherApps.getActivityList`) in a plain Compose list that opens on a tap. This is the probe Increment 1 needs, and it's throwaway if D1 picks a fork.
 - **Done when.**
@@ -55,6 +57,7 @@ The intent is in [strategy.md](strategy.md). This file holds the decisions, incr
   - `testDebugUnitTest` passes.
 - **Scope.** `android/app/src/main/AndroidManifest.xml` and one new activity. Nothing on the server.
 - **Context.** `android/app/src/main/java/com/spadaval/lor/MainActivity.kt`. The manifest already declares `QUERY_ALL_PACKAGES`. Optional: if a foldable AVD can be made cheaply, also screenshot it folded and unfolded.
+- **2026-11-05.** `home/HomeActivity.kt` (app list after Kvaesitso, launching after Launcher3) and the HOME activity in the manifest. All five checks pass on the emulator ([device-checks.md](device-checks.md)). The check found that home needs its own task (`taskAffinity=""`), or the LoR icon reopens home instead of the tabs. The foldable AVD was not run (see device-checks.md).
 
 #### 1.2 Fold checks [real Fold]. Status: backlog, waits on Sumeet
 
@@ -65,7 +68,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 3. **Both screens.** Fold and unfold with an app open and on home. Does home show on each screen, keep its state, and avoid flashing back to One UI Home?
 4. **While there.** Does Settings let the side key open the default digital assistant app, rather than only Bixby?
 
-### Increment 2: The launcher speaks T3. Status: todo
+### Increment 2: The launcher speaks T3. Status: active
 
 **Goal.** A Kotlin module in the app holds one authenticated WebSocket connection to a T3 server. It shows which threads are running, waiting on Sumeet (approval or question) or failed. It can approve, answer, send a follow-up, and launch a thread in a project. Everything the agent page and quick send need from T3 rests on this, and it doesn't depend on D1.
 
@@ -88,7 +91,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 
 **Background.** Effect RPC JSON over WebSocket (`apps/server/src/ws.ts`). The methods are `orchestration.subscribeShell`, `orchestration.subscribeThread` or `getThreadProjection`, `orchestration.dispatchCommand` and `orchestration.launchThread` (`packages/contracts/src/rpc.ts`, `orchestrationV2.ts`). Pairing and session auth are in `apps/server/src/auth/` and `packages/client-runtime/src/authorization`. Port only the fields these calls touch. Read `/home/supadava/projects/t3code`, and never edit it.
 
-#### 2.1 Connect, pair and read the shell. Status: todo
+#### 2.1 Connect, pair and read the shell. Status: active
 
 - **Goal.** Pair with a T3 server, open the WebSocket, subscribe to the shell, and keep a list of threads, each with its project and a state: running, waiting for approval, waiting for an answer, failed, or idle. Reconnect after a dropped connection.
 - **Done when.**
