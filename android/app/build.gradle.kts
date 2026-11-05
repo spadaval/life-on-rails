@@ -37,6 +37,8 @@ dependencies {
     implementation("androidx.health.connect:connect-client:1.1.0")
     // The T3 Code WebSocket (t3 package).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Scanning T3's pairing QR code: Play services' own scanner screen, so no camera permission.
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20250517")

@@ -32,6 +32,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.spadaval.lor.t3.LaunchDefaults
 import com.spadaval.lor.t3.ModelSelection
 import com.spadaval.lor.t3.Pairing
@@ -79,20 +82,34 @@ fun T3DebugScreen(onBack: () -> Unit) {
             OutlinedTextField(value = server, onValueChange = { server = it }, label = { Text("Server address") }, placeholder = { Text("http://10.0.2.2:16021") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Pairing token or link") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
             Text(
-                "From `t3 pair` or T3's Connections settings. The address above, if set, wins over the link's host.",
+                "Scan the QR code from T3's Connections settings, or paste the link or a `t3 pair` token. When pasting, the address above, if set, wins over the link's host.",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(vertical = 6.dp),
             )
+            val pair: (String, String) -> Unit = { address, link ->
+                scope.launch {
+                    pairing = "Pairing…"
+                    // pair() reconnects only while this screen has the connection started, so a
+                    // pairing that finishes after the screen closed starts nothing.
+                    val result = withContext(Dispatchers.IO) { runCatching { connection.pair(Pairing.parse(address, link)) } }
+                    pairing = result.fold({ code = ""; null }, { "Cannot pair: ${T3Connection.describe(it)}" })
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
-                    scope.launch {
-                        pairing = "Pairing…"
-                        // pair() reconnects only while this screen has the connection started, so a
-                        // pairing that finishes after the screen closed starts nothing.
-                        val result = withContext(Dispatchers.IO) { runCatching { connection.pair(Pairing.parse(server, code)) } }
-                        pairing = result.fold({ code = ""; null }, { "Cannot pair: ${T3Connection.describe(it)}" })
-                    }
-                }) { Text("Pair") }
+                    val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
+                    GmsBarcodeScanning.getClient(context, options).startScan()
+                        .addOnSuccessListener { barcode ->
+                            val link = barcode.rawValue.orEmpty()
+                            // A scanned link names its own server, so the typed address doesn't override it.
+                            runCatching { Pairing.parse("", link) }.fold(
+                                { server = it.httpBase; pair("", link) },
+                                { pairing = "That QR code isn't a T3 pairing link." },
+                            )
+                        }
+                        .addOnFailureListener { pairing = "Cannot scan: ${it.message}" }
+                }) { Text("Scan QR") }
+                OutlinedButton(onClick = { pair(server, code) }) { Text("Pair") }
                 OutlinedButton(onClick = { connection.forget() }) { Text("Forget") }
             }
             pairing?.let { Text(it, modifier = Modifier.padding(top = 8.dp)) }
