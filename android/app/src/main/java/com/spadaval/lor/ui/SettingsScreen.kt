@@ -40,6 +40,12 @@ fun SettingsScreen() {
     var server by remember { mutableStateOf(prefs.serverUrl) }
     var device by remember { mutableStateOf(prefs.deviceName) }
     var result by remember { mutableStateOf<String?>(null) }
+    var showT3 by remember { mutableStateOf(false) }
+
+    if (showT3) {
+        T3DebugScreen(onBack = { showT3 = false })
+        return
+    }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
         Section("Server") {
@@ -70,6 +76,10 @@ fun SettingsScreen() {
                 }) { Text("Test connection") }
             }
             result?.let { Text(it, modifier = Modifier.padding(top = 8.dp)) }
+        }
+        Section("T3 Code") {
+            Text("Pair with a T3 Code server and watch its threads. A debug view for the launcher's agent page.", style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = { showT3 = true }, modifier = Modifier.padding(top = 8.dp)) { Text("T3 connection (debug)") }
         }
         Section("About") {
             Text("Life on Rails ${BuildInfo.VERSION}", style = MaterialTheme.typography.bodyMedium)
