@@ -6,11 +6,17 @@ The intent is in [strategy.md](strategy.md). This file holds the decisions, incr
 
 - Work goes to `main` when it works, as in the rest of LoR. Commits are named after the thing, for example `Launcher: home intent and app list`.
 - A fresh agent that didn't write the code reviews each increment's commits. LoR has no gate, so this can happen after they land on `main`, and the increment isn't marked done until it has.
-- Build: `cd android && ./gradlew assembleDebug testDebugUnitTest`, run on boat (the `boat` skill), not buildbot. The boat trial ends 2026-11-10 and has 25 h of compute in total, so stop the VM after each build. Check `boat limits` before starting one. After the trial ends, ask Sumeet before the first build. Bring the APK back and install it on the emulator: `sg kvm -c start-t3-emulator`, adb at `~/Android/Sdk/platform-tools/adb`. Point the app at the LoR test server (`scripts/ui-server.sh`, `http://10.0.2.2:3857`), never the real one.
+- Build: `android/boat-build.sh <checkout-root> <out-dir> [gradle tasks]` (default `assembleDebug testDebugUnitTest`). It syncs the checkout's `android/` to the boat VM `lor-android-build` (`bx_fxc6p2bw`), builds there under a lock, and copies the APK and test reports back. Each call sets the VM to stop itself 30 minutes later; `boat resume bx_fxc6p2bw` brings it back. Never run Gradle on buildbot: a Gradle init script refuses it unless `T3_ALLOW_LOCAL_GRADLE=1`, which only Sumeet may set. Bring the APK back and install it on the emulator: `sg kvm -c start-t3-emulator`, adb at `~/Android/Sdk/platform-tools/adb`. Point the app at the LoR test server (`scripts/ui-server.sh`, `http://10.0.2.2:3857`), never the real one.
 - Nothing goes on Sumeet's phone unless he says so in the current thread. The Fold arrives 2026-11-05, but he said to stick to the emulator for now. Steps that need the real Fold carry **[real Fold]** and wait for him.
 - Before building any ordinary launcher part, look at how Lawnchair or Kvaesitso does it (D1).
 
-**Builds, 2026-11-05.** A Gradle init script on buildbot refuses local builds unless `T3_ALLOW_LOCAL_GRADLE=1`, which only Sumeet may set. The trial has ended. Sumeet allowed boat on the paid plan (551 included hours) and asked for a spike on whether boat is needed at all. Builds run on a small VM of their own, `lor-android-build` (`bx_fxc6p2bw`, `default`), with JDK 21, platform 37 and build-tools 37 in `~/opt`, and a copy of buildbot's `~/.android/debug.keystore`, so its APKs update the installed app. Spike on that VM (4 vCPU): a cold first build with dependency downloads took 1m25s. A clean build on a fresh daemon took 24 s, 73 CPU-seconds and about 2.5 GB of memory (the Gradle and Kotlin daemons). A warm rebuild after a Kotlin change took 2 s. A round trip through boat (sync, build, copy back) adds about 20 s. Whether to build locally instead is Sumeet's call (the guard).
+**Builds, 2026-11-05.** The boat trial ended 2026-11-04. Sumeet allowed boat on the paid plan, which has 551 included hours, and asked for a spike on whether boat is needed at all. The VM `lor-android-build` (`default`, 4 vCPU) was set up with `android/boat-setup.sh`: JDK 21, platform 37 and build-tools 37 in `~/opt`, plus a copy of buildbot's `~/.android/debug.keystore`, so its APKs update the installed app. The spike, on that VM:
+- A cold first build with dependency downloads took 1m25s.
+- A clean build on a fresh daemon took 24 s, 73 CPU-seconds and about 2.5 GB of memory (the Gradle and Kotlin daemons).
+- A warm rebuild after a Kotlin change took 2 s.
+- A round trip through boat (sync, build, copy back) adds about 20 s.
+
+Building locally instead needs Sumeet to lift the init-script guard. The question is with him.
 
 ## Decisions
 
@@ -43,12 +49,12 @@ The intent is in [strategy.md](strategy.md). This file holds the decisions, incr
 **Done when.** `device-checks.md` records a pass or fail, with a note, for each check in 1.1 (emulator) and 1.2 (real Fold). Screenshots stay in the working thread, not in git. Sumeet has said whether the gesture feel is acceptable.
 
 **Unknowns.**
-- Whether a foldable emulator image is available on this host. The current AVD is a plain phone on API 35.
+- ~~Whether a foldable emulator image is available on this host.~~ Yes (2026-11-05): the SDK's AVD tooling has `pixel_9_pro_fold` and `pixel_fold` profiles, and the API 35 image is installed.
 - Whether the side key can open a third-party default assistant on One UI 9.
 
 #### 1.1 A minimal home app, checked on the emulator. Status: active (built and checked 2026-11-05, review pending)
 
-- **Goal.** Give LoR's app the least that lets it be chosen as home: an activity with `MAIN` + `HOME` + `DEFAULT`, showing every launchable app (`LauncherApps.getActivityList`) in a plain Compose list that opens on a tap. This is the probe Increment 1 needs, and it's throwaway if D1 picks a fork.
+- **Goal.** Give LoR's app the least that lets it be chosen as home: an activity with `MAIN` + `HOME` + `DEFAULT`, showing every launchable app (`LauncherApps.getActivityList`) in a plain Compose list that opens on a tap. This is the probe Increment 1 needs. With D1 settled, Increment 3 grows it into the real home.
 - **Done when.**
   - On the emulator, Settings offers it as the home app, and pressing home after picking it opens it.
   - Tapping an app opens that app.
@@ -91,7 +97,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 
 **Background.** Effect RPC JSON over WebSocket (`apps/server/src/ws.ts`). The methods are `orchestration.subscribeShell`, `orchestration.subscribeThread` or `getThreadProjection`, `orchestration.dispatchCommand` and `orchestration.launchThread` (`packages/contracts/src/rpc.ts`, `orchestrationV2.ts`). Pairing and session auth are in `apps/server/src/auth/` and `packages/client-runtime/src/authorization`. Port only the fields these calls touch. Read `/home/supadava/projects/t3code`, and never edit it.
 
-#### 2.1 Connect, pair and read the shell. Status: active
+#### 2.1 Connect, pair and read the shell. Status: active (2026-11-05: a subagent of the orchestrating thread is building it in a worktree branch; it lands on main when done)
 
 - **Goal.** Pair with a T3 server, open the WebSocket, subscribe to the shell, and keep a list of threads, each with its project and a state: running, waiting for approval, waiting for an answer, failed, or idle. Reconnect after a dropped connection.
 - **Done when.**
@@ -105,7 +111,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 - **Goal.** Use `dispatchCommand` to approve or deny an approval, answer a question, and send a follow-up. Use `launchThread` to start a thread in a named project.
 - **Done when.** Against a scratch server, each action changes the thread as T3's own UI shows it, using a free or cheapest-model provider.
 
-### Increment 3: A home Sumeet can live in, with the agent page. Status: backlog, blocked by D1 and Increment 1
+### Increment 3: A home Sumeet can live in, with the agent page. Status: backlog, blocked by Increment 1
 
 **Goal.**
 - The launcher is his default home. The left-most page is the agent page:

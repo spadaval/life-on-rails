@@ -1,11 +1,11 @@
 package com.spadaval.lor.home
 
-import android.content.Context
-import android.content.pm.LauncherActivityInfo
+import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.pm.LauncherApps
 import android.os.Bundle
 import android.os.UserHandle
-import android.os.UserManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
@@ -31,11 +31,12 @@ import com.spadaval.lor.ui.LorTheme
  *
  * The app list follows Kvaesitso (github.com/MM2-0/Kvaesitso, GPL-3.0, `data/applications`):
  * `LauncherApps.getActivityList` for every user profile, refreshed by a `LauncherApps.Callback`.
- * Launching follows Launcher3 / Lawnchair (`ItemClickHandler`): `LauncherApps.startMainActivity`.
+ * Launching follows Launcher3 / Lawnchair (`startActivitySafely`): `LauncherApps.startMainActivity`,
+ * catching the failures of an app that went away before the list refreshed.
  */
 class HomeActivity : ComponentActivity() {
     private lateinit var launcherApps: LauncherApps
-    private val apps = mutableStateOf(emptyList<LauncherActivityInfo>())
+    private val apps = mutableStateOf(emptyList<HomeApp>())
 
     private val callback = object : LauncherApps.Callback() {
         override fun onPackageRemoved(packageName: String, user: UserHandle) = refresh()
@@ -58,14 +59,14 @@ class HomeActivity : ComponentActivity() {
         setContent {
             LorTheme {
                 LazyColumn(Modifier.fillMaxSize().safeDrawingPadding()) {
-                    items(apps.value, key = { it.componentName.flattenToString() + it.user.hashCode() }) { app ->
+                    items(apps.value, key = { it.key }) { app ->
                         Text(
-                            app.label.toString(),
+                            app.label,
                             style = MaterialTheme.typography.titleMedium,
                             color = Color.White,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { launcherApps.startMainActivity(app.componentName, app.user, null, null) }
+                                .clickable { launch(app) }
                                 .padding(horizontal = 24.dp, vertical = 14.dp),
                         )
                     }
@@ -80,11 +81,27 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun refresh() {
-        apps.value = launchableApps(this, launcherApps)
+        apps.value = launchableApps(launcherApps)
+    }
+
+    private fun launch(app: HomeApp) {
+        try {
+            launcherApps.startMainActivity(app.component, app.user, null, null)
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, "${app.label} can't be opened.", Toast.LENGTH_SHORT).show()
+        } catch (e: SecurityException) {
+            Toast.makeText(this, "${app.label} can't be opened.", Toast.LENGTH_SHORT).show()
+        }
     }
 }
 
-fun launchableApps(context: Context, launcherApps: LauncherApps): List<LauncherActivityInfo> =
-    context.getSystemService(UserManager::class.java).userProfiles
+/** One launchable activity, its label read once (`getLabel` loads it from the package each call). */
+class HomeApp(val label: String, val component: ComponentName, val user: UserHandle) {
+    val key = "${component.flattenToString()}#$user"
+}
+
+fun launchableApps(launcherApps: LauncherApps): List<HomeApp> =
+    launcherApps.profiles
         .flatMap { launcherApps.getActivityList(null, it) }
-        .sortedBy { it.label.toString().lowercase() }
+        .map { HomeApp(it.label.toString(), it.componentName, it.user) }
+        .sortedBy { it.label.lowercase() }

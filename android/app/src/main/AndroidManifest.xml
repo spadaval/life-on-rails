@@ -64,8 +64,10 @@
         <activity
             android:name=".home.HomeActivity"
             android:exported="true"
+            android:clearTaskOnLaunch="true"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
+            android:resumeWhilePausing="true"
             android:stateNotNeeded="true"
             android:taskAffinity=""
             android:theme="@style/Theme.Lor.Home"
