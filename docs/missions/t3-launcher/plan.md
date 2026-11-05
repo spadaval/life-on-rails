@@ -7,11 +7,12 @@ The intent is in [strategy.md](strategy.md). This file holds the decisions, incr
 - Work goes to `main` when it works, as in the rest of LoR. Commits are named after the thing, for example `Launcher: home intent and app list`.
 - A fresh agent that didn't write the code reviews each increment's commits. LoR has no gate, so this can happen after they land on `main`, and the increment isn't marked done until it has.
 - Build: `cd android && ./gradlew assembleDebug testDebugUnitTest`, run on boat (the `boat` skill), not buildbot. The boat trial ends 2026-11-10 and has 25 h of compute in total, so stop the VM after each build. Check `boat limits` before starting one. After the trial ends, ask Sumeet before the first build. Bring the APK back and install it on the emulator: `sg kvm -c start-t3-emulator`, adb at `~/Android/Sdk/platform-tools/adb`. Point the app at the LoR test server (`scripts/ui-server.sh`, `http://10.0.2.2:3857`), never the real one.
-- Nothing goes on Sumeet's phone unless he says so in the current thread. Steps that need the real Fold carry **[real Fold]** and wait for him.
+- Nothing goes on Sumeet's phone unless he says so in the current thread. The Fold arrives 2026-11-05, but he said to stick to the emulator for now. Steps that need the real Fold carry **[real Fold]** and wait for him.
+- Before building any ordinary launcher part, look at how Lawnchair or Kvaesitso does it (D1).
 
 ## Decisions
 
-### D1: What the launcher is built on. Status: open (Sumeet)
+### D1: What the launcher is built on. Status: done
 
 **Question.** In "Decide Launcher design", the agent first proposed forking an existing launcher (Lawnchair or Kvaesitso) rather than starting from scratch. Later, the agent proposed that LoR's Android app grow into the launcher, and Sumeet agreed ("We're basically turning LoR into the launcher"). The fork idea was never settled, and every later increment depends on the base.
 
@@ -29,13 +30,13 @@ The intent is in [strategy.md](strategy.md). This file holds the decisions, incr
 
 **Recommendation: grow LoR's app (1).** What makes this launcher worth having is the agent page, the agent-edited layout and the T3 link, and a fork gives none of those. A fork saves building the ordinary launcher parts: the grid, folders, widget hosting, drag and drop, and the two screens. Those are real, but each is a known, bounded piece of Compose work, and drag and drop matters less when agents edit the layout. Gesture feel is the one place a fork could really win, and no launcher can own the gestures without root. Increment 1 compares a minimal LoR home with Lawnchair's release APK on the same device, so this choice rests on what Sumeet feels rather than on claims. If Lawnchair is clearly smoother, choose 2.
 
-**Decision.** *Sumeet fills this in. It can be made now, or after Increment 1's comparison.*
+**Decision (Sumeet, 2026-11-05).** Grow LoR's app (option 1). Reference open launchers and steal from them: we don't need to build everything from scratch. Before building a launcher basic (grid, folders, widget hosting, drag and drop, two screens, app list and icon loading), read how Lawnchair and Kvaesitso (and other open launchers, such as Neo Launcher) do it and copy what fits, keeping the license and source noted in the file. Increment 1.2 still compares with Lawnchair, but only to calibrate gesture feel, not to reopen D1.
 
 ## Increments
 
 ### Increment 1: A third-party home works on the Fold. Status: todo
 
-**Goal.** Before any heavy work, find out whether a home app we build stays usable on One UI 9: gesture navigation feels acceptable, the app stays the default home with Unrestricted battery, and it behaves on both screens. The results also feed D1.
+**Goal.** Before any heavy work, find out whether a home app we build stays usable on One UI 9: gesture navigation feels acceptable, the app stays the default home with Unrestricted battery, and it behaves on both screens. D1 is settled, so the Lawnchair comparison only calibrates gesture feel.
 
 **Done when.** `device-checks.md` records a pass or fail, with a note, for each check in 1.1 (emulator) and 1.2 (real Fold). Screenshots stay in the working thread, not in git. Sumeet has said whether the gesture feel is acceptable.
 
@@ -55,7 +56,7 @@ The intent is in [strategy.md](strategy.md). This file holds the decisions, incr
 - **Scope.** `android/app/src/main/AndroidManifest.xml` and one new activity. Nothing on the server.
 - **Context.** `android/app/src/main/java/com/spadaval/lor/MainActivity.kt`. The manifest already declares `QUERY_ALL_PACKAGES`. Optional: if a foldable AVD can be made cheaply, also screenshot it folded and unfolded.
 
-#### 1.2 Fold checks [real Fold]. Status: todo, waits on Sumeet
+#### 1.2 Fold checks [real Fold]. Status: backlog, waits on Sumeet
 
 Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub releases, or tells an agent to. Each check is run with One UI Home, the LoR home, and Lawnchair:
 
@@ -132,12 +133,13 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 - a Quick Settings tile;
 - the side key, with the app as the default assistant attaching a screen capture as context.
 
-Sending launches a T3 thread in the first of: the project named in the prompt, the project on screen, or the Inbox. The sheet shows where it's going, and changing that costs one tap.
+Sending launches a T3 thread in the first of: the project named in the prompt, the project on screen, or the `assistant` project. The sheet shows where it's going, and changing that costs one tap.
 
 **Done when.** Each entry point launches a thread in the expected project on a scratch server, and the assistant entry attaches the capture. **[real Fold]** The side key opens it from inside another app.
 
+**Inbox.** The `assistant` project (Sumeet, 2026-11-05), a new thread per prompt.
+
 **Unknowns.**
-- Which project is "the Inbox on buildbot" (see Open questions).
 - How "the project on screen" is known when the screen isn't the launcher's own.
 
 ### Increment 5: LoR knows how each app was launched. Status: backlog
@@ -169,18 +171,40 @@ Sending launches a T3 thread in the first of: the project named in the prompt, t
 - Which repo holds the file, and how the phone reaches it: over the tailnet, or served through LoR.
 - Whether changes made by hand on the phone are written back to the repo. The thread proposed it, but it wasn't decided.
 
+### Increment 8: Search finds shortcuts and conversations. Status: backlog, blocked by Increment 3
+
+**Goal.** Search covers every app's shortcuts (static, dynamic and pinned) and conversation shortcuts through `LauncherApps.getShortcuts`, which only the default home app may call. Typing a person's name shows their chats in each messaging app, their LoR person card and T3 threads that mention them. Choosing a result opens that shortcut directly.
+
+**Done when.** On the emulator, a dynamic shortcut published by a test app and a conversation shortcut from a messaging app both appear in search and open the right screen. A JVM test covers ranking across apps, shortcuts, people and threads.
+
+**Unknowns.**
+- Which LoR endpoint gives people for search, and whether T3 thread search uses `orchestration.searchThreads` (adds one method to Increment 2's set).
+- How Kvaesitso indexes shortcuts and ranks mixed results. Read it first (D1).
+
+### Increment 9: Smart folders. Status: backlog, blocked by Increments 3 and 7
+
+**Goal.** An agent sorts apps into drawer folders, each with a one-line reason ("Splitwise is in Money: you open it right after paying"), by writing the layout file. Folders Sumeet edits by hand are pinned and the agent leaves them alone. Usage data comes from LoR, which already has app sessions and attribution rules.
+
+**Done when.** On the emulator, an agent run proposes folders as a layout change (Increment 7), each folder shows its reason, and after a hand edit to one folder, the next agent run leaves that folder unchanged.
+
+**Unknowns.** Where the sorting agent runs: a LoR job that starts a T3 thread in `assistant`, or a step of the nightly run.
+
+### Increment 10: Named and temporary layouts. Status: backlog, blocked by Increment 7
+
+**Goal.** The layout file holds several named layouts, and Sumeet switches between them from home. An agent can propose a temporary layout with an expiry (a trip, an on-call week). It's applied only when he accepts, he can end it early, and it reverts by itself when it expires. Nothing switches on a guess.
+
+**Done when.** On the emulator, an agent proposes a temporary layout, accepting applies it, and at the expiry the previous layout returns. Switching between two named layouts by hand works.
+
+**Unknowns.** Whether a temporary layout is a branch, a dated file or an overlay on the base layout. Decide with Increment 7's repo design.
+
 ## Later, outside this mission
 
-These were agreed in the design threads. This plan proposes moving them out of this mission to keep it small, which is Sumeet's call (Open question 4). Each would be planned as its own mission once this one closes:
+Sumeet kept these out of this mission on 2026-11-05. Each would be planned as its own mission once this one closes:
 
-- **Smart folders and search over shortcuts.** Smart folders in the drawer, each with its reason, with hand-edited folders pinned. Every app's shortcuts and conversations, through `LauncherApps`, in search.
-- **Groups and temporary layouts.** Groups of apps that open together in split view. Temporary layouts with an expiry.
+- **Groups of apps that open together** in split view.
 - **Generative widgets.** Ideally pinned T3 HTML renders, in sandboxed WebViews. This needs "Pin to home" in Sumeet's T3 fork, a change in that repo.
 - **The phone as an output for agents.** A few safe tools over the T3 connection, such as showing something on the phone, pinning a card, or asking a yes/no question.
 
 ## Open questions for Sumeet
 
-1. **D1:** grow LoR's app (recommended), or fork Lawnchair or Kvaesitso?
-2. **The Fold.** Has it arrived, and may an agent install the 1.1 APK and Lawnchair on it for Increment 1?
-3. **The Inbox.** Which T3 project is "the Inbox on buildbot": the existing "No project" scratch project, the `assistant` project (or its channel thread), or a new `inbox` project?
-4. **Scope.** Is it all right to move smart folders, shortcut search, app groups, temporary layouts, generative widgets and phone-output tools into later missions? The alternative is keeping them in this one.
+None open. Answered 2026-11-05: D1 is to grow LoR's app and borrow from open launchers; the Fold work waits and agents use the emulator; quick send defaults to the `assistant` project; smart folders, named and temporary layouts, and shortcut search are in this mission.
