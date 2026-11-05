@@ -4,30 +4,33 @@
 // to /trmnl/* here. One device: LOR_TRMNL_MAC gets LOR_TRMNL_KEY at setup, and
 // every later request must carry that key.
 //
-// Screens: a timed wake always draws Today. A tap on the middle of the touch
-// bar wakes the device and calls /api/display (Update-Source "button"): it
-// redraws what is up, or, if that was drawn moments ago, steps to the next
-// screen; a stepped-to screen gives way to Today after a few minutes. Left
+// Screens: a timed wake always draws Today. On firmware 1.8.18 a tap on the
+// middle of the touch bar opens the device's own menu; its Next Screen calls
+// /api/display as a touch wake, and we step to the next screen, which gives
+// way to Today after a few minutes. Special > Restart Playlist sends a
+// special_function and goes home to Today. Previous Screen, Close, and left
 // and right never reach us: the firmware flips through the frames it cached,
 // one per screen, kept apart by the first 14 characters of the filename.
 import { timingSafeEqual } from "node:crypto";
 import { sql } from "../../db/client.js";
-import { addDays, localTimeOnDay, localYmd } from "../../shared/localTime.js";
+import { addDays, localDayBounds, localTimeOnDay, localYmd } from "../../shared/localTime.js";
 import { env } from "../env.js";
 import { needsOwner } from "../intents.js";
 import { errorMessage, log } from "../log.js";
 import { jobStatuses } from "../status.js";
 import { getToday, wakeWindow } from "../today.js";
-import { getGraph } from "../graph.js";
+import { type GraphNode, getGraph } from "../graph.js";
+import { descendantSet, mergedHours, type Span } from "../scoring/formulas.js";
 import {
-  FRAME_H, FRAME_SCALE, FRAME_W, type GoalsInput, type Screen, type Shell, type TasksInput, type TodayInput,
-  goalsHtml, nextScreen, tasksHtml, todayHtml,
+  FRAME_H, FRAME_SCALE, FRAME_W, type GoalsInput, type Ink, OTHER, OWN_INKS, type One, type Screen, type Shell, type TasksInput, type TodayInput,
+  goalsHtml, nextScreen, pickOne, shortTitle, tasksHtml, todayHtml,
 } from "./frame.js";
+import { getPin } from "./pin.js";
 import { grayPng2 } from "./png.js";
 import { frameFonts, renderFrame } from "./render.js";
 
 const REFRESH_S = 900;
-/** How long a screen someone tapped to stays up before Today comes back. */
+/** How long a screen stepped to stays up before Today comes back. */
 const TAPPED_S = 300;
 const LOW_BATTERY_PCT = 20;
 
@@ -44,7 +47,6 @@ const keyOk = (request: Request) => env.LOR_TRMNL_KEY !== "" && sameText(request
 /** The last frame drawn of each screen; the device fetches it by name right after /api/display. */
 const latest = new Map<Screen, { name: string; png: Buffer }>();
 let shown: Screen = "today";
-let shownAt = 0;
 
 /** "plugin-today0-1771674964": the firmware's own shape, so its cache keeps one frame per screen and ages them out. */
 const frameName = (screen: Screen, now: Date) => `plugin-${screen.padEnd(6, "0")}-${Math.floor(now.getTime() / 1000)}`;
@@ -61,28 +63,108 @@ async function shellInput(now: Date, alerts: string[]): Promise<Shell> {
   };
 }
 
+/** Active goals in the wall's order (weekly target, largest first; then the rest) and the ink each is drawn in. */
+interface Goals {
+  order: GraphNode[];
+  ink: (goalId: string) => Ink;
+  /** The first goal, in that order, an intent counts toward; null for none. */
+  goalOf: (intentId: string | null) => GraphNode | null;
+  under: (goalId: string) => Set<string>;
+}
+
+function wallGoals(nodes: GraphNode[], links: { from_id: string; to_id: string; kind: string }[]): Goals {
+  const goals = nodes.filter((n) => n.type === "goal" && n.status === "active");
+  const targeted = goals.filter((g) => g.weekly_hour_target).sort((a, b) => b.weekly_hour_target! - a.weekly_hour_target! || a.title.localeCompare(b.title));
+  const rest = goals.filter((g) => !g.weekly_hour_target).sort((a, b) => a.title.localeCompare(b.title));
+  const order = [...targeted, ...rest];
+  const edges = links.map((l) => ({ fromId: l.from_id, toId: l.to_id, kind: l.kind as "measures" }));
+  const sets = new Map(order.map((g) => [g.id, descendantSet(g.id, edges)]));
+  const inks = new Map<string, Ink>(order.map((g) => [g.id, targeted.indexOf(g) >= 0 && targeted.indexOf(g) < OWN_INKS ? targeted.indexOf(g) : OTHER]));
+  return {
+    order,
+    ink: (id) => inks.get(id) ?? null,
+    goalOf: (id) => (id ? (order.find((g) => sets.get(g.id)!.has(id)) ?? null) : null),
+    under: (id) => sets.get(id) ?? new Set(),
+  };
+}
+
+const goalName = (g: GraphNode) => shortTitle(g.title, g.short_title);
+const openOwnerTask = (n: GraphNode) => n.type === "task" && (n.status === "active" || n.status === "waiting") && n.assignee !== "agent";
+
 export async function goalsInput(shell: Shell): Promise<GoalsInput> {
   const graph = await getGraph(sql, shell.now);
-  const goals = graph.nodes
-    .filter((n) => n.type === "goal" && n.status === "active" && n.weekly_hour_target)
-    .map((n) => ({ title: n.title, hours: n.week_hours ?? 0, target: n.weekly_hour_target ?? 0, starving: n.starving }));
-  return { ...shell, goals };
+  const g = wallGoals(graph.nodes, graph.links);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(shell.date, i - 6));
+  const bounds = days.map((d) => localDayBounds(env.LOR_TZ, d));
+  const now = shell.now.getTime();
+  // The scorer's own basis: committed time, merged per goal so overlaps count once.
+  const spans = await sql<{ intent_id: string; t: Date; t_end: Date }[]>`
+    SELECT intent_id, t, t_end FROM commitment
+    WHERE kind = 'time_spent' AND t_end IS NOT NULL AND t_end > ${bounds[0]!.start} AND t < ${shell.now}`;
+  const tasks = graph.nodes.filter(openOwnerTask).sort((a, b) => (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999") || a.title.localeCompare(b.title));
+  return {
+    ...shell,
+    days,
+    goals: g.order.map((goal) => {
+      const under = g.under(goal.id);
+      const mine: Span[] = spans.filter((s) => under.has(s.intent_id)).map((s) => ({ t: s.t.getTime(), tEnd: Math.min(s.t_end.getTime(), now) }));
+      const hours = bounds.map((b) => mergedHours(mine.map((s) => ({ t: Math.max(s.t, b.start.getTime()), tEnd: Math.min(s.tEnd, b.end.getTime()) }))));
+      const next = tasks.find((t) => under.has(t.id));
+      return {
+        title: goalName(goal),
+        ink: g.ink(goal.id),
+        hours,
+        target: goal.weekly_hour_target,
+        next: next ? { title: shortTitle(next.title), due: next.due_local, overdue: next.overdue } : null,
+      };
+    }),
+  };
 }
 
 export async function tasksInput(shell: Shell): Promise<TasksInput> {
   const graph = await getGraph(sql, shell.now);
+  const g = wallGoals(graph.nodes, graph.links);
   const tasks = graph.nodes
-    .filter((n) => n.type === "task" && (n.status === "active" || n.status === "waiting") && n.assignee !== "agent")
+    .filter(openOwnerTask)
     .sort((a, b) => (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999") || a.title.localeCompare(b.title))
-    .map((n) => ({
-      title: n.title, due: n.due_local, overdue: n.overdue, waiting: n.status === "waiting" ? (n.waiting_on ?? "someone") : null, flagged: n.flagged_at !== null,
-    }));
+    .map((n) => {
+      const goal = g.goalOf(n.id);
+      return {
+        title: shortTitle(n.title),
+        due: n.due_local,
+        overdue: n.overdue,
+        waiting: n.status === "waiting" ? (n.waiting_on ?? "someone") : null,
+        flagged: n.flagged_at !== null,
+        ink: goal ? g.ink(goal.id) : null,
+      };
+    });
   return { ...shell, tasks };
+}
+
+/** The one thing on Today, and what it was chosen from. */
+export async function wallOne(now: Date): Promise<One | null> {
+  const date = localYmd(env.LOR_TZ, now);
+  const [today, needs, pin, brief] = await Promise.all([
+    getToday(sql, date, now),
+    needsOwner(sql),
+    getPin(sql),
+    sql<{ body: string }[]>`SELECT body FROM page WHERE slug = ${`briefs/${date}`}`,
+  ]);
+  return pickOne({
+    now,
+    timezone: env.LOR_TZ,
+    pin,
+    running: today.running ? { name: today.running.intent ?? today.running.title ?? "Unlabelled", since: today.running.t_start } : null,
+    events: today.planned.filter((e) => !e.all_day).map((e) => ({ title: e.title ?? "(no title)", t_start: e.t_start, t_end: e.t_end })),
+    brief: brief[0]?.body.trim().split("\n")[0] ?? null,
+    flagged: needs.map((n) => ({ title: shortTitle(n.title), note: n.flag_note })),
+  });
 }
 
 export async function todayInput(shell: Shell): Promise<TodayInput> {
   const { now, date } = shell;
-  const [today, needs] = await Promise.all([getToday(sql, date, now), needsOwner(sql)]);
+  const [today, graph, one] = await Promise.all([getToday(sql, date, now), getGraph(sql, now), wallOne(now)]);
+  const g = wallGoals(graph.nodes, graph.links);
   const wake = wakeWindow(date);
   const hours: Date[] = [];
   for (let d = 0; d < 2; d++) {
@@ -91,31 +173,26 @@ export async function todayInput(shell: Shell): Promise<TodayInput> {
       if (t >= wake.start && t <= wake.end) hours.push(t);
     }
   }
-  const dayStart = new Date(today.day_start).getTime();
-  const dayEnd = new Date(today.day_end).getTime();
-  const recordedS = today.actual.reduce((s, b) => {
-    const a = Math.max(new Date(b.t_start).getTime(), dayStart);
-    const z = Math.min(b.t_end ? new Date(b.t_end).getTime() : now.getTime(), dayEnd);
-    return s + Math.max(0, z - a) / 1000;
-  }, 0);
-  const r = today.running;
   return {
     ...shell,
     wakeStart: wake.start,
     wakeEnd: wake.end,
     hours,
-    blocks: today.actual.map((b) => ({
-      t_start: b.t_start,
-      t_end: b.t_end,
-      paused: b.paused_at !== null,
-      committed: b.committed,
-      bare: (b.origin === "auto_activity" || b.origin === "place") && !b.intent && !b.committed && !b.proposal,
-    })),
-    events: today.planned.filter((e) => !e.all_day).map((e) => ({ title: e.title ?? "(no title)", t_start: e.t_start })),
-    running: r ? { name: r.intent ?? r.title ?? "Unlabelled", since: r.t_start } : null,
-    recordedS,
-    needsYou: needs.map((n) => n.title),
-    brief: (await sql<{ body: string }[]>`SELECT body FROM page WHERE slug = ${`briefs/${today.date}`}`)[0]?.body.trim().split("\n")[0]?.slice(0, 120) ?? null,
+    blocks: today.actual.map((b) => {
+      const goal = g.goalOf(b.intent_id);
+      return {
+        t_start: b.t_start,
+        t_end: b.t_end,
+        running: b.t_end === null && b.paused_at === null,
+        ink: goal ? g.ink(goal.id) : b.intent_id ? OTHER : null,
+        goal: goal ? goalName(goal) : null,
+      };
+    }),
+    events: today.planned.filter((e) => !e.all_day).map((e) => ({ title: e.title ?? "(no title)", t_start: e.t_start, t_end: e.t_end })),
+    deadlines: graph.nodes
+      .filter((n) => openOwnerTask(n) && n.due_local === date && n.due_at)
+      .map((n) => ({ title: shortTitle(n.title), at: n.due_at! })),
+    one,
   };
 }
 
@@ -143,8 +220,8 @@ export async function trmnlDisplay(request: Request): Promise<Response> {
   const h = (k: string) => request.headers.get(k);
   const pct = Number(h("percent-charged"));
   const charging = h("usb-connected") === "true" || h("battery-charging") === "1";
-  const screen = nextScreen(shown, h("update-source"), Date.now() - shownAt);
-  log("info", "trmnl display", { screen, source: h("update-source"), battery: h("percent-charged") ?? h("battery-voltage"), usb: h("usb-connected"), rssi: h("rssi"), fw: h("fw-version") });
+  const screen = nextScreen(shown, h("update-source"), h("special_function"));
+  log("info", "trmnl display", { screen, source: h("update-source"), special: h("special_function"), battery: h("percent-charged") ?? h("battery-voltage"), usb: h("usb-connected"), rssi: h("rssi"), fw: h("fw-version") });
   const alerts = Number.isFinite(pct) && pct > 0 && pct < LOW_BATTERY_PCT && !charging ? [`Battery ${Math.round(pct)}%`] : [];
   try {
     const now = new Date();
@@ -157,7 +234,6 @@ export async function trmnlDisplay(request: Request): Promise<Response> {
   const frame = latest.get(screen);
   if (!frame) return json(500, { status: 500, error: "No frame yet" });
   shown = screen;
-  shownAt = Date.now();
   const origin = new URL(request.url).origin;
   return json(200, {
     status: 0,

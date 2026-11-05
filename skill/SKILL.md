@@ -212,12 +212,20 @@ lor task assign <task_id> agent               # you are doing it; `owner` hands 
 lor intent create --type task --title "Reply to Priya about Friday" --flag "She needs a yes or no by Thursday (mail:18c2...)"
 lor task flag <task_id> "Due tomorrow and still open"   # Needs you on Today, and one WhatsApp message
 lor task unflag <task_id>                     # off Needs you; the task stays
+lor wall                                      # the one thing the fridge display shows on Today, and any pin
+lor wall pin "Leave for the airport" --why "UA 2623 boards 14:05" --until 13:30   # over the automatic choice
+lor wall unpin                                # back to: timer, an event within 30 min, the brief, a flag
+lor intent short <goal_id> "Make & play"      # a goal's name on the wall, where its title would not fit
 lor task queue <task_id>                      # for the agent to do on its own; a work run starts a thread on it
 lor done <task_id> --memo "Booked for Nov 3; confirmation in mail:18c2..."
 lor intent status <id> paused                 # only when Sumeet asks: paused | later | archived | active
 lor intent due <id> 2026-11-02T09:00:00-05:00 # only when Sumeet asks; off clears it
 lor propose time --block <block_id> --intent <intent_id> --reason "calendar says dentist"
 ```
+
+The wall display picks its one thing by itself, so pin only when that choice is wrong for the
+next few hours: something time-critical the calendar does not show, or the brief's action once
+it is done. Give a pin an `--until`; an open-ended one stays until you unpin it.
 
 The actual lane fills itself, in order of precedence: Sumeet's own timers and anything confirmed,
 then calendar events, then phone app use, then stays at known places. Phone and place blocks

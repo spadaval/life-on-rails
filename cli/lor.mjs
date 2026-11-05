@@ -52,12 +52,16 @@ write (free for the agent; every write needs --thread <your T3 thread id>)
   lor unlink --from <id> --to <id> --kind measures|blocks|derived_from
   lor intent status <id> active|paused|later|archived   only when Sumeet asks
   lor intent due <id> <t>|off             only when Sumeet asks
+  lor intent short <id> "<few words>"|off a goal's name on the wall display, where its title would not fit
   lor task assign <id> owner|agent        you are doing it now, or hand it back
   lor task queue <id>                     for the agent to do later on its own: the work run starts a thread on it
   lor work next                           the oldest queued task
   lor work claim <id>                     this thread has started it
   lor task flag <id> "<why it needs Sumeet>"   Needs you on Today, and one WhatsApp message
   lor task unflag <id>                    off Needs you; the task stays
+  lor wall                                the one thing the wall display shows on Today, and any pin
+  lor wall pin "<text>" [--why "..."] [--until <HH:MM|t>]   put this there instead, until then or until unpinned
+  lor wall unpin                          back to the automatic choice
   lor done <task_id> [--memo "..."]
   lor propose time --block <id> --intent <id> [--reason "..."]
   lor place add "<name>" --at <lat>,<lon> [--radius <m>] [--intent <id>]
@@ -308,6 +312,16 @@ function plan(positionals, flags) {
       return { method: "GET", path: `/people${q({ filter, q: positionals.slice(1).join(" ") || undefined, days: flags.days, limit: int(flags.limit, "limit") })}`, md: true };
     }
 
+    case "wall":
+      switch (b) {
+        case undefined:
+          return { method: "GET", path: "/wall" };
+        case "pin":
+          return { method: "POST", path: "/wall/pin", body: write({ text: need(c, "<text>"), why: flags.why, until: flags.until }) };
+        case "unpin":
+          return { method: "POST", path: "/wall/unpin", body: write({}) };
+      }
+      break;
     case "graph":
       return { method: "GET", path: `/graph${q({ starving: flags.starving, waiting: flags.waiting })}`, md: true };
     case "intent":
@@ -316,6 +330,10 @@ function plan(positionals, flags) {
           return { method: "GET", path: `/intents/${need(c, "<id>")}` };
         case "status":
           return { method: "POST", path: `/intents/${need(c, "<id>")}/status`, body: write({ status: need(d, "active|paused|later|archived") }) };
+        case "short": {
+          const t = need(d, "<few words>|off");
+          return { method: "POST", path: `/intents/${need(c, "<id>")}/short`, body: write({ short_title: t === "off" ? null : t }) };
+        }
         case "due": {
           const t = need(d, "<t>|off");
           return { method: "POST", path: `/intents/${need(c, "<id>")}/due`, body: write({ due_at: t === "off" ? null : t }) };

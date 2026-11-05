@@ -35,6 +35,9 @@ import { whatsappChannel } from "../channel/client.js";
 import { addPlace, addRule, deleteRule, listApps, listPlaces, listRules } from "../places.js";
 import { getStatus } from "../status.js";
 import { getToday, renderToday } from "../today.js";
+import { wallOne } from "../trmnl/device.js";
+import { clearPin, getPin, setPin } from "../trmnl/pin.js";
+import { localTimeOnDay, localYmd } from "../../shared/localTime.js";
 
 export interface ApiRequest {
   query: URLSearchParams;
@@ -81,6 +84,28 @@ export function timeParam(query: URLSearchParams, name: string): Date | undefine
 }
 
 const slugOf = (params: string[]) => decodeURIComponent(params[0] ?? "");
+
+// ---- the wall display ----
+
+/** "18:00" is that time today, here; anything else must be an RFC 3339 time. */
+function untilTime(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  if (/^\d{1,2}:\d{2}$/.test(value)) return localTimeOnDay(env.LOR_TZ, localYmd(env.LOR_TZ, new Date()), value.padStart(5, "0"));
+  return parseTime(value, "--until");
+}
+
+route("GET", /^\/wall$/, async () => {
+  const now = new Date();
+  return { one: await wallOne(now), pin: await getPin(sql) };
+});
+route("POST", /^\/wall\/pin$/, async ({ body }) => {
+  const d = z.object({ text: z.string(), why: z.string().nullish(), until: z.string().nullish(), thread: Thread }).parse(body);
+  return setPin(sql, { text: d.text, why: d.why, until: untilTime(d.until), sourceRef: d.thread });
+});
+route("POST", /^\/wall\/unpin$/, async ({ body }) => {
+  z.object({ thread: Thread }).parse(body);
+  return clearPin(sql);
+});
 
 // ---- orientation ----
 
@@ -443,6 +468,12 @@ route("POST", /^\/intents\/([0-9a-f-]{36})\/status$/, async ({ params, body }) =
 route("POST", /^\/intents\/([0-9a-f-]{36})\/due$/, async ({ params, body }) => {
   const d = z.object({ due_at: z.string().nullable(), thread: Thread }).parse(body);
   return updateIntent(sql, params[0]!, { dueAt: parseTime(d.due_at, "<t>") });
+});
+
+// A goal's few words for the wall display, or "off" to go back to its title.
+route("POST", /^\/intents\/([0-9a-f-]{36})\/short$/, async ({ params, body }) => {
+  const d = z.object({ short_title: z.string().nullable(), thread: Thread }).parse(body);
+  return updateIntent(sql, params[0]!, { shortTitle: d.short_title });
 });
 
 route("POST", /^\/intents\/([0-9a-f-]{36})\/done$/, async ({ params, body }) => {

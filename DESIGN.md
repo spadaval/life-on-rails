@@ -283,14 +283,16 @@ The intent graph as a pannable, zoomable sky on `well` with the engraved grid, i
 
 ## Paper (the wall display)
 
-The one place LoR is not dark: Today on the TRMNL X on the fridge, e-paper read from across a kitchen. It is the same atlas printed rather than lit. Four grays only (black, `#555`, `#aaa`, white), no dithering, laid out at 1040x780 and rendered at 1.8x.
+The one place LoR is not dark: the TRMNL X on the fridge, e-paper read from across a kitchen. It is the same atlas printed rather than lit. Four grays only (black, `#555`, `#aaa`, white), no dithering, laid out at 1040x780 and rendered at 1.8x.
 
-- **Colour jobs become ink jobs.** Amber (now, running, tracked) is solid black carried by line weight: the running block heaviest, then confirmed, then unconfirmed; bare phone or place time is dashed `#555`. Cyan (planned) is hollow: events are outlined waypoint diamonds on the route. Coral (broken) is a reversed black chip in the head ("2 jobs need a look", "Battery 12%"). Dim is `#555`.
-- **One black slab:** the running timer, the paper version of the one solid amber fill.
-- **For distance:** nothing under 22px; the readout is 150px. Today holds only the arc, what is left of the day, the running block, the next three events, and what the agent flagged; no lanes, no buttons, and the to-confirm count is a note.
-- **Three screens, one at a time.** Today is home. A tap redraws whatever is up; taps right after it reach Goals (hours in the last 7 days against each weekly target, as thick meters) and Tasks (open tasks by due date, flagged ones starred). A foot over the touch bar names all three, the current one in black and underlined.
-- **Clock times over countdowns** ("since 13:20", "until 22:00"), and "Updated HH:MM" in the head, because each frame stays up for a quarter of an hour.
-- Chart crosses stand in for the engraved grid.
+- **Today is the arc and one thing.** The waking day is the half-ellipse route filling the page: an imprecise clock (the reticle is now, the time it was drawn printed beside it) and the day's log. Left of now, tracked time in its goal's ink, a stretch of 40 minutes or more named outside the route. Right of now, events as hollow bands and deadlines as a black square across the route, each with its time. Inside the arc, the one thing to do, set large with a small kicker saying why it is there (pinned, running, an event, the brief, a flag) and a grey line under it. No countdown, no lists, no "Updated".
+- **Goals have inks.** The four goals with the largest weekly targets each own one: black, `#555`, black dashed, `#aaa`. Any other goal is a thin black line; time under no goal is a dotted grey. The same ink marks a goal everywhere on paper: its stretches on the arc, its strip and day bars on Goals, the strip beside its tasks.
+- **Goals** is a ledger, one row a goal: its ink, its name (the short title), its next task with how late it is, the last seven days as bars, hours against the weekly target with a meter. Goals without a target come last with only their next task.
+- **Tasks** is one list by when they are due: Late (bold), Today, This week, Later, then the undated folded into two small grey columns. A flagged task has a star; a waiting one says who it waits on.
+- **Colour jobs become ink jobs.** Coral (broken) is a reversed black chip in the head ("2 jobs need a look", "Battery 12%"); a late task is bold, never a chip. Dim is `#555`.
+- **For distance:** nothing under 20px; the one thing is 32-44px.
+- **Three screens, one at a time.** Today is home; the device's menu (Next Screen) steps to Goals and Tasks, which give way to Today after five minutes. Three small squares over the touch bar say which is up.
+- Chart crosses stand in for the engraved grid, kept off the one thing.
 
 ## Do's and Don'ts
 

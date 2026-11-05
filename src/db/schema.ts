@@ -55,6 +55,8 @@ export const intent = pgTable(
     id: uuid("id").primaryKey(),
     type: intentType("type").notNull(),
     title: text("title").notNull(),
+    // Goals: the few words the wall display prints where the title would not fit.
+    shortTitle: text("short_title"),
     description: text("description"),
     status: intentStatus("status").notNull().default("active"),
     weight: real("weight").notNull().default(1),
@@ -492,3 +494,20 @@ export const wakeQueue = pgTable("wake_queue", {
   lastSeen: ts("last_seen").notNull(),
   priority: boolean("priority").notNull().default(false),
 });
+
+// ---- The wall display ----
+
+// One row at most: what the agent pinned as the one thing on the wall's Today,
+// over the automatic choice, until `until` (or until unpinned).
+export const wallPin = pgTable(
+  "wall_pin",
+  {
+    id: boolean("id").primaryKey().default(true),
+    text: text("text").notNull(),
+    why: text("why"),
+    until: ts("until"),
+    sourceRef: text("source_ref"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [check("wall_pin_one_row", sql`${t.id}`)],
+);

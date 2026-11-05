@@ -24,6 +24,8 @@ export interface IntentView {
   id: string;
   type: IntentType;
   title: string;
+  /** Goals: what the wall display prints where the title would not fit. */
+  short_title: string | null;
   description: string | null;
   status: IntentStatus;
   weight: number;
@@ -67,7 +69,7 @@ const iso = (d: Date | null) => d?.toISOString() ?? null;
 
 function toView(r: IntentRow): IntentView {
   return {
-    id: r.id, type: r.type, title: r.title, description: r.description, status: r.status, weight: r.weight,
+    id: r.id, type: r.type, title: r.title, short_title: r.short_title, description: r.description, status: r.status, weight: r.weight,
     weekly_hour_target: r.weekly_hour_target, frequency: r.frequency, frequency_horizon: r.frequency_horizon,
     completion_weight: r.completion_weight, goal_mix: r.goal_mix, system: r.system, metric_kind: r.metric_kind,
     metric_min: r.metric_min, metric_max: r.metric_max, estimate_hours: r.estimate_hours,
@@ -79,7 +81,7 @@ function toView(r: IntentRow): IntentView {
 }
 
 const SELECT_INTENT = (tx: Tx) => tx`
-  SELECT i.id, i.type, i.title, i.description, i.status, i.weight, i.weekly_hour_target, i.frequency,
+  SELECT i.id, i.type, i.title, i.short_title, i.description, i.status, i.weight, i.weekly_hour_target, i.frequency,
          i.frequency_horizon, i.completion_weight, i.goal_mix, i.system, i.metric_kind, i.metric_min, i.metric_max,
          i.estimate_hours, i.due_at, i.snoozed_until, i.waiting_on_entity_id, e.name AS waiting_on, i.waiting_since,
          i.google_task_id, i.assignee, i.thread_ref, i.flagged_at, i.flag_note, i.via, i.source_ref, i.created_at, i.updated_at
@@ -101,6 +103,7 @@ export async function listIntents(tx: Tx, opts: { includeArchived?: boolean } = 
 export interface IntentInput {
   type: IntentType;
   title: string;
+  shortTitle?: string | null;
   description?: string | null;
   status?: IntentStatus;
   weight?: number;
@@ -168,6 +171,7 @@ export async function updateIntent(db: Sql, id: string, patch: IntentPatch): Pro
   await db`
     UPDATE intent SET
       title = ${has("title") ? patch.title!.trim() : current.title},
+      short_title = ${has("shortTitle") ? (patch.shortTitle?.trim() || null) : current.short_title},
       description = ${has("description") ? (patch.description ?? null) : current.description},
       status = ${status},
       weight = ${patch.weight ?? current.weight},
