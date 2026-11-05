@@ -21,20 +21,20 @@
 import { timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
-import { sql } from "../../db/client.js";
-import { addDays, localDayBounds, localTimeOnDay, localYmd } from "../../shared/localTime.js";
+import { sql, type Tx } from "../../db/client.js";
+import { addDays, localDayBounds, localTimeOnDay, localYmd, type Ymd } from "../../shared/localTime.js";
 import { env } from "../env.js";
-import { needsOwner } from "../intents.js";
+import { type IntentView, needsOwner } from "../intents.js";
 import { errorMessage, log } from "../log.js";
 import { jobStatuses } from "../status.js";
-import { getToday, wakeWindow } from "../today.js";
+import { type BlockView, getToday, type TodayView, wakeWindow } from "../today.js";
 import { type GraphNode, getGraph } from "../graph.js";
 import { descendantSet, mergedHours, type Span } from "../scoring/formulas.js";
 import {
   FRAME_H, FRAME_SCALE, FRAME_W, SCREENS, type GoalsInput, type Ink, OTHER, OWN_INKS, type One, type Screen, type Shell, type TasksInput, type TodayInput,
   goalsHtml, nextScreen, pickOne, shortTitle, tasksHtml, todayHtml,
 } from "./frame.js";
-import { getPin } from "./pin.js";
+import { getPin, type WallPin } from "./pin.js";
 import { grayPng2 } from "./png.js";
 import { frameFonts, renderFrames } from "./render.js";
 
@@ -150,24 +150,33 @@ export async function tasksInput(shell: Shell): Promise<TasksInput> {
   return { ...shell, tasks };
 }
 
-/** The one thing on Today, and what it was chosen from. */
-export async function wallOne(now: Date): Promise<One | null> {
-  const date = localYmd(env.LOR_TZ, now);
-  const [today, needs, pin, brief] = await Promise.all([
-    getToday(sql, date, now),
-    needsOwner(sql),
-    getPin(sql),
-    sql<{ body: string }[]>`SELECT body FROM page WHERE slug = ${`briefs/${date}`}`,
-  ]);
+/** The first line of a day's brief (the `briefs/<date>` page), or null without one. */
+export async function briefLine(db: Tx, date: Ymd): Promise<string | null> {
+  const rows = await db<{ body: string }[]>`SELECT body FROM page WHERE slug = ${`briefs/${date}`}`;
+  return rows[0]?.body.trim().split("\n")[0] || null;
+}
+
+/** What a running block is called: its intent, else its own title. */
+export const runningName = (b: BlockView) => b.intent ?? b.title ?? "Unlabelled";
+
+/** The one thing on Today, from what was already read for it. */
+export function oneFrom(now: Date, s: { today: TodayView; needs: IntentView[]; pin: WallPin | null; brief: string | null }): One | null {
   return pickOne({
     now,
     timezone: env.LOR_TZ,
-    pin,
-    running: today.running ? { name: today.running.intent ?? today.running.title ?? "Unlabelled", since: today.running.t_start } : null,
-    events: today.planned.filter((e) => !e.all_day).map((e) => ({ title: e.title ?? "(no title)", t_start: e.t_start, t_end: e.t_end })),
-    brief: brief[0]?.body.trim().split("\n")[0] ?? null,
-    flagged: needs.map((n) => ({ title: shortTitle(n.title), note: n.flag_note })),
+    pin: s.pin,
+    running: s.today.running ? { name: runningName(s.today.running), since: s.today.running.t_start } : null,
+    events: s.today.planned.filter((e) => !e.all_day).map((e) => ({ title: e.title ?? "(no title)", t_start: e.t_start, t_end: e.t_end })),
+    brief: s.brief,
+    flagged: s.needs.map((n) => ({ title: shortTitle(n.title), note: n.flag_note })),
   });
+}
+
+/** The one thing on Today, and what it was chosen from. */
+export async function wallOne(now: Date): Promise<One | null> {
+  const date = localYmd(env.LOR_TZ, now);
+  const [today, needs, pin, brief] = await Promise.all([getToday(sql, date, now), needsOwner(sql), getPin(sql), briefLine(sql, date)]);
+  return oneFrom(now, { today, needs, pin, brief });
 }
 
 export async function todayInput(shell: Shell): Promise<TodayInput> {

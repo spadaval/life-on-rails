@@ -1,7 +1,8 @@
-// What the owner's phone talks to: its sensors upload observations here, and
-// the timer tile reads and changes the running block. Served on both
-// listeners; on the one behind `tailscale serve`, every request has already
-// been checked for the owner's Tailscale identity.
+// What the owner's phone talks to: its sensors upload observations here, the
+// timer tile reads and changes the running block, and the launcher's agent
+// page reads the day. Served on both listeners; on the one behind `tailscale
+// serve`, every request has already been checked for the owner's Tailscale
+// identity.
 import { createWriteStream, mkdirSync, renameSync, rmSync } from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -11,10 +12,15 @@ import { z } from "zod";
 import { sql } from "../db/client.js";
 import { systemIntentId } from "../db/seed.js";
 import { ObservationEnvelope } from "../shared/observation.js";
+import { localYmd } from "../shared/localTime.js";
 import { normalizePhone } from "../shared/phone.js";
 import { fillWindow, pauseRunningBlock, resumeRunningBlock, startManualBlock, stopRunningBlock } from "./attribution/blocks.js";
 import { lockBlocks, syncFill } from "./attribution/fill.js";
 import { env } from "./env.js";
+import { needsOwner } from "./intents.js";
+import { getToday } from "./today.js";
+import { briefLine, oneFrom, runningName } from "./trmnl/device.js";
+import { getPin } from "./trmnl/pin.js";
 import { BadInput } from "./errors.js";
 import { recordObservation } from "./observations.js";
 import { BACKUP_FILE, noteUploader } from "./whatsapp/import.js";
@@ -128,6 +134,54 @@ export async function deviceState(login: string, device: string | null): Promise
     recent: recent.map((x) => ({ id: x.id, title: x.title })),
     intents: intents.map((x) => ({ id: x.id, title: x.title, type: x.type })),
     last_upload: last[0]?.t?.toISOString() ?? null,
+  };
+}
+
+/** How many of today's timed events the agent page gets. */
+const HOME_EVENTS = 5;
+
+export interface DeviceHome {
+  now: string;
+  timezone: string;
+  /** The one thing, as the wall picks it (pin, timer, event on or soon, brief, oldest flag); null for none. */
+  one: { kicker: string; text: string; why: string | null } | null;
+  /** The first line of today's brief. */
+  brief: string | null;
+  /** Flagged tasks, oldest flag first. */
+  needs_you: { id: string; title: string; note: string | null; flagged_at: string }[];
+  day: {
+    wake_start: string;
+    wake_end: string;
+    remaining_s: number;
+    remaining_fraction: number;
+    running: { title: string; start: string; paused: boolean; paused_at: string | null } | null;
+    /** Timed events today not yet over (the one under way included), in order, at most HOME_EVENTS. */
+    events: { title: string; start: string; end: string }[];
+  };
+}
+
+/** What the launcher's agent page shows from LoR, in one read. */
+export async function deviceHome(now = new Date()): Promise<DeviceHome> {
+  const date = localYmd(env.LOR_TZ, now);
+  const [today, needs, pin, brief] = await Promise.all([getToday(sql, date, now), needsOwner(sql), getPin(sql), briefLine(sql, date)]);
+  const r = today.running;
+  return {
+    now: now.toISOString(),
+    timezone: env.LOR_TZ,
+    one: oneFrom(now, { today, needs, pin, brief }),
+    brief,
+    needs_you: needs.map((n) => ({ id: n.id, title: n.title, note: n.flag_note, flagged_at: n.flagged_at! })),
+    day: {
+      wake_start: today.wake_start,
+      wake_end: today.wake_end,
+      remaining_s: today.remaining_s,
+      remaining_fraction: today.remaining_fraction,
+      running: r ? { title: runningName(r), start: r.t_start, paused: r.paused_at !== null, paused_at: r.paused_at } : null,
+      events: today.planned
+        .filter((e) => !e.all_day && Date.parse(e.t_end) > now.getTime())
+        .slice(0, HOME_EVENTS)
+        .map((e) => ({ title: e.title ?? "(no title)", start: e.t_start, end: e.t_end })),
+    },
   };
 }
 

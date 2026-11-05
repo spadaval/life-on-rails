@@ -486,6 +486,8 @@ There is no chat screen: the conversation is the channel and a T3 thread.
 
 **Also in the app:** a Timer tab and a quick-settings tile (tap to start a timer, tap again to stop) through `GET /device/state` and `POST /device/timer`; a Dashboard tab showing the web dashboard; and settings for the server address and the phone's name.
 
+**The launcher's agent page** reads `GET /device/home?device=` (read-only): the one thing as the wall picks it, the brief's first line, Needs you (flagged tasks, oldest first), and the day for its arc (wake window, time left, the running timer, the next five timed events not yet over).
+
 **Auth.** The app talks to `http://buildbot.tail47515a.ts.net:3847`, the Serve listener, so every request carries the owner's Tailscale identity and is refused without it. `/device/*` is not under `/api/`, so it is routed there.
 
 **Building and installing.** `cd android && ./gradlew assembleDebug`, then `adb install -r app/build/outputs/apk/debug/app-debug.apk` over wireless debugging: the phone is paired with this box and reachable over Tailscale at `100.83.51.27` (the port changes each time wireless debugging is switched on; `nmap -p 30000-50000` finds it). `testDebugUnitTest` runs the session-building tests on the JVM. The T3 emulator image (`start-t3-emulator`, run under `sg kvm`) works for trying it against the test database at `http://10.0.2.2:3857`.

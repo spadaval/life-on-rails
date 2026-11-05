@@ -1,6 +1,8 @@
 import { expect, it } from "vitest";
 import { sql } from "../../src/db/client.js";
-import { deviceState, deviceTimer, ingest } from "../../src/server/device.js";
+import { deviceHome, deviceState, deviceTimer, ingest } from "../../src/server/device.js";
+import { createIntent } from "../../src/server/intents.js";
+import { createPage } from "../../src/server/memory/pages.js";
 import { findEntity, upsertEntity } from "../../src/server/memory/entities.js";
 import { lastContacts } from "../../src/server/people.js";
 import { dbDescribe } from "./helpers.js";
@@ -74,5 +76,55 @@ dbDescribe("device timer and state", () => {
     expect(stopped.running).toBeNull();
     const [b] = await sql<{ minutes: number }[]>`SELECT round(extract(epoch FROM t_end - t_start) / 60)::int AS minutes FROM time_block`;
     expect(b!.minutes).toBe(8); // ended at the pause
+  });
+});
+
+dbDescribe("device home", () => {
+  // Noon in Los Angeles (the test timezone) on 2026-10-14.
+  const now = new Date("2026-10-14T19:00:00.000Z");
+  const event = async (id: string, t_start: string, t_end: string, extra: Record<string, unknown> = {}) => {
+    await sql`INSERT INTO google_sync_state (calendar_id, summary) VALUES ('cal', 'cal') ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO google_event ${sql({ calendar_id: "cal", event_id: id, title: id, t_start: new Date(t_start), t_end: new Date(t_end), ...extra })}`;
+  };
+
+  it("returns the one thing, the brief, Needs you and the day in one read", async () => {
+    const task = await createIntent(sql, { type: "task", title: "Approve the dentist (reschedule)" }, { via: "agent", sourceRef: "t" });
+    await sql`UPDATE intent SET flagged_at = ${new Date("2026-10-14T15:00:00Z")}, flag_note = 'they need a yes' WHERE id = ${task.id}`;
+    await event("standup", "2026-10-14T16:00:00Z", "2026-10-14T16:30:00Z"); // 09:00, over
+    await event("lunch", "2026-10-14T18:30:00Z", "2026-10-14T19:30:00Z"); // under way
+    await event("review", "2026-10-14T22:00:00Z", "2026-10-14T23:00:00Z"); // 15:00
+    await event("holiday", "2026-10-14T07:00:00Z", "2026-10-15T07:00:00Z", { all_day: true });
+    for (let i = 0; i < 6; i++) await event(`late-${i}`, `2026-10-15T0${i}:00:00Z`, `2026-10-15T0${i}:30:00Z`); // evening, past the cap
+    await createPage(sql, { slug: "briefs/2026-10-14", title: "Brief", body: "\nPost the notice today. It is due Friday.\nMore below.\n", via: "agent" });
+
+    const home = await deviceHome(now);
+    expect(JSON.parse(JSON.stringify(home))).toEqual(home); // JSON-safe as it stands
+    expect(home).toMatchObject({ now: now.toISOString(), timezone: "America/Los_Angeles", brief: "Post the notice today. It is due Friday." });
+    // The lunch under way wins over the brief and the flag, as on the wall.
+    expect(home.one).toMatchObject({ kicker: "Now", text: "lunch" });
+    expect(home.needs_you).toEqual([{ id: task.id, title: "Approve the dentist (reschedule)", note: "they need a yes", flagged_at: "2026-10-14T15:00:00.000Z" }]);
+    expect(home.day.running).toBeNull();
+    expect(home.day.events.map((e) => e.title)).toEqual(["lunch", "review", "late-0", "late-1", "late-2"]);
+    expect(home.day.events[1]).toEqual({ title: "review", start: "2026-10-14T22:00:00.000Z", end: "2026-10-14T23:00:00.000Z" });
+    expect(Date.parse(home.day.wake_start)).toBeLessThan(now.getTime());
+    expect(Date.parse(home.day.wake_end)).toBeGreaterThan(now.getTime());
+    expect(home.day.remaining_fraction).toBeGreaterThan(0);
+    expect(home.day.remaining_fraction).toBeLessThan(1);
+    expect(home.day.remaining_s).toBe(Math.round((Date.parse(home.day.wake_end) - now.getTime()) / 1000));
+
+    // With nothing on, the brief's first line is the one thing.
+    await sql`DELETE FROM google_event`;
+    expect((await deviceHome(now)).one).toEqual({ kicker: "From this morning's brief", text: "Post the notice today.", why: "It is due Friday." });
+  });
+
+  it("shows the running timer, paused or not", async () => {
+    await deviceTimer({ action: "start", title: "from the tile" }, "me");
+    const home = await deviceHome();
+    expect(home.day.running).toMatchObject({ title: "Uncategorized", paused: false, paused_at: null });
+    expect(home.one?.kicker).toMatch(/^Running since/);
+    expect(home.brief).toBeNull();
+    expect(home.needs_you).toEqual([]);
+    await deviceTimer({ action: "pause" }, "me");
+    expect((await deviceHome()).day.running).toMatchObject({ paused: true, paused_at: expect.any(String) });
   });
 });

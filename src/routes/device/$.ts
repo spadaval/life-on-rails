@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
-import { deviceState, deviceTimer, ingest, receiveWhatsappBackup } from "../../server/device.js";
+import { deviceHome, deviceState, deviceTimer, ingest, receiveWhatsappBackup } from "../../server/device.js";
 import { BadInput, NotFound, Refused } from "../../server/errors.js";
 import { errorMessage, log } from "../../server/log.js";
 
@@ -15,6 +15,7 @@ async function handle(request: Request): Promise<Response> {
   const path = url.pathname.replace(/^\/device/, "");
   try {
     if (request.method === "GET" && path === "/state") return json(200, await deviceState(loginOf(request), url.searchParams.get("device")));
+    if (request.method === "GET" && path === "/home") return json(200, await deviceHome());
     if (request.method === "POST" && path === "/ingest") return json(200, await ingest(await request.json()));
     if (request.method === "POST" && path === "/whatsapp-backup") return json(200, await receiveWhatsappBackup(request.body, url.searchParams.get("device")));
     if (request.method === "POST" && path === "/timer") return json(200, await deviceTimer(await request.json(), loginOf(request)));

@@ -227,10 +227,11 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 - **T3 deep links.** The T3 app opens a thread at `t3code://threads/<environmentId>/<threadId>`, or at the verified app link `https://app.t3.codes/threads/<environmentId>/<threadId>`. Each segment is percent-encoded, so `:` becomes `%3A`. The scheme differs by build variant: `t3code`, `t3code-preview` or `t3code-dev`. The packages are `com.t3tools.t3code`, `.preview` and `.dev`. The environment id names the server and is required, and an environment the app isn't paired with shows "Thread unavailable". The launcher needs the paired server's environment id from T3. The T3 activity is `singleTask` and doesn't declare `resizeableActivity`, so whether it opens in the adjacent pane needs checking.
 - **Seed data for checks.** The LoR test server (`scripts/ui-server.sh`, `:3857`) has no standing seed. `scripts/ui-check.mjs`'s `tasks` flow makes a flagged task, and its `today` flow makes calendar events.
 
-#### 3.1 A read endpoint for the agent page. Status: todo
+#### 3.1 A read endpoint for the agent page. Status: active (built, review pending)
 - **Goal.** `GET /device/home?device=` returns what the agent page shows from LoR in one call: the one thing (`wallOne`), Needs you (`needsOwner`), and enough of Today to draw the day arc. That means the wake window, now, the fraction remaining, the running timer, and the next few timed events. Plus the brief's first line.
 - **Done when.** A `pnpm test:db` case covers the response. `pnpm test` and `pnpm typecheck` pass. The spec's `/device/*` list names the endpoint.
 - **Scope.** `src/server/device.ts`, `src/routes/device/$.ts`, tests and the spec line. No writes.
+- **Built 2026-11-05.** `deviceHome` in `src/server/device.ts` returns `{now, timezone, one: {kicker, text, why} | null, brief: string | null, needs_you: [{id, title, note, flagged_at}], day: {wake_start, wake_end, remaining_s, remaining_fraction, running: {title, start, paused, paused_at} | null, events: [{title, start, end}]}}`, times as ISO strings. `events` are timed events not yet over (the one under way included), at most 5. `?device=` is accepted and unused. `wallOne` was split into `briefLine` and `oneFrom` (`src/server/trmnl/device.ts`) so both read once and pick the same way.
 
 #### 3.2 The home shell: pages, layout file, drawer and search. Status: todo
 - **Goal.** `HomeActivity` becomes a real home:
