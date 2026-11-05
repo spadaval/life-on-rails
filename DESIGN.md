@@ -291,7 +291,7 @@ The one place LoR is not dark: the TRMNL X on the fridge, e-paper read from acro
 - **Tasks** is one list by when they are due: Late (bold), Today, This week, Later, then the undated folded into two small grey columns. A flagged task has a star; a waiting one says who it waits on.
 - **Colour jobs become ink jobs.** Coral (broken) is a reversed black chip in the head ("2 jobs need a look", "Battery 12%"); a late task is bold, never a chip. Dim is `#555`.
 - **For distance:** nothing under 20px; the one thing is 32-44px.
-- **Three screens, one at a time.** Today is home; the device's menu (Next Screen) steps to Goals and Tasks, which give way to Today after five minutes. Three small squares over the touch bar say which is up.
+- **Three screens, one at a time.** Today is home. Right and left on the touch bar flip through Today, Goals and Tasks as the device stored them; a middle tap redraws the one showing, fresh. A stepped-to screen gives way to Today at the next wake. Three small squares over the touch bar say which is up.
 - Chart crosses stand in for the engraved grid, kept off the one thing.
 
 ## Do's and Don'ts

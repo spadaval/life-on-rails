@@ -239,10 +239,10 @@ export async function trmnlDisplay(request: Request): Promise<Response> {
   const pct = Number(h("percent-charged"));
   const charging = h("usb-connected") === "true" || h("battery-charging") === "1";
   const fw = h("fw-version");
-  const screen = nextScreen(shown, h("update-source"), h("special_function"));
+  const screen = nextScreen(shown, h("update-source"), h("special_function"), h("browsing"));
   // In browsing order after the one shown, so right steps Today, Goals, Tasks.
   const others = prefetches(fw) ? [1, 2].map((k) => SCREENS[(SCREENS.indexOf(screen) + k) % SCREENS.length]!) : [];
-  log("info", "trmnl display", { screen, also: others, source: h("update-source"), special: h("special_function"), battery: h("percent-charged") ?? h("battery-voltage"), usb: h("usb-connected"), rssi: h("rssi"), fw });
+  log("info", "trmnl display", { screen, also: others, source: h("update-source"), browsing: h("browsing"), special: h("special_function"), battery: h("percent-charged") ?? h("battery-voltage"), usb: h("usb-connected"), rssi: h("rssi"), fw });
   const alerts = Number.isFinite(pct) && pct > 0 && pct < LOW_BATTERY_PCT && !charging ? [`Battery ${Math.round(pct)}%`] : [];
   try {
     const now = new Date();

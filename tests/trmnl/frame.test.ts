@@ -1,6 +1,6 @@
 import { inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { type PickInput, goalsHtml, nextScreen, pickOne, shortTitle, splitBrief, tasksHtml, todayHtml } from "../../src/server/trmnl/frame.js";
+import { type PickInput, goalsHtml, nextScreen, pickOne, screenOf, shortTitle, splitBrief, tasksHtml, todayHtml } from "../../src/server/trmnl/frame.js";
 import { grayPng2 } from "../../src/server/trmnl/png.js";
 import { at, sample, sampleGoals, sampleTasks } from "./sample.js";
 const text = (html: string) => html.replace(/<style>[\s\S]*?<\/style>/, "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
@@ -124,7 +124,14 @@ describe("screens", () => {
     expect(nextScreen("goals", null, null)).toBe("today");
   });
 
-  it("the menu's Next Screen steps through and wraps; a special function goes home", () => {
+  it("a middle tap from our firmware redraws the screen it is browsing", () => {
+    expect(nextScreen("today", "button", null, "plugin-goals0-1793846222")).toBe("goals");
+    expect(nextScreen("today", "button", null, "plugin-today0-1793846222")).toBe("today");
+    expect(nextScreen("goals", "timer", null, "plugin-tasks0-1793846222")).toBe("today");
+    expect(screenOf("current.bmp")).toBeNull();
+  });
+
+  it("stock firmware's Next Screen steps through and wraps; a special function goes home", () => {
     expect(nextScreen("today", "button", null)).toBe("goals");
     expect(nextScreen("goals", "button", null)).toBe("tasks");
     expect(nextScreen("tasks", "button", null)).toBe("today");

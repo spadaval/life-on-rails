@@ -15,18 +15,26 @@ export const FRAME_SCALE = 1.8;
 export const SCREENS = ["today", "goals", "tasks"] as const;
 export type Screen = (typeof SCREENS)[number];
 
-/** Wake reasons that are a touch. Only the menu's Next Screen gets as far as a request; Close and left/right never reach us. */
+/** Wake reasons that are a touch. Left and right never reach us; they browse the device's stored screens. */
 const TOUCH = new Set(["button", "EXT0", "EXT1", "touchpad"]);
+
+/** The screen a stored frame's name is of: "plugin-goals0-1793846222" is Goals. */
+export function screenOf(filename: string | null): Screen | null {
+  const m = /^plugin-(today|goals|tasks)0*-\d+/.exec(filename ?? "");
+  return m ? (m[1] as Screen) : null;
+}
 
 /**
  * The screen a request should draw. The quarter-hourly timer (and power-on)
- * draws Today. The menu's Next Screen steps on through Today, Goals, Tasks.
- * A special function from the menu (Restart Playlist, say) goes home to Today.
+ * draws Today. A touch from our firmware is a middle tap, and redraws the
+ * screen it names as being browsed; a touch from stock firmware is the menu's
+ * Next Screen, and steps on through Today, Goals, Tasks. A special function
+ * from the stock menu (Restart Playlist, say) goes home to Today.
  */
-export function nextScreen(current: Screen, updateSource: string | null, specialFunction: string | null): Screen {
+export function nextScreen(current: Screen, updateSource: string | null, specialFunction: string | null, browsing: string | null = null): Screen {
   if (specialFunction) return "today";
   if (!TOUCH.has(updateSource ?? "")) return "today";
-  return SCREENS[(SCREENS.indexOf(current) + 1) % SCREENS.length]!;
+  return screenOf(browsing) ?? SCREENS[(SCREENS.indexOf(current) + 1) % SCREENS.length]!;
 }
 
 // ---- inks ----
