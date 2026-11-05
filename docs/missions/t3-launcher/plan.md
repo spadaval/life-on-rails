@@ -66,12 +66,12 @@ Sumeet decided (2026-11-05): builds stay on boat.
 - **Deferred to Increment 3** (review): the list reloads on every package callback on the main thread; load it off the main thread and refresh only the changed package. Work-profile callbacks are also deferred: profile added, removed, available and unavailable.
 - **2026-11-05.** `home/HomeActivity.kt` (app list after Kvaesitso, launching after Launcher3) and the HOME activity in the manifest. All five checks pass on the emulator ([device-checks.md](device-checks.md)). The check found that home needs its own task (`taskAffinity=""`), or the LoR icon reopens home instead of the tabs. The foldable AVD was not run (see device-checks.md).
 
-#### 1.2 Fold checks [real Fold]. Status: backlog, waits on Sumeet
+#### 1.2 Fold checks [real Fold]. Status: active (2026-11-05: the Fold is paired over wireless adb and LoR is its default home)
 
-Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub releases, or tells an agent to. Each check is run with One UI Home, the LoR home, and Lawnchair:
+Each check is run with the LoR home, and with One UI Home where a comparison helps. Lawnchair is a later triage step (Sumeet, 2026-11-05): only if LoR's gestures feel rough, install it to tell One UI's limits from LoR's own.
 
-1. **Gestures.** Swipe home, swipe-and-hold for Recents, and swipe sideways between apps, on the cover and the inner screen. Sumeet judges whether the roughness is acceptable, and whether Lawnchair is noticeably smoother than the LoR home.
-2. **Stays default** (LoR home and Lawnchair only). Set it as default with Unrestricted battery. A day later, is it still the default home? Has the process survived: is the start time from `adb shell ps -A -o PID,STIME,NAME` unchanged? If adb isn't set up on the Fold, Sumeet judges whether the first home press was a cold start. This shows process survival only, not a held connection.
+1. **Gestures.** Swipe home, swipe-and-hold for Recents, and swipe sideways between apps, on the cover and the inner screen. Sumeet judges whether the roughness is acceptable.
+2. **Stays default.** Set it as default with Unrestricted battery. A day later, is it still the default home? Has the process survived: is the start time from `adb shell ps -A -o PID,STIME,NAME` unchanged? This shows process survival only, not a held connection.
 3. **Both screens.** Fold and unfold with an app open and on home. Does home show on each screen, keep its state, and avoid flashing back to One UI Home?
 4. **While there.** Does Settings let the side key open the default digital assistant app, rather than only Bixby?
 

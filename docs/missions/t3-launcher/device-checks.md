@@ -82,3 +82,7 @@ Notes:
 | Uploaded and stored | pass | Sync now: "2 new on the server". Both rows in `life_on_rails_test` with `kind = 'launch'`. |
 | On the day's timeline | pass | `dayTimeline` for today, read directly: `Clock · opened from search "clo"`, `Life on Rails · opened from home`. The Today page draws the timeline only for days gone by. |
 | Agent card and icon launches, dock, folder | not run | Covered by `LaunchesTest` and the `launches` db case. |
+
+### Real Fold setup (2026-11-05)
+
+Galaxy Z Fold7 (SM-F966U1), paired over wireless adb at `192.168.1.151`. Installed `main` at `c0f0421` (built on boat), made default home with `cmd role add-role-holder android.app.role.HOME com.spadaval.lor 0`, battery exempt via `dumpsys deviceidle whitelist +com.spadaval.lor` and `appops RUN_ANY_IN_BACKGROUND allow`. Process at setup: pid 21534, started 18:18:52 EST. Check 2 compares against this on 2026-11-06.
