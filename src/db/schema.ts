@@ -167,7 +167,7 @@ export const observation = pgTable(
     ingestedAt: ts("ingested_at").notNull().defaultNow(),
     // Message text (texts, WhatsApp) is searchable along with the title.
     search: tsvector("search").generatedAlwaysAs(sql`to_tsvector('english', coalesce(title, '') || ' ' || coalesce(payload->>'text', ''))`),
-    // What it is: app, location, steps, call, sms, whatsapp, mail; null for calendar, agent and manual rows.
+    // What it is: app, launch, location, steps, call, sms, whatsapp, mail; null for calendar, agent and manual rows.
     kind: text("kind").generatedAlwaysAs(sql`CASE WHEN source = 'gmail' THEN 'mail' ELSE payload->>'kind' END`),
     // Who a call, text, WhatsApp message or mail was with, as entity identifiers ("phone:+1415…",
     // "email:a@b.com", "domain:b.com", "whatsapp_group:…@g.us"). A group message is with the group,

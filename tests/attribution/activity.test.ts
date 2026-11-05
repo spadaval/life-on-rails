@@ -22,6 +22,11 @@ describe("phone blocks", () => {
     expect(blocks[0]!.ruleId).toBe("r-t3");
   });
 
+  it("a short session after the phone sat idle does not stretch the block over the idle time", () => {
+    const blocks = wantedActivity([s(0, 20, "T3 Code"), s(20, 0.1, "Home"), s(29, 0.1, "Home"), s(29.1, 16, "Reddit")], rules, []);
+    expect(blocks.map((b) => [b.intentId, (b.tStart - T0) / M, (b.tEnd - T0) / M])).toEqual([["lor", 0, 20.1], [null, 29, 45.1]]);
+  });
+
   it("splits work from leisure, and leaves unlabelled time unlabelled", () => {
     const blocks = wantedActivity([s(0, 10, "T3 Code"), s(10, 12, "YouTube"), s(23, 4, "Reddit")], rules, []);
     expect(blocks.map((b) => [b.intentId, (b.tStart - T0) / M, (b.tEnd - T0) / M, b.title])).toEqual([

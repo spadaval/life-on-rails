@@ -29,7 +29,11 @@ export interface WantedActivity {
 
 /** Sessions with the same label this close together are one block. */
 export const ACTIVITY_GAP_MS = 10 * 60_000;
-/** A session shorter than this inside a block belongs to it, whatever it was (a reply in the middle of work). */
+/**
+ * A session shorter than this inside a block belongs to it, whatever it was (a reply in the middle of work).
+ * Only one that starts within PICKUP_GAP_MS of the block's end counts as inside: a blink on home after the
+ * phone sat locked must not stretch the block over the locked time.
+ */
 export const INTERRUPTION_MS = 2 * 60_000;
 /** A block with less screen time than this is a glance, not time spent. */
 export const MIN_SCREEN_MS = 3 * 60_000;
@@ -60,8 +64,9 @@ export function wantedActivity(sessions: AppSession[], rules: Rule[], taken: Spa
     const rule = matchRule(rules, { app: s.app, title: s.name, url: null, device: s.device, place: null });
     const intentId = rule?.intentId ?? null;
     const key = intentId ?? "phone";
-    const near = cur !== null && s.t - cur.tEnd <= ACTIVITY_GAP_MS;
-    if (cur && near && (key === cur.key || s.tEnd - s.t < INTERRUPTION_MS)) {
+    const gap = cur ? s.t - cur.tEnd : Infinity;
+    const interrupts = gap < PICKUP_GAP_MS && s.tEnd - s.t < INTERRUPTION_MS;
+    if (cur && ((gap <= ACTIVITY_GAP_MS && key === cur.key) || interrupts)) {
       cur.tEnd = Math.max(cur.tEnd, s.tEnd);
       cur.sessions.push(s);
       if (key === cur.key && rule) cur.rules.set(rule.id, (cur.rules.get(rule.id) ?? 0) + (s.tEnd - s.t));
