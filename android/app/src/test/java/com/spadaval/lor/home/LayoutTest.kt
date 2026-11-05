@@ -103,4 +103,25 @@ class LayoutTest {
         assertEquals("layouts[0].expires: \"2026-11-18\" is not a date-time like 2026-11-18T00:00:00Z", error(one("""{"name": "a", "expires": "2026-11-18"}""")))
         assertEquals("layouts[0].home: must be a list", error(one("""{"name": "a", "home": "com.x"}""")))
     }
+
+    @Test
+    fun rejectsTrailingContent() {
+        val ok = one("""{"name": "a"}""")
+        LayoutFile.parse("$ok \n\t ")
+        assertEquals("not JSON: more after the closing }", error("$ok x"))
+        assertEquals("not JSON: more after the closing }", error("$ok {}"))
+    }
+
+    @Test
+    fun rejectsAnOversizedFile() {
+        val padded = one("""{"name": "a"}""") + " ".repeat(LayoutFile.MAX_BYTES.toInt())
+        assertEquals("the file is over 256 KB", error(padded))
+    }
+
+    @Test
+    fun rejectsDeepNestingWithoutCrashing() {
+        // The JVM's org.json stops at depth 512; Android's overflows the stack, which parse catches.
+        val deep = "[".repeat(100_000) + "]".repeat(100_000)
+        assertTrue(error("""{"version": 1, "active": "a", "layouts": $deep}""").startsWith("not JSON"))
+    }
 }

@@ -85,10 +85,8 @@ class HomeModel(private val context: Context, private val scope: CoroutineScope,
             addAction(Intent.ACTION_MANAGED_PROFILE_UNLOCKED)
         }
         ContextCompat.registerReceiver(context, profiles, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        serially {
-            _apps.value = loadAll()
-            readLayout()
-        }
+        serially { _apps.value = loadAll() }
+        serially { readLayout() }
     }
 
     fun stop() {
@@ -122,15 +120,27 @@ class HomeModel(private val context: Context, private val scope: CoroutineScope,
     private fun activities(pkg: String?, user: UserHandle): List<HomeApp> =
         launcherApps.getActivityList(pkg, user).map { HomeApp(it.label.toString(), it) }
 
+    /**
+     * Reads the layout file; any failure shows as Broken rather than leaving home on Loading.
+     * Runs in its own [serially] step after the app list, which the first run's default reads.
+     */
     private fun readLayout() {
         _layout.value = try {
-            if (!file.exists()) write(defaultLayout())
+            if (!file.exists()) {
+                // A default built from no apps would be written for good; wait for the next refresh instead.
+                if (_apps.value.isEmpty()) throw LayoutError("the app list didn't load, so there is no default layout yet")
+                write(defaultLayout())
+            }
             fileStamp = file.lastModified()
+            if (file.length() > LayoutFile.MAX_BYTES) throw LayoutError("the file is over ${LayoutFile.MAX_BYTES / 1024} KB")
             LayoutState.Ready(LayoutFile.parse(file.readText()))
         } catch (e: LayoutError) {
             LayoutState.Broken(e.message ?: "invalid")
         } catch (e: IOException) {
             LayoutState.Broken("can't read ${file.path}: ${e.message}")
+        } catch (e: Exception) {
+            Log.w(TAG, "layout read failed", e)
+            LayoutState.Broken("can't be read: ${e.message ?: e.javaClass.simpleName}")
         }
     }
 

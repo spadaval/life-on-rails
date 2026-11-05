@@ -1,5 +1,9 @@
 package com.spadaval.lor.home
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Process
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -40,6 +44,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +59,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -64,6 +70,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.spadaval.lor.agent.AgentPage
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -207,8 +217,39 @@ private fun HomePage(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launc
 
 @Composable
 private fun DateHeader(size: Int) {
-    val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE d MMMM")) }
-    Text(today, style = LabelStyle.copy(fontSize = size.sp), modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 28.dp))
+    val today = rememberToday().format(DateTimeFormatter.ofPattern("EEEE d MMMM"))
+    Text(today,style = LabelStyle.copy(fontSize = size.sp), modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 28.dp))
+}
+
+/**
+ * Today's date, read again when home resumes and when the system says the date, time or zone
+ * changed, so the header turns over at midnight while home is on screen.
+ */
+@Composable
+private fun rememberToday(): LocalDate {
+    val context = LocalContext.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var today by remember { mutableStateOf(LocalDate.now()) }
+    DisposableEffect(context, lifecycle) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, intent: Intent) {
+                today = LocalDate.now()
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_DATE_CHANGED)
+            addAction(Intent.ACTION_TIME_CHANGED)
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
+        }
+        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        val resumed = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) today = LocalDate.now() }
+        lifecycle.addObserver(resumed)
+        onDispose {
+            context.unregisterReceiver(receiver)
+            lifecycle.removeObserver(resumed)
+        }
+    }
+    return today
 }
 
 /** Home's items in reading order, [columns] to a row: Launcher3's cells without coordinates. */

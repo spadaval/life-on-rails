@@ -45,14 +45,29 @@ data class LayoutFile(val active: String, val layouts: List<Layout>) {
         const val MAX_HOME = 24
         const val MAX_DOCK = 5
 
+        /** The largest file home reads; a real layout is a few KB. */
+        const val MAX_BYTES = 256 * 1024L
+
         /** Parses and validates [text], or throws [LayoutError] naming the first problem. */
         fun parse(text: String): LayoutFile {
+            if (text.length > MAX_BYTES) throw LayoutError("the file is over ${MAX_BYTES / 1024} KB")
+            val tokener = JSONTokener(text)
             val root = try {
-                JSONTokener(text).nextValue()
+                tokener.nextValue()
             } catch (e: JSONException) {
                 throw LayoutError("not JSON: ${e.message}")
+            } catch (e: StackOverflowError) {
+                // Android's org.json recurses without a limit, so deep nesting would crash home.
+                throw LayoutError("not JSON: nested too deeply")
             }
             if (root !is JSONObject) throw LayoutError("the file must be a JSON object")
+            // nextValue stops after the first value; anything but whitespace after it is an error.
+            val trailing = try {
+                tokener.nextClean() != 0.toChar() || tokener.more()
+            } catch (e: JSONException) {
+                true
+            }
+            if (trailing) throw LayoutError("not JSON: more after the closing }")
             root.onlyKeys("", "version", "active", "layouts")
             val version = root.opt("version")
             if (version != VERSION) throw LayoutError("version: must be $VERSION, got ${version ?: "nothing"}")
