@@ -61,7 +61,7 @@ boat scp "$B:/home/user/build-$RUN.log" "$OUT/build.log" >/dev/null 2>&1 || true
 if [ "$EXIT" != 0 ]; then
   echo "boat-build: build exited $EXIT" >&2
   [ -f "$OUT/build.log" ] && { grep -E '^e: |error:|FAILED|BUILD' "$OUT/build.log" | head -20 || tail -20 "$OUT/build.log"; } || true
-  echo "boat-build: full log in $OUT/build.log" >&2
+  [ -f "$OUT/build.log" ] && echo "boat-build: full log in $OUT/build.log" >&2 || echo "boat-build: could not fetch the log" >&2
   exit 1
 fi
 grep -E 'BUILD SUCCESSFUL' "$OUT/build.log" || tail -1 "$OUT/build.log"

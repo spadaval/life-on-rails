@@ -75,7 +75,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 3. **Both screens.** Fold and unfold with an app open and on home. Does home show on each screen, keep its state, and avoid flashing back to One UI Home?
 4. **While there.** Does Settings let the side key open the default digital assistant app, rather than only Bixby?
 
-### Increment 2: The launcher speaks T3. Status: active
+### Increment 2: The launcher speaks T3. Status: done (2026-11-05)
 
 **Goal.** A Kotlin module in the app holds one authenticated WebSocket connection to a T3 server. It shows which threads are running, waiting on Sumeet (approval or question) or failed. It can approve, answer, send a follow-up, and launch a thread in a project. Everything the agent page and quick send need from T3 rests on this, and it doesn't depend on D1.
 
@@ -144,7 +144,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
     - Awaited background work, and `blockedOnThreadWait`, show as running; T3 shows "waiting".
     - `pendingGuestMessageCount > 0` isn't mapped; T3 shows "request".
 
-#### 2.2 Act on threads. Status: active (2026-11-05; reviewed; the review fixes await their own review)
+#### 2.2 Act on threads. Status: done (2026-11-05; reviewed twice. The `stop()` fix has had no emulator run. The second review's wording fixes to these notes went in after it.)
 
 - **Goal.** Use `dispatchCommand` to approve or deny an approval, answer a question, and send a follow-up. Use `launchThread` to start a thread in a named project.
 - **Done when.** Against a scratch server, each action changes the thread as T3's own UI shows it, using a free or cheapest-model provider.
@@ -160,7 +160,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
   - Both items carried from 2.1 are fixed. `pair()` reconnects only while the connection is wanted (started and not stopped since), so a late pairing starts nothing after its screen closes. `forget()` keeps that flag, so pairing again on the same screen reconnects. `Shell.state()` is gone, and its test goes through `threads`.
   - **The command shapes,** each confirmed against the scratch server. They are ported from T3's `packages/client-runtime/src/operations/commands.ts`.
     - Approve or deny: `dispatchCommand {type:"runtime-request.respond", commandId, threadId, requestId, decision:"accept"|"decline"}`. `threadId` is the thread that owns the request, which for a rolled-up request is the child's (`PendingRequest.threadId`).
-    - Answer: the same command, with `answers: {<questionId>: <option value, else its label, or typed text; a list for multi-select>}` in place of `decision`. The questions are not in the shell. They come from `getThreadProjection {threadId}`, in the `turnItems` entry with `type:"user_input_request"` and the matching `requestId`.
+    - Answer: the same command, with `answers: {<questionId>: <option value, else its label, or typed text, which wins over a chosen option; a list of options for multi-select>}` in place of `decision`. The questions are not in the shell. They come from `getThreadProjection {threadId}`, in the `turnItems` entry with `type:"user_input_request"` and the matching `requestId`.
     - Follow-up: `dispatchCommand {type:"message.dispatch", commandId, createdBy:"user", creationSource:"mobile", threadId, messageId, text, attachments:[], deliveryIntent:"auto", dispatchMode:{type:"start_immediately"}}`. This is what T3's composer sends by default. It starts a run on an idle thread, and the server decides what an active thread does with it.
     - Launch: `launchThread {commandId, creationSource:"mobile", projectId, title, generateTitle:true, modelSelection:{instanceId, model[, options]}, runtimeMode, interactionMode:"default", workspaceStrategy:{type:"root"}, initialMessage:{messageId, text, attachments:[]}}`. The title follows T3's `deriveThreadTitleSeed`: whitespace collapsed and cut at 50 characters plus "...". The server makes the thread id (`thread:project:<projectId>:<uuid>`) and returns it as `threadId`.
     - Replies: dispatch returns `{sequence}`. Launch returns `{threadId, projection, resumed, sequence}`. A refusal is an Exit `Failure` whose cause holds `Fail {error:{_tag:"OrchestrationV2DispatchCommandError", message}}`.
@@ -176,13 +176,17 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
   - **Learned.**
     - The whole thread row was clickable, which merged its buttons into one accessibility node, so neither agent-device nor TalkBack could reach them. Only the heading is clickable now.
     - Commands are not idempotent across reconnects, so the client never resends one. A caller that sees "dropped before T3 answered" or the 30 s timeout doesn't know whether the command ran, and should read the shell before retrying.
+    - `t3 project add --base-dir .t3 <path>` adds a project to the scratch server.
   - **Review fixes, 2026-11-05.** The fallback model no longer fills a missing default. `stop()` drops the call queue, and a stopped loop fails, rather than sends, a call it still has queued.
   - **Carried into Increment 3** (review):
-    - The cards disable an action while its call runs. The debug screen doesn't, so a double tap sends twice.
-    - A launch always sends `workspaceStrategy: root`, unlike T3, which honours the project's or server's `defaultThreadEnvMode` (worktree). Quick send should honour it, or a coding prompt runs in the main checkout.
-    - The question card ports T3's `resolvePendingUserInputAnswer`: a typed answer to a multi-select question is a plain string, typed text is trimmed, and `initialAnswer` is used.
-    - The card loads a question's choices when the connection is Live, and again after a reconnect.
-    - `t3 project add --base-dir .t3 <path>` adds a project to the scratch server.
+    - The cards should disable an action while its call runs. The debug screen doesn't, so a double tap sends twice.
+    - A launch always sends `workspaceStrategy: root`. T3 resolves a new thread's env mode as: the project override, then the server's `defaultThreadEnvMode` (null by default), then the project's `.t3` file, with `local` built in. A new project with no threads is forced to `local` (`resolveNewThreadEnvMode`, `packages/shared/src/projectSettings.ts`). With nothing configured, `root` matches T3. The gap matters only where worktree is configured: quick send should follow the same chain, and buildbot's live setting is worth checking.
+    - The question card should port T3's `resolvePendingUserInputAnswer` (`packages/client-runtime/src/state/pendingUserInput.ts`):
+      - Typed text wins over chosen options for every kind of question, and is sent as a plain string.
+      - It is trimmed only when the question has no `initialAnswer`.
+      - It is dropped when `allowCustomAnswer` is false.
+      - Read that function for how `initialAnswer` seeds the answer.
+    - The card should load a question's choices when the connection is Live, and again after a reconnect.
 
 ### Increment 3: A home Sumeet can live in, with the agent page. Status: backlog, blocked by Increment 1
 

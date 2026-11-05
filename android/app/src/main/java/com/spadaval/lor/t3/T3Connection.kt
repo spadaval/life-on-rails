@@ -39,8 +39,8 @@ class T3CallFailed(message: String) : IOException(message)
  * unary calls on the open socket; they fail at once when no socket is open, and with the socket
  * when it drops, and are never retried, since a resent command could act twice.
  *
- * Each [start] begins a new loop generation, and [stop] ends it. A loop writes [status] and [shell]
- * only through [ifCurrent], so a cancelled loop still blocked in a ticket request can never
+ * Each [start] begins a new loop generation, and [stop] ends it. A loop writes [status] and [shell],
+ * and sends a queued call, only through [ifCurrent], so a cancelled loop still blocked in a ticket request can never
  * overwrite what a newer loop, [stop] or [forget] wrote.
  */
 class T3Connection(private val store: T3Store) {
@@ -71,7 +71,7 @@ class T3Connection(private val store: T3Store) {
     private var generation = 0L
     /** Whether someone wants the connection: set by [start], cleared by [stop]. Guarded by this object's lock. */
     private var wanted = false
-    /** The open socket's event queue, where [call] puts its requests; null while no socket is open. */
+    /** The open socket's event queue, where [call] puts its requests; null while no socket is open and after [stop]. */
     private var calls: SendChannel<Event>? = null
 
     @Synchronized
