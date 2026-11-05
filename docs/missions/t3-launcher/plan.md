@@ -144,10 +144,14 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
     - Awaited background work, and `blockedOnThreadWait`, show as running; T3 shows "waiting".
     - `pendingGuestMessageCount > 0` isn't mapped; T3 shows "request".
 
-#### 2.2 Act on threads. Status: backlog, planned once 2.1 is done
+#### 2.2 Act on threads. Status: active (2026-11-05)
 
 - **Goal.** Use `dispatchCommand` to approve or deny an approval, answer a question, and send a follow-up. Use `launchThread` to start a thread in a named project.
 - **Done when.** Against a scratch server, each action changes the thread as T3's own UI shows it, using a free or cheapest-model provider.
+- **Scope.** The `t3` package and the debug screen: each waiting thread gets its actions there. A launch picks a project from the shell's project list. Increment 3's cards will call the same functions. Replay provides the approval (`approval` scenario, launched in `approval-required` mode) and the question (`question` scenario).
+- **Carried from 2.1's review.**
+  - A late pairing can stop a newer screen's connection. `pair()` should restart only a loop that was running.
+  - `Shell.state()` duplicates the ranking that `threads` uses. Delete it, and point the tests at `threads`.
 
 ### Increment 3: A home Sumeet can live in, with the agent page. Status: backlog, blocked by Increment 1
 
