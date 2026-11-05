@@ -16,7 +16,7 @@ The intent is in [strategy.md](strategy.md). This file holds the decisions, incr
 - A warm rebuild after a Kotlin change took 2 s.
 - A round trip through boat (sync, build, copy back) adds about 20 s.
 
-Building locally instead needs Sumeet to lift the init-script guard. The question is with him.
+Sumeet decided (2026-11-05): builds stay on boat.
 
 ## Decisions
 
