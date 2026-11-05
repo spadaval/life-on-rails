@@ -233,7 +233,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 - **Scope.** `src/server/device.ts`, `src/routes/device/$.ts`, tests and the spec line. No writes.
 - **Built 2026-11-05.** `deviceHome` in `src/server/device.ts` returns `{now, timezone, one: {kicker, text, why} | null, brief: string | null, needs_you: [{id, title, note, flagged_at}], day: {wake_start, wake_end, remaining_s, remaining_fraction, running: {title, start, paused, paused_at} | null, events: [{title, start, end}]}}`, times as ISO strings. `events` are timed events not yet over (the one under way included), at most 5. `?device=` is accepted and unused. `wallOne` was split into `briefLine` and `oneFrom` (`src/server/trmnl/device.ts`) so both read once and pick the same way.
 
-#### 3.2 The home shell: pages, layout file, drawer and search. Status: todo
+#### 3.2 The home shell: pages, layout file, drawer and search. Status: active (built and checked, review pending)
 - **Goal.** `HomeActivity` becomes a real home:
   - Pages swipe sideways. The agent page is left-most (a placeholder until 3.3), then home.
   - Home draws the apps, folders and dock from a local layout JSON file in the app's storage. The first run writes a default.
@@ -243,6 +243,36 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
   - Before writing each basic part (grid, folder, drawer, search, icon loading), read how Kvaesitso and Lawnchair do it and note the source in the file (D1).
 - **Done when.** On the emulator: apps from the layout file show on home with their icons, a folder opens, the dock works, the drawer lists every app, typing finds an app, and tapping opens it. A JVM test covers parsing and validating the layout file. The layout schema is written down in this item. The same checks pass on a foldable AVD (`pixel_9_pro_fold`), folded and unfolded.
 - **Scope.** `android/` only.
+- **The layout file, schema version 1.** `layout.json` in the app's files directory (`/data/data/com.spadaval.lor/files/layout.json`; on a debug build `adb shell run-as com.spadaval.lor` reads and writes it). Home re-reads it when it comes back on screen and the file's modified time changed.
+  ```json
+  {
+    "version": 1,
+    "active": "default",
+    "layouts": [
+      { "name": "default",
+        "expires": "2026-11-18T00:00:00Z",
+        "home": ["com.whatsapp",
+                 "com.android.chrome/com.google.android.apps.chrome.Main",
+                 { "folder": "Dev", "apps": ["com.github.android", "org.example/.Term"],
+                   "reason": "You open these together.", "pinned": true }],
+        "dock": ["com.google.android.dialer", "com.google.android.apps.messaging"] }
+    ]
+  }
+  ```
+  - `version` must be `1`. `layouts` holds at least one layout, names unique and non-empty. `active` names the one home shows.
+  - An app is a string: a package name (that package's first launchable activity in the main profile) or `package/activity` (`package/.Short` expands as `ComponentName.unflattenFromString` does).
+  - `home` (optional, at most 24 items) is in reading order; home fills its grid row by row (4 columns on a phone, 5 on the inner screen). An item is an app or a folder.
+  - A folder has `folder` (its name) and `apps` (one or more apps; folders don't nest). Optional: `reason`, one line shown when it opens, and `pinned` (default false), meaning Sumeet arranged it and an agent leaves it alone (Increment 9).
+  - `dock` (optional) holds at most 5 apps.
+  - `expires` (optional) is an ISO-8601 date-time with an offset. It's read and kept, but nothing acts on it until Increment 10.
+  - Unknown fields are errors, so a typo doesn't silently vanish. Every error names its place (`layouts[0].home[3]: "WhatsApp" is not a package name or package/activity`), and home shows it in place of the grid. An app that isn't installed is left out without an error.
+  - The first run writes a default: the dock is the default dialer, SMS app, browser and camera (resolved from intents), home holds a few common apps that are installed, then a Google folder with the rest of Google's apps.
+- **2026-11-05.** Built in `android/app/src/main/java/com/spadaval/lor/home/`: `Layout.kt` (the schema, parsing and validation), `HomeModel.kt` (the app list and layout file, off the main thread), `Icons.kt`, `AppSearch.kt`, `HomeScreen.kt` (pager, home, folder, dock, drawer) and `HomeActivity.kt`. Tests: `LayoutTest`, `AppSearchTest`.
+  - *Borrowed* (each file names its source). Kvaesitso (GPL-3.0): the per-package app list refresh (`AppRepository.kt`), icons read on `Dispatchers.IO` into an `LruCache` (`LauncherApp.loadIcon`, `IconService`), and accent-stripping normalisation (`CompatStringNormalizer`). Launcher3 / Lawnchair (Apache-2.0): word-break prefix matching (`StringMatcherUtility.java`), the keyboard's Go opening the first result (`AllAppsSearchBarController`), the dock as a hotseat under the grid, a folder icon previewing four apps on a 2x2 grid that opens as a panel over a scrim (`FolderIcon`), a home press closing what's open (`Launcher.onNewIntent`), the dock resolved from intents (`default_workspace`), profile broadcasts reloading the list, and `startActivitySafely`'s caught launch failures. Ours: the JSON layout in list order (Launcher3 uses an SQLite table of cells), and the search ranking (starts with, then a later word, then for 3+ characters anywhere in the label).
+  - *Carried from 1.1 and done:* the app list loads off the main thread, a package change reloads only that package, and work-profile broadcasts (added, removed, available, unavailable, unlocked) reload the list.
+  - *Proof.* `boat-build.sh` passed `assembleDebug testDebugUnitTest` (34 tests, 8 of them new). On `T3_Phone_API35` (1080x2400), with the final APK, a script ran each check and read the foreground app from `agent-device appstate`: a home app (Gmail), an app in the Google folder (Clock), a dock app (Chrome), and the search "you" then a tap on YouTube (YouTube's notification prompt was in front; `dumpsys activity recents` shows YouTube on top). The drawer showed the 22 apps that `cmd package query-activities` lists with `LAUNCHER`. A hand-written layout (another active layout, a `package/.Activity` ref, a folder with a reason, a missing app) showed after a trip to another app and back, and swapping the file back redrew home with the right icons. A broken file showed its error on home. No crashes in `logcat -b crash`. The same script passed on a new `T3_Fold_API35` AVD (`pixel_9_pro_fold`, API 35 Google APIs) unfolded (2076x2152: date left, grid and dock right, 10-column drawer) and folded (1080x2424). The home process kept the same pid across the fold. Screenshots stay in the working thread.
+  - *Found and fixed while checking:* after the layout changed, icons stayed in their old places, because `produceState` keeps its value when its key changes. Also the system bar icons were dark over the drawer; home now always uses light ones, like its labels.
+  - *Open.* Pulling the drawer down past the top of its list to close it was not tried on a device; back and a home press were. The page dots are centred on the whole inner screen while the dock sits on the right. Neither the hinge nor the inner screen's insets are handled specially. The `T3_Fold_API35` AVD is left for later checks, shut down.
 
 #### 3.3 The agent page. Status: backlog, after 3.1 and 3.2
 - **From 3.1's review.**
