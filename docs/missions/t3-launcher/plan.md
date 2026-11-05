@@ -418,6 +418,10 @@ Sending launches a T3 thread in the first of: the project named in the prompt, t
   - `boat-build.sh` passed `assembleDebug testDebugUnitTest`: 65 tests, 5 new in `LaunchesTest`.
   - `pnpm typecheck` clean; `pnpm test` 138 passed; `pnpm test:db` 119 passed, 1 failed: `fill.test.ts` "fills by precedence…", which failed on `main` before this mission. The new `launches` case passes.
   - On `T3_Phone_API35` against the LoR test server (`/tmp/lor-ui-33`, rebuilt with this change): the drawer, "clo", a tap on Clock. The queue held `{kind: "launch", from: "search", query: "clo", package: "com.google.android.deskclock", activity: "com.android.deskclock.DeskClock", label: "Clock"}` with `t_start = t_end`. A tap on Life on Rails on home queued `from: "home"`. Sync now uploaded both ("2 new on the server"). `life_on_rails_test` has both rows with `kind = 'launch'`, and `dayTimeline` for today lists `Clock · opened from search "clo"` and `Life on Rails · opened from home`. No crashes in `logcat -b crash`; no tokens in logcat.
+- **From the review (2026-11-05).** F1 fixed in `6991e4c` (a blink on home after a locked spell stretched the last phone block; see the decision above). Deferred:
+  - `dayTimeline` lists newest first with `LIMIT 500`, so a heavy phone day (home time between apps, plus launches) can lose its morning. Check the real row count after a week on the Fold.
+  - In a split on the inner screen, `collect/Sessions.kt` tracks one app at a time, so time with T3 beside a resumed home may count as Life on Rails. Check it on the first real day on the Fold.
+  - `tests/db/device.test.ts` "Launches are not app sessions" is always true. A test that ingests a real app session next to a launch, and checks the block links only the session, would catch a reader that took both kinds.
 - **Open.**
   - The Today page draws "Recorded" (the timeline) only for days gone by, so a launch shows there from the next day. The check read `dayTimeline` directly.
   - Agent-page launches (`agent_card`, `agent_icon`), the dock and folders were checked by the JVM and db tests, not on the emulator.
