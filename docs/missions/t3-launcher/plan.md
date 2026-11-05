@@ -1,0 +1,186 @@
+# T3 Launcher: plan
+
+The intent is in [strategy.md](strategy.md). This file holds the decisions, increments and issues. LoR has no tracker, so each record carries a status line here: `open`, `todo`, `backlog`, `active`, `done` or `superseded`. Dated notes go under the item they are about. Device results go in `device-checks.md` next to this file.
+
+## How to work this mission
+
+- Work goes to `main` when it works, as in the rest of LoR. Commits are named after the thing, for example `Launcher: home intent and app list`.
+- A fresh agent that didn't write the code reviews each increment's commits. LoR has no gate, so this can happen after they land on `main`, and the increment isn't marked done until it has.
+- Build: `cd android && ./gradlew assembleDebug testDebugUnitTest`, run on boat (the `boat` skill), not buildbot. The boat trial ends 2026-11-10 and has 25 h of compute in total, so stop the VM after each build. Check `boat limits` before starting one. After the trial ends, ask Sumeet before the first build. Bring the APK back and install it on the emulator: `sg kvm -c start-t3-emulator`, adb at `~/Android/Sdk/platform-tools/adb`. Point the app at the LoR test server (`scripts/ui-server.sh`, `http://10.0.2.2:3857`), never the real one.
+- Nothing goes on Sumeet's phone unless he says so in the current thread. Steps that need the real Fold carry **[real Fold]** and wait for him.
+
+## Decisions
+
+### D1: What the launcher is built on. Status: open (Sumeet)
+
+**Question.** In "Decide Launcher design", the agent first proposed forking an existing launcher (Lawnchair or Kvaesitso) rather than starting from scratch. Later, the agent proposed that LoR's Android app grow into the launcher, and Sumeet agreed ("We're basically turning LoR into the launcher"). The fork idea was never settled, and every later increment depends on the base.
+
+**Options.**
+
+1. **Grow LoR's app** (about 1,700 lines of Kotlin/Compose: the sensors, the tile, sync). Add a `HOME` activity and build home, the drawer and search in Compose. Read Kvaesitso and Lawnchair for patterns and copy small pieces where it helps (Kvaesitso is GPL-3.0, which doesn't matter for a personal build).
+   - *For:* the sensor, tile and sync are already there, and this is the app the threads chose. The layout is the agent's JSON file, a model neither fork has, so it's ours either way. The agent page is a Compose pager page rather than Launcher3's overlay-feed mechanism. There's no upstream to rebase against, and builds are small, which matters while boat hours are scarce.
+   - *Against:* we build what every launcher already has: the icon grid, folders, hosting widgets, editing on the phone, and handling both screens. That is the largest cost of this option.
+2. **Fork Lawnchair** (Launcher3, the AOSP launcher).
+   - *For:* stock behaviour, and the thread said it usually has the smoothest gesture handoff of third-party launchers. Folders, widgets, drag and drop, and the two screens all come for free.
+   - *Against:* a very large Java/Kotlin codebase with its own SQLite workspace model, which the JSON layout fights. The left page is its feed-overlay mechanism. Tracking upstream costs what Sumeet already pays on T3, though a personal fork could also be frozen. The LoR sensor and tile would have to move into it. Builds are heavy.
+3. **Fork Kvaesitso** (modern Kotlin/Compose, built around search).
+   - *For:* a clean Compose codebase with strong search and widgets.
+   - *Against:* it behaves further from stock, and its layout model isn't ours either. Tracking upstream costs the same as with Lawnchair. Moving the sensor and tile in is cheaper, because it's Compose like LoR.
+
+**Recommendation: grow LoR's app (1).** What makes this launcher worth having is the agent page, the agent-edited layout and the T3 link, and a fork gives none of those. A fork saves building the ordinary launcher parts: the grid, folders, widget hosting, drag and drop, and the two screens. Those are real, but each is a known, bounded piece of Compose work, and drag and drop matters less when agents edit the layout. Gesture feel is the one place a fork could really win, and no launcher can own the gestures without root. Increment 1 compares a minimal LoR home with Lawnchair's release APK on the same device, so this choice rests on what Sumeet feels rather than on claims. If Lawnchair is clearly smoother, choose 2.
+
+**Decision.** *Sumeet fills this in. It can be made now, or after Increment 1's comparison.*
+
+## Increments
+
+### Increment 1: A third-party home works on the Fold. Status: todo
+
+**Goal.** Before any heavy work, find out whether a home app we build stays usable on One UI 9: gesture navigation feels acceptable, the app stays the default home with Unrestricted battery, and it behaves on both screens. The results also feed D1.
+
+**Done when.** `device-checks.md` records a pass or fail, with a note, for each check in 1.1 (emulator) and 1.2 (real Fold). Screenshots stay in the working thread, not in git. Sumeet has said whether the gesture feel is acceptable.
+
+**Unknowns.**
+- Whether a foldable emulator image is available on this host. The current AVD is a plain phone on API 35.
+- Whether the side key can open a third-party default assistant on One UI 9.
+
+#### 1.1 A minimal home app, checked on the emulator. Status: todo
+
+- **Goal.** Give LoR's app the least that lets it be chosen as home: an activity with `MAIN` + `HOME` + `DEFAULT`, showing every launchable app (`LauncherApps.getActivityList`) in a plain Compose list that opens on a tap. This is the probe Increment 1 needs, and it's throwaway if D1 picks a fork.
+- **Done when.**
+  - On the emulator, Settings offers it as the home app, and pressing home after picking it opens it.
+  - Tapping an app opens that app.
+  - It is still the default home after an emulator reboot.
+  - The existing tabs (Timer, Sensors, Settings, Dashboard) still open from its normal launcher icon.
+  - `testDebugUnitTest` passes.
+- **Scope.** `android/app/src/main/AndroidManifest.xml` and one new activity. Nothing on the server.
+- **Context.** `android/app/src/main/java/com/spadaval/lor/MainActivity.kt`. The manifest already declares `QUERY_ALL_PACKAGES`. Optional: if a foldable AVD can be made cheaply, also screenshot it folded and unfolded.
+
+#### 1.2 Fold checks [real Fold]. Status: todo, waits on Sumeet
+
+Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub releases, or tells an agent to. Each check is run with One UI Home, the LoR home, and Lawnchair:
+
+1. **Gestures.** Swipe home, swipe-and-hold for Recents, and swipe sideways between apps, on the cover and the inner screen. Sumeet judges whether the roughness is acceptable, and whether Lawnchair is noticeably smoother than the LoR home.
+2. **Stays default** (LoR home and Lawnchair only). Set it as default with Unrestricted battery. A day later, is it still the default home? Has the process survived: is the start time from `adb shell ps -A -o PID,STIME,NAME` unchanged? If adb isn't set up on the Fold, Sumeet judges whether the first home press was a cold start. This shows process survival only, not a held connection.
+3. **Both screens.** Fold and unfold with an app open and on home. Does home show on each screen, keep its state, and avoid flashing back to One UI Home?
+4. **While there.** Does Settings let the side key open the default digital assistant app, rather than only Bixby?
+
+### Increment 2: The launcher speaks T3. Status: todo
+
+**Goal.** A Kotlin module in the app holds one authenticated WebSocket connection to a T3 server. It shows which threads are running, waiting on Sumeet (approval or question) or failed. It can approve, answer, send a follow-up, and launch a thread in a project. Everything the agent page and quick send need from T3 rests on this, and it doesn't depend on D1.
+
+**Done when.**
+- JVM tests cover the framing and decoding against frames recorded from a real server.
+- A live check against a scratch T3 server shows a thread's state changing and a launched thread appearing.
+- Both are recorded in this item's notes.
+
+**Unknowns.**
+- Whether the Replay provider can produce an approval and a question, or whether 2.2 needs the cheapest real model.
+- How the phone pairs with buildbot's live server. The likely route is a pairing link from T3's Connections settings, as the mobile app pairs.
+
+**The scratch T3 server.** buildbot runs the live T3 server Sumeet's phone depends on, so follow t3code's AGENTS.md exactly:
+- Make a separate worktree: `git worktree add --detach ../t3code-launcher-test` from `/home/supadava/projects/t3code`, then run `vp i` in it. Change no code in it.
+- Start `vp run dev` there in the background with `T3CODE_TAILSCALE_SERVE=false`. State then lives in that worktree's `.t3`. Never use `~/.t3/userdata`.
+- Read the real port from the `[dev-runner]` line. The emulator reaches the server at `http://10.0.2.2:<port>`.
+- Mint a pairing token with `node apps/server/src/bin.ts pair`, run in that worktree.
+- `vp run dev` registers the free Replay provider. The `test-t3-app` skill shows how to start threads with it.
+- Stop the server by the PID captured at start, never by pattern. Remove the worktree when the increment is done.
+
+**Background.** Effect RPC JSON over WebSocket (`apps/server/src/ws.ts`). The methods are `orchestration.subscribeShell`, `orchestration.subscribeThread` or `getThreadProjection`, `orchestration.dispatchCommand` and `orchestration.launchThread` (`packages/contracts/src/rpc.ts`, `orchestrationV2.ts`). Pairing and session auth are in `apps/server/src/auth/` and `packages/client-runtime/src/authorization`. Port only the fields these calls touch. Read `/home/supadava/projects/t3code`, and never edit it.
+
+#### 2.1 Connect, pair and read the shell. Status: todo
+
+- **Goal.** Pair with a T3 server, open the WebSocket, subscribe to the shell, and keep a list of threads, each with its project and a state: running, waiting for approval, waiting for an answer, failed, or idle. Reconnect after a dropped connection.
+- **Done when.**
+  - A JVM test decodes recorded `subscribeShell` frames into that list.
+  - Against the scratch T3 server, a small debug screen in the app shows its threads, and a Replay thread started in that server's web UI appears as running.
+  - Killing the server and restarting it brings the list back without restarting the app.
+- **Scope.** New package `com.spadaval.lor.t3`, and a debug screen behind Settings. Nothing in LoR's server. Credentials stay out of logs (LoR rule).
+
+#### 2.2 Act on threads. Status: backlog, planned once 2.1 is done
+
+- **Goal.** Use `dispatchCommand` to approve or deny an approval, answer a question, and send a follow-up. Use `launchThread` to start a thread in a named project.
+- **Done when.** Against a scratch server, each action changes the thread as T3's own UI shows it, using a free or cheapest-model provider.
+
+### Increment 3: A home Sumeet can live in, with the agent page. Status: backlog, blocked by D1 and Increment 1
+
+**Goal.**
+- The launcher is his default home. The left-most page is the agent page:
+  - the queue: T3 approvals, questions and failures from Increment 2, and LoR Needs you and the next action;
+  - running turns;
+  - Today;
+  - a quick-send button.
+- Each card has one main action and opens the right place. For a T3 card that's the T3 app at that thread, in the adjacent pane on the inner screen.
+- Home shows his apps from a local layout JSON file.
+- The drawer and search find any app by name.
+
+**Done when.**
+- On the emulator against the LoR test server and a scratch T3 server, approving from a card clears it, and opening a T3 card deep-links into the T3 app.
+- The spec's "The phone" section and "Who is who" describe the app as the launcher, a client of both T3 and LoR, holding the queue that LoR's server doesn't (AGENTS.md: a change that crosses the spec changes the spec).
+- **[real Fold]** Sumeet uses it as his home for a few days and says whether it's good enough to keep.
+
+**Unknowns.**
+- Which LoR endpoint gives the app Needs you, the brief's first line and Today. `/device/state` exists. Something new may be needed under `/device/*`.
+- The layout JSON schema. Design it in this increment, so Increment 7 only adds the git sync to it.
+- Which T3 app deep links already exist. The T3 app registers `https://app.t3.codes/threads/...` and the `t3code` scheme (`apps/mobile/app.config.ts`). Whether either opens a thread on buildbot's server is untested. Any missing deep link is a fork item outside this mission.
+- Whether "an ordinary good launcher" must also host third-party Android widgets from day one.
+
+### Increment 4: Send a prompt from anywhere. Status: backlog
+
+**Goal.** One quick-send sheet, opening over whatever is on screen, from:
+- a button on the agent page;
+- the home button pressed while already on home;
+- a Quick Settings tile;
+- the side key, with the app as the default assistant attaching a screen capture as context.
+
+Sending launches a T3 thread in the first of: the project named in the prompt, the project on screen, or the Inbox. The sheet shows where it's going, and changing that costs one tap.
+
+**Done when.** Each entry point launches a thread in the expected project on a scratch server, and the assistant entry attaches the capture. **[real Fold]** The side key opens it from inside another app.
+
+**Unknowns.**
+- Which project is "the Inbox on buildbot" (see Open questions).
+- How "the project on screen" is known when the screen isn't the launcher's own.
+
+### Increment 5: LoR knows how each app was launched. Status: backlog
+
+**Goal.** Every launch from the launcher (home, drawer, search, a card) is recorded with its source. The records go through the existing sensor queue to `/device/ingest`, and they show in LoR's timeline.
+
+**Done when.** A JVM test covers the observation shape. A LoR `pnpm test:db` case accepts it. On the emulator against the test server, a launch from search appears with its source.
+
+**Unknowns.**
+- Whether this extends the app-session observation or becomes a new `kind`. Decide with the spec's observation envelope.
+- The app-usage sensor leaves out "the launcher and system UI" (spec, "The phone"). Once LoR is the launcher, time on its own pages needs a rule: still left out, or recorded.
+- Whether a search launch also records what was typed. The thread proposed it, but it wasn't decided.
+
+### Increment 6: Running turns as Live Updates. Status: backlog
+
+**Goal.** While a T3 turn runs, a Live Update shows it in the status bar and on the lock screen, and it ends when the turn ends.
+
+**Done when.** On an Android 16 emulator image, a running turn on a scratch server shows and clears its Live Update. **[real Fold]** It also shows in One UI's Now Bar, or the result says it doesn't. With the launcher in the background for a day, a turn started from another client still shows its Live Update.
+
+**Unknowns.** Whether the connection must be held by a foreground service when the launcher isn't in front. Increment 1 shows only whether the process survives. This increment checks whether the connection does.
+
+### Increment 7: Agents edit the home layout. Status: backlog
+
+**Goal.** The layout JSON lives in a git repo that agents edit from T3 threads. When a new commit arrives, the launcher shows what changes and applies it only when Sumeet accepts. Undo is a revert.
+
+**Done when.** An agent commit moving an app into a folder appears as a proposed change on the emulator. Accepting applies it, and a revert puts it back.
+
+**Unknowns.**
+- Which repo holds the file, and how the phone reaches it: over the tailnet, or served through LoR.
+- Whether changes made by hand on the phone are written back to the repo. The thread proposed it, but it wasn't decided.
+
+## Later, outside this mission
+
+These were agreed in the design threads. This plan proposes moving them out of this mission to keep it small, which is Sumeet's call (Open question 4). Each would be planned as its own mission once this one closes:
+
+- **Smart folders and search over shortcuts.** Smart folders in the drawer, each with its reason, with hand-edited folders pinned. Every app's shortcuts and conversations, through `LauncherApps`, in search.
+- **Groups and temporary layouts.** Groups of apps that open together in split view. Temporary layouts with an expiry.
+- **Generative widgets.** Ideally pinned T3 HTML renders, in sandboxed WebViews. This needs "Pin to home" in Sumeet's T3 fork, a change in that repo.
+- **The phone as an output for agents.** A few safe tools over the T3 connection, such as showing something on the phone, pinning a card, or asking a yes/no question.
+
+## Open questions for Sumeet
+
+1. **D1:** grow LoR's app (recommended), or fork Lawnchair or Kvaesitso?
+2. **The Fold.** Has it arrived, and may an agent install the 1.1 APK and Lawnchair on it for Increment 1?
+3. **The Inbox.** Which T3 project is "the Inbox on buildbot": the existing "No project" scratch project, the `assistant` project (or its channel thread), or a new `inbox` project?
+4. **Scope.** Is it all right to move smart folders, shortcut search, app groups, temporary layouts, generative widgets and phone-output tools into later missions? The alternative is keeping them in this one.
