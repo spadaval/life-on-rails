@@ -68,10 +68,11 @@ fun T3DebugScreen(onBack: () -> Unit) {
                 Button(onClick = {
                     scope.launch {
                         pairing = "Pairing…"
-                        pairing = withContext(Dispatchers.IO) {
-                            runCatching { connection.pair(Pairing.parse(server, code)) }
-                                .fold({ code = ""; null }, { "Cannot pair: ${T3Connection.describe(it)}" })
-                        }
+                        // pair() never starts the connection; this scope is cancelled with the screen,
+                        // so a pairing that finishes after it closes leaves nothing running.
+                        val result = withContext(Dispatchers.IO) { runCatching { connection.pair(Pairing.parse(server, code)) } }
+                        pairing = result.fold({ code = ""; null }, { "Cannot pair: ${T3Connection.describe(it)}" })
+                        connection.start()
                     }
                 }) { Text("Pair") }
                 OutlinedButton(onClick = { connection.forget() }) { Text("Forget") }
@@ -82,6 +83,7 @@ fun T3DebugScreen(onBack: () -> Unit) {
             Text(
                 when (val s = status) {
                     T3Connection.Status.NotPaired -> "Not paired."
+                    T3Connection.Status.Stopped -> "Not connected."
                     T3Connection.Status.Connecting -> "Connecting to ${store.lastServer}…"
                     T3Connection.Status.Live -> "Live: ${store.lastServer}"
                     is T3Connection.Status.Retrying -> "Disconnected (${s.error}). Retrying in ${s.retryInMs / 1000}s."

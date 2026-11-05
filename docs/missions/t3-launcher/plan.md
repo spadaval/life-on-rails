@@ -137,7 +137,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
     - a pending `user_input` request is waiting for an answer;
     - any other pending kind except `auth_refresh` is waiting for approval;
     - otherwise the decoder reads `activityRunStatus`, falling back to `status`;
-    - subagents, side chats, archived and deleted threads are left out.
+    - archived and deleted threads are left out. Subagents and side chats are not listed, but their requests raise the listed parent, as T3's `pendingSubagentRequestsByThread` does: a side chat's approval or question raises its parent; a live subagent's approval raises every ancestor up the subagent chain, and its questions are skipped, since the coordinator answers them. Each listed thread keeps the child's thread id and request id, for 2.2 to act on.
   - **`10.0.2.2` once failed.** During the live check the emulator didn't reach the host there, not even a plain Python server, so the check used `adb reverse tcp:<port> tcp:<port>` and `http://127.0.0.1:<port>`. That was minutes after an emulator reboot. Later the same day, `10.0.2.2` answered from both the shell and the app's own uid (`run-as com.spadaval.lor`), so `10.0.2.2` stays the default and `adb reverse` is the fallback.
   - **Known differences from T3's list status** (review, deferred to Increment 3's queue design):
     - `lastErrorClass: usage_limit` shows as failed; T3 calls it "limited".

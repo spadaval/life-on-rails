@@ -2,7 +2,6 @@ package com.spadaval.lor.t3
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -72,7 +71,74 @@ class ShellTest {
         assertTrue(removed.threads.none { it.id == id })
 
         val subagent = JSONObject(thread.toString()).put("id", "child").apply { getJSONObject("lineage").put("relationshipToParent", "subagent") }
-        assertNull(Shell.row(subagent))
+        val withSubagent = shell.apply(updated(subagent))
+        assertTrue(withSubagent.threads.none { it.id == "child" })
+        assertEquals(shell.threads.size, withSubagent.threads.size)
+    }
+
+    /** The recorded snapshot, and a copy of one of its threads made a child of [parentId]. */
+    private val snapshot = items("shell-session.ndjson").take(2).fold(Shell(), Shell::apply)
+    private val recorded: List<JSONObject> = items("shell-session.ndjson").first().getJSONObject("snapshot").getJSONArray("threads")
+        .let { a -> List(a.length()) { a.getJSONObject(it) } }
+
+    private fun child(fromTitle: String, id: String, parentId: String, subagent: Boolean = true, sideChat: Boolean = false) =
+        JSONObject(recorded.single { it.getString("title") == fromTitle }.toString()).put("id", id).apply {
+            getJSONObject("lineage").put("parentThreadId", parentId).put("relationshipToParent", if (subagent) "subagent" else JSONObject.NULL).put("sideChat", sideChat)
+        }
+
+    private fun updated(t: JSONObject, location: String = "active") =
+        JSONObject().put("kind", "thread.updated").put("sequence", 1).put("location", location).put("thread", t)
+
+    private val parent get() = snapshot.byTitle("Showcase replay")
+
+    @Test
+    fun aSubagentsApprovalRaisesItsAncestors() {
+        assertEquals(ThreadState.IDLE, parent.state)
+        val approval = recorded.single { it.getString("title") == "Supervised approval replay" }.getJSONObject("pendingRuntimeRequest").getString("id")
+        // parent <- sub <- grandchild, and only the grandchild asks.
+        val sub = child("Showcase replay", "sub", parent.id)
+        val grandchild = child("Supervised approval replay", "grandchild", "sub")
+        val shell = snapshot.apply(updated(sub)).apply(updated(grandchild))
+
+        assertEquals(6, shell.threads.size)
+        val raised = shell.byTitle("Showcase replay")
+        assertEquals(ThreadState.WAITING_APPROVAL, raised.state)
+        assertEquals(listOf(PendingRequest("grandchild", approval, "command")), raised.requests)
+
+        // Archiving the child clears it.
+        assertEquals(ThreadState.IDLE, shell.apply(updated(grandchild, "archive")).byTitle("Showcase replay").state)
+    }
+
+    @Test
+    fun aSubagentsQuestionEndedRunOrNativeProviderDoesNotRaiseTheParent() {
+        val question = child("Question replay", "q", parent.id)
+        val ended = child("Supervised approval replay", "ended", parent.id).put("activityRunStatus", JSONObject.NULL).put("status", "completed")
+        val native = child("Supervised approval replay", "native", parent.id).put("creationSource", "provider")
+        for (c in listOf(question, ended, native)) {
+            val raised = snapshot.apply(updated(c)).byTitle("Showcase replay")
+            assertEquals(c.getString("id"), ThreadState.IDLE, raised.state)
+            assertTrue(raised.requests.isEmpty())
+        }
+    }
+
+    @Test
+    fun aSideChatsQuestionOrApprovalRaisesItsParent() {
+        val question = child("Question replay", "side", parent.id, subagent = false, sideChat = true)
+        val asked = snapshot.apply(updated(question))
+        assertEquals(6, asked.threads.size)
+        assertEquals(ThreadState.WAITING_ANSWER, asked.byTitle("Showcase replay").state)
+        assertEquals("side", asked.byTitle("Showcase replay").requests.single().threadId)
+
+        val approval = child("Supervised approval replay", "side", parent.id, subagent = false, sideChat = true)
+        assertEquals(ThreadState.WAITING_APPROVAL, snapshot.apply(updated(approval)).byTitle("Showcase replay").state)
+    }
+
+    @Test
+    fun aThreadsOwnRequestIsReachable() {
+        val own = snapshot.byTitle("Question replay").requests.single()
+        assertEquals(snapshot.byTitle("Question replay").id, own.threadId)
+        assertEquals("user_input", own.kind)
+        assertTrue(snapshot.byTitle("Broken replay").requests.isEmpty())
     }
 
     @Test

@@ -26,12 +26,19 @@ import java.util.concurrent.TimeUnit
  * backoff when it drops. Each connection takes a fresh ticket and a fresh authoritative snapshot,
  * so nothing is resumed by sequence.
  *
- * Requests are matched to replies by id through [handlers]; the shell subscription is one entry.
- * Unary calls (dispatchCommand, launchThread) go in the same table.
+ * Requests are matched to replies by id through the per-socket handler table; the shell
+ * subscription is its one entry today. Unary calls (dispatchCommand, launchThread) are meant to go
+ * in the same table in Increment 2.2; no call API exists yet.
+ *
+ * Each [start] begins a new loop generation, and [stop] ends it. A loop writes [status] and [shell]
+ * only through [ifCurrent], so a cancelled loop still blocked in a ticket request can never
+ * overwrite what a newer loop, [stop] or [forget] wrote.
  */
 class T3Connection(private val store: T3Store) {
     sealed interface Status {
         data object NotPaired : Status
+        /** Paired, but nothing has started the connection. */
+        data object Stopped : Status
         data object Connecting : Status
         data object Live : Status
         /** Dropped; trying again in [retryInMs]. */
@@ -40,7 +47,7 @@ class T3Connection(private val store: T3Store) {
         data class Rejected(val error: String) : Status
     }
 
-    private val _status = MutableStateFlow<Status>(if (store.session == null) Status.NotPaired else Status.Connecting)
+    private val _status = MutableStateFlow<Status>(if (store.session == null) Status.NotPaired else Status.Stopped)
     val status: StateFlow<Status> = _status.asStateFlow()
     private val _shell = MutableStateFlow(Shell())
     val shell: StateFlow<Shell> = _shell.asStateFlow()
@@ -48,32 +55,44 @@ class T3Connection(private val store: T3Store) {
     private val http = OkHttpClient.Builder()
         // Node's ws answers pings, so a silent drop shows as a failure within a minute.
         .pingInterval(20, TimeUnit.SECONDS)
-        .readTimeout(0, TimeUnit.MILLISECONDS)
         .build()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var job: Job? = null
+    /** The current loop's number; bumped by [start] and [stop]. Guarded by this object's lock. */
+    private var generation = 0L
 
     @Synchronized
     fun start() {
         if (job?.isActive == true) return
-        job = scope.launch { loop() }
+        val gen = ++generation
+        job = scope.launch { loop(gen) }
     }
 
     @Synchronized
     fun stop() {
+        generation++
         job?.cancel()
         job = null
+        _status.value = if (store.session == null) Status.NotPaired else Status.Stopped
+        _shell.value = _shell.value.copy(loaded = false)
     }
 
-    /** Pairs, stores the session and (re)connects. Blocking: call from Dispatchers.IO. */
+    /**
+     * Pairs and stores the session, replacing any earlier one. Stops a running connection and does
+     * not start one: whoever shows the connection calls [start]. On failure nothing changes.
+     * Blocking: call from Dispatchers.IO.
+     */
     fun pair(target: PairTarget) {
-        stop()
         val token = T3Auth.pair(target, "LoR launcher")
-        store.session = T3Store.Session(target.httpBase, token)
-        _shell.value = Shell()
-        start()
+        synchronized(this) {
+            stop()
+            store.session = T3Store.Session(target.httpBase, token)
+            _shell.value = Shell()
+            _status.value = Status.Stopped
+        }
     }
 
+    @Synchronized
     fun forget() {
         stop()
         store.session = null
@@ -81,22 +100,32 @@ class T3Connection(private val store: T3Store) {
         _status.value = Status.NotPaired
     }
 
-    private suspend fun loop() {
+    /** Runs [write] only while [gen] is the current loop; returns whether it ran. */
+    @Synchronized
+    private fun ifCurrent(gen: Long, write: () -> Unit): Boolean {
+        if (gen != generation) return false
+        write()
+        return true
+    }
+
+    private fun setStatus(gen: Long, status: Status) = ifCurrent(gen) { _status.value = status }
+
+    private suspend fun loop(gen: Long) {
         var backoff = INITIAL_BACKOFF_MS
         while (true) {
-            val session = store.session ?: run { _status.value = Status.NotPaired; return }
-            _status.value = Status.Connecting
+            val session = store.session ?: run { setStatus(gen, Status.NotPaired); return }
+            if (!setStatus(gen, Status.Connecting)) return
             val error = try {
-                connectOnce(session) { backoff = INITIAL_BACKOFF_MS }
+                connectOnce(gen, session) { backoff = INITIAL_BACKOFF_MS }
             } catch (e: T3AuthRejected) {
-                _status.value = Status.Rejected(e.message ?: "rejected")
+                setStatus(gen, Status.Rejected(e.message ?: "rejected"))
                 return
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 describe(e)
             }
-            _status.value = Status.Retrying(error, backoff)
+            if (!setStatus(gen, Status.Retrying(error, backoff))) return
             delay(backoff)
             backoff = (backoff * 2).coerceAtMost(MAX_BACKOFF_MS)
         }
@@ -109,10 +138,11 @@ class T3Connection(private val store: T3Store) {
     }
 
     /** Runs one socket until it ends; returns why. [onLive] fires on the first snapshot. */
-    private suspend fun connectOnce(session: T3Store.Session, onLive: () -> Unit): String {
+    private suspend fun connectOnce(gen: Long, session: T3Store.Session, onLive: () -> Unit): String {
+        // Blocking and deaf to cancellation, so the loop may be stale by the time it returns.
         val ticket = T3Auth.webSocketTicket(session.httpBase, session.accessToken)
         // Keep showing the last list, but only as live once this socket's own snapshot lands.
-        _shell.value = _shell.value.copy(loaded = false)
+        if (!ifCurrent(gen) { _shell.value = _shell.value.copy(loaded = false) }) return "stopped"
         val wsBase = session.httpBase.replaceFirst("http", "ws")
         val request = Request.Builder()
             .url("$wsBase/ws?wsTicket=${URLEncoder.encode(ticket, "UTF-8")}&orchestrationProtocol=$ORCHESTRATION_PROTOCOL")
@@ -139,7 +169,7 @@ class T3Connection(private val store: T3Store) {
                         val id = (nextId++).toString()
                         handlers[id] = { message ->
                             when (message) {
-                                is Rpc.Chunk -> {
+                                is Rpc.Chunk -> ifCurrent(gen) {
                                     var shell = _shell.value
                                     for (item in message.values) shell = shell.apply(item)
                                     _shell.value = shell

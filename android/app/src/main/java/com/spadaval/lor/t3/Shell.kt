@@ -10,6 +10,11 @@ enum class ThreadState(val label: String) {
     IDLE("Idle"),
 }
 
+/** A request a thread is blocked on. 2.2 approves or answers it by [threadId] and [requestId]. */
+data class PendingRequest(val threadId: String, val requestId: String, val kind: String) {
+    val isQuestion: Boolean get() = kind == "user_input"
+}
+
 data class T3Thread(
     val id: String,
     val title: String,
@@ -19,12 +24,15 @@ data class T3Thread(
     /** ISO time, as the server sent it. */
     val updatedAt: String,
     val lastError: String?,
+    /** What this thread waits on Sumeet for: its own request, then those of its hidden subagents and side chats. */
+    val requests: List<PendingRequest>,
 )
 
 /**
  * The thread list from `orchestration.subscribeShell` items (T3's `OrchestrationV2ShellStreamItem`).
- * Immutable: [apply] returns the next state. Only active, listed threads are kept: archived and
- * deleted ones, subagents and side chats are left out, as T3's own thread lists do.
+ * Immutable: [apply] returns the next state. Archived and deleted threads are dropped. Subagents and
+ * side chats are kept but not listed, as in T3's own lists; their requests raise the listed parent
+ * (T3's `pendingSubagentRequestsByThread`).
  */
 data class Shell(
     val projects: Map<String, String> = emptyMap(),
@@ -32,12 +40,65 @@ data class Shell(
     /** True once an authoritative snapshot has arrived. */
     val loaded: Boolean = false,
 ) {
-    data class Row(val projectId: String, val title: String, val state: ThreadState, val updatedAt: String, val lastError: String?)
+    data class Row(
+        val projectId: String,
+        val title: String,
+        /** RUNNING, FAILED or IDLE, from the run alone. */
+        val run: ThreadState,
+        val updatedAt: String,
+        val lastError: String?,
+        /** Its pending request, unless none or `auth_refresh`. */
+        val request: PendingRequest?,
+        val parentId: String?,
+        val subagent: Boolean,
+        val sideChat: Boolean,
+        /** A provider-native subagent asks on its parent itself, so its own request is not rolled up. */
+        val providerNative: Boolean,
+        /** Whether a subagent's run is still live; once it ends its parent no longer waits on it. */
+        val runLive: Boolean,
+    ) {
+        val listed: Boolean get() = !subagent && !sideChat
+    }
 
-    /** Most recently updated first. */
-    val threads: List<T3Thread>
-        get() = rows.map { (id, r) -> T3Thread(id, r.title, r.projectId, projects[r.projectId] ?: r.projectId, r.state, r.updatedAt, r.lastError) }
-            .sortedByDescending { it.updatedAt }
+    /** Listed threads, most recently updated first. */
+    val threads: List<T3Thread> by lazy {
+        val rolled = rolledUp()
+        rows.filterValues { it.listed }.map { (id, r) ->
+            val requests = listOfNotNull(r.request) + rolled[id].orEmpty()
+            val state = when {
+                requests.any { !it.isQuestion } -> ThreadState.WAITING_APPROVAL
+                requests.isNotEmpty() -> ThreadState.WAITING_ANSWER
+                else -> r.run
+            }
+            T3Thread(id, r.title, r.projectId, projects[r.projectId] ?: r.projectId, state, r.updatedAt, r.lastError, requests)
+        }.sortedByDescending { it.updatedAt }
+    }
+
+    /**
+     * Child requests by the thread they raise. A side chat raises its parent with an approval or a
+     * question. A live subagent's approval raises every ancestor up the subagent and side-chat chain;
+     * its questions are skipped, since the coordinator answers them.
+     */
+    private fun rolledUp(): Map<String, List<PendingRequest>> {
+        val out = HashMap<String, MutableList<PendingRequest>>()
+        for ((id, child) in rows) {
+            val request = child.request ?: continue
+            val parentId = child.parentId ?: continue
+            if (child.sideChat) {
+                out.getOrPut(parentId) { mutableListOf() } += request
+                continue
+            }
+            if (!child.subagent || child.providerNative || !child.runLive || request.isQuestion) continue
+            val seen = hashSetOf(id)
+            var ancestor: String? = parentId
+            while (ancestor != null && seen.add(ancestor)) {
+                out.getOrPut(ancestor) { mutableListOf() } += request
+                val parent = rows[ancestor]
+                ancestor = if (parent != null && (parent.subagent || parent.sideChat)) parent.parentId else null
+            }
+        }
+        return out
+    }
 
     fun apply(item: JSONObject): Shell = when (item.optString("kind")) {
         "snapshot" -> {
@@ -71,20 +132,43 @@ data class Shell(
 
     companion object {
         private val LIVE = setOf("preparing", "queued", "starting", "running", "waiting")
+        /** T3's `isChildRunLive` fallback for servers without `activityRunStatus`. */
+        private val CHILD_LIVE = setOf("preparing", "starting", "running", "waiting")
 
-        /** Null when the thread is not one T3 would list. */
+        /** Null when the thread is archived or deleted. */
         fun row(t: JSONObject): Row? {
-            val lineage = t.getJSONObject("lineage")
-            if (str(lineage, "relationshipToParent") == "subagent" || lineage.optBoolean("sideChat")) return null
             if (str(t, "deletedAt") != null || str(t, "archivedAt") != null) return null
-            return Row(t.getString("projectId"), t.getString("title"), state(t), t.getString("updatedAt"), str(t, "lastError"))
+            val id = t.getString("id")
+            val lineage = t.getJSONObject("lineage")
+            val subagent = str(lineage, "relationshipToParent") == "subagent"
+            val request = t.optJSONObject("pendingRuntimeRequest")
+                ?.takeIf { str(it, "kind") != null && str(it, "kind") != "auth_refresh" }
+                ?.let { PendingRequest(id, it.getString("id"), it.getString("kind")) }
+            val runLive = if (t.has("activityRunStatus")) !t.isNull("activityRunStatus") else str(t, "status") in CHILD_LIVE
+            return Row(
+                projectId = t.getString("projectId"),
+                title = t.getString("title"),
+                run = runState(t),
+                updatedAt = t.getString("updatedAt"),
+                lastError = str(t, "lastError"),
+                request = request,
+                parentId = str(lineage, "parentThreadId"),
+                subagent = subagent,
+                sideChat = lineage.optBoolean("sideChat"),
+                providerNative = subagent && str(t, "creationSource") == "provider",
+                runLive = runLive,
+            )
         }
 
-        /** As T3's thread lists rank it (`resolveThreadListV2Status`): a pending request first, then the run. */
+        /** A thread's own state, as T3's thread lists rank it (`resolveThreadListV2Status`): a pending request first, then the run. */
         fun state(t: JSONObject): ThreadState {
             val request = t.optJSONObject("pendingRuntimeRequest")?.let { str(it, "kind") }
             if (request == "user_input") return ThreadState.WAITING_ANSWER
             if (request != null && request != "auth_refresh") return ThreadState.WAITING_APPROVAL
+            return runState(t)
+        }
+
+        private fun runState(t: JSONObject): ThreadState {
             val status = str(t, "activityRunStatus") ?: str(t, "status")
             return when {
                 status in LIVE -> ThreadState.RUNNING
