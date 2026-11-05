@@ -11,7 +11,16 @@
 // special_function and goes home to Today. Previous Screen, Close, and left
 // and right never reach us: the firmware flips through the frames it cached,
 // one per screen, kept apart by the first 14 characters of the filename.
+//
+// Our own build of the firmware (version suffix "-lor<N>", from
+// github.com/usetrmnl/trmnl-firmware with a prefetch patch) also takes the
+// other two screens in the same response and stores them without showing
+// them, so left and right always reach all three. LOR_TRMNL_FIRMWARE names
+// that build (`<version>.bin`); a device reporting another version is told to
+// install it, from /trmnl/firmware/<version>.bin.
 import { timingSafeEqual } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 import { sql } from "../../db/client.js";
 import { addDays, localDayBounds, localTimeOnDay, localYmd } from "../../shared/localTime.js";
 import { env } from "../env.js";
@@ -22,12 +31,12 @@ import { getToday, wakeWindow } from "../today.js";
 import { type GraphNode, getGraph } from "../graph.js";
 import { descendantSet, mergedHours, type Span } from "../scoring/formulas.js";
 import {
-  FRAME_H, FRAME_SCALE, FRAME_W, type GoalsInput, type Ink, OTHER, OWN_INKS, type One, type Screen, type Shell, type TasksInput, type TodayInput,
+  FRAME_H, FRAME_SCALE, FRAME_W, SCREENS, type GoalsInput, type Ink, OTHER, OWN_INKS, type One, type Screen, type Shell, type TasksInput, type TodayInput,
   goalsHtml, nextScreen, pickOne, shortTitle, tasksHtml, todayHtml,
 } from "./frame.js";
 import { getPin } from "./pin.js";
 import { grayPng2 } from "./png.js";
-import { frameFonts, renderFrame } from "./render.js";
+import { frameFonts, renderFrames } from "./render.js";
 
 const REFRESH_S = 900;
 /** How long a screen stepped to stays up before Today comes back. */
@@ -215,34 +224,66 @@ export async function trmnlSetup(request: Request): Promise<Response> {
   return json(200, { status: 200, api_key: env.LOR_TRMNL_KEY, friendly_id: "LOR", image_url, filename: "setup", message: "Life on Rails" });
 }
 
+/** Builds of ours store the other screens they are sent alongside the one they show. */
+const prefetches = (fw: string | null) => /-lor\d+$/.test(fw ?? "");
+
+/** The firmware LoR hands out: its version is the file's name without ".bin". */
+function firmware(): { version: string; path: string } | null {
+  const path = env.LOR_TRMNL_FIRMWARE.trim();
+  return path ? { version: basename(path).replace(/\.bin$/, ""), path } : null;
+}
+
 export async function trmnlDisplay(request: Request): Promise<Response> {
   if (!keyOk(request)) return json(500, { status: 500, error: "Device not found" });
   const h = (k: string) => request.headers.get(k);
   const pct = Number(h("percent-charged"));
   const charging = h("usb-connected") === "true" || h("battery-charging") === "1";
+  const fw = h("fw-version");
   const screen = nextScreen(shown, h("update-source"), h("special_function"));
-  log("info", "trmnl display", { screen, source: h("update-source"), special: h("special_function"), battery: h("percent-charged") ?? h("battery-voltage"), usb: h("usb-connected"), rssi: h("rssi"), fw: h("fw-version") });
+  // In browsing order after the one shown, so right steps Today, Goals, Tasks.
+  const others = prefetches(fw) ? [1, 2].map((k) => SCREENS[(SCREENS.indexOf(screen) + k) % SCREENS.length]!) : [];
+  log("info", "trmnl display", { screen, also: others, source: h("update-source"), special: h("special_function"), battery: h("percent-charged") ?? h("battery-voltage"), usb: h("usb-connected"), rssi: h("rssi"), fw });
   const alerts = Number.isFinite(pct) && pct > 0 && pct < LOW_BATTERY_PCT && !charging ? [`Battery ${Math.round(pct)}%`] : [];
   try {
     const now = new Date();
-    const png = await renderFrame(await screenHtml(screen, await shellInput(now, alerts)));
-    latest.set(screen, { name: frameName(screen, now), png });
+    const shell = await shellInput(now, alerts);
+    const screens = [screen, ...others];
+    const pngs = await renderFrames(await Promise.all(screens.map((s) => screenHtml(s, shell))));
+    screens.forEach((s, i) => latest.set(s, { name: frameName(s, now), png: pngs[i]! }));
   } catch (err) {
-    // The last frame stays up with its own "Updated" time, which is the honest thing to show.
+    // The last frame stays up with the time it was drawn, which is the honest thing to show.
     log("error", "trmnl render failed", { screen, err: errorMessage(err) });
   }
   const frame = latest.get(screen);
   if (!frame) return json(500, { status: 500, error: "No frame yet" });
   shown = screen;
   const origin = new URL(request.url).origin;
+  const image = (name: string) => `${origin}/trmnl/image/${name}.png`;
+  const want = firmware();
+  const update = want !== null && fw !== null && fw !== want.version;
+  if (update) log("info", "trmnl firmware offered", { from: fw, to: want.version });
   return json(200, {
     status: 0,
-    image_url: `${origin}/trmnl/image/${frame.name}.png`,
+    image_url: image(frame.name),
     filename: frame.name,
+    prefetch: others.flatMap((s) => {
+      const f = latest.get(s);
+      return f ? [{ image_url: image(f.name), filename: f.name }] : [];
+    }),
     refresh_rate: screen === "today" ? REFRESH_S : TAPPED_S,
-    update_firmware: false,
+    update_firmware: update,
+    ...(update ? { firmware_url: `${origin}/trmnl/firmware/${want.version}.bin` } : {}),
     reset_firmware: false,
   });
+}
+
+/** The firmware build named in LOR_TRMNL_FIRMWARE, and nothing else. Unkeyed: the firmware's updater sends no headers. */
+export function trmnlFirmware(version: string): Response {
+  const want = firmware();
+  if (!want || version !== want.version) return new Response("not found\n", { status: 404 });
+  const bin = readFileSync(want.path);
+  log("info", "trmnl firmware served", { version, bytes: bin.length });
+  return new Response(new Uint8Array(bin), { headers: { "content-type": "application/octet-stream", "content-length": String(bin.length) } });
 }
 
 let blank: Buffer | null = null;

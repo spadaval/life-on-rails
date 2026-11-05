@@ -17,7 +17,7 @@ Single-user self-hosted personal OS. What LoR is, what it is not, and how it sit
 - Queries are SQL through postgres.js; pass JSON with `sql.json(...)`, never a pre-stringified string.
 - Server functions return JSON-safe values only (ISO strings, not Dates).
 - Config is the env file only (`~/.config/life-on-rails/env`); every comment in it on its own line.
-- Binds `127.0.0.1:3847`. The `:3848` listener is the only thing `tailscale serve` targets, and it checks the owner's identity header. The one listener on the home network is the TRMNL X's (`LOR_TRMNL_BIND:3849`, off when unset): the firmware's `/api/setup|display|log` and its image, nothing else, every call keyed.
+- Binds `127.0.0.1:3847`. The `:3848` listener is the only thing `tailscale serve` targets, and it checks the owner's identity header. The one listener on the home network is the TRMNL X's (`LOR_TRMNL_BIND:3849`, off when unset): the firmware's `/api/setup|display|log` and its images, every call keyed; and the firmware build in `LOR_TRMNL_FIRMWARE` by its exact name, unkeyed because the updater sends no headers. Nothing else.
 - Never log tokens or store them in tables. Titles and subjects may be logged.
 
 ## Commands
@@ -47,7 +47,7 @@ The in-app browser preview may be off for a thread. `scripts/ui-server.sh` start
 
 ## The wall display
 
-A TRMNL X (10.3" e-paper, 1872x1404) on the fridge, pointed at LoR as its own server. Every 15 minutes it calls `/api/display`; LoR draws `src/server/trmnl/frame.ts` in the system Chrome (`playwright-core`) and serves a 2-bit grayscale PNG. Three screens: a timed wake draws Today (the day arc and the one thing, which `lor wall pin` overrides); on firmware 1.8.18 a middle tap opens the device's own menu, whose Next Screen steps to Goals, then Tasks, for five minutes; Previous, left and right flip through the device's own cache and never reach LoR. Check a change with `pnpm test` (`tests/trmnl`) and by rendering a frame to a file; the firmware source is `github.com/usetrmnl/trmnl-firmware`.
+A TRMNL X (10.3" e-paper, 1872x1404) on the fridge, pointed at LoR as its own server. Every 15 minutes it calls `/api/display`; LoR draws `src/server/trmnl/frame.ts` in the system Chrome (`playwright-core`) and serves a 2-bit grayscale PNG. Three screens: a timed wake draws Today (the day arc and the one thing, which `lor wall pin` overrides); on firmware 1.8.18 a middle tap opens the device's own menu, whose Next Screen steps to Goals, then Tasks, for five minutes; Previous, left and right flip through the device's own store and never reach LoR. Our firmware build (`~/projects/trmnl-firmware`, branch `lor-prefetch`, version suffix `-lor<N>`) takes the other two screens in each response and stores them without showing them, so left and right always reach all three; LoR offers that build over the air to a device reporting any other version. Build it on boat (`pio run -e TRMNL_X`), copy `.pio/build/TRMNL_X/firmware.bin` to `~/.local/share/life-on-rails/firmware/<version>.bin`, and point `LOR_TRMNL_FIRMWARE` at it. Check a change with `pnpm test` (`tests/trmnl`) and by rendering a frame to a file; the firmware source is `github.com/usetrmnl/trmnl-firmware`.
 
 ## Design
 

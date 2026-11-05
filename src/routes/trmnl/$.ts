@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { errorMessage, log } from "../../server/log.js";
-import { trmnlDisplay, trmnlImage, trmnlLog, trmnlSetup } from "../../server/trmnl/device.js";
+import { trmnlDisplay, trmnlFirmware, trmnlImage, trmnlLog, trmnlSetup } from "../../server/trmnl/device.js";
 
 async function handle(request: Request): Promise<Response> {
   const path = new URL(request.url).pathname.replace(/^\/trmnl/, "");
@@ -10,6 +10,8 @@ async function handle(request: Request): Promise<Response> {
     if (request.method === "POST" && path === "/log") return await trmnlLog(request);
     const image = /^\/image\/(plugin-[a-z0]{6}-\d+|setup)\.png$/.exec(path);
     if (request.method === "GET" && image) return trmnlImage(request, image[1]!);
+    const firmware = /^\/firmware\/([\w.-]+)\.bin$/.exec(path);
+    if (request.method === "GET" && firmware) return trmnlFirmware(firmware[1]!);
     return new Response("not found\n", { status: 404 });
   } catch (err) {
     log("error", "trmnl endpoint failed", { path, err: errorMessage(err) });

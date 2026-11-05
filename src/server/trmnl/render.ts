@@ -19,35 +19,47 @@ export function frameFonts(): string {
 }
 
 export async function renderFrame(html: string): Promise<Buffer> {
+  return (await renderFrames([html]))[0]!;
+}
+
+/** Several frames, one browser. */
+export async function renderFrames(htmls: string[]): Promise<Buffer[]> {
   const { chromium } = await import("playwright-core");
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   try {
-    const page = await browser.newPage({ viewport: { width: FRAME_W, height: FRAME_H }, deviceScaleFactor: FRAME_SCALE });
-    await page.setContent(html, { waitUntil: "load" });
-    await page.evaluate(() => document.fonts.ready);
-    const shot = await page.screenshot({ type: "png" });
-    // Nearest of black, #555, #aaa, white for every pixel, no dithering: text and lines stay crisp.
-    const [width, height, b64] = await page.evaluate(async (src: string) => {
-      const img = new Image();
-      img.src = `data:image/png;base64,${src}`;
-      await img.decode();
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0);
-      const px = ctx.getImageData(0, 0, img.width, img.height).data;
-      const levels = new Uint8Array(img.width * img.height);
-      for (let i = 0; i < levels.length; i++) {
-        const g = 0.299 * px[i * 4]! + 0.587 * px[i * 4 + 1]! + 0.114 * px[i * 4 + 2]!;
-        levels[i] = Math.round(g / 85);
-      }
-      let bin = "";
-      for (let i = 0; i < levels.length; i += 0x8000) bin += String.fromCharCode(...levels.subarray(i, i + 0x8000));
-      return [img.width, img.height, btoa(bin)] as const;
-    }, shot.toString("base64"));
-    return grayPng2(width, height, new Uint8Array(Buffer.from(b64, "base64")));
+    const out: Buffer[] = [];
+    for (const html of htmls) out.push(await renderOne(browser, html));
+    return out;
   } finally {
     await browser.close();
   }
+}
+
+async function renderOne(browser: import("playwright-core").Browser, html: string): Promise<Buffer> {
+  const page = await browser.newPage({ viewport: { width: FRAME_W, height: FRAME_H }, deviceScaleFactor: FRAME_SCALE });
+  await page.setContent(html, { waitUntil: "load" });
+  await page.evaluate(() => document.fonts.ready);
+  const shot = await page.screenshot({ type: "png" });
+  // Nearest of black, #555, #aaa, white for every pixel, no dithering: text and lines stay crisp.
+  const [width, height, b64] = await page.evaluate(async (src: string) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${src}`;
+    await img.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, 0, 0);
+    const px = ctx.getImageData(0, 0, img.width, img.height).data;
+    const levels = new Uint8Array(img.width * img.height);
+    for (let i = 0; i < levels.length; i++) {
+      const g = 0.299 * px[i * 4]! + 0.587 * px[i * 4 + 1]! + 0.114 * px[i * 4 + 2]!;
+      levels[i] = Math.round(g / 85);
+    }
+    let bin = "";
+    for (let i = 0; i < levels.length; i += 0x8000) bin += String.fromCharCode(...levels.subarray(i, i + 0x8000));
+    return [img.width, img.height, btoa(bin)] as const;
+  }, shot.toString("base64"));
+  await page.close();
+  return grayPng2(width, height, new Uint8Array(Buffer.from(b64, "base64")));
 }

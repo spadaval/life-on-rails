@@ -45,6 +45,7 @@ const Env = z.object({
   LOR_TRMNL_PORT: z.coerce.number().int().default(3849),
   LOR_TRMNL_MAC: z.string().default(""),
   LOR_TRMNL_KEY: z.string().default(""),
+  LOR_TRMNL_FIRMWARE: z.string().default(""),
   // The owner's WhatsApp channel: the agent contact's API key (empty: off), the T3 thread the conversation lives in, and where files he sends are kept.
   LOR_CHANNEL_KEY: z.string().default(""),
   LOR_CHANNEL_THREAD: z.string().default(""),

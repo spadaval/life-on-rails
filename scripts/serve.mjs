@@ -65,14 +65,15 @@ if (owner) {
 }
 
 // The wall display cannot join the tailnet. Its firmware calls /api/setup,
-// /api/display and /api/log at the base URL it was given; nothing else is routed.
+// /api/display and /api/log at the base URL it was given, then fetches the
+// images and (when offered) the firmware build they name; nothing else is routed.
 const trmnlBind = (process.env.LOR_TRMNL_BIND || "").trim();
 if (trmnlBind) {
   const trmnlPort = Number(process.env.LOR_TRMNL_PORT || 3849);
   const FIRMWARE = { "/api/setup": "/trmnl/setup", "/api/display": "/trmnl/display", "/api/log": "/trmnl/log" };
   const trmnlFetch = async (request) => {
     const url = new URL(request.url);
-    const to = FIRMWARE[url.pathname] ?? (url.pathname.startsWith("/trmnl/image/") ? url.pathname : null);
+    const to = FIRMWARE[url.pathname] ?? (/^\/trmnl\/(image|firmware)\//.test(url.pathname) ? url.pathname : null);
     if (!to) return new Response("not found\n", { status: 404 });
     url.pathname = to;
     const body = request.method === "POST" ? await request.text() : undefined;
