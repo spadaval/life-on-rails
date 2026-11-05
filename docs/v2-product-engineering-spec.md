@@ -489,7 +489,7 @@ There is no chat screen: the conversation is the channel and a T3 thread.
 
 **The launcher.** The app's `HomeActivity` is a home app the owner sets as default.
 
-- **Home** is pages of apps and folders plus a dock, drawn from a layout file (`layout.json` in the app's files, JSON schema v1, `home/Layout.kt`). The file holds named layouts, and an agent can edit it; the app re-reads it when it changes and shows a broken file as broken instead of guessing. Without a file, home starts from a default layout.
+- **Home** is the page to the right of the agent page: a grid of apps and folders plus a dock, drawn from a layout file (`layout.json` in the app's files, JSON schema v1, `home/Layout.kt`). The file holds named layouts; nothing writes it but the app yet (agent edits are a later increment). Home re-reads it on resume when its modified time has changed, and shows a broken file as broken instead of guessing. Without a file, home writes a default layout.
 - **The drawer and search** list every launchable app from `LauncherApps`, work profile included.
 - **The agent page** is the left-most page. It shows:
   - Today's arc, the one thing and Next, from `GET /device/home?device=` (read-only: the one thing as the wall picks it, the brief's first line, Needs you, oldest first, and the day for its arc: wake window, time left, the running timer, the next five timed events not yet over);
@@ -497,7 +497,7 @@ There is no chat screen: the conversation is the channel and a T3 thread.
   - the queue: T3 approvals, questions and failures first, then LoR's Needs you;
   - a quick-send button that starts a T3 thread in the `assistant` project.
 
-  Each card has one action: approve, open the question's choices, open the T3 app at the thread, or open the dashboard. At 600 dp wide or more T3 opens in a split pane, but stock Android won't put home in a split, so the other half is the last app used (whether One UI does better is still to check on the Fold).
+  Each card has its main action: approve or deny, open the question's choices, open the T3 app at the thread, or open the dashboard. A card's icon also opens its thread or the dashboard. At 600 dp wide or more T3 opens in a split pane, but stock Android won't put home in a split, so the other half is the last app used (whether One UI does better is still to check on the Fold).
 - **T3.** The app pairs with T3 Code like T3's mobile app does (a pairing link or token, `t3/Pairing.kt`) and keeps the session in its own storage. Over the WebSocket (`t3/T3Connection.kt`) it subscribes to the shell for threads and pending requests, answers approvals and questions, and launches threads. It never changes T3; deep thread work opens the T3 app by deep link.
 
 **Auth.** The app talks to `http://buildbot.tail47515a.ts.net:3847`, the Serve listener, so every request carries the owner's Tailscale identity and is refused without it. `/device/*` is not under `/api/`, so it is routed there.
