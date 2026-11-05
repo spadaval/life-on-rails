@@ -28,13 +28,21 @@ data class Question(
     val multiSelect: Boolean,
     /** False only when the server says so; otherwise free text is accepted. */
     val allowCustomAnswer: Boolean,
+    /** Text the answer field starts with; when set, typed text is sent untrimmed (T3's `initialAnswer`). */
+    val initialAnswer: String? = null,
 ) {
-    /** [answer] is what the server takes: the option's `value`, or its label when it has none. */
-    data class Option(val label: String, val description: String, val answer: String)
+    /** [value] is null when the provider gave none; [answer] is what the server takes: the value, else the label. */
+    data class Option(val label: String, val description: String, val value: String? = null) {
+        val answer: String get() = value ?: label
+    }
 }
 
-/** What a launch uses when the caller names no model or runtime mode: the project's settings, then the server's. */
-data class LaunchDefaults(val model: ModelSelection?, val runtimeMode: String)
+/**
+ * What a launch uses when the caller names no model or runtime mode: the project's settings, then the server's.
+ * [envMode] is `local` or `worktree` as the project override or the server sets it, or null when neither does
+ * (T3 then reads the project's `.t3` file, which the launcher can't see, and falls back to `local`).
+ */
+data class LaunchDefaults(val model: ModelSelection?, val runtimeMode: String, val envMode: String? = null)
 
 /**
  * The `orchestration.dispatchCommand` and `orchestration.launchThread` payloads the launcher sends,
@@ -143,10 +151,11 @@ object Commands {
                     options = List(opts.length()) { k ->
                         val o = opts.getJSONObject(k)
                         val label = o.getString("label")
-                        Question.Option(label, o.optString("description"), if (o.isNull("value")) label else o.getString("value"))
+                        Question.Option(label, o.optString("description"), if (o.isNull("value")) null else o.getString("value"))
                     },
                     multiSelect = q.optBoolean("multiSelect"),
                     allowCustomAnswer = q.optBoolean("allowCustomAnswer", true),
+                    initialAnswer = if (q.isNull("initialAnswer")) null else q.getString("initialAnswer"),
                 )
             }
         }
@@ -160,6 +169,10 @@ object Commands {
      * `fallbackModelSelection` when the default provider's usage limit is used up, offering the first
      * available model when none is set (the launcher does not guess), skipping an override whose
      * instance is disabled, and the project's legacy `defaultModelSelection`.
+     *
+     * The env mode follows the first steps of T3's chain (`resolveProjectSettings`, then
+     * `resolveNewThreadEnvMode`): the project override, then the server's `defaultThreadEnvMode`
+     * (left out of the reply while null). The project's `.t3` file and the built-in `local` are not read here.
      */
     fun launchDefaults(config: Any?, projectId: String): LaunchDefaults {
         val settings = (config as JSONObject).getJSONObject("settings")
@@ -169,6 +182,9 @@ object Commands {
         val model = ModelSelection.from(default)
         val runtimeMode = project?.optString("defaultRuntimeMode")?.ifEmpty { null }
             ?: settings.optString("defaultRuntimeMode").ifEmpty { "full-access" }
-        return LaunchDefaults(model, runtimeMode)
+        val envMode = project?.let { str(it, "defaultThreadEnvMode") } ?: str(settings, "defaultThreadEnvMode")
+        return LaunchDefaults(model, runtimeMode, envMode)
     }
+
+    private fun str(o: JSONObject, key: String): String? = if (o.isNull(key)) null else o.optString(key).ifEmpty { null }
 }

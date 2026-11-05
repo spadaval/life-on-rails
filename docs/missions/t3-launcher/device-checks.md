@@ -23,3 +23,24 @@ Notes:
 ## Increment 1.2: the real Fold
 
 Waits for Sumeet.
+
+## Increment 3.3: the agent page, on the emulators
+
+2026-11-05. The LoR test server (`:3857`, two flagged tasks) and the scratch T3 server (`:16021`, Replay threads), on the final boat build. The phone rows were first run by the implementer before its last two fixes, then the approve, question and open-in-T3 rows were run again on the final build. The scratch server had restarted in between, so the approval was a new Replay thread in `approval-required` mode.
+
+| Check | Result | Note |
+| --- | --- | --- |
+| Phone: the page draws Today, Next, Needs you and the T3 cards | pass | Over a light wallpaper too, after the veil was added. |
+| Phone: Approve clears the card | pass | The thread went on running in T3. |
+| Phone: a question card opens its choices; Send answer clears it | pass | Send answer stays disabled until an option is chosen. The Replay fixture then asks again, as a new request. |
+| Phone: quick send starts a thread in `assistant` | pass | "Started in assistant.", and the thread showed under Running. |
+| Phone: a T3 card's icon opens the T3 app at that thread | pass | Full screen. Before the fix the adjacent flag split the screen with the last app used. |
+| Phone: a LoR card opens the dashboard | pass | Chrome at `/tasks?id=…`. |
+| Fold unfolded: the page | pass | 2076x2152. Content keeps to the left 520 dp. The page dots are centred on the whole screen. |
+| Fold unfolded: a T3 card opens the thread beside | partly | T3 opened at the thread in a split pane, but the other pane was the last app used (LoR's Settings), not home. Home can't be in a split. |
+| Fold folded: the page, and a T3 card | pass | 1080x2424. T3 opened full screen. |
+| Fold: the home process across fold and unfold | pass | Same pid. No crashes in `logcat -b crash`. |
+
+Notes:
+- The Fold AVD's LoR app was still on the default (real) server address. It was pointed at `http://10.0.2.2:3857` before these checks. Check this first on any new AVD.
+- The T3 app on the Fold AVD was copied from the phone AVD and paired through its Settings > Environments > Add environment, with a token from `node apps/server/src/bin.ts pair --base-dir .t3`. A `t3code://pair` link on a cold start showed "Route not found".

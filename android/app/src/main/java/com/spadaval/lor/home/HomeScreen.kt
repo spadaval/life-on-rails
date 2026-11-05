@@ -64,6 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.spadaval.lor.agent.AgentPage
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -140,7 +141,7 @@ fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: (Ho
     }
     Box(Modifier.fillMaxSize()) {
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
-            if (page == 0) AgentPagePlaceholder() else HomePage(apps, layout, ui, launch)
+            if (page == 0) AgentPage() else HomePage(apps, layout, ui, launch)
         }
         PageDots(pager.currentPage, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
         AnimatedVisibility(
@@ -151,15 +152,6 @@ fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: (Ho
             Drawer(apps, ui, launch)
         }
         ui.folder?.let { FolderPanel(it, launch, onClose = { ui.folder = null }) }
-    }
-}
-
-@Composable
-private fun AgentPagePlaceholder() {
-    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp, vertical = 28.dp)) {
-        Text("Agent page", style = LabelStyle.copy(fontSize = 22.sp))
-        Spacer(Modifier.height(8.dp))
-        Text("Today, running turns and what needs you will be here.", style = LabelStyle.copy(fontSize = 14.sp))
     }
 }
 

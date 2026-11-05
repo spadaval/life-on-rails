@@ -32,6 +32,24 @@ object T3Auth {
     fun webSocketTicket(httpBase: String, accessToken: String): String =
         post("$httpBase/api/auth/websocket-ticket/rpc", null, null, accessToken).getString("ticket")
 
+    /**
+     * The server's environment id, which names it in T3's deep links. Read from its descriptor,
+     * `GET /.well-known/t3/environment`, which needs no credential (T3's `EnvironmentMetadataHttpApi`).
+     */
+    fun environmentId(httpBase: String): String {
+        val conn = URL("$httpBase/.well-known/t3/environment").openConnection() as HttpURLConnection
+        try {
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 10_000
+            conn.setRequestProperty("accept", "application/json")
+            val code = conn.responseCode
+            if (code !in 200..299) throw IOException("$code from /.well-known/t3/environment")
+            return JSONObject(conn.inputStream.bufferedReader().use { it.readText() }).getString("environmentId")
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     private fun post(url: String, body: String?, contentType: String?, bearer: String?): JSONObject {
         val conn = URL(url).openConnection() as HttpURLConnection
         try {

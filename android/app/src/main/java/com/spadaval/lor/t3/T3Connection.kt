@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -39,7 +40,9 @@ class T3CallFailed(message: String) : IOException(message)
  * unary calls on the open socket; they fail at once when no socket is open, and with the socket
  * when it drops, and are never retried, since a resent command could act twice.
  *
- * Each [start] begins a new loop generation, and [stop] ends it. A loop writes [status] and [shell],
+ * Screens share it by holding it: each [start] is one hold and each [stop] lets one go, and the
+ * connection runs while anyone holds it (home while it is on screen, the debug screen while open).
+ * Each run of the loop is a new generation, and halting it ends that generation. A loop writes [status] and [shell],
  * and sends a queued call, only through [ifCurrent], so a cancelled loop still blocked in a ticket request can never
  * overwrite what a newer loop, [stop] or [forget] wrote.
  */
@@ -67,24 +70,36 @@ class T3Connection(private val store: T3Store) {
         .build()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var job: Job? = null
-    /** The current loop's number; bumped by [start] and [stop]. Guarded by this object's lock. */
+    /** The current loop's number; bumped when a loop starts or halts. Guarded by this object's lock. */
     private var generation = 0L
-    /** Whether someone wants the connection: set by [start], cleared by [stop]. Guarded by this object's lock. */
-    private var wanted = false
+    /** How many [start]s have no [stop] yet; the connection runs while this is above 0. Guarded by this object's lock. */
+    private var holds = 0
+    /** The paired server's environment id, by the server it came from. */
+    @Volatile private var environment: Pair<String, String>? = null
     /** The open socket's event queue, where [call] puts its requests; null while no socket is open and after [stop]. */
     private var calls: SendChannel<Event>? = null
 
+    /** Holds the connection, starting it if no one else holds it. Pair each call with one [stop]. */
     @Synchronized
     fun start() {
-        wanted = true
+        holds++
+        run()
+    }
+
+    /** Lets go of one [start]'s hold; the connection stops when no one holds it. */
+    @Synchronized
+    fun stop() {
+        if (holds > 0) holds--
+        if (holds == 0) halt()
+    }
+
+    private fun run() {
         if (job?.isActive == true) return
         val gen = ++generation
         job = scope.launch { loop(gen) }
     }
 
-    @Synchronized
-    fun stop() {
-        wanted = false
+    private fun halt() {
         generation++
         job?.cancel()
         job = null
@@ -94,21 +109,26 @@ class T3Connection(private val store: T3Store) {
     }
 
     /**
-     * Pairs and stores the session, replacing any earlier one. If the connection is wanted (started
-     * and not stopped since), it reconnects with the new session; otherwise it stays stopped, so a
-     * pairing that finishes after its screen closed starts nothing. On failure nothing changes.
-     * Blocking: call from Dispatchers.IO.
+     * Pairs and stores the session, replacing any earlier one. If someone holds the connection, it
+     * reconnects with the new session; otherwise it stays stopped, so a pairing that finishes after
+     * its screen closed starts nothing. On failure nothing changes. Blocking: call from Dispatchers.IO.
      */
     fun pair(target: PairTarget) {
         val token = T3Auth.pair(target, "LoR launcher")
         synchronized(this) {
-            val restart = wanted
-            stop()
+            halt()
             store.session = T3Store.Session(target.httpBase, token)
             _shell.value = Shell()
             _status.value = Status.Stopped
-            if (restart) start()
+            if (holds > 0) run()
         }
+    }
+
+    /** The paired server's environment id, for deep links into the T3 app; read once per server. */
+    suspend fun environmentId(): String = withContext(Dispatchers.IO) {
+        val base = store.session?.httpBase ?: throw T3CallFailed("Not paired with T3.")
+        environment?.takeIf { it.first == base }?.second
+            ?: T3Auth.environmentId(base).also { environment = base to it }
     }
 
     /** Approves or denies a pending approval. Returns the command's sequence. */
@@ -133,13 +153,15 @@ class T3Connection(private val store: T3Store) {
 
     /**
      * Starts a thread in [projectId] with [text] as its first message. A null [model] or [runtimeMode]
-     * takes the project's or server's default ([launchDefaults]); with no default model it fails.
-     * Returns the new thread's id.
+     * takes the project's or server's default ([launchDefaults]); with no default model it fails, and
+     * it fails for a project set to start threads in a worktree. Returns the new thread's id.
      */
     suspend fun launch(projectId: String, text: String, model: ModelSelection? = null, runtimeMode: String? = null): String {
-        val defaults = if (model == null || runtimeMode == null) launchDefaults(projectId) else null
-        val chosen = model ?: defaults?.model ?: throw T3CallFailed("The server has no default model; choose one.")
-        val payload = Commands.launch(projectId, text, chosen, runtimeMode ?: defaults!!.runtimeMode)
+        val defaults = launchDefaults(projectId)
+        // T3 would prepare a worktree, which needs a base branch the launcher doesn't read; refuse rather than start in the root.
+        if (defaults.envMode == "worktree") throw T3CallFailed("This project starts threads in a new worktree, which the launcher can't do yet.")
+        val chosen = model ?: defaults.model ?: throw T3CallFailed("The server has no default model; choose one.")
+        val payload = Commands.launch(projectId, text, chosen, runtimeMode ?: defaults.runtimeMode)
         return Commands.launchedThreadId(call(Commands.LAUNCH, payload))
     }
 
@@ -155,12 +177,10 @@ class T3Connection(private val store: T3Store) {
         }
     }
 
+    /** Drops the session; the holds stay, so pairing again from the same screen reconnects. */
     @Synchronized
     fun forget() {
-        // Still wanted after forgetting, so pairing again from the same screen reconnects.
-        val keep = wanted
-        stop()
-        wanted = keep
+        halt()
         store.session = null
         _shell.value = Shell()
         _status.value = Status.NotPaired

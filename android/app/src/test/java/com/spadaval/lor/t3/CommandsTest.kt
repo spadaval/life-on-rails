@@ -114,6 +114,8 @@ class CommandsTest {
         assertEquals(listOf("Strict schemas (Recommended)", "UI flexibility"), q.options.map { it.answer })
         assertEquals(false, q.multiSelect)
         assertEquals(true, q.allowCustomAnswer)
+        assertNull(q.initialAnswer)
+        assertTrue(q.options.all { it.value == null })
         assertTrue(Commands.questions(reply.value, "another").isEmpty())
     }
 
@@ -136,5 +138,18 @@ class CommandsTest {
         assertEquals(LaunchDefaults(ModelSelection("codex", "m"), "auto"), Commands.launchDefaults(config, "q"))
         settings.put("defaultModelSelection", JSONObject.NULL).put("fallbackModelSelection", JSONObject.NULL)
         assertNull(Commands.launchDefaults(config, "q").model)
+    }
+
+    @Test
+    fun theEnvModeComesFromTheProjectThenTheServer() {
+        val (_, reply) = exchanges("server-config.ndjson").single()
+        // Neither sets one on a fresh server: the reply leaves the null out.
+        assertNull(Commands.launchDefaults(reply.value, "6914c5fe-4222-4ffe-ba69-0847ebd493b5").envMode)
+        val settings = JSONObject().put("defaultThreadEnvMode", "worktree")
+            .put("projectSettingsOverrides", JSONObject().put("p", JSONObject().put("defaultThreadEnvMode", "local")).put("n", JSONObject().put("defaultThreadEnvMode", JSONObject.NULL)))
+        val config = JSONObject().put("settings", settings)
+        assertEquals("local", Commands.launchDefaults(config, "p").envMode)
+        assertEquals("worktree", Commands.launchDefaults(config, "n").envMode)
+        assertEquals("worktree", Commands.launchDefaults(config, "q").envMode)
     }
 }

@@ -14,6 +14,9 @@ class LorClient(baseUrl: String) {
 
     fun state(device: String): JSONObject = request("GET", "/device/state?device=${URLEncoder.encode(device, "UTF-8")}")
 
+    /** What the agent page shows from LoR ([DeviceHome]). */
+    fun home(device: String): DeviceHome = DeviceHome.parse(request("GET", "/device/home?device=${URLEncoder.encode(device, "UTF-8")}"))
+
     fun timer(action: String, device: String, intentId: String? = null, title: String? = null): JSONObject {
         val body = JSONObject().put("action", action).put("device", device)
         if (intentId != null) body.put("intent_id", intentId)

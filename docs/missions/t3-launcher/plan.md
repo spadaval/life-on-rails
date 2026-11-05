@@ -274,7 +274,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
   - *Found and fixed while checking:* after the layout changed, icons stayed in their old places, because `produceState` keeps its value when its key changes. Also the system bar icons were dark over the drawer; home now always uses light ones, like its labels.
   - *Open.* Pulling the drawer down past the top of its list to close it was not tried on a device; back and a home press were. The page dots are centred on the whole inner screen while the dock sits on the right. Neither the hinge nor the inner screen's insets are handled specially. The `T3_Fold_API35` AVD is left for later checks, shut down.
 
-#### 3.3 The agent page. Status: backlog, after 3.1 and 3.2
+#### 3.3 The agent page. Status: active (built and checked on the emulators, review pending)
 - **From 3.1's review.**
   - Draw the timer from `day.running`, not `one`. While paused, `one` still says "Running since".
   - `day.running.title` is the intent's name, so a timer started from the tile shows "Uncategorized". Add the block's own label to `/device/home` if the card wants it.
@@ -293,6 +293,19 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 
   Calm, with no animation that runs continuously (strategy).
 - **Done when.** Increment 3's first Done when holds, on the emulator, against the LoR test server and a scratch T3 server.
+- **Built 2026-11-05.** `android/app/src/main/java/com/spadaval/lor/agent/`: `AgentPage.kt` (the page), `AgentModel.kt` (its state and card actions), `AgentQueue.kt` (which threads become cards, pure) and `T3App.kt` (opening the T3 app). Also `net/DeviceHome.kt` (`/device/home`), `t3/T3Links.kt` (thread deep links) and `t3/UserInput.kt` (answering a question, ported from T3's `pendingUserInput.ts`). Tests: `AgentQueueTest`, `DeviceHomeTest`, `T3LinksTest`, `UserInputTest`.
+  - The timer comes from `day.running`; `one` is shown only when it isn't the timer. The block's own label was not added to `/device/home`.
+  - The queue is approvals, then questions, then failures, then LoR Needs you. A failure shows for 24 hours after its thread last changed. A card hides as soon as its call succeeds, and its buttons are disabled while the call runs.
+  - `T3Connection` is now held: each `start` is one hold and each `stop` lets one go, so home and the debug screen share it. The agent page holds it while home is started and lets go 30 s after. It reads LoR once a minute while home is started.
+  - The deep link needs the server's environment id. It comes from `GET /.well-known/t3/environment`, which needs no credential.
+  - Quick send refuses a project set to start threads in a worktree, since the launcher can't prepare one. A question's `initialAnswer` and an option without a `value` follow T3's rules.
+  - `FLAG_ACTIVITY_LAUNCH_ADJACENT` is set only at 600 dp wide or more. On a phone it split the screen with the last app used.
+  - The page sits on a dark veil, so it reads over a light wallpaper. On a large screen its content keeps to the left 520 dp.
+- **Proof.** `boat-build.sh` passed `assembleDebug testDebugUnitTest` (49 tests). Against the LoR test server and the scratch T3 server, on `T3_Phone_API35`: the approve card cleared on Approve, a question card's choices opened and its answer cleared it, quick send started a thread in `assistant` and it showed under Running, a T3 card's icon opened the T3 app at that thread, and a LoR card opened the dashboard at the task. On `T3_Fold_API35`, unfolded and folded: the page draws, and the home process kept its pid across the fold. Unfolded, a T3 card opens the thread in a split pane; folded, it opens full screen. Details in `device-checks.md`.
+- **Carried forward.**
+  - On the inner screen the split pairs T3 with the last app used, not with home: home can't be in a split on stock Android 15. Whether One UI does better is **[real Fold]**. If it doesn't, the agent page could live in its own activity that can take a split.
+  - The page dots are centred on the whole inner screen while the page keeps to the left (as in 3.2).
+  - Nothing shows the block's own label for a timer started from the tile; it still says "Uncategorized".
 
 #### 3.4 The spec says what the phone is now. Status: backlog, after 3.3
 - **Goal.** The second Done when of Increment 3: "The phone" and "Who is who" describe the app as the launcher. It's a client of both T3 and LoR, and it holds the queue that LoR's server doesn't.
