@@ -227,7 +227,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 - **T3 deep links.** The T3 app opens a thread at `t3code://threads/<environmentId>/<threadId>`, or at the verified app link `https://app.t3.codes/threads/<environmentId>/<threadId>`. Each segment is percent-encoded, so `:` becomes `%3A`. The scheme differs by build variant: `t3code`, `t3code-preview` or `t3code-dev`. The packages are `com.t3tools.t3code`, `.preview` and `.dev`. The environment id names the server and is required, and an environment the app isn't paired with shows "Thread unavailable". The launcher needs the paired server's environment id from T3. The T3 activity is `singleTask` and doesn't declare `resizeableActivity`, so whether it opens in the adjacent pane needs checking.
 - **Seed data for checks.** The LoR test server (`scripts/ui-server.sh`, `:3857`) has no standing seed. `scripts/ui-check.mjs`'s `tasks` flow makes a flagged task, and its `today` flow makes calendar events.
 
-#### 3.1 A read endpoint for the agent page. Status: active (built, review pending)
+#### 3.1 A read endpoint for the agent page. Status: done (2026-11-05, `83cc904`, reviewed)
 - **Goal.** `GET /device/home?device=` returns what the agent page shows from LoR in one call: the one thing (`wallOne`), Needs you (`needsOwner`), and enough of Today to draw the day arc. That means the wake window, now, the fraction remaining, the running timer, and the next few timed events. Plus the brief's first line.
 - **Done when.** A `pnpm test:db` case covers the response. `pnpm test` and `pnpm typecheck` pass. The spec's `/device/*` list names the endpoint.
 - **Scope.** `src/server/device.ts`, `src/routes/device/$.ts`, tests and the spec line. No writes.
@@ -245,6 +245,10 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 - **Scope.** `android/` only.
 
 #### 3.3 The agent page. Status: backlog, after 3.1 and 3.2
+- **From 3.1's review.**
+  - Draw the timer from `day.running`, not `one`. While paused, `one` still says "Running since".
+  - `day.running.title` is the intent's name, so a timer started from the tile shows "Uncategorized". Add the block's own label to `/device/home` if the card wants it.
+  - `/device/home` follows `getToday`'s calendar day, so a wake end after midnight would mislabel the late hours. The current window ends at 22:00.
 - **Goal.** The mockup's agent page (`/home/supadava/design/t3-launcher/t3-launcher-screens.html`, "Agent page" and "Agent page + T3"):
   - Today's arc and Next, from `/device/home`;
   - running turns;
