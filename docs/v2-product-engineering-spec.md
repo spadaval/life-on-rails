@@ -28,9 +28,10 @@ The owner has executive dysfunction, so the system must cost less to keep up tha
 - **The runner** (`runner/`, systemd timers) starts the unattended runs: nightly and queued work as T3 threads, mail as headless Claude Code.
 - **LoR** is what the agent knows, the owner's dashboard, the senses, and the channel. It records, shows, notices, and decides by fixed rules when mail is ready. It may start agent work through T3 and make one-shot model calls with no tools whose output is data (none yet; add one when a screen has to wait for an answer). It never holds an agent loop, acts on anything itself, or approves anything.
 - **The agent** is a role, not a program: any session (a T3 thread or a headless run) that has the skills and has run `lor context`. Its standing instructions are the `agent` wiki page, served by `lor context`.
+- **The phone app** (`android/`) is the owner's home screen as well as LoR's sensor. It is a client of both servers and changes neither one's role: it speaks a small part of T3's WebSocket protocol directly (paired like T3's own mobile app) and reads LoR's `/device/*`. Its agent page is where T3's approvals, questions and failures meet LoR's Needs you. That queue is built on the phone from the two servers' live state; neither server holds it. See "The phone".
 - **`gog`** is the agent's Google tool, signed in with broad access. LoR never runs it.
 
-Do not add a general chat screen or an approval queue to LoR: T3 is the chat, and the dashboard has actions in context. Every message to the owner has to earn its place: few, never guilt-shaped. What is worth one is on the `messaging-rules` page, which the agent changes when he tells it to.
+Do not add a general chat screen or an approval queue to LoR: T3 is the chat, the dashboard has actions in context, and the phone's agent page is the one place T3 and LoR cards sit side by side. Every message to the owner has to earn its place: few, never guilt-shaped. What is worth one is on the `messaging-rules` page, which the agent changes when he tells it to.
 
 ## Product rules
 
@@ -467,7 +468,7 @@ There is no chat screen: the conversation is the channel and a T3 thread.
 
 ## The phone
 
-`buildbot` is headless, so the owner's day happens on the phone. The phone runs a small app of its own, `android/` in this repo: Kotlin and Jetpack Compose, sideloaded, package `com.spadaval.lor`.
+`buildbot` is headless, so the owner's day happens on the phone. The phone runs a small app of its own, `android/` in this repo: Kotlin and Jetpack Compose, sideloaded, package `com.spadaval.lor`. It is the phone's home app (the T3 Launcher mission, `docs/missions/t3-launcher/`) and LoR's sensor.
 
 **What it collects** (each sensor can be switched off in the app, and each needs a permission the owner grants there):
 
@@ -486,7 +487,18 @@ There is no chat screen: the conversation is the channel and a T3 thread.
 
 **Also in the app:** a Timer tab and a quick-settings tile (tap to start a timer, tap again to stop) through `GET /device/state` and `POST /device/timer`; a Dashboard tab showing the web dashboard; and settings for the server address and the phone's name.
 
-**The launcher's agent page** reads `GET /device/home?device=` (read-only): the one thing as the wall picks it, the brief's first line, Needs you (flagged tasks, oldest first), and the day for its arc (wake window, time left, the running timer, the next five timed events not yet over).
+**The launcher.** The app's `HomeActivity` is a home app the owner sets as default.
+
+- **Home** is pages of apps and folders plus a dock, drawn from a layout file (`layout.json` in the app's files, JSON schema v1, `home/Layout.kt`). The file holds named layouts, and an agent can edit it; the app re-reads it when it changes and shows a broken file as broken instead of guessing. Without a file, home starts from a default layout.
+- **The drawer and search** list every launchable app from `LauncherApps`, work profile included.
+- **The agent page** is the left-most page. It shows:
+  - Today's arc, the one thing and Next, from `GET /device/home?device=` (read-only: the one thing as the wall picks it, the brief's first line, Needs you, oldest first, and the day for its arc: wake window, time left, the running timer, the next five timed events not yet over);
+  - the turns running on T3;
+  - the queue: T3 approvals, questions and failures first, then LoR's Needs you;
+  - a quick-send button that starts a T3 thread in the `assistant` project.
+
+  Each card has one action: approve, open the question's choices, open the T3 app at the thread, or open the dashboard. At 600 dp wide or more T3 opens in a split pane, but stock Android won't put home in a split, so the other half is the last app used (whether One UI does better is still to check on the Fold).
+- **T3.** The app pairs with T3 Code like T3's mobile app does (a pairing link or token, `t3/Pairing.kt`) and keeps the session in its own storage. Over the WebSocket (`t3/T3Connection.kt`) it subscribes to the shell for threads and pending requests, answers approvals and questions, and launches threads. It never changes T3; deep thread work opens the T3 app by deep link.
 
 **Auth.** The app talks to `http://buildbot.tail47515a.ts.net:3847`, the Serve listener, so every request carries the owner's Tailscale identity and is refused without it. `/device/*` is not under `/api/`, so it is routed there.
 

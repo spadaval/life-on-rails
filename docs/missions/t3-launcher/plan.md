@@ -314,7 +314,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
   - The page dots are centred on the whole inner screen while the page keeps to the left (as in 3.2).
   - Nothing shows the block's own label for a timer started from the tile; it still says "Uncategorized".
 
-#### 3.4 The spec says what the phone is now. Status: backlog, after 3.3
+#### 3.4 The spec says what the phone is now. Status: done 2026-11-05
 - **Goal.** The second Done when of Increment 3: "The phone" and "Who is who" describe the app as the launcher. It's a client of both T3 and LoR, and it holds the queue that LoR's server doesn't.
 
 ### Increment 4: Send a prompt from anywhere. Status: backlog
