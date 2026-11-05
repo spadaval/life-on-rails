@@ -44,3 +44,19 @@ Waits for Sumeet.
 Notes:
 - The Fold AVD's LoR app was still on the default (real) server address. It was pointed at `http://10.0.2.2:3857` before these checks. Check this first on any new AVD.
 - The T3 app on the Fold AVD was copied from the phone AVD and paired through its Settings > Environments > Add environment, with a token from `node apps/server/src/bin.ts pair --base-dir .t3`. A `t3code://pair` link on a cold start showed "Route not found".
+
+## Increment 4: quick send, on the emulator
+
+2026-11-05. `T3_Phone_API35` against the scratch T3 server (`:16021`; projects `assistant`, `launcher-scratch`, `server`), the LoR app pointed at `http://10.0.2.2:3857`. Each thread was read back from the server's shell.
+
+| Check | Result | Note |
+| --- | --- | --- |
+| Home press while on home opens the sheet | pass | Over home. A home press from another app, or with the drawer open, does what it did before (by reading the code; not run). |
+| `@launcher-scratch …` from that sheet | pass | Label "To launcher-scratch · named". Thread in `launcher-scratch`, titled without the mention. |
+| Agent page's button opens the sheet | pass | "To assistant · inbox". |
+| One tap on another project | pass | Tapping `server` showed "To server · picked"; tapping `assistant` back and sending started the thread in `assistant`. |
+| Ask tile, over the Settings app | pass | Added with the app's "Add the Ask tile" button. Collapsed the shade, the sheet opened over Settings, the thread started in `assistant`, and Settings was back in front. |
+| LoR offered and chosen as the digital assistant | pass | Settings > Default digital assistant app listed "Life on Rails"; the role holder is `com.spadaval.lor`. |
+| Assistant over T3's Android app at a `launcher-scratch` thread | partly | The sheet opened with the screenshot (labelled "T3 Code"), but "To assistant · inbox": the app gives no thread link or text (plan, Increment 4 Facts). Invoked with a corner swipe (gesture navigation). |
+| Assistant over T3 web in Chrome at a `launcher-scratch` thread | pass | "To launcher-scratch · on screen". The thread started there; its first message carries `Screen - Chrome.jpg` (image/jpeg, 85,547 bytes) in the projection, and the file in the server's attachments directory is the Chrome screen without the sheet. |
+| Side key from inside another app | waits | **[real Fold]** |

@@ -313,11 +313,16 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
   - On the inner screen the split pairs T3 with the last app used, not with home: home can't be in a split on stock Android 15. Whether One UI does better is **[real Fold]**. If it doesn't, the agent page could live in its own activity that can take a split.
   - The page dots are centred on the whole inner screen while the page keeps to the left (as in 3.2).
   - Nothing shows the block's own label for a timer started from the tile; it still says "Uncategorized".
+- **Deferred from the review of 3.2's fixes and 3.3** (2026-11-05; F3 and F6 were fixed in Increment 4):
+  - F2: if `loadAll()` fails on the first run, `_apps` stays empty and only a profile broadcast reloads it; one app update then puts a single app in `_apps`, and the next resume writes a one-app default layout that sticks (`HomeModel.kt`). Reload the app list on resume while it's empty.
+  - F4: card actions run in the page's `rememberCoroutineScope`, so a dark-mode, font-scale or density change recreates the activity, cancels a respond that has already gone out, and re-enables the card. Belongs with the deferred process-scoped model.
+  - F5: `LayoutTest`'s deep-nesting case hits the JVM org.json's depth-512 `JSONException`, not the `StackOverflowError` catch. A real test parses about 400 levels on a thread with a 64 KB stack.
+  - F7: `AgentQueueTest` doesn't check the order within a kind (most recently updated first). Add an assertion if it's cheap.
 
 #### 3.4 The spec says what the phone is now. Status: done 2026-11-05
 - **Goal.** The second Done when of Increment 3: "The phone" and "Who is who" describe the app as the launcher. It's a client of both T3 and LoR, and it holds the queue that LoR's server doesn't.
 
-### Increment 4: Send a prompt from anywhere. Status: backlog
+### Increment 4: Send a prompt from anywhere. Status: active (built and checked on the emulator, review pending; the side key waits for the real Fold)
 
 **Goal.** One quick-send sheet, opening over whatever is on screen, from:
 - a button on the agent page;
@@ -332,7 +337,42 @@ Sending launches a T3 thread in the first of: the project named in the prompt, t
 **Inbox.** The `assistant` project (Sumeet, 2026-11-05), a new thread per prompt.
 
 **Unknowns.**
-- How "the project on screen" is known when the screen isn't the launcher's own.
+- How "the project on screen" is known when the screen isn't the launcher's own. Answered in 4.3.
+
+**Facts found 2026-11-05.**
+- **Images on a launch.** T3's clients make the thread id themselves (a UUID, `makeTurnCommandMetadata` in `apps/mobile/src/lib/commandMetadata.ts`), upload each image with `assets.persistChatAttachments {threadId, messageId, attachments: [{type:"image", name, mimeType, sizeBytes, dataUrl}]}`, and put the stored attachments it returns (`{type, id, name, mimeType, sizeBytes}`) in `launchThread`'s `initialMessage.attachments`, with the same `threadId` and `messageId` (`persistAttachments` and `startThreadTurn` in `packages/client-runtime/src/operations/commands.ts`). The server checks that the data URL's type matches `mimeType` and that the decoded size equals `sizeBytes`, and caps an image at 10 MiB. A bearer session may call it (`AuthOrchestrationOperateScope`).
+- **A screen capture comes only through a voice interaction session.** An activity that answers `ACTION_ASSIST` is offered as the assistant but gets no screenshot. A `VoiceInteractionService` with a `VoiceInteractionSessionService` gets `onHandleAssist` (the app's `AssistStructure` and `AssistContent`) and `onHandleScreenshot`. Settings lists it as a digital assistant only if its metadata also names a `RecognitionService`, so the app carries an empty one.
+- **What the screen can say about a project** (checked on the emulator). `AssistContent` carries the foreground activity's intent and, from a browser such as Chrome, the page's web URI. `AssistStructure` carries the visible views. T3's Android app adds nothing of its own (no `onProvideAssistContent`, no `FLAG_SECURE`), and it gives the assistant almost nothing: over a thread, its structure was 33 bare layout views with no text and no content descriptions (React Native's views don't fill in the structure), and its intent was the launcher's `MAIN`, because a deep link reaches its single activity through `onNewIntent`. Its header does show `<project> · <server>`, but only the accessibility tree has it. Thread `lastVisitedAt` in the shell doesn't help either: opening a thread in the T3 app didn't move it, and it's shared with every other client. The screenshot does come through.
+
+#### 4.1 The sheet, from the agent page and from home. Status: done (2026-11-05, review pending)
+- **Goal.** One quick-send sheet in its own translucent activity (`quicksend/QuickSendActivity`), so it opens over whatever is on screen. It holds the T3 connection while it's shown. It shows where the prompt will go and why ("named", "on screen", "inbox"), with a row of project chips: one tap on another picks it, and that pick wins until the sheet closes. Send starts a new thread every time, closes the sheet, and says where it went. The agent page's button opens it, replacing 3.3's inline panel. A home press while already on home, with nothing open and the home page showing, opens it too (Launcher3's `alreadyOnHome`: the window has focus and the intent wasn't brought to front). A home press from another app, or with the drawer, a folder or the agent page open, does what it did before.
+- **The rule for the project named in the prompt.** The prompt starts with `@` and a project's title, ignoring case, followed by a space, punctuation or the end. When titles overlap, the longest wins. The mention is taken out of the text sent. Only the start counts, so `@` in the middle of a sentence never redirects a prompt.
+- **Done when.** A JVM test covers the choice: named, then on screen, then `assistant`, and the mention rule's edges. On the emulator, against the scratch server, the agent page's button and a home press on home each open the sheet, and sending starts a thread in the expected project (a named project, and `assistant`).
+- **Scope.** `android/` only.
+
+#### 4.2 The Quick Settings tile. Status: done (2026-11-05, review pending)
+- **Goal.** A second tile, "Ask", whose tap collapses the shade and opens the sheet over the app in front.
+- **Done when.** On the emulator, the tile added to Quick Settings opens the sheet over another app, and a prompt sent from it starts a thread in `assistant`.
+
+#### 4.3 The assistant, with the screen attached. Status: done on the emulator (2026-11-05, review pending); the side key waits for the real Fold
+- **Goal.** LoR's app can be the default digital assistant: a `VoiceInteractionService` whose session opens the sheet over the current app with the screenshot attached, shown as a thumbnail that one tap removes. The image goes to T3 the way T3's clients send one (Facts above). The sheet reads "the project on screen" from what the session hands it.
+- **The rule for the project on screen** (as built, after the emulator showed what T3's app hands over; Facts above). A browser showing a T3 thread: any path segment of the page's web URI (`AssistContent.webUri`) that is a thread id the shell knows gives that thread's project. Nothing else counts. The activity's intent data was dropped, since in a single-activity app it is the link that first opened it, stale after any navigation. The screen's text was dropped too: the one app it was for, T3's, gives none, and reading other apps' text for a project name would guess. The tile and home have no screen to read, so they skip this step. Over the T3 app the sheet says "inbox", with the capture attached and one tap to change the project.
+- **Done when.** On the emulator, with LoR as the digital assistant, invoking it over a T3 thread in a project other than `assistant` opens the sheet with that project chosen, "on screen", and a send starts a thread there whose first message carries the capture (read from the thread's projection or the scratch server's state DB). **[real Fold]** The side key opens it from inside another app: waits for Sumeet.
+
+**Built 2026-11-05** (4.1 to 4.3 together). `android/app/src/main/java/com/spadaval/lor/quicksend/`: `Destination.kt` (the choice, pure), `QuickSend.kt` (opening the sheet, and the send), `QuickSendActivity.kt` (the sheet) and `Capture.kt` (what the assistant hands the sheet). `assist/Assistant.kt` (the `VoiceInteractionService`, its session, and the empty `RecognitionService`), `res/xml/assistant.xml`, `tile/AskTileService.kt`. Tests: `DestinationTest`, and a new `CommandsTest` case for the image upload.
+- **The sheet** is its own task (`taskAffinity` of its own, `singleTask`, out of Recents, translucent), so from home it doesn't bring up the LoR tabs behind it, and over another app that app stays visible. It closes when it leaves the screen. It lists every project as a chip, `assistant` first, and the label above them says where and why: "To launcher-scratch · named · a new thread".
+- **A send can't be lost** (review F3 of 3.3): it runs in a process-wide scope and holds the T3 connection itself until T3 answers. Close, the scrim and back are off while it runs. Its result is a toast from the application context, so it shows even if the sheet has gone.
+- **Every launch now chooses its thread id** (a UUID, as T3's clients do), with or without an image. Before, the server made `thread:project:<projectId>:<uuid>`; nothing in the launcher read that shape.
+- **The image** goes up as a JPEG (quality 85, about 85 KB for a 1080x2400 screen), named `Screen - <app>.jpg`, through `assets.persistChatAttachments`, then with the launch. The thumbnail on the sheet has Remove / Attach.
+- **The assistant session** opens the sheet only once the screenshot is in (or after 1.5 s), so the sheet is never in the picture, and hides once it has both the assist data and the screenshot (or after 5 s). It reads `AssistContent.webUri` and the app's label; it doesn't read the views' text.
+- **Settings** has a Quick send section: "Add the Ask tile" (`StatusBarManager.requestAddTileService`, Android 13+) and "Choose the assistant" (the system's assistant settings). The About text no longer says the screen is never read.
+- **Review fixes from 3.3** (F6): the agent page says "Actions are off until it's back" rather than that actions wait, and its `notice` clears on the next action.
+- **Proof.** `boat-build.sh` passed `assembleDebug testDebugUnitTest` (60 tests; 8 in `DestinationTest`, 1 new in `CommandsTest`). On `T3_Phone_API35` against the scratch server, each entry point opened the sheet and started a thread where expected; details in [device-checks.md](device-checks.md). No crashes in `logcat -b crash`; no tokens in logcat.
+- **Open.**
+  - Over T3's Android app the project on screen is unknown, so the sheet says "inbox" there. The fix is a T3 fork item, outside this mission: `onProvideAssistContent` in T3's `MainActivity` setting `webUri` to the open thread's app link (`https://app.t3.codes/threads/<environment>/<thread>`), which this rule already reads. Recorded under Open questions.
+  - The keyboard didn't open by itself on the emulator (`stateVisible` and a focus request; the IME refused). The field has focus, so a tap opens it. Check on the Fold.
+  - F3's Close-while-sending was checked by reading the code, not on the device: a Replay launch answers too fast to tap Close in between.
+  - The side key, and whether One UI lets a third-party assistant have it, **[real Fold]**.
 
 ### Increment 5: LoR knows how each app was launched. Status: backlog
 
@@ -402,4 +442,6 @@ Sumeet kept these out of this mission on 2026-11-05. Each would be planned as it
 
 ## Open questions for Sumeet
 
-None open. Answered 2026-11-05: D1 is to grow LoR's app and borrow from open launchers; the Fold work waits and agents use the emulator; quick send defaults to the `assistant` project; smart folders, named and temporary layouts, and shortcut search are in this mission.
+- **Increment 4: a T3 fork item for "the project on screen".** T3's Android app hands an assistant nothing that names the thread it shows, so quick send over it goes to `assistant` (one tap changes it). Adding `onProvideAssistContent` to the fork's `MainActivity`, setting `webUri` to the open thread's link, would make the launcher's existing rule pick the thread's project. Worth a fork item? Default until then: the Inbox.
+
+Answered 2026-11-05: D1 is to grow LoR's app and borrow from open launchers; the Fold work waits and agents use the emulator; quick send defaults to the `assistant` project; smart folders, named and temporary layouts, and shortcut search are in this mission.
