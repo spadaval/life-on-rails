@@ -154,16 +154,29 @@ class T3Connection(private val store: T3Store) {
     /**
      * Starts a thread in [projectId] with [text] as its first message. A null [model] or [runtimeMode]
      * takes the project's or server's default ([launchDefaults]); with no default model it fails, and
-     * it fails for a project set to start threads in a worktree. Returns the new thread's id.
+     * it fails for a project set to start threads in a worktree. An [image] is uploaded first and
+     * goes with the first message. Returns the new thread's id.
      */
-    suspend fun launch(projectId: String, text: String, model: ModelSelection? = null, runtimeMode: String? = null): String {
+    suspend fun launch(projectId: String, text: String, model: ModelSelection? = null, runtimeMode: String? = null, image: Image? = null): String {
         val defaults = launchDefaults(projectId)
         // T3 would prepare a worktree, which needs a base branch the launcher doesn't read; refuse rather than start in the root.
         if (defaults.envMode == "worktree") throw T3CallFailed("This project starts threads in a new worktree, which the launcher can't do yet.")
         val chosen = model ?: defaults.model ?: throw T3CallFailed("The server has no default model; choose one.")
-        val payload = Commands.launch(projectId, text, chosen, runtimeMode ?: defaults.runtimeMode)
+        // Like T3's clients, choose the thread and message ids first, so an image can be stored under them.
+        val threadId = Commands.newId()
+        val messageId = Commands.newId()
+        val attachments = image?.let {
+            Commands.persistedAttachments(call(Commands.PERSIST_ATTACHMENTS, Commands.persistImage(threadId, messageId, it.name, it.mimeType, it.bytes)))
+        } ?: org.json.JSONArray()
+        val payload = Commands.launch(
+            projectId, text, chosen, runtimeMode ?: defaults.runtimeMode,
+            messageId = messageId, threadId = threadId, attachments = attachments,
+        )
         return Commands.launchedThreadId(call(Commands.LAUNCH, payload))
     }
+
+    /** An image for a launch's first message, such as the assistant's screen capture. */
+    class Image(val name: String, val mimeType: String, val bytes: ByteArray)
 
     /** One unary request on the open socket; returns the Exit's value. */
     suspend fun call(tag: String, payload: JSONObject): Any? {

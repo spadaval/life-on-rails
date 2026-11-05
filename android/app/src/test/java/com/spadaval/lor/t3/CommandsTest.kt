@@ -95,6 +95,27 @@ class CommandsTest {
     }
 
     @Test
+    fun anImageIsUploadedAsT3sClientsDoAndTheLaunchCarriesIt() {
+        val bytes = byteArrayOf(1, 2, 3, 4, 5)
+        val upload = Commands.persistImage("t-1", "m-1", "screen.jpg", "image/jpeg", bytes)
+        assertEquals("t-1", upload.getString("threadId"))
+        assertEquals("m-1", upload.getString("messageId"))
+        val image = upload.getJSONArray("attachments").getJSONObject(0)
+        assertEquals("image", image.getString("type"))
+        assertEquals(5, image.getInt("sizeBytes"))
+        assertEquals("data:image/jpeg;base64,AQIDBAU=", image.getString("dataUrl"))
+
+        val stored = JSONObject().put("attachments", JSONArray().put(JSONObject().put("type", "image").put("id", "a1").put("name", "screen.jpg").put("mimeType", "image/jpeg").put("sizeBytes", 5)))
+        val launch = Commands.launch("p", "look", ModelSelection("i", "m"), "full-access", messageId = "m-1", threadId = "t-1", attachments = Commands.persistedAttachments(stored))
+        assertEquals("t-1", launch.getString("threadId"))
+        val first = launch.getJSONObject("initialMessage")
+        assertEquals("m-1", first.getString("messageId"))
+        assertEquals("a1", first.getJSONArray("attachments").getJSONObject(0).getString("id"))
+        // Without a chosen id the server makes one.
+        assertTrue(!Commands.launch("p", "look", ModelSelection("i", "m"), "full-access").has("threadId"))
+    }
+
+    @Test
     fun titlesFollowT3() {
         assertEquals("Fix the flaky test", Commands.title("  Fix the\n flaky   test "))
         assertEquals("New thread", Commands.title("   "))

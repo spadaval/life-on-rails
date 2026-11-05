@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- A paper plane, as on the agent page's quick-send button. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M2.4,2.4L22.8,12L2.4,21.6L5.3,12z" />
+</vector>

@@ -14,11 +14,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.spadaval.lor.quicksend.QuickSend
 import com.spadaval.lor.ui.LorTheme
 
 /**
  * LoR's home app (T3 Launcher): the agent page, home from the layout file, and the drawer
- * ([HomeScreen]); the app list and layout file live in [HomeModel].
+ * ([HomeScreen]); the app list and layout file live in [HomeModel]. A home press while already
+ * on home, with nothing open, opens quick send.
  *
  * Launching follows Launcher3 / Lawnchair (`startActivitySafely`, Apache-2.0):
  * `LauncherApps.startMainActivity`, catching the failures of an app that went away before the
@@ -54,7 +56,10 @@ class HomeActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) ui.homePressed()
+        if (intent.action != Intent.ACTION_MAIN || !intent.hasCategory(Intent.CATEGORY_HOME)) return
+        // Launcher3's alreadyOnHome: home had focus and the press didn't bring it to the front.
+        val alreadyOnHome = hasWindowFocus() && intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT == 0
+        if (alreadyOnHome && ui.atRest) QuickSend.open(this, QuickSend.From.HOME) else ui.homePressed()
     }
 
     override fun onResume() {

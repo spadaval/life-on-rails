@@ -47,7 +47,7 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     /** Why a card's last action failed, by card key. */
     var failures by mutableStateOf(emptyMap<String, String>())
         private set
-    /** One line about the last thing the page couldn't do outside a card, such as opening T3. */
+    /** One line about the last thing the page couldn't do outside a card, such as opening T3; the next action clears it. */
     var notice by mutableStateOf<String?>(null)
 
     private var holding = false
@@ -98,6 +98,7 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     /** Runs a card's call once; on success the request is hidden, on failure the card says why. */
     fun act(key: String, request: PendingRequest?, call: suspend () -> Unit) {
         if (key in busy) return
+        notice = null
         busy = busy + key
         failures = failures - key
         scope.launch {
@@ -126,6 +127,7 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
 
     /** Opens the T3 app at [threadId] on the paired server. */
     fun openThread(threadId: String) {
+        notice = null
         scope.launch {
             notice = try {
                 T3App.open(context, connection.environmentId(), threadId)
@@ -149,25 +151,7 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
         }
     }
 
-    /** What quick send did, for its panel to show. */
-    data class Sent(val started: Boolean, val message: String)
-
-    /** Quick send: a new thread in the project named [QUICK_SEND_PROJECT], with the server's defaults. */
-    suspend fun quickSend(text: String): Sent {
-        val project = connection.shell.value.projects.entries.firstOrNull { it.value.equals(QUICK_SEND_PROJECT, ignoreCase = true) }
-            ?: return Sent(false, "No project named \"$QUICK_SEND_PROJECT\" on this T3 server.")
-        return try {
-            connection.launch(project.key, text)
-            Sent(true, "Started in ${project.value}.")
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Sent(false, "Not sent: ${T3Connection.describe(e)}")
-        }
-    }
-
     companion object {
-        const val QUICK_SEND_PROJECT = "assistant"
         private const val LOR_EVERY_MS = 60_000L
         private const val RELEASE_AFTER_MS = 30_000L
     }

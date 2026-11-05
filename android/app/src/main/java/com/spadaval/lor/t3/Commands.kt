@@ -2,6 +2,7 @@ package com.spadaval.lor.t3
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Base64
 import java.util.UUID
 
 /** A provider instance and model, as T3's `ModelSelection` puts it on the wire. [options] passes through untouched. */
@@ -55,6 +56,7 @@ object Commands {
     const val LAUNCH = "orchestration.launchThread"
     const val PROJECTION = "orchestration.getThreadProjection"
     const val SERVER_CONFIG = "server.getConfig"
+    const val PERSIST_ATTACHMENTS = "assets.persistChatAttachments"
 
     /** What threads this app starts or messages say they came from. */
     private const val SOURCE = "mobile"
@@ -99,7 +101,11 @@ object Commands {
             .put("deliveryIntent", "auto")
             .put("dispatchMode", JSONObject().put("type", "start_immediately"))
 
-    /** A new thread in [projectId] at the project's root, starting with [text]; the server may retitle it. */
+    /**
+     * A new thread in [projectId] at the project's root, starting with [text]; the server may retitle it.
+     * [threadId] is ours when we chose it, as T3's clients do when they upload images first
+     * ([persistImage]); [attachments] are what that upload returned.
+     */
     fun launch(
         projectId: String,
         text: String,
@@ -107,10 +113,13 @@ object Commands {
         runtimeMode: String,
         commandId: String = newId(),
         messageId: String = newId(),
+        threadId: String? = null,
+        attachments: JSONArray = JSONArray(),
     ): JSONObject =
         JSONObject()
             .put("commandId", commandId)
             .put("creationSource", SOURCE)
+            .also { o -> threadId?.let { o.put("threadId", it) } }
             .put("projectId", projectId)
             .put("title", title(text))
             .put("generateTitle", true)
@@ -118,7 +127,31 @@ object Commands {
             .put("runtimeMode", runtimeMode)
             .put("interactionMode", "default")
             .put("workspaceStrategy", JSONObject().put("type", "root"))
-            .put("initialMessage", JSONObject().put("messageId", messageId).put("text", text).put("attachments", JSONArray()))
+            .put("initialMessage", JSONObject().put("messageId", messageId).put("text", text).put("attachments", attachments))
+
+    /**
+     * Uploads one image for the message [messageId] of [threadId], as T3's clients do before the
+     * message that carries it (`persistAttachments` in client-runtime's `commands.ts`). The server
+     * checks the data URL's type against [mimeType] and its decoded size against the bytes' length.
+     */
+    fun persistImage(threadId: String, messageId: String, name: String, mimeType: String, bytes: ByteArray): JSONObject =
+        JSONObject()
+            .put("threadId", threadId)
+            .put("messageId", messageId)
+            .put(
+                "attachments",
+                JSONArray().put(
+                    JSONObject()
+                        .put("type", "image")
+                        .put("name", name)
+                        .put("mimeType", mimeType)
+                        .put("sizeBytes", bytes.size)
+                        .put("dataUrl", "data:$mimeType;base64," + Base64.getEncoder().encodeToString(bytes)),
+                ),
+            )
+
+    /** The stored attachments a [persistImage] reply returns, ready for a message's `attachments`. */
+    fun persistedAttachments(reply: Any?): JSONArray = (reply as JSONObject).getJSONArray("attachments")
 
     /** T3's `deriveThreadTitleSeed` for plain text: whitespace collapsed, cut at 50 characters. */
     fun title(text: String): String {

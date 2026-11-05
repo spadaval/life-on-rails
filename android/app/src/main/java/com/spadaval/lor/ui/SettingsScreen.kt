@@ -1,6 +1,12 @@
 package com.spadaval.lor.ui
 
 import android.Manifest
+import android.app.StatusBarManager
+import android.content.ComponentName
+import android.content.Intent
+import android.graphics.drawable.Icon
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.spadaval.lor.BuildInfo
+import com.spadaval.lor.R
+import com.spadaval.lor.tile.AskTileService
 import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.net.LorClient
 import kotlinx.coroutines.Dispatchers
@@ -81,11 +89,31 @@ fun SettingsScreen() {
             Text("Pair with a T3 Code server and watch its threads. A debug view for the launcher's agent page.", style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = { showT3 = true }, modifier = Modifier.padding(top = 8.dp)) { Text("T3 connection (debug)") }
         }
+        Section("Quick send") {
+            Text(
+                "Send a prompt to T3 from anywhere: the Ask tile in Quick Settings, a home press while on home, " +
+                    "or the assistant gesture with LoR as the digital assistant, which attaches the screen.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) OutlinedButton(onClick = {
+                    context.getSystemService(StatusBarManager::class.java).requestAddTileService(
+                        ComponentName(context, AskTileService::class.java),
+                        context.getString(R.string.ask_tile_label),
+                        Icon.createWithResource(context, R.drawable.ic_tile_ask),
+                        context.mainExecutor,
+                    ) {}
+                }) { Text("Add the Ask tile") }
+                OutlinedButton(onClick = {
+                    runCatching { context.startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)) }
+                }) { Text("Choose the assistant") }
+            }
+        }
         Section("About") {
             Text("Life on Rails ${BuildInfo.VERSION}", style = MaterialTheme.typography.bodyMedium)
             Text(
                 "Collects what the phone knows about your day and sends it to LoR on your box. Nothing goes anywhere else. " +
-                    "Message text, call audio, and screen contents are never read.",
+                    "Call audio is never read, and the screen only when you call LoR as the assistant, to send it with your prompt to T3.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }

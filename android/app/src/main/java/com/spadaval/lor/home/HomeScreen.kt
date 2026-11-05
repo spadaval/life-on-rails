@@ -50,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -105,6 +106,11 @@ class HomeUi {
     var folder by mutableStateOf<ResolvedFolder?>(null)
     var query by mutableStateOf("")
     var homePresses by mutableStateOf(0)
+    /** The page showing: 0 is the agent page, 1 is home. */
+    var page by mutableStateOf(1)
+
+    /** Home with nothing open over it: a home press here opens quick send instead. */
+    val atRest: Boolean get() = !drawer && folder == null && page == 1
 
     fun homePressed() {
         drawer = false
@@ -142,6 +148,7 @@ private fun place(layout: Layout, apps: List<HomeApp>): Pair<List<Placed>, List<
 fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: (HomeApp) -> Unit) {
     val pager = rememberPagerState(initialPage = 1) { 2 }
     LaunchedEffect(ui.homePresses) { if (ui.homePresses > 0) pager.animateScrollToPage(1) }
+    LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { ui.page = it } }
     BackHandler(enabled = ui.folder != null || ui.drawer || pager.currentPage != 1) {
         when {
             ui.folder != null -> ui.folder = null

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LoR as the digital assistant (T3 Launcher, Increment 4.3): no voice, the quick-send sheet with the screen. -->
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.spadaval.lor.assist.AssistSessionService"
+    android:recognitionService="com.spadaval.lor.assist.NoRecognition"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="false" />

@@ -92,6 +92,56 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- The quick-send sheet (T3 Launcher, Increment 4): its own translucent task, so it opens
+             over home or any app without bringing up the LoR tabs, and stays out of Recents. -->
+        <activity
+            android:name=".quicksend.QuickSendActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.spadaval.lor.quicksend"
+            android:theme="@style/Theme.Lor.QuickSend"
+            android:windowSoftInputMode="adjustResize|stateVisible" />
+
+        <!-- LoR as the default digital assistant: the sheet with the screen attached. -->
+        <service
+            android:name=".assist.AssistService"
+            android:exported="true"
+            android:label="@string/assistant_label"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/assistant" />
+        </service>
+        <service
+            android:name=".assist.AssistSessionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_VOICE_INTERACTION" />
+        <service
+            android:name=".assist.NoRecognition"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.speech.RecognitionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech"
+                android:resource="@xml/recognition" />
+        </service>
+
+        <service
+            android:name=".tile.AskTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_ask"
+            android:label="@string/ask_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".tile.TimerTileService"
             android:exported="true"

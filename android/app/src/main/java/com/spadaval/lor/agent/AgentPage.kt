@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -59,12 +58,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.spadaval.lor.net.DeviceHome
+import com.spadaval.lor.quicksend.QuickSend
 import com.spadaval.lor.t3.Question
 import com.spadaval.lor.t3.T3Connection
 import com.spadaval.lor.t3.T3Thread
 import com.spadaval.lor.t3.UserInput
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -73,7 +72,7 @@ import java.time.format.DateTimeFormatter
 /*
  * The agent page (T3 Launcher, Increment 3.3), the left-most page of home: Today from LoR, the
  * running T3 turns, and the queue (T3 approvals, questions and failures, then LoR's Needs you),
- * with one action per card and a quick-send button. After the mockup's "Agent page"
+ * with one action per card and a quick-send button that opens the sheet (Increment 4). After the mockup's "Agent page"
  * (design/t3-launcher/t3-launcher-screens.html). Every card's icon opens its place: the T3 app at
  * the thread, or LoR's dashboard. Nothing moves on its own: the page redraws when data changes.
  */
@@ -83,7 +82,6 @@ private val Muted = Color(0xFF9097A1)
 private val Dim = Color(0xFF616871)
 private val Line = Color(0x14FFFFFF)
 private val CardFill = Color(0xDD15181D)
-private val Sheet = Color(0xFF111418)
 private val Veil = Color(0xD90B0D10)
 private val Amber = Color(0xFFE3A857)
 private val Green = Color(0xFF84B98F)
@@ -111,7 +109,6 @@ fun AgentPage() {
     val now = model.lor?.now ?: Instant.now()
     val cards = AgentQueue.cards(shell.threads, model.answered, now)
     val running = AgentQueue.running(shell.threads)
-    var sending by remember { mutableStateOf(false) }
 
     // A dark veil over the wallpaper, as the mockup's page has, so the text reads on any wallpaper.
     BoxWithConstraints(Modifier.fillMaxSize().background(Veil).safeDrawingPadding()) {
@@ -146,11 +143,7 @@ fun AgentPage() {
                     )
                 }
             }
-            if (sending) {
-                QuickSend(model, live, Modifier.align(Alignment.BottomCenter)) { sending = false }
-            } else {
-                SendButton(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 18.dp)) { sending = true }
-            }
+            SendButton(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 18.dp)) { QuickSend.open(context, QuickSend.From.AGENT) }
         }
     }
 }
@@ -250,7 +243,7 @@ private fun T3State(status: T3Connection.Status, loaded: Boolean) {
     val text = when (status) {
         T3Connection.Status.NotPaired -> "T3 isn't paired. Pair it in LoR's Settings, under T3 Code."
         is T3Connection.Status.Rejected -> "T3 refused this phone. Pair again in LoR's Settings."
-        is T3Connection.Status.Retrying -> "T3 is disconnected; trying again. Actions wait until it's back."
+        is T3Connection.Status.Retrying -> "T3 is disconnected; trying again. Actions are off until it's back."
         T3Connection.Status.Live -> null
         T3Connection.Status.Connecting, T3Connection.Status.Stopped -> if (loaded) null else "Connecting to T3…"
     } ?: return
@@ -457,44 +450,3 @@ private fun SendButton(modifier: Modifier, onClick: () -> Unit) {
         }
     }
 }
-
-/**
- * Quick send for now (Increment 4 replaces it with a sheet): a prompt that starts a new thread in
- * the `assistant` project, then says where it went or why it didn't.
- */
-@Composable
-private fun QuickSend(model: AgentModel, live: Boolean, modifier: Modifier, close: () -> Unit) {
-    val scope = rememberCoroutineScope()
-    var text by remember { mutableStateOf("") }
-    var result by remember { mutableStateOf<String?>(null) }
-    var sending by remember { mutableStateOf(false) }
-    Column(
-        modifier
-            .imePadding()
-            .padding(8.dp)
-            .fillMaxWidth()
-            .background(Sheet, RoundedCornerShape(22.dp))
-            .border(1.dp, Color(0xFF2C3139), RoundedCornerShape(22.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Text("To ${AgentModel.QUICK_SEND_PROJECT} · a new thread", style = Small)
-        Field(text, "Ask an agent…") { text = it; result = null }
-        result?.let { Text(it, style = Small.copy(color = Ink)) }
-        if (!live) Text("T3 isn't connected.", style = Small)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-            Pill("Close") { close() }
-            Pill(if (sending) "Sending…" else "Send", primary = true, enabled = live && !sending && text.isNotBlank()) {
-                sending = true
-                val prompt = text
-                scope.launch {
-                    val sent = model.quickSend(prompt)
-                    sending = false
-                    result = sent.message
-                    if (sent.started) text = ""
-                }
-            }
-        }
-    }
-}
-
