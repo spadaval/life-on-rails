@@ -88,6 +88,7 @@ class T3Connection(private val store: T3Store) {
         generation++
         job?.cancel()
         job = null
+        calls = null
         _status.value = if (store.session == null) Status.NotPaired else Status.Stopped
         _shell.value = _shell.value.copy(loaded = false)
     }
@@ -253,7 +254,10 @@ class T3Connection(private val store: T3Store) {
                         socket.send(Rpc.request(id, "orchestration.subscribeShell", JSONObject()))
                         if (!ifCurrent(gen) { calls = events }) return "stopped"
                     }
-                    is Event.Call -> {
+                    is Event.Call -> if (!ifCurrent(gen) {}) {
+                        // A stopped loop draining its queue sends nothing more.
+                        event.reply.completeExceptionally(T3CallFailed("Not connected to T3."))
+                    } else {
                         val id = (nextId++).toString()
                         val reply = event.reply
                         owed += reply

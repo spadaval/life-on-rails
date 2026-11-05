@@ -126,13 +126,13 @@ class CommandsTest {
         val plain = Commands.launchDefaults(reply.value, "e80c134d-2247-4203-84dc-5c4574210d8d")
         assertEquals(ModelSelection("devReplay", "showcase"), plain.model)
 
-        // A null project override wins; the fallback model fills a null default; a project runtime mode wins.
+        // A null project override wins and the usage-limit fallback does not fill it; a project runtime mode wins.
         val settings = JSONObject().put("defaultModelSelection", JSONObject().put("instanceId", "codex").put("model", "m"))
             .put("fallbackModelSelection", JSONObject().put("provider", "claudeAgent").put("model", "haiku"))
             .put("defaultRuntimeMode", "auto")
             .put("projectSettingsOverrides", JSONObject().put("p", JSONObject().put("defaultModelSelection", JSONObject.NULL).put("defaultRuntimeMode", "approval-required")))
         val config = JSONObject().put("settings", settings)
-        assertEquals(LaunchDefaults(ModelSelection("claudeAgent", "haiku"), "approval-required"), Commands.launchDefaults(config, "p"))
+        assertEquals(LaunchDefaults(null, "approval-required"), Commands.launchDefaults(config, "p"))
         assertEquals(LaunchDefaults(ModelSelection("codex", "m"), "auto"), Commands.launchDefaults(config, "q"))
         settings.put("defaultModelSelection", JSONObject.NULL).put("fallbackModelSelection", JSONObject.NULL)
         assertNull(Commands.launchDefaults(config, "q").model)

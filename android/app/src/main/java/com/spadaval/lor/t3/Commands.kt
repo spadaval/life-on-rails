@@ -155,16 +155,18 @@ object Commands {
 
     /**
      * The model and runtime mode a new thread in [projectId] gets from a `server.getConfig` reply: the
-     * project's override in `projectSettingsOverrides`, else the server's `defaultModelSelection`, and
-     * when that is null, its `fallbackModelSelection`. T3's own new-thread flow resolves the same settings (`resolveProjectSettings`).
-     * It also offers the first available model when none is set; the launcher does not guess.
+     * project's override in `projectSettingsOverrides`, else the server's `defaultModelSelection`, as T3's
+     * `resolveProjectSettings` does. Not ported from T3's new-thread flow: switching to
+     * `fallbackModelSelection` when the default provider's usage limit is used up, offering the first
+     * available model when none is set (the launcher does not guess), skipping an override whose
+     * instance is disabled, and the project's legacy `defaultModelSelection`.
      */
     fun launchDefaults(config: Any?, projectId: String): LaunchDefaults {
         val settings = (config as JSONObject).getJSONObject("settings")
         val project = settings.optJSONObject("projectSettingsOverrides")?.optJSONObject(projectId)
         // A project override replaces the server's default even when it is null.
         val default = if (project?.has("defaultModelSelection") == true) project.optJSONObject("defaultModelSelection") else settings.optJSONObject("defaultModelSelection")
-        val model = ModelSelection.from(default) ?: ModelSelection.from(settings.optJSONObject("fallbackModelSelection"))
+        val model = ModelSelection.from(default)
         val runtimeMode = project?.optString("defaultRuntimeMode")?.ifEmpty { null }
             ?: settings.optString("defaultRuntimeMode").ifEmpty { "full-access" }
         return LaunchDefaults(model, runtimeMode)
