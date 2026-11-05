@@ -84,11 +84,14 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 - Both are recorded in this item's notes.
 
 **Unknowns.**
-- Whether the Replay provider can produce an approval and a question, or whether 2.2 needs the cheapest real model.
-- How the phone pairs with buildbot's live server. The likely route is a pairing link from T3's Connections settings, as the mobile app pairs.
+- ~~Whether the Replay provider can produce an approval and a question.~~ It can (2026-11-05), so 2.2 needs no real model:
+  - Its `approval` scenario asks only when the runtime mode is `approval-required`, so launch the thread with `orchestration.launchThread` and not `t3 thread start`, which runs in full access. That gives a pending `command` request.
+  - The `question` scenario gives a pending `user_input`.
+  - A server restart drops pending approvals but keeps questions.
+- How the phone pairs with buildbot's live server. From reading the code: a pairing link from T3's Connections settings (or `t3 pair` on buildbot) carries the server's Tailscale HTTPS address. The app accepts that link, a `t3code://pair` link, or an address and a code. T3 Connect's relay is not supported. This is untested against the live server.
 
 **The scratch T3 server.** buildbot runs the live T3 server Sumeet's phone depends on, so follow t3code's AGENTS.md exactly:
-- Make a separate worktree: `git worktree add --detach ../t3code-launcher-test` from `/home/supadava/projects/t3code`, then run `vp i` in it. Change no code in it.
+- Make a separate worktree: `git worktree add --detach ../t3code-launcher-test` from `/home/supadava/projects/t3code`, then run `vp i` in it. Change no code in it. (It exists now, at `/home/supadava/projects/t3code-launcher-test`, kept for 2.2.)
 - Start `vp run dev` there in the background with `T3CODE_TAILSCALE_SERVE=false`. State then lives in that worktree's `.t3`. Never use `~/.t3/userdata`.
 - Read the real port from the `[dev-runner]` line. The emulator reaches the server at `http://10.0.2.2:<port>`.
 - Mint a pairing token with `node apps/server/src/bin.ts pair`, run in that worktree.
@@ -97,7 +100,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 
 **Background.** Effect RPC JSON over WebSocket (`apps/server/src/ws.ts`). The methods are `orchestration.subscribeShell`, `orchestration.subscribeThread` or `getThreadProjection`, `orchestration.dispatchCommand` and `orchestration.launchThread` (`packages/contracts/src/rpc.ts`, `orchestrationV2.ts`). Pairing and session auth are in `apps/server/src/auth/` and `packages/client-runtime/src/authorization`. Port only the fields these calls touch. Read `/home/supadava/projects/t3code`, and never edit it.
 
-#### 2.1 Connect, pair and read the shell. Status: active (2026-11-05: a subagent of the orchestrating thread is building it in a worktree branch; it lands on main when done)
+#### 2.1 Connect, pair and read the shell. Status: active (built and checked 2026-11-05, review pending)
 
 - **Goal.** Pair with a T3 server, open the WebSocket, subscribe to the shell, and keep a list of threads, each with its project and a state: running, waiting for approval, waiting for an answer, failed, or idle. Reconnect after a dropped connection.
 - **Done when.**
@@ -105,6 +108,36 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
   - Against the scratch T3 server, a small debug screen in the app shows its threads, and a Replay thread started in that server's web UI appears as running.
   - Killing the server and restarting it brings the list back without restarting the app.
 - **Scope.** New package `com.spadaval.lor.t3`, and a debug screen behind Settings. Nothing in LoR's server. Credentials stay out of logs (LoR rule).
+- **2026-11-05: built** (`22a3ed2`). Package `t3`:
+  - `Rpc.kt`: the framing.
+  - `Shell.kt`: a pure decoder.
+  - `Pairing.kt`, `T3Auth.kt`, `T3Store.kt`: pairing and the session.
+  - `T3Connection.kt`: one shared connection, reconnecting with backoff from 1 s up to 30 s.
+
+  Also `ui/T3DebugScreen.kt`, behind Settings, which connects only while it's open. OkHttp 4.12 is the one new dependency.
+  - **How the app authenticates.** It pairs as a bearer client, where T3's mobile app uses DPoP. The server accepts both, but the token lasts 30 days, so the phone must pair again monthly until something refreshes it.
+  - **Proof.**
+    - 14 JVM tests pass. The decoder tests read two sessions recorded from the scratch server (`src/test/resources/t3/`).
+    - On the emulator, a Replay thread launched on the scratch server showed as Running.
+    - Stopping the server showed "Disconnected… retrying" with the list kept. After a restart the list came back live about 16 s after the port opened, in the same app process.
+    - The access token, tickets and pairing code appear nowhere in logcat.
+  - **The wire format.** Auth first:
+    - `POST /oauth/token` (token exchange, with the pairing token as the subject) returns a bearer token.
+    - `POST /api/auth/websocket-ticket/rpc` returns a single-use ticket.
+    - The socket is `GET /ws?wsTicket=…&orchestrationProtocol=2`. Any other protocol number gets a 426.
+
+    Then the messages. A text frame carries one JSON message or an array of them:
+    - The client sends `Request {id, tag, payload, headers}`.
+    - The server sends `Chunk {requestId, values}`, `Exit`, `Defect`, and `Pong` in answer to `Ping`.
+    - **The client must `Ack {requestId}` every Chunk, or the stream stalls after the first one.**
+
+    Shell items are `snapshot`, `thread.updated`, `thread.removed`, `project.updated`, `project.removed` and `synchronized`. A snapshot that carries `resolvedRepositoryIdentityRoots` updates project details only, with `threads: []`, so it must not replace the list.
+  - **How a thread's state is read.** This follows T3's own thread list:
+    - a pending `user_input` request is waiting for an answer;
+    - any other pending kind except `auth_refresh` is waiting for approval;
+    - otherwise the decoder reads `activityRunStatus`, falling back to `status`;
+    - subagents, side chats, archived and deleted threads are left out.
+  - **The emulator didn't reach the host at `10.0.2.2`,** not even a plain Python server. `adb reverse tcp:<port> tcp:<port>` with `http://127.0.0.1:<port>` worked. Expect the same with the LoR test server.
 
 #### 2.2 Act on threads. Status: backlog, planned once 2.1 is done
 
