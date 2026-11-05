@@ -482,6 +482,8 @@ Sumeet kept these out of this mission on 2026-11-05. Each would be planned as it
 - **Generative widgets.** Ideally pinned T3 HTML renders, in sandboxed WebViews. This needs "Pin to home" in Sumeet's T3 fork, a change in that repo.
 - **The phone as an output for agents.** A few safe tools over the T3 connection, such as showing something on the phone, pinning a card, or asking a yes/no question.
 
+- **Sign in with T3 Connect** (Sumeet, 2026-11-05: wanted eventually, not now). Pairing needs a URL and a code; Connect's sign-in (Clerk, then the relay finds buildbot and mints credentials for the same WebSocket) would replace that. Considered and set aside the same day: going through T3's `/mcp` server instead, as Grok does. MCP can't list or approve permission requests (by design), can't stream thread state for the queue and Live Updates, and its sessions are refused on the RPC WebSocket, so it would add a second connection and login rather than simplify the first.
+
 ## Open questions for Sumeet
 
 - **Increment 4: a T3 fork item for "the project on screen".** T3's Android app hands an assistant nothing that names the thread it shows, so quick send over it goes to `assistant` (one tap changes it). Adding `onProvideAssistContent` to the fork's `MainActivity`, setting `webUri` to the open thread's link, would make the launcher's existing rule pick the thread's project. Worth a fork item? Default until then: the Inbox.
