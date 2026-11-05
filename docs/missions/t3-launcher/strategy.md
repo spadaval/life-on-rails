@@ -63,7 +63,7 @@ These come back to Sumeet:
 
 # Risks and Unknowns
 
-- **One UI may not treat a third-party home well.** The risks are rough gesture handoff, being reset to One UI Home, battery killing, and odd handling of the two screens. Increment 1 measures this on the device before any heavy work.
+- **One UI may not treat a third-party home well.** The risks are rough gesture handoff, being reset to One UI Home, battery killing, and odd handling of the two screens. Small, judged by Sumeet on 2026-11-05: Samsung has supported gesture navigation in third-party launchers since One UI 2.5 (2020), and many people run them on Samsung phones and folds. The known cost is a plainer swipe-home animation. Increment 1.2 confirms this on the device. It does not gate other work.
 - **The T3 protocol may change upstream** (`orchestrationV2`). A Kotlin check against a real T3 server catches it.
 - **Holding a live T3 connection in the background on One UI** is unproven. The launcher is expected to be killed less often than other apps, with Unrestricted battery. Increment 1 checks only that the process survives. Increment 6 checks the connection itself.
 - **The Fold arrives on 2026-11-05, but work stays on the emulator until Sumeet says otherwise.** Every device check marked "real Fold" waits for him.

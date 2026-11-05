@@ -44,7 +44,7 @@ Sumeet decided (2026-11-05): builds stay on boat.
 
 ### Increment 1: A third-party home works on the Fold. Status: active
 
-**Goal.** Before any heavy work, find out whether a home app we build stays usable on One UI 9: gesture navigation feels acceptable, the app stays the default home with Unrestricted battery, and it behaves on both screens. D1 is settled, so the Lawnchair comparison only calibrates gesture feel.
+**Goal.** Confirm on the device that a home app we build stays usable on One UI 9: gesture navigation feels acceptable, the app stays the default home with Unrestricted battery, and it behaves on both screens. D1 is settled, so the Lawnchair comparison only calibrates gesture feel.
 
 **Done when.** `device-checks.md` records a pass or fail, with a note, for each check in 1.1 (emulator) and 1.2 (real Fold). Screenshots stay in the working thread, not in git. Sumeet has said whether the gesture feel is acceptable.
 
@@ -188,7 +188,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
       - Read that function for how `initialAnswer` seeds the answer.
     - The card should load a question's choices when the connection is Live, and again after a reconnect.
 
-### Increment 3: A home Sumeet can live in, with the agent page. Status: backlog, blocked by Increment 1
+### Increment 3: A home Sumeet can live in, with the agent page. Status: todo (2026-11-05: Sumeet judged the One UI risk small; Increment 1.2 confirms on the device and no longer blocks this)
 
 **Goal.**
 - The launcher is his default home. The left-most page is the agent page:
