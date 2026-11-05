@@ -188,7 +188,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
       - Read that function for how `initialAnswer` seeds the answer.
     - The card should load a question's choices when the connection is Live, and again after a reconnect.
 
-### Increment 3: A home Sumeet can live in, with the agent page. Status: todo (2026-11-05: Sumeet judged the One UI risk small; Increment 1.2 confirms on the device and no longer blocks this)
+### Increment 3: A home Sumeet can live in, with the agent page. Status: active (2026-11-05: Sumeet judged the One UI risk small; Increment 1.2 confirms on the device and no longer blocks this)
 
 **Goal.**
 - The launcher is his default home. The left-most page is the agent page:
@@ -210,6 +210,57 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 - The layout JSON schema. Design it in this increment, so Increment 7 only adds the git sync to it.
 - Which T3 app deep links already exist. The T3 app registers `https://app.t3.codes/threads/...` and the `t3code` scheme (`apps/mobile/app.config.ts`). Whether either opens a thread on buildbot's server is untested. Any missing deep link is a fork item outside this mission.
 - Whether "an ordinary good launcher" must also host third-party Android widgets from day one.
+
+**Decisions inside this increment** (orchestrator, 2026-11-05; Sumeet may overrule):
+- **Third-party widgets wait.** Home hosts no third-party Android widgets in this increment. The LoR "Next" card is native, and generated widgets are a later mission. Widget hosting can come later, with how Lawnchair does it in hand.
+- **LoR cards only read and open.** The agent page reads LoR through one new read endpoint. Its LoR cards open the LoR dashboard rather than writing anything, because a phone write path would change LoR's server behaviour, which is Sumeet's call (strategy, Authority).
+- **The T3 connection runs while home is on screen.** Home holds it while it's visible and stops it a little after it isn't. Keeping it in the background is Increment 6's question.
+- **The layout file supports later increments.** Its schema leaves room for named layouts, folders with a reason and a pinned flag, and an expiry, so that Increments 7, 9 and 10 add behaviour rather than migrate the format.
+
+**Facts found 2026-11-05.**
+- **The data for the agent page.** `/device/state` returns the timer and intents only.
+  - `needsOwner(tx)` (`src/server/intents.ts`) gives Needs you.
+  - `wallOne(now)` (`src/server/trmnl/device.ts`) gives "the one thing": the pin, else the running timer, else an event that is on or soon, else the brief's first line, else the oldest flag. The wall uses it; the web UI does not.
+  - `getToday` (`src/server/today.ts`) gives the wake window, the time remaining, the plan and the running timer.
+
+  All three are reads and can be reused.
+- **T3 deep links.** The T3 app opens a thread at `t3code://threads/<environmentId>/<threadId>`, or at the verified app link `https://app.t3.codes/threads/<environmentId>/<threadId>`. Each segment is percent-encoded, so `:` becomes `%3A`. The scheme differs by build variant: `t3code`, `t3code-preview` or `t3code-dev`. The packages are `com.t3tools.t3code`, `.preview` and `.dev`. The environment id names the server and is required, and an environment the app isn't paired with shows "Thread unavailable". The launcher needs the paired server's environment id from T3. The T3 activity is `singleTask` and doesn't declare `resizeableActivity`, so whether it opens in the adjacent pane needs checking.
+- **Seed data for checks.** The LoR test server (`scripts/ui-server.sh`, `:3857`) has no standing seed. `scripts/ui-check.mjs`'s `tasks` flow makes a flagged task, and its `today` flow makes calendar events.
+
+#### 3.1 A read endpoint for the agent page. Status: todo
+- **Goal.** `GET /device/home?device=` returns what the agent page shows from LoR in one call: the one thing (`wallOne`), Needs you (`needsOwner`), and enough of Today to draw the day arc. That means the wake window, now, the fraction remaining, the running timer, and the next few timed events. Plus the brief's first line.
+- **Done when.** A `pnpm test:db` case covers the response. `pnpm test` and `pnpm typecheck` pass. The spec's `/device/*` list names the endpoint.
+- **Scope.** `src/server/device.ts`, `src/routes/device/$.ts`, tests and the spec line. No writes.
+
+#### 3.2 The home shell: pages, layout file, drawer and search. Status: todo
+- **Goal.** `HomeActivity` becomes a real home:
+  - Pages swipe sideways. The agent page is left-most (a placeholder until 3.3), then home.
+  - Home draws the apps, folders and dock from a local layout JSON file in the app's storage. The first run writes a default.
+  - Swiping up opens the drawer: every app with its icon, and a search field that finds an app by name.
+  - Icons load off the main thread and are cached. The app list refreshes on package changes without stalling home (the review item deferred from 1.1).
+  - It works on a phone screen and on a foldable's inner screen.
+  - Before writing each basic part (grid, folder, drawer, search, icon loading), read how Kvaesitso and Lawnchair do it and note the source in the file (D1).
+- **Done when.** On the emulator: apps from the layout file show on home with their icons, a folder opens, the dock works, the drawer lists every app, typing finds an app, and tapping opens it. A JVM test covers parsing and validating the layout file. The layout schema is written down in this item. The same checks pass on a foldable AVD (`pixel_9_pro_fold`), folded and unfolded.
+- **Scope.** `android/` only.
+
+#### 3.3 The agent page. Status: backlog, after 3.1 and 3.2
+- **Goal.** The mockup's agent page (`/home/supadava/design/t3-launcher/t3-launcher-screens.html`, "Agent page" and "Agent page + T3"):
+  - Today's arc and Next, from `/device/home`;
+  - running turns;
+  - the queue: T3 approvals, questions and failures, then LoR Needs you;
+  - a quick-send button, which launches into the `assistant` project for now, until Increment 4's sheet.
+
+  Each card has one action, built on Increment 2's functions with the carried review items:
+  - a T3 approval card approves;
+  - a question card opens its choices;
+  - a failed or running card, or a tap on any card's icon, opens the T3 app at that thread, in the adjacent pane on a large screen;
+  - a LoR card opens the dashboard.
+
+  Calm, with no animation that runs continuously (strategy).
+- **Done when.** Increment 3's first Done when holds, on the emulator, against the LoR test server and a scratch T3 server.
+
+#### 3.4 The spec says what the phone is now. Status: backlog, after 3.3
+- **Goal.** The second Done when of Increment 3: "The phone" and "Who is who" describe the app as the launcher. It's a client of both T3 and LoR, and it holds the queue that LoR's server doesn't.
 
 ### Increment 4: Send a prompt from anywhere. Status: backlog
 
