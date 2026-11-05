@@ -52,7 +52,7 @@ Building locally instead needs Sumeet to lift the init-script guard. The questio
 - ~~Whether a foldable emulator image is available on this host.~~ Yes (2026-11-05): the SDK's AVD tooling has `pixel_9_pro_fold` and `pixel_fold` profiles, and the API 35 image is installed.
 - Whether the side key can open a third-party default assistant on One UI 9.
 
-#### 1.1 A minimal home app, checked on the emulator. Status: active (built and checked 2026-11-05, review pending)
+#### 1.1 A minimal home app, checked on the emulator. Status: done (2026-11-05; reviewed twice, findings fixed, the boat-build fixes awaiting their review)
 
 - **Goal.** Give LoR's app the least that lets it be chosen as home: an activity with `MAIN` + `HOME` + `DEFAULT`, showing every launchable app (`LauncherApps.getActivityList`) in a plain Compose list that opens on a tap. This is the probe Increment 1 needs. With D1 settled, Increment 3 grows it into the real home.
 - **Done when.**
@@ -63,6 +63,7 @@ Building locally instead needs Sumeet to lift the init-script guard. The questio
   - `testDebugUnitTest` passes.
 - **Scope.** `android/app/src/main/AndroidManifest.xml` and one new activity. Nothing on the server.
 - **Context.** `android/app/src/main/java/com/spadaval/lor/MainActivity.kt`. The manifest already declares `QUERY_ALL_PACKAGES`. Optional: if a foldable AVD can be made cheaply, also screenshot it folded and unfolded.
+- **Deferred to Increment 3** (review): the list reloads on every package callback on the main thread; load it off the main thread and refresh only the changed package. Profile add, remove and availability callbacks are also deferred.
 - **2026-11-05.** `home/HomeActivity.kt` (app list after Kvaesitso, launching after Launcher3) and the HOME activity in the manifest. All five checks pass on the emulator ([device-checks.md](device-checks.md)). The check found that home needs its own task (`taskAffinity=""`), or the LoR icon reopens home instead of the tabs. The foldable AVD was not run (see device-checks.md).
 
 #### 1.2 Fold checks [real Fold]. Status: backlog, waits on Sumeet
@@ -137,7 +138,11 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
     - any other pending kind except `auth_refresh` is waiting for approval;
     - otherwise the decoder reads `activityRunStatus`, falling back to `status`;
     - subagents, side chats, archived and deleted threads are left out.
-  - **The emulator didn't reach the host at `10.0.2.2`,** not even a plain Python server. `adb reverse tcp:<port> tcp:<port>` with `http://127.0.0.1:<port>` worked. Expect the same with the LoR test server.
+  - **`10.0.2.2` once failed.** During the live check the emulator didn't reach the host there, not even a plain Python server, so the check used `adb reverse tcp:<port> tcp:<port>` and `http://127.0.0.1:<port>`. That was minutes after an emulator reboot. Later the same day, `10.0.2.2` answered from both the shell and the app's own uid (`run-as com.spadaval.lor`), so `10.0.2.2` stays the default and `adb reverse` is the fallback.
+  - **Known differences from T3's list status** (review, deferred to Increment 3's queue design):
+    - `lastErrorClass: usage_limit` shows as failed; T3 calls it "limited".
+    - Awaited background work, and `blockedOnThreadWait`, show as running; T3 shows "waiting".
+    - `pendingGuestMessageCount > 0` isn't mapped; T3 shows "request".
 
 #### 2.2 Act on threads. Status: backlog, planned once 2.1 is done
 
