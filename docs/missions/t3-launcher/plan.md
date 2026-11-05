@@ -367,12 +367,21 @@ Sending launches a T3 thread in the first of: the project named in the prompt, t
 - **The assistant session** opens the sheet only once the screenshot is in (or after 1.5 s), so the sheet is never in the picture, and hides once it has both the assist data and the screenshot (or after 5 s). It reads `AssistContent.webUri` and the app's label; it doesn't read the views' text.
 - **Settings** has a Quick send section: "Add the Ask tile" (`StatusBarManager.requestAddTileService`, Android 13+) and "Choose the assistant" (the system's assistant settings). The About text no longer says the screen is never read.
 - **Review fixes from 3.3** (F6): the agent page says "Actions are off until it's back" rather than that actions wait, and its `notice` clears on the next action.
-- **Proof.** `boat-build.sh` passed `assembleDebug testDebugUnitTest` (60 tests; 8 in `DestinationTest`, 1 new in `CommandsTest`). On `T3_Phone_API35` against the scratch server, each entry point opened the sheet and started a thread where expected; details in [device-checks.md](device-checks.md). No crashes in `logcat -b crash`; no tokens in logcat.
+- **Proof.** `boat-build.sh` passed `assembleDebug testDebugUnitTest` (60 tests; 7 in `DestinationTest`, 1 new in `CommandsTest`). On `T3_Phone_API35` against the scratch server, each entry point opened the sheet and started a thread where expected; details in [device-checks.md](device-checks.md). No crashes in `logcat -b crash`; no tokens in logcat.
 - **Open.**
   - Over T3's Android app the project on screen is unknown, so the sheet says "inbox" there. The fix is a T3 fork item, outside this mission: `onProvideAssistContent` in T3's `MainActivity` setting `webUri` to the open thread's app link (`https://app.t3.codes/threads/<environment>/<thread>`), which this rule already reads. Recorded under Open questions.
   - The keyboard didn't open by itself on the emulator (`stateVisible` and a focus request; the IME refused). The field has focus, so a tap opens it. Check on the Fold.
   - F3's Close-while-sending was checked by reading the code, not on the device: a Replay launch answers too fast to tap Close in between.
   - The side key, and whether One UI lets a third-party assistant have it, **[real Fold]**.
+- **Review, 2026-11-05** (an agent that didn't write the code, reading Increment 4's commits). Fixed in "Launcher: fixes from quick send's review":
+  - R1: a swipe home from another app could pop the sheet if gesture navigation focused home before the HOME intent. Run on the emulator with gesture navigation (device-checks.md): no misfire from Settings, Chrome, Clock or the drawer, fast or slow, and the home key on home still opens the sheet. No code change. Found while checking: a home *swipe* on home doesn't open the sheet (the intent comes without focus), so under gesture navigation only the home key does. Recheck on the Fold.
+  - R2: the sheet's text, picked project, attach choice and failure are `rememberSaveable`, and the opening counter is saved with the activity (`setIntent` keeps the latest opening), so a fold, unfold or rotation keeps a half-typed prompt. Checked by rotating on the emulator.
+  - R6: `DestinationTest`'s on-screen case fed `t3code://` intent links that the session no longer collects; it now checks `webUri` cases only (a browser at `app.t3.codes/threads/…`, a T3 web URL, a gone thread, an unrelated page). The test count above said 8; it was 7.
+- **Deferred from the review.**
+  - R3: a launch reply slower than 30 s, then a retry, makes a duplicate thread. Fix by reusing one id set per opening of the sheet, together with `reuseExistingThread`.
+  - R4: if the sheet finishes on stop mid-send and the send then fails, the text is lost and only a toast remains.
+  - R5: the thumbnail decodes the screenshot at full size on the main thread. Decode with an `inSampleSize` of about 8.
+  - No action: R7 (assistant session races) and R8 (non-ASCII and punctuation edges in `@project`).
 
 ### Increment 5: LoR knows how each app was launched. Status: active (built and checked on the emulator, review pending)
 

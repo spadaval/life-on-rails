@@ -51,7 +51,7 @@ Notes:
 
 | Check | Result | Note |
 | --- | --- | --- |
-| Home press while on home opens the sheet | pass | Over home. A home press from another app, or with the drawer open, does what it did before (by reading the code; not run). |
+| Home press while on home opens the sheet | pass | Over home, with the home key (KEYCODE_HOME). Run again 2026-11-05 for review R1, below. |
 | `@launcher-scratch …` from that sheet | pass | Label "To launcher-scratch · named". Thread in `launcher-scratch`, titled without the mention. |
 | Agent page's button opens the sheet | pass | "To assistant · inbox". |
 | One tap on another project | pass | Tapping `server` showed "To server · picked"; tapping `assistant` back and sending started the thread in `assistant`. |
@@ -60,3 +60,25 @@ Notes:
 | Assistant over T3's Android app at a `launcher-scratch` thread | partly | The sheet opened with the screenshot (labelled "T3 Code"), but "To assistant · inbox": the app gives no thread link or text (plan, Increment 4 Facts). Invoked with a corner swipe (gesture navigation). |
 | Assistant over T3 web in Chrome at a `launcher-scratch` thread | pass | "To launcher-scratch · on screen". The thread started there; its first message carries `Screen - Chrome.jpg` (image/jpeg, 85,547 bytes) in the projection, and the file in the server's attachments directory is the Chrome screen without the sheet. |
 | Side key from inside another app | waits | **[real Fold]** |
+
+**Review R1 and R2, 2026-11-05** (`T3_Phone_API35`, gesture navigation on, the APK with Increment 5). Whether a swipe home from another app could pop the sheet, since gesture navigation's recents animation can show home before the HOME intent arrives:
+
+| Check | Result | Note |
+| --- | --- | --- |
+| Swipe home from Settings, Chrome and Clock | pass | Home, no sheet: a quick fling and a slow 0.9 s swipe from each. `logcat` shows no start of `QuickSendActivity`. |
+| Swipe home with the drawer open | pass | The drawer closes, no sheet. |
+| Home key on home, at rest | pass | The sheet opens. |
+| Swipe home on home, at rest | no sheet | The HOME intent does arrive (`START u0 … HOME`, flags `0x10000000`), but the sheet doesn't open. Most likely home doesn't have window focus during the gesture's transition, so the press counts as an ordinary one. Not a misfire. With gesture navigation, home on home opens the sheet only from the home key. Recheck on the Fold (One UI handles the gesture itself) before deciding whether to loosen the rule; loosening it is what could cause the misfire R1 was about. |
+| Rotate the sheet with a half-typed prompt (R2) | pass | Typed "half typed prompt", rotated to landscape: the text was still there. Picked `launcher-scratch`, rotated back: "To launcher-scratch · picked", with the text. |
+
+## Increment 5: launches, on the emulator
+
+2026-11-05. `T3_Phone_API35`, the LoR app pointed at `http://10.0.2.2:3857` (the test server, rebuilt from `/tmp/lor-ui-33`).
+
+| Check | Result | Note |
+| --- | --- | --- |
+| A launch from search is queued with its source | pass | Drawer, typed "clo", tapped Clock: `{kind: "launch", from: "search", query: "clo", package: "com.google.android.deskclock", …}`, `t_start = t_end`. |
+| A launch from home | pass | Life on Rails on the home grid: `from: "home"`, activity `com.spadaval.lor.MainActivity`. |
+| Uploaded and stored | pass | Sync now: "2 new on the server". Both rows in `life_on_rails_test` with `kind = 'launch'`. |
+| On the day's timeline | pass | `dayTimeline` for today, read directly: `Clock · opened from search "clo"`, `Life on Rails · opened from home`. The Today page draws the timeline only for days gone by. |
+| Agent card and icon launches, dock, folder | not run | Covered by `LaunchesTest` and the `launches` db case. |

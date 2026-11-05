@@ -61,15 +61,15 @@ class DestinationTest {
     }
 
     @Test
-    fun aThreadLinkOnScreenGivesItsProject() {
-        val app = Screen(uris = listOf("t3code://threads/env-1/thread%3Aproject%3Ap-lor%3A1b2c"))
+    fun aBrowserOnAThreadGivesItsProject() {
+        // AssistSession reads only AssistContent.webUri: a browser's page.
+        val app = Screen(uris = listOf("https://app.t3.codes/threads/env-1/thread%3Aproject%3Ap-lor%3A1b2c"))
         assertEquals(Destination.Choice("p-lor", Why.ON_SCREEN, "x"), choose("x", app))
         val web = Screen(uris = listOf("https://buildbot.ts.net/env-1/5f1e7d0a-uuid?tab=diff#end"))
         assertEquals("p-t3", choose("x", web).projectId)
-        // The web URI comes first; a thread whose project is gone, an unknown thread, or a project's
-        // title in the path says nothing.
-        assertEquals("p-t3", choose("x", Screen(uris = listOf("https://x/e/5f1e7d0a-uuid", "t3code://threads/e/thread%3Aproject%3Ap-lor%3A1b2c"))).projectId)
-        assertEquals(Why.INBOX, choose("x", Screen(uris = listOf("https://x/e/thread-gone", "https://github.com/me/life-on-rails"))).why)
+        // A thread whose project is gone, an unknown thread, or a project's title in the path says nothing.
+        assertEquals(Why.INBOX, choose("x", Screen(uris = listOf("https://x/e/thread-gone"))).why)
+        assertEquals(Why.INBOX, choose("x", Screen(uris = listOf("https://github.com/me/life-on-rails"))).why)
         assertNull(Destination.onScreen(Screen(), projects, threads))
     }
 

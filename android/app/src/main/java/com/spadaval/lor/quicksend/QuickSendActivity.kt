@@ -37,6 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,13 +74,20 @@ class QuickSendActivity : ComponentActivity() {
         enableEdgeToEdge(SystemBarStyle.dark(AndroidColor.TRANSPARENT), SystemBarStyle.dark(AndroidColor.TRANSPARENT))
         connection = T3Connection.get(applicationContext)
         from = QuickSend.from(intent)
+        opened = savedInstanceState?.getInt(OPENED) ?: 0
         setContent { LorTheme { Sheet(connection, from, opened) { finish() } } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent) // so a recreated sheet reads the latest opening
         from = QuickSend.from(intent)
         opened++
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(OPENED, opened)
     }
 
     override fun onStart() {
@@ -97,6 +105,10 @@ class QuickSendActivity : ComponentActivity() {
     override fun onDestroy() {
         if (from == QuickSend.From.ASSIST && !isChangingConfigurations) Capture.clear()
         super.onDestroy()
+    }
+
+    private companion object {
+        const val OPENED = "opened"
     }
 }
 
@@ -118,10 +130,11 @@ private fun Sheet(connection: T3Connection, from: QuickSend.From, opened: Int, c
     val sending by QuickSend.sending.collectAsState()
     val captured by Capture.current.collectAsState()
     val capture = if (from == QuickSend.From.ASSIST) captured else null
-    var text by remember(opened) { mutableStateOf("") }
-    var picked by remember(opened) { mutableStateOf<String?>(null) }
-    var attach by remember(opened) { mutableStateOf(true) }
-    var failure by remember(opened) { mutableStateOf<String?>(null) }
+    // Saved, so a fold, unfold or rotation keeps a half-typed prompt; a new opening starts over.
+    var text by rememberSaveable(opened) { mutableStateOf("") }
+    var picked by rememberSaveable(opened) { mutableStateOf<String?>(null) }
+    var attach by rememberSaveable(opened) { mutableStateOf(true) }
+    var failure by rememberSaveable(opened) { mutableStateOf<String?>(null) }
     val live = status == T3Connection.Status.Live
 
     val threads = remember(shell) { shell.threads.associate { it.id to it.projectId } }
