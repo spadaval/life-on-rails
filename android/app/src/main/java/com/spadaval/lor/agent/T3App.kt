@@ -4,6 +4,9 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import com.spadaval.lor.collect.Launch
+import com.spadaval.lor.collect.LaunchFrom
+import com.spadaval.lor.collect.Launches
 import com.spadaval.lor.t3.T3Links
 
 /** Opening the installed T3 app at a thread ([T3Links]). */
@@ -17,10 +20,15 @@ object T3App {
      * Opens [threadId] on the server [environmentId] names, in a new task and, on a large screen,
      * in a pane beside what's open ([flags]). Returns why it couldn't, or null.
      */
-    fun open(context: Context, environmentId: String, threadId: String): String? {
+    fun open(context: Context, environmentId: String, threadId: String, from: LaunchFrom): String? {
         val app = installed(context) ?: return "The T3 app isn't installed."
+        val intent = intent(app, environmentId, threadId)
         return try {
-            context.startActivity(intent(app, environmentId, threadId).addFlags(flags(context)))
+            context.startActivity(intent.addFlags(flags(context)))
+            Launches.record(
+                context,
+                Launch(from, app.packageName, label = Launches.label(context, app.packageName), thread = threadId, url = intent.dataString),
+            )
             null
         } catch (e: ActivityNotFoundException) {
             "The T3 app can't open threads."

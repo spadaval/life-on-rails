@@ -374,16 +374,45 @@ Sending launches a T3 thread in the first of: the project named in the prompt, t
   - F3's Close-while-sending was checked by reading the code, not on the device: a Replay launch answers too fast to tap Close in between.
   - The side key, and whether One UI lets a third-party assistant have it, **[real Fold]**.
 
-### Increment 5: LoR knows how each app was launched. Status: backlog
+### Increment 5: LoR knows how each app was launched. Status: active (built and checked on the emulator, review pending)
 
 **Goal.** Every launch from the launcher (home, drawer, search, a card) is recorded with its source. The records go through the existing sensor queue to `/device/ingest`, and they show in LoR's timeline.
 
 **Done when.** A JVM test covers the observation shape. A LoR `pnpm test:db` case accepts it. On the emulator against the test server, a launch from search appears with its source.
 
 **Unknowns.**
-- Whether this extends the app-session observation or becomes a new `kind`. Decide with the spec's observation envelope.
-- The app-usage sensor leaves out "the launcher and system UI" (spec, "The phone"). Once LoR is the launcher, time on its own pages needs a rule: still left out, or recorded.
-- Whether a search launch also records what was typed. The thread proposed it, but it wasn't decided.
+- ~~Whether this extends the app-session observation or becomes a new `kind`.~~ A new kind, `launch` (decision below).
+- ~~Time on the launcher's own pages.~~ Recorded (decision below).
+- ~~Whether a search launch also records what was typed.~~ It does (decision below).
+
+**Decisions inside this increment** (orchestrator, 2026-11-05; Sumeet may overrule):
+- **A new observation kind, `launch`, not an extension of the app session.** A launch is an instant on a tap; a session is a span built later from the system's usage events, 15 minutes after the fact, and has its own id (device, package, start). Joining the two would mean matching a tap to a session start that the system reports a few hundred milliseconds later, and a launch that opens an app already on screen, or that fails, has no session to join. `kind = 'app'` is what fill, Today's screen time, pickups and `lor places` read (`attribution/fill.ts`, `today.ts`, `places.ts`), so a separate kind leaves the actual lane and every score untouched, as an observation should. The envelope needs nothing new: `source=android`, `app` = the package opened, `title` = its name, `url` = the link an agent card opened, `t_start = t_end` (an instant, as texts are), and `payload = {kind: "launch", from, package?, activity?, label?, folder?, query?, thread?}`. The id is `Obs.id("launch", device, epoch-ms, package, activity or link)`, made once when the tap happens and stored in the queue row, so every retry sends the same id and lands on the same row (ingest is idempotent on `id`). Ingest needed no change.
+- **Time on the launcher's own pages is recorded.** The app-usage sensor left out whatever package was the default home, which since Increment 1 is LoR itself, so it was also dropping time in LoR's own tabs (Timer, Sensors, Dashboard) and the quick-send sheet. Product rule 6 says not to ration the owner's data, and nothing downstream needs home left out: fill absorbs a session under 2 minutes inside a block (`INTERRUPTION_MS`), so the few seconds on home between two apps don't split a block, and longer time on the agent page is real phone time, grey until a rule labels `com.spadaval.lor`. Screen time and pickups on Today now count time on home, which is screen time. Only `com.android.systemui` (shade, lock screen, Recents) stays out. Short hops still drop out under the sensor's 3 s minimum.
+- **A search launch records what was typed, as typed.** Rule 6 again, and the code gives no reason not to: the text never leaves the phone except to LoR, it is the owner's own typing in the launcher (not a third party's), and it's one short string per launch. It's `payload.query`, untrimmed. A drawer launch with nothing typed is `from: "drawer"`; anything typed makes it `from: "search"`, including the keyboard's Go opening the first result.
+- **Launches are their own switch** in the app's Sensors list ("Launches", on by default, no permission needed), like every other sensor.
+- **The day's timeline says where from.** `dayTimeline` (`src/server/memory/timeline.ts`) shows a launch as its app's name with `opened from search "clo"` (or home, dock, folder <name>, drawer, agent card, agent icon); a link nothing resolved shows its URL. This is a display change for the new kind, inside the Outcome ("The LoR sensor records how each app was launched"), not a new server behaviour, so it isn't held for Sumeet.
+
+#### 5.1 The launch observation, recorded at every launch. Status: done (2026-11-05, review pending)
+- **Goal.** `collect/Launches.kt`: a pure `observation(device, at, launch)` building the envelope, and `record(context, launch)`, which puts it in the sensor queue on an IO thread, never throws, and skips it when Launches is switched off. Called after a launch succeeds from:
+  - home's grid (`home`), the dock (`dock`), a folder (`folder`, with its name), the drawer (`drawer`), and the drawer with text typed (`search`, with the text);
+  - the agent page: a card's own action (`agent_card`: Open on a failed T3 card or a LoR card, a tap on a running turn) and a card's icon (`agent_icon`: "Open in T3", "Open in LoR"). A T3 launch carries the thread id and the deep link; a LoR launch carries the dashboard URL and the browser that took it (null when Android would ask which).
+  Quick send isn't a launch and records nothing.
+- **Also.** `AppUsageCollector` leaves out only the system UI (decision above).
+- **Done when.** A JVM test covers the shape and the id. On the emulator, a search launch is in the queue with its source and query.
+
+#### 5.2 LoR accepts and shows launches. Status: done (2026-11-05, review pending)
+- **Goal.** A `pnpm test:db` case: ingest stores a launch once (a retry stores nothing), keeps `t_start = t_end`, makes no time block, and the day's timeline shows each with where it was opened from. `dayTimeline` gains the launch line. The spec's sensor table, the `kind` list and the Today route's Timeline say what's recorded.
+- **Done when.** `pnpm test`, `pnpm test:db` (bar `fill.test.ts`'s known failure) and `pnpm typecheck` pass. On the emulator against the test server, a search launch is in `life_on_rails_test` with its source and shows in `dayTimeline`.
+
+**Built 2026-11-05** (5.1 and 5.2 together). `collect/Launches.kt` (`LaunchFrom`, `Launch`, `Launches`), the call sites in `home/HomeActivity.kt`, `home/HomeScreen.kt` (a `LaunchApp` callback carrying the source), `agent/T3App.kt`, `agent/AgentModel.kt` and `agent/AgentPage.kt`; `Sensor.LAUNCHES` in `data/Prefs.kt`. Server: `src/server/memory/timeline.ts`. Tests: `LaunchesTest` (5), and a `launches` case in `tests/db/device.test.ts`.
+- **Proof.**
+  - `boat-build.sh` passed `assembleDebug testDebugUnitTest`: 65 tests, 5 new in `LaunchesTest`.
+  - `pnpm typecheck` clean; `pnpm test` 138 passed; `pnpm test:db` 119 passed, 1 failed: `fill.test.ts` "fills by precedence…", which failed on `main` before this mission. The new `launches` case passes.
+  - On `T3_Phone_API35` against the LoR test server (`/tmp/lor-ui-33`, rebuilt with this change): the drawer, "clo", a tap on Clock. The queue held `{kind: "launch", from: "search", query: "clo", package: "com.google.android.deskclock", activity: "com.android.deskclock.DeskClock", label: "Clock"}` with `t_start = t_end`. A tap on Life on Rails on home queued `from: "home"`. Sync now uploaded both ("2 new on the server"). `life_on_rails_test` has both rows with `kind = 'launch'`, and `dayTimeline` for today lists `Clock · opened from search "clo"` and `Life on Rails · opened from home`. No crashes in `logcat -b crash`; no tokens in logcat.
+- **Open.**
+  - The Today page draws "Recorded" (the timeline) only for days gone by, so a launch shows there from the next day. The check read `dayTimeline` directly.
+  - Agent-page launches (`agent_card`, `agent_icon`), the dock and folders were checked by the JVM and db tests, not on the emulator.
+  - Home time as app sessions wasn't run on the emulator (its App usage sensor is off there). The first real day of it on the Fold will show whether the agent page needs a rule of its own.
 
 ### Increment 6: Running turns as Live Updates. Status: backlog
 

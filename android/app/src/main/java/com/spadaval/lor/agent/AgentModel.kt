@@ -3,10 +3,14 @@ package com.spadaval.lor.agent
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.spadaval.lor.collect.Launch
+import com.spadaval.lor.collect.LaunchFrom
+import com.spadaval.lor.collect.Launches
 import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.net.DeviceHome
 import com.spadaval.lor.net.LorClient
@@ -126,11 +130,11 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     }
 
     /** Opens the T3 app at [threadId] on the paired server. */
-    fun openThread(threadId: String) {
+    fun openThread(threadId: String, from: LaunchFrom) {
         notice = null
         scope.launch {
             notice = try {
-                T3App.open(context, connection.environmentId(), threadId)
+                T3App.open(context, connection.environmentId(), threadId, from)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -140,11 +144,15 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     }
 
     /** Opens LoR's dashboard at [path] in the browser, beside home on a large screen. */
-    fun openLor(path: String) {
+    fun openLor(path: String, from: LaunchFrom) {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(prefs.serverUrl + path))
             .addFlags(T3App.flags(context))
         notice = try {
             context.startActivity(intent)
+            // The app that takes the link: the browser, or null when Android asks which one.
+            val pkg = context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo?.packageName?.takeIf { it != "android" }
+            Launches.record(context, Launch(from, pkg, label = pkg?.let { Launches.label(context, it) }, url = intent.dataString))
             null
         } catch (e: ActivityNotFoundException) {
             "No browser can open LoR."

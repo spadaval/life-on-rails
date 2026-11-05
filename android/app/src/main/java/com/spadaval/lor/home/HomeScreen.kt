@@ -76,6 +76,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.spadaval.lor.agent.AgentPage
+import com.spadaval.lor.collect.LaunchFrom
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -120,6 +121,11 @@ class HomeUi {
     }
 }
 
+/** Opens [app] and records where on the launcher it was opened from ([com.spadaval.lor.collect.Launches]). */
+fun interface LaunchApp {
+    fun open(app: HomeApp, from: LaunchFrom, folder: String?, query: String?)
+}
+
 class ResolvedFolder(val folder: Folder, val apps: List<HomeApp>)
 
 /** A layout item with its installed apps; refs to apps that aren't installed are left out. */
@@ -145,7 +151,7 @@ private fun place(layout: Layout, apps: List<HomeApp>): Pair<List<Placed>, List<
 }
 
 @Composable
-fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: (HomeApp) -> Unit) {
+fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: LaunchApp) {
     val pager = rememberPagerState(initialPage = 1) { 2 }
     LaunchedEffect(ui.homePresses) { if (ui.homePresses > 0) pager.animateScrollToPage(1) }
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { ui.page = it } }
@@ -173,7 +179,7 @@ fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: (Ho
 }
 
 @Composable
-private fun HomePage(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: (HomeApp) -> Unit) {
+private fun HomePage(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: LaunchApp) {
     val threshold = with(LocalDensity.current) { 56.dp.toPx() }
     val placed = remember(apps, layout) { (layout as? LayoutState.Ready)?.let { place(it.file.current, apps) } }
     var dragged by remember { mutableStateOf(0f) }
@@ -261,14 +267,14 @@ private fun rememberToday(): LocalDate {
 
 /** Home's items in reading order, [columns] to a row: Launcher3's cells without coordinates. */
 @Composable
-private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, launch: (HomeApp) -> Unit) {
+private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, launch: LaunchApp) {
     Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         items.chunked(columns).forEach { row ->
             Row(Modifier.fillMaxWidth()) {
                 row.forEach { item ->
                     Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
                         when (item) {
-                            is Placed.App -> AppTile(item.app) { launch(item.app) }
+                            is Placed.App -> AppTile(item.app) { launch.open(item.app, LaunchFrom.HOME, null, null) }
                             is Placed.InFolder -> FolderTile(item.folder) { ui.folder = item.folder }
                         }
                     }
@@ -280,7 +286,7 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, launch: (Hom
 }
 
 @Composable
-private fun Dock(apps: List<HomeApp>, launch: (HomeApp) -> Unit) {
+private fun Dock(apps: List<HomeApp>, launch: LaunchApp) {
     if (apps.isEmpty()) return
     Row(
         Modifier
@@ -291,7 +297,7 @@ private fun Dock(apps: List<HomeApp>, launch: (HomeApp) -> Unit) {
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        apps.forEach { app -> AppIcon(app, 48.dp, Modifier.semantics { contentDescription = app.label }.clickable { launch(app) }) }
+        apps.forEach { app -> AppIcon(app, 48.dp, Modifier.semantics { contentDescription = app.label }.clickable { launch.open(app, LaunchFrom.DOCK, null, null) }) }
     }
 }
 
@@ -341,7 +347,7 @@ private fun FolderTile(folder: ResolvedFolder, onClick: () -> Unit) {
 }
 
 @Composable
-private fun FolderPanel(folder: ResolvedFolder, launch: (HomeApp) -> Unit, onClose: () -> Unit) {
+private fun FolderPanel(folder: ResolvedFolder, launch: LaunchApp, onClose: () -> Unit) {
     val none = remember { MutableInteractionSource() }
     Box(
         Modifier.fillMaxSize().background(Color(0x99000000)).clickable(none, indication = null, onClick = onClose),
@@ -365,7 +371,7 @@ private fun FolderPanel(folder: ResolvedFolder, launch: (HomeApp) -> Unit, onClo
                 Row(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
                     row.forEach { app ->
                         Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
-                            AppTile(app, width = 72.dp) { onClose(); launch(app) }
+                            AppTile(app, width = 72.dp) { onClose(); launch.open(app, LaunchFrom.FOLDER, folder.folder.name, null) }
                         }
                     }
                     repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -376,7 +382,9 @@ private fun FolderPanel(folder: ResolvedFolder, launch: (HomeApp) -> Unit, onClo
 }
 
 @Composable
-private fun Drawer(apps: List<HomeApp>, ui: HomeUi, launch: (HomeApp) -> Unit) {
+private fun Drawer(apps: List<HomeApp>, ui: HomeUi, launch: LaunchApp) {
+    // Something typed makes it a search, recorded with the text as typed.
+    fun open(app: HomeApp) = if (ui.query.isBlank()) launch.open(app, LaunchFrom.DRAWER, null, null) else launch.open(app, LaunchFrom.SEARCH, null, ui.query)
     val results = remember(apps, ui.query) { AppSearch.search(ui.query, apps) { it.label } }
     val closeAt = with(LocalDensity.current) { 120.dp.toPx() }
     // A pull down past the top of the list closes the drawer.
@@ -408,7 +416,7 @@ private fun Drawer(apps: List<HomeApp>, ui: HomeUi, launch: (HomeApp) -> Unit) {
                 focusedBorderColor = Muted, unfocusedBorderColor = Line,
             ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { results.firstOrNull()?.let(launch) }),
+            keyboardActions = KeyboardActions(onGo = { results.firstOrNull()?.let(::open) }),
         )
         if (results.isEmpty() && ui.query.isNotBlank()) {
             Text("No app called \"${ui.query.trim()}\".", style = TextStyle(color = Muted, fontSize = 14.sp), modifier = Modifier.padding(24.dp))
@@ -420,7 +428,7 @@ private fun Drawer(apps: List<HomeApp>, ui: HomeUi, launch: (HomeApp) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(results, key = { it.key }) { app ->
-                Box(contentAlignment = Alignment.TopCenter) { AppTile(app) { launch(app) } }
+                Box(contentAlignment = Alignment.TopCenter) { AppTile(app) { open(app) } }
             }
         }
     }

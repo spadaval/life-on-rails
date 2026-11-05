@@ -24,7 +24,7 @@ object Sessions {
      * Closed sessions, plus the start of the one still open (if any) so the next
      * run can begin there. Back-to-back sessions of the same app within
      * `mergeGapMs` are one session; anything shorter than `minMs` is dropped,
-     * and so is anything in `ignore` (the launcher, the system UI).
+     * and so is anything in `ignore` (the system UI).
      */
     fun build(
         events: List<UsageEvent>,

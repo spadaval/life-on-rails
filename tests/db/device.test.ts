@@ -5,6 +5,9 @@ import { createIntent } from "../../src/server/intents.js";
 import { createPage } from "../../src/server/memory/pages.js";
 import { findEntity, upsertEntity } from "../../src/server/memory/entities.js";
 import { lastContacts } from "../../src/server/people.js";
+import { env } from "../../src/server/env.js";
+import { dayTimeline } from "../../src/server/memory/timeline.js";
+import { localYmd } from "../../src/shared/localTime.js";
 import { dbDescribe } from "./helpers.js";
 
 const obs = (id: string, extra: Record<string, unknown> = {}) => ({
@@ -60,6 +63,41 @@ dbDescribe("device ingest", () => {
     expect(o!.phone).toBe("+14155550100");
     expect((await lastContacts(sql, [p.id])).get(p.id)).toMatchObject({ via: "phone" });
     expect((await findEntity(sql, "415 555 0100"))?.id).toBe(p.id);
+  });
+});
+
+dbDescribe("launches", () => {
+  // As the app's Launches.observation builds them (LaunchesTest): an instant, with where it was opened from.
+  const launch = (id: string, at: string, payload: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+    obs(id, { t_start: at, t_end: at, app: "com.google.android.youtube", title: "YouTube", payload: { kind: "launch", ...payload }, ...extra });
+
+  it("stores a launch with its source once, shows it on the day's timeline, and leaves the actual lane alone", async () => {
+    const at = "2026-10-14T16:02:03.456Z";
+    const id = "6f1c2c1e-0000-4000-8000-000000000020";
+    const search = launch(id, at, { from: "search", package: "com.google.android.youtube", activity: "com.google.android.youtube.HomeActivity", label: "YouTube", query: "you" });
+    expect(await ingest({ device: "pixel-9a", observations: [search] })).toEqual({ received: 1, stored: 1, rejected: [] });
+    // A retry is the same row.
+    expect(await ingest({ device: "pixel-9a", observations: [search] })).toEqual({ received: 1, stored: 0, rejected: [] });
+    await ingest({
+      device: "pixel-9a",
+      observations: [
+        launch("6f1c2c1e-0000-4000-8000-000000000021", "2026-10-14T16:10:00.000Z", { from: "folder", folder: "Dev", package: "com.github.android" }, { app: "com.github.android", title: "GitHub" }),
+        launch("6f1c2c1e-0000-4000-8000-000000000022", "2026-10-14T16:11:00.000Z", { from: "agent_card" }, { app: null, title: null, url: "http://buildbot:3847/tasks?id=1" }),
+      ],
+    });
+
+    const [row] = await sql<{ kind: string; t_start: Date; t_end: Date; from: string; query: string }[]>`
+      SELECT kind, t_start, t_end, payload->>'from' AS from, payload->>'query' AS query FROM observation WHERE id = ${id}`;
+    expect(row).toEqual({ kind: "launch", t_start: new Date(at), t_end: new Date(at), from: "search", query: "you" });
+    // Launches are not app sessions: no fill block comes from them.
+    expect(await sql`SELECT 1 FROM time_block`).toHaveLength(0);
+
+    const lines = (await dayTimeline(sql, localYmd(env.LOR_TZ, new Date(at)))).map((r) => [r.source, r.title, r.detail]);
+    expect(lines).toEqual([
+      ["android", "http://buildbot:3847/tasks?id=1", "opened from agent card"],
+      ["android", "GitHub", "opened from folder Dev"],
+      ["android", "YouTube", 'opened from search "you"'],
+    ]);
   });
 });
 

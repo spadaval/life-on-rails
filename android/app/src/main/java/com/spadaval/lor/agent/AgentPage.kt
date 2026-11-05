@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import com.spadaval.lor.collect.LaunchFrom
 import com.spadaval.lor.net.DeviceHome
 import com.spadaval.lor.quicksend.QuickSend
 import com.spadaval.lor.t3.Question
@@ -120,16 +121,16 @@ fun AgentPage() {
                 T3State(status, shell.loaded)
                 if (running.isNotEmpty()) {
                     Header("Running", running.size.toString())
-                    running.forEach { RunningRow(it) { model.openThread(it.id) } }
+                    running.forEach { RunningRow(it) { model.openThread(it.id, LaunchFrom.AGENT_CARD) } }
                 }
                 val needs = model.lor?.needsYou.orEmpty()
                 Header("Needs you", (cards.size + needs.size).toString())
                 cards.forEach { T3QueueCard(it, model, live) }
                 needs.forEach { need ->
                     QueueCard(
-                        tile = "LoR", tileColor = LorTile, tileLabel = "Open in LoR", onTile = { model.openLor(taskPath(need.id)) },
+                        tile = "LoR", tileColor = LorTile, tileLabel = "Open in LoR", onTile = { model.openLor(taskPath(need.id), LaunchFrom.AGENT_ICON) },
                         kind = "LoR", kindColor = Green, where = "flagged", title = need.title, detail = need.note,
-                    ) { Pill("Open", primary = true) { model.openLor(taskPath(need.id)) } }
+                    ) { Pill("Open", primary = true) { model.openLor(taskPath(need.id), LaunchFrom.AGENT_CARD) } }
                 }
                 if (cards.isEmpty() && needs.isEmpty()) {
                     Text(
@@ -278,7 +279,7 @@ private fun T3QueueCard(card: T3Card, model: AgentModel, live: Boolean) {
             T3Card.Kind.QUESTION -> null
         }
     QueueCard(
-        tile = "T3", tileColor = T3Tile, tileLabel = "Open in T3", onTile = { model.openThread(card.thread.id) },
+        tile = "T3", tileColor = T3Tile, tileLabel = "Open in T3", onTile = { model.openThread(card.thread.id, LaunchFrom.AGENT_ICON) },
         kind = card.kind.label, kindColor = color, where = card.thread.projectTitle, title = card.thread.title,
         detail = detail, detailColor = if (card.key in model.failures) Red else Muted,
         below = if (card.kind == T3Card.Kind.QUESTION && open) ({ Choices(card, model, live, busy) }) else null,
@@ -289,7 +290,7 @@ private fun T3QueueCard(card: T3Card, model: AgentModel, live: Boolean) {
                 Pill(if (busy) "…" else "Approve", primary = true, enabled = ready) { model.approve(card, approve = true) }
             }
             T3Card.Kind.QUESTION -> Pill(if (open) "Close" else "Answer", primary = !open) { open = !open }
-            T3Card.Kind.FAILED -> Pill("Open", primary = true) { model.openThread(card.thread.id) }
+            T3Card.Kind.FAILED -> Pill("Open", primary = true) { model.openThread(card.thread.id, LaunchFrom.AGENT_CARD) }
         }
     }
 }

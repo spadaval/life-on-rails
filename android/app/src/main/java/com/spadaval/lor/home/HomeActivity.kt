@@ -14,6 +14,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.spadaval.lor.collect.Launch
+import com.spadaval.lor.collect.LaunchFrom
+import com.spadaval.lor.collect.Launches
 import com.spadaval.lor.quicksend.QuickSend
 import com.spadaval.lor.ui.LorTheme
 
@@ -72,9 +75,13 @@ class HomeActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    private fun launch(app: HomeApp) {
+    private fun launch(app: HomeApp, from: LaunchFrom, folder: String?, query: String?) {
         try {
             launcherApps.startMainActivity(app.info.componentName, app.user, null, null)
+            Launches.record(
+                this,
+                Launch(from, app.packageName, app.info.componentName.className, app.label, folder = folder, query = query),
+            )
         } catch (e: RuntimeException) {
             // ActivityNotFoundException, SecurityException, or a profile that was turned off.
             Toast.makeText(this, "${app.label} can't be opened.", Toast.LENGTH_SHORT).show()

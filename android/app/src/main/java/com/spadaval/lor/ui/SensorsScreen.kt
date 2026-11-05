@@ -116,6 +116,7 @@ fun SensorsScreen() {
                 Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}")),
             )
             Sensor.TEXTS -> permissions.launch(arrayOf(Manifest.permission.READ_SMS))
+            Sensor.LAUNCHES -> {} // needs no permission: the launcher records its own taps
             Sensor.HEALTH -> if (health.available()) {
                 healthPermissions.launch(HealthCollector.ALL_PERMISSIONS)
             } else {

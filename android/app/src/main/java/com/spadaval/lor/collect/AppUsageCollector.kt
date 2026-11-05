@@ -4,7 +4,6 @@ import android.app.AppOpsManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Process
 import com.spadaval.lor.data.Prefs
@@ -59,13 +58,12 @@ class AppUsageCollector(private val context: Context, private val prefs: Prefs) 
         }
     }
 
-    /** Time on the home screen and in the system UI is not time in an app. */
-    private fun ignored(): Set<String> {
-        val home = context.packageManager
-            .resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY)
-            ?.activityInfo?.packageName
-        return setOfNotNull(home, "com.android.systemui")
-    }
+    /**
+     * The system UI (shade, lock screen, Recents) is not an app. Home is: time on the launcher's
+     * pages (home, the agent page, the drawer) is screen time like any other, and each launch
+     * from it is its own observation ([Launches]).
+     */
+    private fun ignored(): Set<String> = setOf("com.android.systemui")
 
     companion object {
         private const val CURSOR = "apps"

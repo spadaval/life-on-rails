@@ -14,13 +14,20 @@ export interface TimelineRow {
   bulk: boolean;
 }
 
-/** Newest first. Texts and WhatsApp messages are one row per conversation (named, with a count), not one per message. */
+/**
+ * Newest first. Texts and WhatsApp messages are one row per conversation (named, with a count), not one per message.
+ * A launch from the phone's launcher says where it was opened from, and for a search what was typed.
+ */
 export async function dayTimeline(db: Tx, date: Ymd): Promise<TimelineRow[]> {
   const { start, end } = localDayBounds(env.LOR_TZ, date);
   const rows = await db<{ id: string; ids: string[] | null; t_start: Date; source: string; title: string | null; detail: string | null; bulk: boolean }[]>`
     WITH day AS (SELECT * FROM observation WHERE t_start >= ${start} AND t_start < ${end})
-    SELECT id, NULL::uuid[] AS ids, t_start, source, title,
-           coalesce(payload->>'from', app) AS detail,
+    SELECT id, NULL::uuid[] AS ids, t_start, source,
+           CASE WHEN kind = 'launch' THEN coalesce(title, url) ELSE title END AS title,
+           CASE WHEN kind = 'launch'
+             THEN 'opened from ' || replace(payload->>'from', '_', ' ')
+                  || coalesce(' ' || (payload->>'folder'), '') || coalesce(' "' || (payload->>'query') || '"', '')
+             ELSE coalesce(payload->>'from', app) END AS detail,
            coalesce((payload->>'bulk')::boolean, false) AS bulk
     FROM day WHERE kind IS NULL OR kind NOT IN ('sms', 'whatsapp')
     UNION ALL
