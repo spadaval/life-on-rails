@@ -160,14 +160,6 @@ data class Shell(
             )
         }
 
-        /** A thread's own state, as T3's thread lists rank it (`resolveThreadListV2Status`): a pending request first, then the run. */
-        fun state(t: JSONObject): ThreadState {
-            val request = t.optJSONObject("pendingRuntimeRequest")?.let { str(it, "kind") }
-            if (request == "user_input") return ThreadState.WAITING_ANSWER
-            if (request != null && request != "auth_refresh") return ThreadState.WAITING_APPROVAL
-            return runState(t)
-        }
-
         private fun runState(t: JSONObject): ThreadState {
             val status = str(t, "activityRunStatus") ?: str(t, "status")
             return when {

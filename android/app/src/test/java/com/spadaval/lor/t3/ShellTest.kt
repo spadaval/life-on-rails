@@ -143,14 +143,19 @@ class ShellTest {
 
     @Test
     fun stateRanksRequestsBeforeTheRun() {
-        fun t(status: String, activity: String?, request: String?) = JSONObject()
-            .put("status", status)
-            .put("activityRunStatus", activity ?: JSONObject.NULL)
-            .put("pendingRuntimeRequest", request?.let { JSONObject().put("kind", it) } ?: JSONObject.NULL)
-        assertEquals(ThreadState.WAITING_APPROVAL, Shell.state(t("running", "running", "file-change")))
-        assertEquals(ThreadState.WAITING_ANSWER, Shell.state(t("running", "running", "user_input")))
-        assertEquals(ThreadState.RUNNING, Shell.state(t("running", "running", "auth_refresh")))
-        assertEquals(ThreadState.RUNNING, Shell.state(t("idle", "preparing", null)))
-        assertEquals(ThreadState.IDLE, Shell.state(t("interrupted", null, null)))
+        // T3's resolveThreadListV2Status: a pending request first, then activityRunStatus, then status.
+        fun stateOf(status: String, activity: String?, request: String?): ThreadState {
+            val t = JSONObject(recorded.single { it.getString("title") == "Showcase replay" }.toString())
+                .put("status", status)
+                .put("activityRunStatus", activity ?: JSONObject.NULL)
+                .put("pendingRuntimeRequest", request?.let { JSONObject().put("id", "r").put("kind", it) } ?: JSONObject.NULL)
+            return snapshot.apply(updated(t)).byTitle("Showcase replay").state
+        }
+        assertEquals(ThreadState.WAITING_APPROVAL, stateOf("running", "running", "file-change"))
+        assertEquals(ThreadState.WAITING_ANSWER, stateOf("running", "running", "user_input"))
+        assertEquals(ThreadState.RUNNING, stateOf("running", "running", "auth_refresh"))
+        assertEquals(ThreadState.RUNNING, stateOf("idle", "preparing", null))
+        assertEquals(ThreadState.IDLE, stateOf("interrupted", null, null))
+        assertEquals(ThreadState.FAILED, stateOf("failed", null, null))
     }
 }

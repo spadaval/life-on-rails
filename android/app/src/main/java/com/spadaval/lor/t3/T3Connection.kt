@@ -4,31 +4,40 @@ import android.content.Context
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
+
+/** A call T3 refused or never answered; [message] is safe to show. */
+class T3CallFailed(message: String) : IOException(message)
 
 /**
  * One authenticated WebSocket to a paired T3 server, subscribed to the shell, reconnecting with
  * backoff when it drops. Each connection takes a fresh ticket and a fresh authoritative snapshot,
  * so nothing is resumed by sequence.
  *
- * Requests are matched to replies by id through the per-socket handler table; the shell
- * subscription is its one entry today. Unary calls (dispatchCommand, launchThread) are meant to go
- * in the same table in Increment 2.2; no call API exists yet.
+ * Requests are matched to replies by id through the per-socket handler table: the shell
+ * subscription, and every unary [call]. The actions ([respond], [answer], [send], [launch]) are
+ * unary calls on the open socket; they fail at once when no socket is open, and with the socket
+ * when it drops, and are never retried, since a resent command could act twice.
  *
  * Each [start] begins a new loop generation, and [stop] ends it. A loop writes [status] and [shell]
  * only through [ifCurrent], so a cancelled loop still blocked in a ticket request can never
@@ -60,9 +69,14 @@ class T3Connection(private val store: T3Store) {
     private var job: Job? = null
     /** The current loop's number; bumped by [start] and [stop]. Guarded by this object's lock. */
     private var generation = 0L
+    /** Whether someone wants the connection: set by [start], cleared by [stop]. Guarded by this object's lock. */
+    private var wanted = false
+    /** The open socket's event queue, where [call] puts its requests; null while no socket is open. */
+    private var calls: SendChannel<Event>? = null
 
     @Synchronized
     fun start() {
+        wanted = true
         if (job?.isActive == true) return
         val gen = ++generation
         job = scope.launch { loop(gen) }
@@ -70,6 +84,7 @@ class T3Connection(private val store: T3Store) {
 
     @Synchronized
     fun stop() {
+        wanted = false
         generation++
         job?.cancel()
         job = null
@@ -78,23 +93,73 @@ class T3Connection(private val store: T3Store) {
     }
 
     /**
-     * Pairs and stores the session, replacing any earlier one. Stops a running connection and does
-     * not start one: whoever shows the connection calls [start]. On failure nothing changes.
+     * Pairs and stores the session, replacing any earlier one. If the connection is wanted (started
+     * and not stopped since), it reconnects with the new session; otherwise it stays stopped, so a
+     * pairing that finishes after its screen closed starts nothing. On failure nothing changes.
      * Blocking: call from Dispatchers.IO.
      */
     fun pair(target: PairTarget) {
         val token = T3Auth.pair(target, "LoR launcher")
         synchronized(this) {
+            val restart = wanted
             stop()
             store.session = T3Store.Session(target.httpBase, token)
             _shell.value = Shell()
             _status.value = Status.Stopped
+            if (restart) start()
+        }
+    }
+
+    /** Approves or denies a pending approval. Returns the command's sequence. */
+    suspend fun respond(request: PendingRequest, approve: Boolean): Long =
+        Commands.sequence(call(Commands.DISPATCH, Commands.respond(request, approve)))
+
+    /** The questions of a pending `user_input` request, read from its thread's projection. */
+    suspend fun questions(request: PendingRequest): List<Question> =
+        Commands.questions(call(Commands.PROJECTION, JSONObject().put("threadId", request.threadId)), request.requestId)
+
+    /** Answers a pending question; see [Commands.answer]. Returns the command's sequence. */
+    suspend fun answer(request: PendingRequest, answers: Map<String, Any>): Long =
+        Commands.sequence(call(Commands.DISPATCH, Commands.answer(request, answers)))
+
+    /** Sends a follow-up message to a thread. Returns the command's sequence. */
+    suspend fun send(threadId: String, text: String): Long =
+        Commands.sequence(call(Commands.DISPATCH, Commands.message(threadId, text)))
+
+    /** What [launch] uses for [projectId] when given no model or runtime mode. */
+    suspend fun launchDefaults(projectId: String): LaunchDefaults =
+        Commands.launchDefaults(call(Commands.SERVER_CONFIG, JSONObject()), projectId)
+
+    /**
+     * Starts a thread in [projectId] with [text] as its first message. A null [model] or [runtimeMode]
+     * takes the project's or server's default ([launchDefaults]); with no default model it fails.
+     * Returns the new thread's id.
+     */
+    suspend fun launch(projectId: String, text: String, model: ModelSelection? = null, runtimeMode: String? = null): String {
+        val defaults = if (model == null || runtimeMode == null) launchDefaults(projectId) else null
+        val chosen = model ?: defaults?.model ?: throw T3CallFailed("The server has no default model; choose one.")
+        val payload = Commands.launch(projectId, text, chosen, runtimeMode ?: defaults!!.runtimeMode)
+        return Commands.launchedThreadId(call(Commands.LAUNCH, payload))
+    }
+
+    /** One unary request on the open socket; returns the Exit's value. */
+    suspend fun call(tag: String, payload: JSONObject): Any? {
+        val reply = CompletableDeferred<Any?>()
+        val queue = synchronized(this) { calls } ?: throw T3CallFailed("Not connected to T3.")
+        if (queue.trySend(Event.Call(tag, payload, reply)).isFailure) throw T3CallFailed("Not connected to T3.")
+        return try {
+            withTimeout(CALL_TIMEOUT_MS) { reply.await() }
+        } catch (e: TimeoutCancellationException) {
+            throw T3CallFailed("T3 did not answer within ${CALL_TIMEOUT_MS / 1000} s.")
         }
     }
 
     @Synchronized
     fun forget() {
+        // Still wanted after forgetting, so pairing again from the same screen reconnects.
+        val keep = wanted
         stop()
+        wanted = keep
         store.session = null
         _shell.value = Shell()
         _status.value = Status.NotPaired
@@ -135,6 +200,7 @@ class T3Connection(private val store: T3Store) {
         data object Open : Event
         data class Text(val text: String) : Event
         data class Closed(val reason: String) : Event
+        class Call(val tag: String, val payload: JSONObject, val reply: CompletableDeferred<Any?>) : Event
     }
 
     /** Runs one socket until it ends; returns why. [onLive] fires on the first snapshot. */
@@ -160,6 +226,8 @@ class T3Connection(private val store: T3Store) {
             }
         })
         val handlers = HashMap<String, (Rpc.Message) -> Unit>()
+        /** Replies still owed to callers; whatever is left fails when this socket ends. */
+        val owed = mutableListOf<CompletableDeferred<Any?>>()
         var nextId = 1L
         var ended: String? = null
         try {
@@ -183,6 +251,19 @@ class T3Connection(private val store: T3Store) {
                             }
                         }
                         socket.send(Rpc.request(id, "orchestration.subscribeShell", JSONObject()))
+                        if (!ifCurrent(gen) { calls = events }) return "stopped"
+                    }
+                    is Event.Call -> {
+                        val id = (nextId++).toString()
+                        val reply = event.reply
+                        owed += reply
+                        handlers[id] = { message ->
+                            if (message is Rpc.Exit) {
+                                if (message.error == null) reply.complete(message.value) else reply.completeExceptionally(T3CallFailed(message.error))
+                                owed -= reply
+                            }
+                        }
+                        if (!socket.send(Rpc.request(id, event.tag, event.payload))) reply.completeExceptionally(T3CallFailed("The connection is closing."))
                     }
                     is Event.Text -> for (message in Rpc.decode(event.text)) {
                         when (message) {
@@ -205,6 +286,14 @@ class T3Connection(private val store: T3Store) {
             return "closed"
         } finally {
             socket.cancel()
+            synchronized(this) { if (calls === events) calls = null }
+            events.close()
+            val lost = T3CallFailed("The connection dropped before T3 answered.")
+            for (reply in owed) reply.completeExceptionally(lost)
+            while (true) {
+                val left = events.tryReceive().getOrNull() ?: break
+                if (left is Event.Call) left.reply.completeExceptionally(lost)
+            }
         }
     }
 
@@ -214,6 +303,7 @@ class T3Connection(private val store: T3Store) {
         private const val INITIAL_BACKOFF_MS = 1_000L
         private const val MAX_BACKOFF_MS = 30_000L
         private const val REJECTED = "rejected"
+        private const val CALL_TIMEOUT_MS = 30_000L
 
         /** Exception text without anything from a URL's query, where the ticket rides. */
         fun describe(t: Throwable): String = (t.message ?: t.javaClass.simpleName).replace(Regex("\\?\\S*"), "")

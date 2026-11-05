@@ -144,7 +144,7 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
     - Awaited background work, and `blockedOnThreadWait`, show as running; T3 shows "waiting".
     - `pendingGuestMessageCount > 0` isn't mapped; T3 shows "request".
 
-#### 2.2 Act on threads. Status: active (2026-11-05)
+#### 2.2 Act on threads. Status: active (built and checked, review pending)
 
 - **Goal.** Use `dispatchCommand` to approve or deny an approval, answer a question, and send a follow-up. Use `launchThread` to start a thread in a named project.
 - **Done when.** Against a scratch server, each action changes the thread as T3's own UI shows it, using a free or cheapest-model provider.
@@ -152,6 +152,31 @@ Sumeet installs the 1.1 APK and Lawnchair's latest release APK from its GitHub r
 - **Carried from 2.1's review.**
   - A late pairing can stop a newer screen's connection. `pair()` should restart only a loop that was running.
   - `Shell.state()` duplicates the ranking that `threads` uses. Delete it, and point the tests at `threads`.
+- **2026-11-05: built.** In package `t3`:
+  - `Commands.kt`: pure encoders for the commands and decoders for their replies.
+  - `T3Connection`: `call(tag, payload)` is a unary request through the socket's handler table, like the shell subscription. It fails at once with no open socket, fails when the socket drops, times out after 30 s, and is never retried, since a resent command could act twice. On top of it are `respond(request, approve)`, `questions(request)`, `answer(request, answers)`, `send(threadId, text)`, `launchDefaults(projectId)` and `launch(projectId, text, model?, runtimeMode?)`. Increment 3's cards call these.
+  - `Rpc.Exit.error` is now the failure's message, for example "Runtime request … is resolved.", rather than the raw cause.
+  - The debug screen: tap a thread to open its actions. An approval gets Approve and Deny. A question loads its choices from the thread and offers a typed answer. Every thread gets a follow-up field. A launch form picks a project from the shell's list and shows that project's defaults. It also takes an optional `instance/model` and an "ask before acting" box for `approval-required`.
+  - Both items carried from 2.1 are fixed. `pair()` reconnects only while the connection is wanted (started and not stopped since), so a late pairing starts nothing after its screen closes. `forget()` keeps that flag, so pairing again on the same screen reconnects. `Shell.state()` is gone, and its test goes through `threads`.
+  - **The command shapes,** each confirmed against the scratch server. They are ported from T3's `packages/client-runtime/src/operations/commands.ts`.
+    - Approve or deny: `dispatchCommand {type:"runtime-request.respond", commandId, threadId, requestId, decision:"accept"|"decline"}`. `threadId` is the thread that owns the request, which for a rolled-up request is the child's (`PendingRequest.threadId`).
+    - Answer: the same command, with `answers: {<questionId>: <option value, else its label, or typed text; a list for multi-select>}` in place of `decision`. The questions are not in the shell. They come from `getThreadProjection {threadId}`, in the `turnItems` entry with `type:"user_input_request"` and the matching `requestId`.
+    - Follow-up: `dispatchCommand {type:"message.dispatch", commandId, createdBy:"user", creationSource:"mobile", threadId, messageId, text, attachments:[], deliveryIntent:"auto", dispatchMode:{type:"start_immediately"}}`. This is what T3's composer sends by default. It starts a run on an idle thread, and the server decides what an active thread does with it.
+    - Launch: `launchThread {commandId, creationSource:"mobile", projectId, title, generateTitle:true, modelSelection:{instanceId, model[, options]}, runtimeMode, interactionMode:"default", workspaceStrategy:{type:"root"}, initialMessage:{messageId, text, attachments:[]}}`. The title follows T3's `deriveThreadTitleSeed`: whitespace collapsed and cut at 50 characters plus "...". The server makes the thread id (`thread:project:<projectId>:<uuid>`) and returns it as `threadId`.
+    - Replies: dispatch returns `{sequence}`. Launch returns `{threadId, projection, resumed, sequence}`. A refusal is an Exit `Failure` whose cause holds `Fail {error:{_tag:"OrchestrationV2DispatchCommandError", message}}`.
+  - **The model and runtime mode of a launch.** If the caller names neither, the launcher reads `server.getConfig` and takes `settings.projectSettingsOverrides[projectId].defaultModelSelection`. A null override still counts. Without an override it takes `settings.defaultModelSelection`, and when that is null, `settings.fallbackModelSelection`. The runtime mode comes from the project override's `defaultRuntimeMode`, else `settings.defaultRuntimeMode`. This is the settings part of what T3's new-task flow resolves (`resolveProjectSettings`). The launcher does not copy T3's last fallbacks, the sticky last-used model and the first available model. With no default it fails with "The server has no default model", and does not guess. A fresh dev server has no default, so the scratch server was given one with `server.updateSettings`. Check that buildbot's live server has a default before quick send relies on it.
+  - **Proof.**
+    - 26 JVM tests pass on a fresh boat build after the last code change; 8 of them are new, in `CommandsTest`. The command tests compare each payload with a request the server accepted, recorded in `src/test/resources/t3/` (`dispatch.ndjson`, `launch.ndjson`, `projection-question.ndjson`, `server-config.ndjson`), ids aside. They also decode the recorded replies, including a refusal. Two mutations made two of the tests fail: the follow-up's `dispatchMode`, and the launch's `interactionMode`.
+    - On the emulator, against the scratch server at `10.0.2.2`, after pairing again from the debug screen, the app did each action. `getThreadProjection` and the shell, read over the server's API, showed the result each time:
+      1. It launched two Replay `approval` threads in `approval-required` mode, and both showed "Waiting for approval". Approve left the request `resolved` with decision `accept`, and the run completed with "Created the requested probe file." Deny gave `decline`. Both threads showed Idle in the app.
+      2. It launched a Replay `question` thread. The form showed the question and its two options. Answering "UI flexibility" stored `answers: {"schema_vs_ui_flexibility": "UI flexibility"}`, and the run completed.
+      3. A follow-up to the idle approved thread added the user message and started a second run. That run asked again, and the app showed "Waiting for approval".
+      4. A launch in the project `launcher-scratch`, added for this check, with no model named, used the project override `devReplay/multi-turn`. The thread came out with `creationSource: mobile` and listed under that project.
+    - The access token, tickets and OAuth calls appear nowhere in logcat.
+  - **Learned.**
+    - The whole thread row was clickable, which merged its buttons into one accessibility node, so neither agent-device nor TalkBack could reach them. Only the heading is clickable now.
+    - Commands are not idempotent across reconnects, so the client never resends one. A caller that sees "dropped before T3 answered" doesn't know whether the command ran, and should read the shell before retrying.
+    - `t3 project add --base-dir .t3 <path>` adds a project to the scratch server.
 
 ### Increment 3: A home Sumeet can live in, with the agent page. Status: backlog, blocked by Increment 1
 

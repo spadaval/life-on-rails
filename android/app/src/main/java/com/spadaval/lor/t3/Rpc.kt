@@ -15,7 +15,7 @@ import org.json.JSONObject
 object Rpc {
     sealed interface Message
     data class Chunk(val requestId: String, val values: List<JSONObject>) : Message
-    /** `value` on success; `error` is the encoded cause on failure. */
+    /** `value` on success; on failure `error` is the cause's message, or its tag when it has none. */
     data class Exit(val requestId: String, val value: Any?, val error: String?) : Message
     data class Defect(val defect: String) : Message
     data object Pong : Message
@@ -40,10 +40,22 @@ object Rpc {
         "Exit" -> {
             val exit = m.getJSONObject("exit")
             if (exit.optString("_tag") == "Success") Exit(m.get("requestId").toString(), exit.opt("value"), null)
-            else Exit(m.get("requestId").toString(), null, exit.opt("cause")?.toString() ?: "failed")
+            else Exit(m.get("requestId").toString(), null, failure(exit.opt("cause")))
         }
         "Defect" -> Defect(m.opt("defect")?.toString() ?: "")
         "Pong" -> Pong
         else -> Other(tag)
+    }
+
+    /** A cause is an array of `Fail {error}`, `Die {defect}` and `Interrupt`; the first one that says something wins. */
+    private fun failure(cause: Any?): String {
+        val parts = (cause as? JSONArray)?.let { a -> List(a.length()) { a.opt(it) } } ?: listOfNotNull(cause)
+        for (part in parts) {
+            val o = part as? JSONObject ?: continue
+            val error = o.optJSONObject("error") ?: o.optJSONObject("defect")
+            val text = error?.optString("message")?.ifEmpty { null } ?: error?.optString("_tag")?.ifEmpty { null } ?: o.opt("defect")?.toString()
+            if (!text.isNullOrEmpty()) return text
+        }
+        return cause?.toString() ?: "failed"
     }
 }
