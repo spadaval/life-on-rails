@@ -250,12 +250,22 @@ class HomeStore(private val context: Context) {
         Log.i(SEARCH_TAG, "read ${fresh.size} shortcuts${pkg?.let { " of $it" } ?: ""} in ${(System.nanoTime() - start) / 1_000_000} ms (${_search.value.shortcuts.size} in all)")
     }
 
-    /** Works out who takes a search elsewhere (launcher polish 5.1, R5), logging only a change. */
+    /**
+     * Works out who takes a search elsewhere (launcher polish 5.1, R5), and which settings pages
+     * this phone opens (5.3), logging only a change.
+     */
     private fun resolveTargets() = onSources {
-        val t = searchTargets(context.packageManager)
+        val pm = context.packageManager
+        val t = searchTargets(pm)
         if (t != _search.value.targets) {
             _search.value = _search.value.copy(targets = t)
             Log.i(SEARCH_TAG, "search targets: web ${t.web ?: "none"}, store ${t.store ?: "none"}")
+        }
+        val (kept, dropped) = SettingsPage.ALL.partition { it.lor || pm.resolveActivity(Intent(it.action), 0) != null }
+        val settings = kept.map { SettingsPage.found<Any>(it, it) }
+        if (settings.map { it.key } != _search.value.settings.map { it.key }) {
+            _search.value = _search.value.copy(settings = settings)
+            Log.i(SEARCH_TAG, "settings pages: ${kept.size} kept${if (dropped.isEmpty()) "" else ", dropped ${dropped.joinToString { it.title }}"}")
         }
     }
 

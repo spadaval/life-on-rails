@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,12 +21,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.cos
+import kotlin.math.sin
 
 /*
  * Search results drawn as rows (launcher polish 5.2 on): shortcuts and conversations, settings
@@ -40,6 +46,7 @@ internal fun openFound(value: Any, at: At, home: HomeContext) {
     when (value) {
         is HomeApp -> home.actions.open(value, at)
         is SearchShortcut -> home.actions.openShortcut(value.owner, value.hit.info, at)
+        is SettingsPage -> home.actions.openSetting(value, at.query.orEmpty())
     }
 }
 
@@ -60,6 +67,27 @@ internal fun ResultRow(value: Any, go: Boolean, at: At, home: HomeContext) {
                 ShortcutIcon(value, home)
                 RowText(value.hit.label, if (value.hit.conversation) "Chat · ${value.owner.label}" else value.owner.label)
             }
+            is SettingsPage -> {
+                Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) { Gear() }
+                RowText(value.title, "Settings")
+            }
+        }
+    }
+}
+
+/** A still gear in the muted colour, drawn like the no-results rows' glyphs (3.4). */
+@Composable
+private fun Gear() {
+    Canvas(Modifier.size(22.dp)) {
+        val w = size.width
+        val line = Stroke(width = 1.6.dp.toPx())
+        drawCircle(Muted, radius = 0.16f * w, center = center, style = line)
+        drawCircle(Muted, radius = 0.32f * w, center = center, style = line)
+        for (k in 0 until 8) {
+            val a = Math.toRadians(k * 45.0)
+            val c = Offset(center.x + (0.32f * w * cos(a)).toFloat(), center.y + (0.32f * w * sin(a)).toFloat())
+            val e = Offset(center.x + (0.46f * w * cos(a)).toFloat(), center.y + (0.46f * w * sin(a)).toFloat())
+            drawLine(Muted, c, e, 2.4.dp.toPx(), StrokeCap.Round)
         }
     }
 }

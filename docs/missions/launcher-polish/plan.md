@@ -853,7 +853,7 @@ Agreed with Sumeet, 2026-11-05:
     - A work-profile shortcut was not seen: the work Clock's New timer didn't show, probably because the profile wasn't running. A locked profile is left out by design.
   - Reviewed with the increment.
 
-#### 5.3 Settings pages. Status: todo
+#### 5.3 Settings pages. Status: done
 - **Goal.** "wifi", "wfi" or "bluetooth" opens that page of Android's settings.
   - `home/SettingsPages.kt`: the table (title, aliases, intent), about 30 rows, with LoR's Home settings and LoR app settings among them. Kept rows are resolved with the app list (the answers' table). Rows: a still gear glyph like 3.4's, the title, and "Settings" under it in the muted colour.
   - Opening starts the intent; it records a launch with `from: search`, `query`, and the package that took it (`takenBy`), as the web row does. LoR's own rows record nothing (nothing left the launcher).
@@ -862,6 +862,15 @@ Agreed with Sumeet, 2026-11-05:
   - **JVM tests:** every title is unique, and each alias finds its row ("wifi", "bt", "dark theme"); "wfi" finds Wi-Fi.
   - **On `T3_Phone_API35`:** "wfi" shows Wi-Fi and a tap opens Wi-Fi settings; "bluetooth" opens Bluetooth; "dark" finds Display; "home settings" opens LoR's Home settings; the queued launch for Wi-Fi has `from: search` and `package: com.android.settings`. The rows the emulator dropped (if any) are recorded from the `LorSearch` line. Which rows One UI keeps is **[real Fold]**.
   - `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed: `home/SettingsPages.kt` (31 rows: 29 of Android's pages, Home settings and LoR app settings, each with a title, aliases and its `Settings.ACTION_*` intent), resolved in `HomeStore.resolveTargets` with the search targets (after each app-list load, package change and resume; one `LorSearch` line when the kept set changes), drawn by `ResultRow` with a still gear, and opened by `HomeActions.openSetting`. Starting an intent from search and recording its launch is one helper in `HomeActivity` (`startFromSearch`), which the web and store rows now use too. `SettingsPagesTest` (2 cases); 160 tests pass on boat.
+  - **On `T3_Phone_API35`:**
+    - `LorSearch`: `settings pages: 30 kept, dropped Night Light` (this image has no `NIGHT_DISPLAY_SETTINGS` page);
+    - "wfi" showed WiFiAnalyzer (Apps, in order, with the Go selection), Settings' own Wi-Fi shortcut (Shortcuts), and the Wi-Fi page (Settings) (screenshot). A tap on the page opened `Settings$WifiSettingsActivity`, and `queue.db` held a launch with `from: search`, `query: wfi`, `package: com.android.settings`, `label: Settings`;
+    - "bluetooth" showed the Bluetooth page; a tap opened `Settings$ConnectedDeviceDashboardActivity`, where Android 15 sends `BLUETOOTH_SETTINGS`, and recorded a launch with `query: bluetooth`;
+    - "dark" found Display; "home settings" found Home settings, a tap opened `HomeSettingsActivity`, and no launch was queued for it.
+  - **Choices.** A page with the same name as a shortcut Android's Settings app publishes (Wi-Fi) shows twice, once in each block: they are different kinds and both open the page, so neither is dropped until it is felt. Which rows One UI keeps is **[real Fold]**.
+  - Reviewed with the increment.
 
 #### 5.4 A calculator and units. Status: todo
 - **Goal.** "12*7" and "5 km" are answered in the drawer.

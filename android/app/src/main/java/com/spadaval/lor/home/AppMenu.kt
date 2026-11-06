@@ -82,6 +82,9 @@ interface HomeActions {
     /** Writes the drawer's view: a view, not a change to home, so it shows no Undo and drops the pending one. */
     fun setView(view: DrawerView)
 
+    /** Opens a settings page search found (launcher polish 5.3), recording a launch unless it is LoR's own. */
+    fun openSetting(page: SettingsPage, query: String)
+
     /** Takes a search that matched no app somewhere else ([Elsewhere]): the web, a store, or quick send. */
     fun elsewhere(way: Elsewhere, query: String)
 

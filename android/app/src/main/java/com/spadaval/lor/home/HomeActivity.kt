@@ -20,6 +20,7 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.spadaval.lor.LorApp
+import com.spadaval.lor.MainActivity
 import com.spadaval.lor.collect.Launch
 import com.spadaval.lor.collect.LaunchFrom
 import com.spadaval.lor.collect.Launches
@@ -218,20 +219,21 @@ class HomeActivity : ComponentActivity() {
             lifecycleScope.launch { model.edit(undoable = false) { it.copy(drawer = it.drawer.copy(view = view)) } }
         }
 
+        override fun openSetting(page: SettingsPage, query: String) {
+            when (page.action) {
+                SettingsPage.LOR_HOME -> return HomeSettingsActivity.open(this@HomeActivity)
+                SettingsPage.LOR_APP -> return MainActivity.open(this@HomeActivity, MainActivity.SETTINGS)
+            }
+            startFromSearch(Intent(page.action), query, "${page.title} can't be opened.")
+        }
+
         override fun elsewhere(way: Elsewhere, query: String) {
             val intent = intentFor(way, query)
             if (intent == null) {
                 QuickSend.open(this@HomeActivity, QuickSend.From.HOME, text = query.trim())
                 return
             }
-            try {
-                startActivity(Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                // As a link from the agent page: the app that took it, or null when Android asked.
-                val pkg = takenBy(packageManager, intent)
-                Launches.record(this@HomeActivity, Launch(LaunchFrom.SEARCH, pkg, label = pkg?.let { Launches.label(this@HomeActivity, it) }, query = query))
-            } catch (e: RuntimeException) {
-                toast("That search can't be opened.")
-            }
+            startFromSearch(intent, query, "That search can't be opened.")
         }
 
         override fun restore() {
@@ -240,6 +242,21 @@ class HomeActivity : ComponentActivity() {
                     .onSuccess { toast("layout.json is put right. The broken one is layout.json.broken.") }
                     .onFailure { toast("Can't: ${it.message ?: "the layout couldn't be put right"}.") }
             }
+        }
+    }
+
+    /**
+     * Starts [intent] from search (a settings page, the web or store, a contact): a launch with
+     * `from: search`, the [query], and the package that took it, as a link from the agent page
+     * (null when Android asked which).
+     */
+    private fun startFromSearch(intent: Intent, query: String, failure: String) {
+        try {
+            startActivity(Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            val pkg = takenBy(packageManager, intent)
+            Launches.record(this, Launch(LaunchFrom.SEARCH, pkg, label = pkg?.let { Launches.label(this, it) }, query = query))
+        } catch (e: RuntimeException) {
+            toast(failure)
         }
     }
 
