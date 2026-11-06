@@ -83,6 +83,19 @@ class LaunchesTest {
     }
 
     @Test
+    fun aSearchThatWentToTheWebHasItsQueryAndNoActivity() {
+        // Launcher polish 3.4: the app that took ACTION_WEB_SEARCH, or none when Android asked.
+        val web = Launch(LaunchFrom.SEARCH, "com.google.android.googlequicksearchbox", label = "Google", query = "zzqx")
+        val o = Launches.observation("pixel-9a", at, web)
+        val p = o.getJSONObject("payload")
+        assertEquals(mapOf<String, Any?>("kind" to "launch", "from" to "search", "package" to "com.google.android.googlequicksearchbox", "label" to "Google", "query" to "zzqx"), p.keys().asSequence().associateWith { p.get(it) })
+        assertTrue(o.isNull("url"))
+        val asked = Launches.observation("pixel-9a", at, web.copy(pkg = null, label = null))
+        assertTrue(asked.isNull("app"))
+        assertEquals("zzqx", asked.getJSONObject("payload").getString("query"))
+    }
+
+    @Test
     fun aShortcutLaunchCarriesTheShortcutIdAndWhereTheMenuWasOpened() {
         val app = Launch(LaunchFrom.DOCK, "com.google.android.deskclock", "com.android.deskclock.DeskClock", "Clock")
         val withShortcut = app.copy(shortcut = "launch_timer")

@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.spadaval.lor.LorApp
 import com.spadaval.lor.collect.Launch
+import com.spadaval.lor.collect.LaunchFrom
 import com.spadaval.lor.collect.Launches
 import com.spadaval.lor.quicksend.QuickSend
 import com.spadaval.lor.ui.LorTheme
@@ -161,6 +162,22 @@ class HomeActivity : ComponentActivity() {
                 model.edit(change)
                     .onSuccess { if (done != null) toast(done) }
                     .onFailure { toast("Can't: ${it.message ?: "the layout couldn't be changed"}.") }
+            }
+        }
+
+        override fun elsewhere(way: Elsewhere, query: String) {
+            val intent = way.intent
+            if (intent == null) {
+                QuickSend.open(this@HomeActivity, QuickSend.From.HOME, text = query.trim())
+                return
+            }
+            try {
+                startActivity(Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                // As a link from the agent page: the app that took it, or null when Android asked.
+                val pkg = takenBy(packageManager, intent)
+                Launches.record(this@HomeActivity, Launch(LaunchFrom.SEARCH, pkg, label = pkg?.let { Launches.label(this@HomeActivity, it) }, query = query))
+            } catch (e: RuntimeException) {
+                toast("That search can't be opened.")
             }
         }
 

@@ -23,18 +23,23 @@ object QuickSend {
     enum class From { AGENT, HOME, TILE, ASSIST }
 
     private const val EXTRA_FROM = "from"
+    private const val EXTRA_TEXT = "text"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val _sending = MutableStateFlow(false)
     /** True while a send is under way; the sheet can't be closed meanwhile, and won't send again. */
     val sending: StateFlow<Boolean> = _sending.asStateFlow()
 
-    fun intent(context: Context, from: From): Intent =
+    /** [text], when given, is what the sheet's field starts with (a search that matched no app, launcher polish 3.4). */
+    fun intent(context: Context, from: From, text: String? = null): Intent =
         Intent(context, QuickSendActivity::class.java)
             .putExtra(EXTRA_FROM, from.name)
+            .apply { text?.let { putExtra(EXTRA_TEXT, it) } }
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
-    fun open(context: Context, from: From) = context.startActivity(intent(context, from))
+    fun open(context: Context, from: From, text: String? = null) = context.startActivity(intent(context, from, text))
+
+    fun text(intent: Intent?): String = intent?.getStringExtra(EXTRA_TEXT).orEmpty()
 
     fun from(intent: Intent?): From =
         intent?.getStringExtra(EXTRA_FROM)?.let { name -> From.entries.firstOrNull { it.name == name } } ?: From.AGENT

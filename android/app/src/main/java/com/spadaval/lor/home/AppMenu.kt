@@ -67,6 +67,9 @@ interface HomeActions {
     /** Applies [change] to `layout.json`; a refusal shows as a toast. [done] is said on success. */
     fun edit(done: String?, change: (LayoutFile) -> LayoutFile)
 
+    /** Takes a search that matched no app somewhere else ([Elsewhere]): the web, a store, or quick send. */
+    fun elsewhere(way: Elsewhere, query: String)
+
     /** Puts a broken `layout.json` right ([HomeStore.restore]); the outcome shows as a toast. */
     fun restore()
 }

@@ -66,6 +66,8 @@ import com.spadaval.lor.ui.LorTheme
 class QuickSendActivity : ComponentActivity() {
     private lateinit var connection: T3Connection
     private var from by mutableStateOf(QuickSend.From.AGENT)
+    /** What the field starts with. */
+    private var initial by mutableStateOf("")
     /** Bumped by a new intent, so the sheet starts over. */
     private var opened by mutableStateOf(0)
 
@@ -74,14 +76,16 @@ class QuickSendActivity : ComponentActivity() {
         enableEdgeToEdge(SystemBarStyle.dark(AndroidColor.TRANSPARENT), SystemBarStyle.dark(AndroidColor.TRANSPARENT))
         connection = T3Connection.get(applicationContext)
         from = QuickSend.from(intent)
+        initial = QuickSend.text(intent)
         opened = savedInstanceState?.getInt(OPENED) ?: 0
-        setContent { LorTheme { Sheet(connection, from, opened) { finish() } } }
+        setContent { LorTheme { Sheet(connection, from, initial, opened) { finish() } } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent) // so a recreated sheet reads the latest opening
         from = QuickSend.from(intent)
+        initial = QuickSend.text(intent)
         opened++
     }
 
@@ -123,7 +127,7 @@ private val Red = Color(0xFFE2806F)
 private val Small = TextStyle(color = Muted, fontSize = 12.sp)
 
 @Composable
-private fun Sheet(connection: T3Connection, from: QuickSend.From, opened: Int, close: () -> Unit) {
+private fun Sheet(connection: T3Connection, from: QuickSend.From, initial: String, opened: Int, close: () -> Unit) {
     val context = LocalContext.current.applicationContext
     val status by connection.status.collectAsState()
     val shell by connection.shell.collectAsState()
@@ -131,7 +135,7 @@ private fun Sheet(connection: T3Connection, from: QuickSend.From, opened: Int, c
     val captured by Capture.current.collectAsState()
     val capture = if (from == QuickSend.From.ASSIST) captured else null
     // Saved, so a fold, unfold or rotation keeps a half-typed prompt; a new opening starts over.
-    var text by rememberSaveable(opened) { mutableStateOf("") }
+    var text by rememberSaveable(opened) { mutableStateOf(initial) }
     var picked by rememberSaveable(opened) { mutableStateOf<String?>(null) }
     var attach by rememberSaveable(opened) { mutableStateOf(true) }
     var failure by rememberSaveable(opened) { mutableStateOf<String?>(null) }

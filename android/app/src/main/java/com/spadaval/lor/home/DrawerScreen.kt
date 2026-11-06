@@ -46,6 +46,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -138,6 +139,10 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, ui: HomeUi, home: H
     val searching = ui.query.isNotBlank()
     val at = if (searching) At(LaunchFrom.SEARCH, query = ui.query) else At(LaunchFrom.DRAWER)
     val results = remember(apps, ui.query) { AppSearch.search(ui.query, apps) { it.label } }
+    // While the app list loads (launcher polish 3.2), nothing matches, but there's nothing to say yet.
+    val nothing = searching && results.isEmpty() && apps.isNotEmpty()
+    val pm = LocalContext.current.packageManager
+    val ways = remember(nothing, ui.query) { if (nothing) elsewhere(pm, ui.query) else emptyList() }
     val saved = home.file?.drawer?.view ?: DrawerView.SECTIONS
     // Shown at once; the file catches up when the write lands.
     var view by remember(saved) { mutableStateOf(saved) }
@@ -168,16 +173,17 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, ui: HomeUi, home: H
                 focusedBorderColor = Muted, unfocusedBorderColor = Line,
             ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { results.firstOrNull()?.let { home.actions.open(it, at) } }),
+            keyboardActions = KeyboardActions(onGo = {
+                results.firstOrNull()?.let { home.actions.open(it, at) } ?: ways.firstOrNull()?.let { home.actions.elsewhere(it, ui.query) }
+            }),
         )
         if (!searching) {
             ViewSwitch(view) { v ->
                 view = v
                 home.actions.edit(null) { it.copy(drawer = it.drawer.copy(view = v)) }
             }
-        } else if (results.isEmpty() && apps.isNotEmpty()) {
-            // While the app list loads (launcher polish 3.2), nothing matches, but there's nothing to say yet.
-            Text("No app called \"${ui.query.trim()}\".", style = TextStyle(color = Muted, fontSize = 14.sp), modifier = Modifier.padding(24.dp))
+        } else if (nothing) {
+            NoResults(ui.query, ways) { home.actions.elsewhere(it, ui.query) }
         }
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val columns = if (maxWidth >= 600.dp) 6 else 4
