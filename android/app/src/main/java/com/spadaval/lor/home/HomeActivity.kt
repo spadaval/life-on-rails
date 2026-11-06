@@ -189,6 +189,18 @@ class HomeActivity : ComponentActivity() {
 
         override fun settings() = HomeSettingsActivity.open(this@HomeActivity)
 
+        override fun calendar() {
+            // ACTION_VIEW on the calendar provider's time/<millis>, which calendar apps open at that day.
+            val intent = Intent(Intent.ACTION_VIEW, android.provider.CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build())
+            try {
+                startActivity(Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                val pkg = takenBy(packageManager, intent)
+                Launches.record(this@HomeActivity, Launch(LaunchFrom.HOME, pkg, label = pkg?.let { Launches.label(this@HomeActivity, it) }))
+            } catch (e: RuntimeException) {
+                fail("No calendar app can open today.")
+            }
+        }
+
         override fun wallpaper() {
             try {
                 startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Wallpaper"))

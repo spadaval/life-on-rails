@@ -18,7 +18,11 @@ data class HomeLook(
     /** Apps with a monochrome layer draw it in LoR's colours (6.5). */
     val themedIcons: Boolean = false,
     val iconShape: IconShape = IconShape.SYSTEM,
+    /** What home's header shows (launcher polish 6.7). */
+    val header: Header = Header.DATE,
 ) {
+    enum class Header(val id: String, val title: String) { DATE("date", "Date"), CLOCK("clock", "Clock"), NONE("none", "None") }
+
     /** The mask for adaptive icons; pack icons keep their own shape. */
     enum class IconShape(val id: String, val title: String) { SYSTEM("system", "System"), SQUARE("square", "Square"), CIRCLE("circle", "Circle") }
 
@@ -48,6 +52,7 @@ data class HomeLook(
         iconPack?.let { put("iconPack", it) }
         if (themedIcons) put("themedIcons", true)
         if (iconShape != IconShape.SYSTEM) put("iconShape", iconShape.id)
+        if (header != Header.DATE) put("header", header.id)
     }
 
     companion object {
@@ -65,7 +70,7 @@ data class HomeLook(
 
         fun parse(v: Any): HomeLook {
             if (v !is JSONObject) throw LayoutError("look: must be an object")
-            v.only("look", "grid", "labels", "labelSize", "iconSize", "iconPack", "themedIcons", "iconShape")
+            v.only("look", "grid", "labels", "labelSize", "iconSize", "iconPack", "themedIcons", "iconShape", "header")
             var grid = Grid()
             if (v.has("grid")) {
                 val g = v.opt("grid") as? JSONObject ?: throw LayoutError("look.grid: must be an object")
@@ -94,6 +99,10 @@ data class HomeLook(
                     IconShape.entries.firstOrNull { it.id == v.opt("iconShape") }
                         ?: throw LayoutError("look.iconShape: must be one of ${IconShape.entries.joinToString { it.id }}")
                 } else IconShape.SYSTEM,
+                header = if (v.has("header")) {
+                    Header.entries.firstOrNull { it.id == v.opt("header") }
+                        ?: throw LayoutError("look.header: must be one of ${Header.entries.joinToString { it.id }}")
+                } else Header.DATE,
             )
         }
 

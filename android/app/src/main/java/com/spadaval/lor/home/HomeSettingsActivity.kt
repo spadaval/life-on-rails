@@ -333,6 +333,9 @@ private fun LookRows(look: HomeLook, set: (String, HomeLook) -> Unit) {
         Choices("Icon size", "In dp, on home, in the dock, folders and the drawer", HomeLook.ICON_SIZES.step(4).toList(), look.iconSize) {
             set("Icons are $it dp.", look.copy(iconSize = it))
         }
+        Options("Header", "Over home's first page; a tap opens the calendar", HomeLook.Header.entries.map { it.title }, look.header.ordinal) {
+            set("The header shows ${HomeLook.Header.entries[it].title.lowercase()}.", look.copy(header = HomeLook.Header.entries[it]))
+        }
         IconPackRow(look.iconPack) { set(if (it == null) "Apps draw their own icons." else "Icons come from the pack.", look.copy(iconPack = it)) }
         Toggle("Themed icons", "Apps with a monochrome icon draw it in LoR's colours", look.themedIcons) {
             set(if (look.themedIcons) "Themed icons are off." else "Themed icons are on.", look.copy(themedIcons = !look.themedIcons))

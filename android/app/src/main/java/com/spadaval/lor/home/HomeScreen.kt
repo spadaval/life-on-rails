@@ -335,7 +335,12 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
         val wide = maxWidth >= 600.dp
         val widthDp = maxWidth.value
         // Only home's first page has the date; the pages after it start where its grid starts.
-        val header = @Composable { if (n == 0) DateHeader(if (wide) 40 else 30) else Spacer(Modifier.height(if (wide) 0.dp else 104.dp)) }
+        // Only home's first page has the header (launcher polish 6.7: date, clock or none); the pages after it start where its grid would.
+        val headerStyle = LocalHomeLook.current.header
+        val header = @Composable {
+            if (n == 0 && headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar)
+            else Spacer(Modifier.height(if (wide || headerStyle == HomeLook.Header.NONE) 24.dp else 104.dp))
+        }
         val body = @Composable { mod: Modifier ->
             Column(mod) {
                 val columns = LocalHomeLook.current.columnsFor(widthDp).home
@@ -443,42 +448,6 @@ private fun HomeNote(title: String, detail: String?, onClick: (() -> Unit)? = nu
     }
 }
 
-@Composable
-private fun DateHeader(size: Int) {
-    val today = rememberToday().format(DateTimeFormatter.ofPattern("EEEE d MMMM"))
-    Text(today,style = labelStyle.copy(fontSize = size.sp), modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 28.dp))
-}
-
-/**
- * Today's date, read again when home resumes and when the system says the date, time or zone
- * changed, so the header turns over at midnight while home is on screen.
- */
-@Composable
-private fun rememberToday(): LocalDate {
-    val context = LocalContext.current
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var today by remember { mutableStateOf(LocalDate.now()) }
-    DisposableEffect(context, lifecycle) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(c: Context, intent: Intent) {
-                today = LocalDate.now()
-            }
-        }
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_DATE_CHANGED)
-            addAction(Intent.ACTION_TIME_CHANGED)
-            addAction(Intent.ACTION_TIMEZONE_CHANGED)
-        }
-        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        val resumed = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) today = LocalDate.now() }
-        lifecycle.addObserver(resumed)
-        onDispose {
-            context.unregisterReceiver(receiver)
-            lifecycle.removeObserver(resumed)
-        }
-    }
-    return today
-}
 
 /** Home's items in reading order, [columns] to a row: Launcher3's cells without coordinates. */
 @Composable

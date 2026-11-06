@@ -69,6 +69,9 @@ interface HomeActions {
     /** The system's wallpaper picker. */
     fun wallpaper()
 
+    /** The calendar at today, from home's header (launcher polish 6.7). */
+    fun calendar()
+
     /**
      * Applies [change] to `layout.json`; a refusal shows as a toast. On success the Undo bar says
      * [done], or "Home changed." (launcher polish 4.2).

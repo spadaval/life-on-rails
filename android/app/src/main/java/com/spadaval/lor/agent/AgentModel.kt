@@ -38,7 +38,7 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     private val prefs = Prefs(context)
 
     /** LoR's last good reply; kept for the process, so a recreated page starts with it (greyed until a read succeeds). */
-    var lor by mutableStateOf(lastHome)
+    var lor by mutableStateOf(last.value)
         private set
     /** Why the last read of LoR failed, in plain words ([LorClient.describe]); the last good [lor] stays shown. */
     var lorError by mutableStateOf<String?>(null)
@@ -97,7 +97,7 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
         val url = prefs.serverUrl
         val device = prefs.deviceName
         try {
-            lor = withContext(Dispatchers.IO) { LorClient(url).home(device) }.also { lastHome = it }
+            lor = withContext(Dispatchers.IO) { LorClient(url).home(device) }.also { _last.value = it }
             lorError = null
         } catch (e: CancellationException) {
             throw e
@@ -183,7 +183,9 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
 
     companion object {
         /** The last good `/device/home` in this process (not on disk). */
-        @Volatile private var lastHome: DeviceHome? = null
+        private val _last = kotlinx.coroutines.flow.MutableStateFlow<DeviceHome?>(null)
+        /** The last good `/device/home` in this process (not on disk); home's header reads its events (launcher polish 6.7). */
+        val last: kotlinx.coroutines.flow.StateFlow<DeviceHome?> = _last
         private const val LOR_EVERY_MS = 60_000L
         private const val RELEASE_AFTER_MS = 30_000L
     }
