@@ -273,7 +273,7 @@ Each check is run with the LoR home, and with One UI Home where a comparison hel
   - *Proof.* `boat-build.sh` passed `assembleDebug testDebugUnitTest` (34 tests, 8 of them new). On `T3_Phone_API35` (1080x2400), with the final APK, a script ran each check and read the foreground app from `agent-device appstate`: a home app (Gmail), an app in the Google folder (Clock), a dock app (Chrome), and the search "you" then a tap on YouTube (YouTube's notification prompt was in front; `dumpsys activity recents` shows YouTube on top). The drawer showed the 22 apps that `cmd package query-activities` lists with `LAUNCHER`. A hand-written layout (another active layout, a `package/.Activity` ref, a folder with a reason, a missing app) showed after a trip to another app and back, and swapping the file back redrew home with the right icons. A broken file showed its error on home. No crashes in `logcat -b crash`. The same script passed on a new `T3_Fold_API35` AVD (`pixel_9_pro_fold`, API 35 Google APIs) unfolded (2076x2152: date left, grid and dock right, 10-column drawer) and folded (1080x2424). The home process kept the same pid across the fold. Screenshots stay in the working thread.
   - *Found and fixed while checking:* after the layout changed, icons stayed in their old places, because `produceState` keeps its value when its key changes. Also the system bar icons were dark over the drawer; home now always uses light ones, like its labels.
   - *Review fixes (2026-11-05).* The date header turns over at midnight: it rereads the date on resume and on the system's date, time and zone broadcasts. A layout file over 256 KB, nested too deeply, or with anything after the root object shows as Broken. Any failure reading the file shows as Broken, and the layout is read in its own step after the app list, so a failed app load can't leave home on Loading. With no app list, the first run writes no default and tries again on the next resume. Tests cover the size cap, trailing content and deep nesting.
-  - *Deferred from the review.*
+  - *Deferred from the review* (moved to Launcher polish Increment 8, 2026-11-05, except the overflow, also there, and the contrast, in its Increment 6).
     - A process-scoped model and icon cache, so a recreated activity doesn't reload everything. Wait for the density check on the real Fold.
     - An icon-cache race: a package change can evict an icon while an older load is still writing it back, leaving the stale icon cached.
     - Landscape and large font sizes can overflow home and the drawer. Lock home to portrait or let it scroll.
@@ -313,7 +313,7 @@ Each check is run with the LoR home, and with One UI Home where a comparison hel
   - On the inner screen the split pairs T3 with the last app used, not with home: home can't be in a split on stock Android 15. Whether One UI does better is **[real Fold]**. If it doesn't, the agent page could live in its own activity that can take a split.
   - The page dots are centred on the whole inner screen while the page keeps to the left (as in 3.2).
   - Nothing shows the block's own label for a timer started from the tile; it still says "Uncategorized".
-- **Deferred from the review of 3.2's fixes and 3.3** (2026-11-05; F3 and F6 were fixed in Increment 4):
+- **Deferred from the review of 3.2's fixes and 3.3** (2026-11-05; F3 and F6 were fixed in Increment 4; F2 and F4 moved to Launcher polish Increment 8):
   - F2: if `loadAll()` fails on the first run, `_apps` stays empty and only a profile broadcast reloads it; one app update then puts a single app in `_apps`, and the next resume writes a one-app default layout that sticks (`HomeModel.kt`). Reload the app list on resume while it's empty.
   - F4: card actions run in the page's `rememberCoroutineScope`, so a dark-mode, font-scale or density change recreates the activity, cancels a respond that has already gone out, and re-enables the card. Belongs with the deferred process-scoped model.
   - F5: `LayoutTest`'s deep-nesting case hits the JVM org.json's depth-512 `JSONException`, not the `StackOverflowError` catch. A real test parses about 400 levels on a thread with a 64 KB stack.
@@ -377,7 +377,7 @@ Sending launches a T3 thread in the first of: the project named in the prompt, t
   - R1: a swipe home from another app could pop the sheet if gesture navigation focused home before the HOME intent. Run on the emulator with gesture navigation (device-checks.md): no misfire from Settings, Chrome, Clock or the drawer, fast or slow, and the home key on home still opens the sheet. No code change. Found while checking: a home *swipe* on home doesn't open the sheet (the intent comes without focus), so under gesture navigation only the home key does. Recheck on the Fold.
   - R2: the sheet's text, picked project, attach choice and failure are `rememberSaveable`, and the opening counter is saved with the activity (`setIntent` keeps the latest opening), so a fold, unfold or rotation keeps a half-typed prompt. Checked by rotating on the emulator.
   - R6: `DestinationTest`'s on-screen case fed `t3code://` intent links that the session no longer collects; it now checks `webUri` cases only (a browser at `app.t3.codes/threads/…`, a T3 web URL, a gone thread, an unrelated page). The test count above said 8; it was 7.
-- **Deferred from the review.**
+- **Deferred from the review** (R3 to R5 moved to Launcher polish Increment 8, 2026-11-05).
   - R3: a launch reply slower than 30 s, then a retry, makes a duplicate thread. Fix by reusing one id set per opening of the sheet, together with `reuseExistingThread`.
   - R4: if the sheet finishes on stop mid-send and the send then fails, the text is lost and only a toast remains.
   - R5: the thumbnail decodes the screenshot at full size on the main thread. Decode with an `inSampleSize` of about 8.
@@ -443,20 +443,23 @@ Sending launches a T3 thread in the first of: the project named in the prompt, t
 
 **Unknowns.**
 - Which repo holds the file, and how the phone reaches it: over the tailnet, or served through LoR.
-- Whether changes made by hand on the phone are written back to the repo. The thread proposed it, but it wasn't decided.
-- From 3.2's review: when the file breaks, home shows the error in place of the grid. Once agents write the file, keep showing the last good layout and show the error beside it.
+- Whether changes made by hand on the phone are written back to the repo. The thread proposed it, but it wasn't decided. Half answered (2026-11-05): [Launcher polish](../launcher-polish/plan.md) writes every phone edit to `layout.json` (its P1), so hand edits reach the file; whether the repo receives them is this increment's.
+- ~~From 3.2's review: when the file breaks, keep showing the last good layout and show the error beside it.~~ Moved to Launcher polish, Increment 3 (2026-11-05).
 
-### Increment 8: Search finds shortcuts and conversations. Status: backlog, blocked by Increment 3
+### Increment 8: Search finds people and threads. Status: backlog, blocked by Launcher polish Increment 5
 
-**Goal.** Search covers every app's shortcuts (static, dynamic and pinned) and conversation shortcuts through `LauncherApps.getShortcuts`, which only the default home app may call. Typing a person's name shows their chats in each messaging app, their LoR person card and T3 threads that mention them. Choosing a result opens that shortcut directly.
+**2026-11-05 (Sumeet).** Apps' shortcuts and conversation shortcuts moved to [Launcher polish](../launcher-polish/plan.md), Increment 5, as core launcher search. This increment keeps what only LoR and T3 can give.
 
-**Done when.** On the emulator, a dynamic shortcut published by a test app and a conversation shortcut from a messaging app both appear in search and open the right screen. A JVM test covers ranking across apps, shortcuts, people and threads.
+**Goal.** Typing a person's name shows their LoR person card and T3 threads that mention them, beside the chats Launcher polish's search already finds for them. Choosing a result opens it.
+
+**Done when.** On the emulator against the LoR test server and a scratch T3 server, a person and a thread appear in search and open the right screen. A JVM test covers ranking people and threads against apps and shortcuts.
 
 **Unknowns.**
 - Which LoR endpoint gives people for search, and whether T3 thread search uses `orchestration.searchThreads` (adds one method to Increment 2's set).
-- How Kvaesitso indexes shortcuts and ranks mixed results. Read it first (D1).
 
-### Increment 9: Smart folders. Status: backlog, blocked by Increments 3 and 7
+### Increment 9: Smart folders. Status: backlog, blocked by Increment 7 and Launcher polish Increment 2
+
+**2026-11-05.** [Launcher polish](../launcher-polish/plan.md) Increment 2 sorts the drawer into sections on the phone and adds the schema field for them. This increment has an agent refine those sections and write their reasons.
 
 **Goal.** An agent sorts apps into drawer folders, each with a one-line reason ("Splitwise is in Money: you open it right after paying"), by writing the layout file. Folders Sumeet edits by hand are pinned and the agent leaves them alone. Usage data comes from LoR, which already has app sessions and attribution rules.
 
@@ -464,7 +467,7 @@ Sending launches a T3 thread in the first of: the project named in the prompt, t
 
 **Unknowns.**
 - Where the sorting agent runs: a LoR job that starts a T3 thread in `assistant`, or a step of the nightly run.
-- Drawer folders or home folders. Schema 1 has folders only on home. Drawer folders need a new field in the layout (from 3.2's review).
+- ~~Drawer folders or home folders.~~ Drawer sections, with the field added by Launcher polish Increment 2 (2026-11-05).
 
 ### Increment 10: Named and temporary layouts. Status: backlog, blocked by Increment 7
 

@@ -1,6 +1,6 @@
 ---
 status: draft
-last_changed: "2026-11-05: Sumeet settled D1 (grow LoR's app), the Inbox (`assistant`) and scope (smart folders, named and temporary layouts, shortcut search are in)"
+last_changed: "2026-11-05: Sumeet moved apps' shortcut and conversation search, and the on-phone drawer sorting, to the Launcher polish mission"
 ---
 
 # Why
@@ -18,8 +18,8 @@ LoR's Android app (`android/`, package `com.spadaval.lor`) is Sumeet's default h
 - **A prompt can be sent from anywhere.** A quick-send sheet opens from home, from a Quick Settings tile, and from the side key as the default assistant, with the screen attached.
 - **Running turns show as Live Updates.**
 - **The LoR sensor records how each app was launched.**
-- **The drawer sorts apps into smart folders,** each with its reason, and leaves folders he arranged by hand alone.
-- **Search finds every app's shortcuts and conversations,** not just apps, through `LauncherApps`.
+- **An agent refines the drawer's sections into smart folders,** each with its reason (Launcher polish sorts them on the phone first), and leaves folders he arranged by hand alone.
+- **Search finds LoR people and T3 threads** beside the apps, shortcuts and conversations that [Launcher polish](../launcher-polish/strategy.md) search finds.
 - **Layouts are named and switchable,** and an agent can propose a temporary one with an expiry (a trip, an on-call week) that removes itself.
 
 A partial outcome worth shipping: the agent page and quick send in a home app he keeps as default, even before the agent-edited layout exists.
@@ -36,9 +36,10 @@ A partial outcome worth shipping: the agent page and quick send in a home app he
 
 # Scope
 
-In: the home app on the Fold's cover and inner screens. That covers the agent page, home from a layout file, the app drawer and search, quick send (sheet, tile, home button, assistant role), Live Updates, the launch-source sensor, the agent-edited layout repo, smart folders, shortcut and conversation search, named and temporary layouts, and the LoR server endpoints the app reads.
+In: the home app on the Fold's cover and inner screens. That covers the agent page, home from a layout file, the app drawer and search, quick send (sheet, tile, home button, assistant role), Live Updates, the launch-source sensor, the agent-edited layout repo, agent-refined smart folders, LoR people and T3 threads in search, named and temporary layouts, and the LoR server endpoints the app reads.
 
 Out:
+- The ordinary launcher polish: phone editing, drawer sorting, app and shortcut search, theming, motion, widget hosting. That is the [Launcher polish](../launcher-polish/strategy.md) mission (2026-11-05).
 - Notification triage and Do Not Disturb takeover. Android's own notification management stays.
 - Accessibility-service agents acting inside apps. Context for "this" comes from the assistant's screen capture.
 - Root, and replacing Recents or gesture navigation.
