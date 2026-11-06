@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.ui.*
 import android.app.SearchManager
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -92,7 +93,7 @@ internal fun NoResults(query: String, ways: List<Elsewhere>, line: Boolean, go: 
     Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
         if (line) Text(
             "Nothing matches \"${query.trim()}\".",
-            style = TextStyle(color = Muted, fontSize = 14.sp),
+            style = TextStyle(color = Mute, fontSize = 14.sp),
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         )
         ways.forEach { way ->
@@ -106,7 +107,7 @@ internal fun NoResults(query: String, ways: List<Elsewhere>, line: Boolean, go: 
                 Glyph(way.kind)
                 Text(
                     way.text,
-                    style = TextStyle(color = Ink, fontSize = 15.sp),
+                    style = TextStyle(color = Txt, fontSize = 15.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 16.dp),
@@ -124,18 +125,18 @@ private fun Glyph(kind: Elsewhere.Kind) {
         val line = Stroke(width = 1.6.dp.toPx(), cap = StrokeCap.Round)
         when (kind) {
             Elsewhere.Kind.WEB -> {
-                drawCircle(Muted, radius = 0.32f * w, center = Offset(0.42f * w, 0.42f * w), style = line)
-                drawLine(Muted, Offset(0.66f * w, 0.66f * w), Offset(0.92f * w, 0.92f * w), line.width, StrokeCap.Round)
+                drawCircle(Mute, radius = 0.32f * w, center = Offset(0.42f * w, 0.42f * w), style = line)
+                drawLine(Mute, Offset(0.66f * w, 0.66f * w), Offset(0.92f * w, 0.92f * w), line.width, StrokeCap.Round)
             }
             Elsewhere.Kind.STORE -> {
-                drawRoundRect(Muted, Offset(0.12f * w, 0.32f * w), Size(0.76f * w, 0.6f * w), CornerRadius(0.08f * w), style = line)
-                drawArc(Muted, 180f, 180f, false, Offset(0.32f * w, 0.08f * w), Size(0.36f * w, 0.44f * w), style = line)
+                drawRoundRect(Mute, Offset(0.12f * w, 0.32f * w), Size(0.76f * w, 0.6f * w), CornerRadius(0.08f * w), style = line)
+                drawArc(Mute, 180f, 180f, false, Offset(0.32f * w, 0.08f * w), Size(0.36f * w, 0.44f * w), style = line)
             }
             Elsewhere.Kind.AGENT -> {
                 val plane = Path().apply {
                     moveTo(0.1f * w, 0.1f * w); lineTo(0.95f * w, 0.5f * w); lineTo(0.1f * w, 0.9f * w); lineTo(0.22f * w, 0.5f * w); close()
                 }
-                drawPath(plane, Muted, style = line)
+                drawPath(plane, Mute, style = line)
             }
         }
     }

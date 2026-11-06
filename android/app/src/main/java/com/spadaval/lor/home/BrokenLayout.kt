@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.ui.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -31,8 +32,6 @@ import androidx.compose.ui.unit.dp
  * put the file right: the last good layout, or the default when there is none.
  */
 
-/** Coral: machinery that failed (DESIGN.md's colour jobs), never "nothing to show". */
-internal val Coral = Color(0xFFE2806F)
 
 /** The banner's line for [state]. */
 internal fun brokenLine(state: LayoutState.Broken): String =
@@ -50,7 +49,7 @@ internal fun BrokenBanner(state: LayoutState.Broken, appsLoaded: Boolean, style:
         modifier.clickable(onClickLabel = "Show the error") { open = true }.heightIn(min = 48.dp).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Spacer(Modifier.size(6.dp).background(Coral, CircleShape))
+        Spacer(Modifier.size(6.dp).background(Bad, CircleShape))
         Spacer(Modifier.width(8.dp))
         Text(brokenLine(state), style = style, modifier = Modifier.weight(1f))
         Text("Details", style = style.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.padding(start = 12.dp))
@@ -79,7 +78,7 @@ private fun BrokenLayoutDialog(state: LayoutState.Broken, appsLoaded: Boolean, r
                 }
             }
         },
-        confirmButton = { if (action != null) TextButton(onClick = restore) { Text(action) } },
-        dismissButton = { TextButton(onClick = close) { Text("Close") } },
+        confirmButton = { if (action != null) TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = restore) { Text(action) } },
+        dismissButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = close) { Text("Close") } },
     )
 }

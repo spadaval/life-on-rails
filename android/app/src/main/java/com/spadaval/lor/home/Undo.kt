@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.ui.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -59,15 +60,15 @@ fun UndoBar(state: UndoBarState, onUndo: () -> Unit, modifier: Modifier = Modifi
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             // Opaque, unlike StateFill: it sits over icons on home and over text in Home settings.
-            .background(Color(0xFF15181D), RoundedCornerShape(14.dp))
+            .background(PanelFace, RoundedCornerShape(14.dp))
             .border(1.dp, Line, RoundedCornerShape(14.dp))
             .padding(start = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(message.text, style = TextStyle(color = Ink, fontSize = 14.sp), modifier = Modifier.weight(1f).padding(vertical = 12.dp))
+        Text(message.text, style = TextStyle(color = Txt, fontSize = 14.sp), modifier = Modifier.weight(1f).padding(vertical = 12.dp))
         Text(
             "Undo",
-            style = TextStyle(color = Ink, fontSize = 14.sp, textDecoration = TextDecoration.Underline),
+            style = TextStyle(color = Txt, fontSize = 14.sp, textDecoration = TextDecoration.Underline),
             modifier = Modifier
                 .clickable {
                     state.message = null

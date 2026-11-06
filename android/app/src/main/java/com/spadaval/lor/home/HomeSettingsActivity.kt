@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
@@ -69,7 +70,7 @@ import kotlinx.coroutines.launch
 class HomeSettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(SystemBarStyle.dark(android.graphics.Color.TRANSPARENT), SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         val store = (application as LorApp).home
         val icons = Icons((40 * resources.displayMetrics.density).toInt())
         setContent {
@@ -156,7 +157,7 @@ private fun HomeSettings(
     }
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding()) {
         item {
-            Text("Home settings", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(20.dp, 24.dp, 20.dp, 8.dp))
+            Text("HOME SETTINGS", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(20.dp, 24.dp, 20.dp, 8.dp))
         }
         // A broken file: its banner and the restore in place of the sections, whose edits would fail (launcher polish 3.1).
         if (layout is LayoutState.Broken) item {
@@ -175,7 +176,7 @@ private fun HomeSettings(
                     if (h.app != null) AppIcon(h.app, 40.dp) else Spacer(Modifier.size(40.dp))
                     Spacer(Modifier.width(16.dp))
                     Text(h.label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { edit("${h.label} is back in the drawer.") { it.unhide(h.ref.packageName) } }) { Text("Unhide") }
+                    TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { edit("${h.label} is back in the drawer.") { it.unhide(h.ref.packageName) } }) { Text("Unhide") }
                 }
             }
         }
@@ -189,7 +190,7 @@ private fun HomeSettings(
             }
             item {
                 var naming by remember { mutableStateOf(false) }
-                TextButton(onClick = { naming = true }, modifier = Modifier.padding(horizontal = 8.dp)) { Text("New section") }
+                TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { naming = true }, modifier = Modifier.padding(horizontal = 8.dp)) { Text("New section") }
                 if (naming) NameDialog("New section", "") { name ->
                     naming = false
                     if (name != null) edit("$name is the last section.") { it.newSection(name) }
@@ -222,10 +223,10 @@ private fun HomeSettings(
 
 @Composable
 private fun Section(title: String) {
+    // DESIGN.md: section heads in condensed caps, Dust.
     Text(
-        title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
+        title.uppercase(),
+        style = com.spadaval.lor.ui.Type.title,
         modifier = Modifier.padding(20.dp, 16.dp, 20.dp, 8.dp),
     )
 }
@@ -271,7 +272,7 @@ private fun ContactsRow(open: (Intent) -> Unit) {
             Text("Contacts in search", style = MaterialTheme.typography.bodyLarge)
             Text(about, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (!on) TextButton(onClick = {
+        if (!on) TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = {
             if (asksAgain == false) {
                 open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
             } else {
@@ -326,7 +327,7 @@ private fun SectionRow(file: LayoutFile, s: DrawerSection, first: Boolean, last:
             Text(about, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Box {
-            TextButton(onClick = { menu = true }) { Text("Edit") }
+            TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { menu = true }) { Text("Edit") }
             DropdownMenu(menu, { menu = false }) {
                 DropdownMenuItem(text = { Text("Rename…") }, onClick = { menu = false; renaming = true })
                 DropdownMenuItem(text = { Text("Category…") }, onClick = { menu = false; picking = true })
@@ -351,7 +352,7 @@ private fun SectionRow(file: LayoutFile, s: DrawerSection, first: Boolean, last:
         val free = listOf<Category?>(null) + Category.entries.filter { c -> others.none { it.category == c } }
         AlertDialog(
             onDismissRequest = { picking = false },
-            confirmButton = { TextButton(onClick = { picking = false }) { Text("Cancel") } },
+            confirmButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { picking = false }) { Text("Cancel") } },
             title = { Text("${s.name} takes") },
             text = {
                 Column {
@@ -380,8 +381,8 @@ private fun NameDialog(title: String, initial: String, done: (String?) -> Unit) 
     var text by remember { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = { done(null) },
-        confirmButton = { TextButton(onClick = { done(text.trim()) }, enabled = text.isNotBlank()) { Text("Save") } },
-        dismissButton = { TextButton(onClick = { done(null) }) { Text("Cancel") } },
+        confirmButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { done(text.trim()) }, enabled = text.isNotBlank()) { Text("Save") } },
+        dismissButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { done(null) }) { Text("Cancel") } },
         title = { Text(title) },
         text = { OutlinedTextField(text, { text = it }, singleLine = true, label = { Text("Name") }) },
     )

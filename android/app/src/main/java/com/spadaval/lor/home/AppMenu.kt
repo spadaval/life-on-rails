@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.ui.*
 import android.content.pm.ApplicationInfo
 import android.content.pm.ShortcutInfo
 import androidx.compose.foundation.Image
@@ -139,9 +140,6 @@ fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At? = null, 
     }
 }
 
-private val MenuInk = Color(0xFFECEBE6)
-private val MenuPanel = Color(0xFF1B1F25)
-private val MenuLine = Color(0x1FFFFFFF)
 
 @Composable
 private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, close: () -> Unit) {
@@ -157,7 +155,7 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, clo
     var picking by remember(app) { mutableStateOf(false) }
     if (picking && file != null) {
         val current = file.drawer.sectionOf(app.id, app.category)
-        DropdownMenu(true, close, containerColor = MenuPanel, shape = RoundedCornerShape(16.dp)) {
+        DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
             file.drawer.allSections().forEach { s ->
                 val here = s.name == current
                 Item(if (here) "${s.name} ✓" else s.name) {
@@ -168,13 +166,13 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, clo
         }
         return
     }
-    DropdownMenu(true, close, containerColor = MenuPanel, shape = RoundedCornerShape(16.dp)) {
+    DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
         shortcuts.forEach { s ->
             Item(s.info.shortLabel?.toString() ?: s.info.longLabel?.toString() ?: "Shortcut", s.icon) {
                 close(); actions.openShortcut(app, s.info, at)
             }
         }
-        if (shortcuts.isNotEmpty()) HorizontalDivider(color = MenuLine)
+        if (shortcuts.isNotEmpty()) HorizontalDivider(color = Line)
         Item("App info") { close(); actions.appInfo(app) }
         if (removable) Item("Uninstall") { close(); actions.uninstall(app) }
         if (places != null) {
@@ -209,7 +207,7 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, clo
 @Composable
 fun HomeMenu(at: Offset, home: HomeContext, onEdit: () -> Unit, close: () -> Unit) {
     Box(Modifier.offset { IntOffset(at.x.roundToInt(), at.y.roundToInt()) }) {
-        DropdownMenu(true, close, containerColor = MenuPanel, shape = RoundedCornerShape(16.dp)) {
+        DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
             Item("Edit home") { close(); onEdit() }
             Item("Wallpaper") { close(); home.actions.wallpaper() }
             Item("Home settings") { close(); home.actions.settings() }
@@ -220,7 +218,7 @@ fun HomeMenu(at: Offset, home: HomeContext, onEdit: () -> Unit, close: () -> Uni
 @Composable
 private fun Item(text: String, icon: ImageBitmap? = null, onClick: () -> Unit) {
     DropdownMenuItem(
-        text = { Text(text, style = TextStyle(color = MenuInk, fontSize = 15.sp)) },
+        text = { Text(text, style = TextStyle(color = Txt, fontSize = 15.sp)) },
         onClick = onClick,
         leadingIcon = if (icon != null) {
             { Image(icon, contentDescription = null, modifier = Modifier.size(22.dp)) }

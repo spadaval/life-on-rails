@@ -75,7 +75,7 @@ fun T3DebugScreen(onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        TextButton(onClick = onBack) { Text("‹ Settings") }
+        TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = onBack) { Text("‹ Settings") }
         Section("Pair with T3 Code") {
             OutlinedTextField(value = server, onValueChange = { server = it }, label = { Text("Server address") }, placeholder = { Text("http://10.0.2.2:16021") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Pairing token or link") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
@@ -94,11 +94,11 @@ fun T3DebugScreen(onBack: () -> Unit) {
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {
+                Button(shape = androidx.compose.ui.graphics.RectangleShape, onClick = {
                     PairScan.scan(context, { link, target -> server = target.httpBase; pair("", link) }, { pairing = it })
                 }) { Text("Scan QR") }
-                OutlinedButton(onClick = { pair(server, code) }) { Text("Pair") }
-                OutlinedButton(onClick = { connection.forget() }) { Text("Forget") }
+                OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { pair(server, code) }) { Text("Pair") }
+                OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { connection.forget() }) { Text("Forget") }
             }
             pairing?.let { Text(it, modifier = Modifier.padding(top = 8.dp)) }
         }
@@ -161,14 +161,14 @@ private fun ThreadActions(connection: T3Connection, thread: T3Thread, act: (Stri
             else -> {
                 Text("Asks for approval (${request.kind}).", style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { act("Approve") { "Approved (sequence ${connection.respond(request, approve = true)})." } }) { Text("Approve") }
-                    OutlinedButton(onClick = { act("Deny") { "Denied (sequence ${connection.respond(request, approve = false)})." } }) { Text("Deny") }
+                    Button(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { act("Approve") { "Approved (sequence ${connection.respond(request, approve = true)})." } }) { Text("Approve") }
+                    OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { act("Deny") { "Denied (sequence ${connection.respond(request, approve = false)})." } }) { Text("Deny") }
                 }
             }
         }
         var message by remember(thread.id) { mutableStateOf("") }
         OutlinedTextField(value = message, onValueChange = { message = it }, label = { Text("Follow-up message") }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
-        Button(enabled = message.isNotBlank(), onClick = {
+        Button(shape = androidx.compose.ui.graphics.RectangleShape, enabled = message.isNotBlank(), onClick = {
             val text = message
             act("Send") { connection.send(thread.id, text).let { message = ""; "Sent (sequence $it)." } }
         }) { Text("Send") }
@@ -194,8 +194,8 @@ private fun QuestionForm(connection: T3Connection, request: PendingRequest, act:
                 Text(q.question, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
                 for (option in q.options) {
                     val chosen = answers[q.id] == option.answer
-                    if (chosen) Button(onClick = { answers.remove(q.id) }) { Text(option.label) }
-                    else OutlinedButton(onClick = { answers[q.id] = option.answer }) { Text(option.label) }
+                    if (chosen) Button(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { answers.remove(q.id) }) { Text(option.label) }
+                    else OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { answers[q.id] = option.answer }) { Text(option.label) }
                 }
                 if (q.allowCustomAnswer) {
                     val typed = answers[q.id]?.takeIf { a -> q.options.none { it.answer == a } } ?: ""
@@ -203,7 +203,7 @@ private fun QuestionForm(connection: T3Connection, request: PendingRequest, act:
                 }
             }
             if (list.isNotEmpty()) {
-                Button(enabled = list.all { answers.containsKey(it.id) }, onClick = {
+                Button(shape = androidx.compose.ui.graphics.RectangleShape, enabled = list.all { answers.containsKey(it.id) }, onClick = {
                     // A multi-select question takes a list; this form picks one option for it.
                     val payload: Map<String, Any> = list.associate { q -> q.id to (answers.getValue(q.id).let { if (q.multiSelect) listOf(it) else it }) }
                     act("Answer") { "Answered (sequence ${connection.answer(request, payload)})." }
@@ -227,8 +227,8 @@ private fun LaunchForm(connection: T3Connection, projects: Map<String, String>, 
     }
     if (projects.isEmpty()) Text("No projects yet.", style = MaterialTheme.typography.bodySmall)
     for ((id, title) in projects.entries.sortedBy { it.value.lowercase() }) {
-        if (projectId == id) Button(onClick = { projectId = null; defaults = null }) { Text(title) }
-        else OutlinedButton(onClick = { projectId = id; defaults = null }) { Text(title) }
+        if (projectId == id) Button(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { projectId = null; defaults = null }) { Text(title) }
+        else OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { projectId = id; defaults = null }) { Text(title) }
     }
     defaults?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
     OutlinedTextField(value = prompt, onValueChange = { prompt = it }, label = { Text("Prompt") }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
@@ -238,7 +238,7 @@ private fun LaunchForm(connection: T3Connection, projects: Map<String, String>, 
         Text("Ask before acting (approval-required)", style = MaterialTheme.typography.bodySmall)
     }
     val chosen = model.trim().split("/", limit = 2).takeIf { it.size == 2 && it.all(String::isNotBlank) }?.let { ModelSelection(it[0], it[1]) }
-    Button(enabled = projectId != null && prompt.isNotBlank() && (model.isBlank() || chosen != null), onClick = {
+    Button(shape = androidx.compose.ui.graphics.RectangleShape, enabled = projectId != null && prompt.isNotBlank() && (model.isBlank() || chosen != null), onClick = {
         val id = projectId!!
         val text = prompt
         act("Launch") {

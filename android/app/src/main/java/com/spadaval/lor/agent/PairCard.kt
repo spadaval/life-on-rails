@@ -1,5 +1,6 @@
 package com.spadaval.lor.agent
 
+import com.spadaval.lor.ui.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -38,7 +39,7 @@ fun PairCard(connection: T3Connection, status: T3Connection.Status, modifier: Mo
     Column(
         modifier
             .fillMaxWidth()
-            .background(CardFill, RoundedCornerShape(14.dp))
+            .background(StateFill, RoundedCornerShape(14.dp))
             .border(1.dp, Line, RoundedCornerShape(14.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),

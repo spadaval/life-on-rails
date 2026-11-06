@@ -1,5 +1,6 @@
 package com.spadaval.lor.quicksend
 
+import com.spadaval.lor.ui.*
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color as AndroidColor
@@ -116,15 +117,7 @@ class QuickSendActivity : ComponentActivity() {
     }
 }
 
-private val Ink = Color(0xFFECEBE6)
-private val Muted = Color(0xFF9097A1)
-private val Dim = Color(0xFF616871)
-private val SheetFill = Color(0xFF111418)
-private val Edge = Color(0xFF2C3139)
-private val Scrim = Color(0x99000000)
-private val Amber = Color(0xFFE3A857)
-private val Red = Color(0xFFE2806F)
-private val Small = TextStyle(color = Muted, fontSize = 12.sp)
+private val Small = TextStyle(color = Mute, fontSize = 12.sp)
 
 @Composable
 private fun Sheet(connection: T3Connection, from: QuickSend.From, initial: String, opened: Int, close: () -> Unit) {
@@ -162,7 +155,7 @@ private fun Sheet(connection: T3Connection, from: QuickSend.From, initial: Strin
                 .padding(8.dp)
                 .widthIn(max = 560.dp)
                 .fillMaxWidth()
-                .background(SheetFill, RoundedCornerShape(22.dp))
+                .background(PanelFace, RoundedCornerShape(22.dp))
                 .border(1.dp, Edge, RoundedCornerShape(22.dp))
                 // Taps on the sheet itself don't reach the scrim.
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
@@ -177,12 +170,12 @@ private fun Sheet(connection: T3Connection, from: QuickSend.From, initial: Strin
                     target == null -> "No project named \"${Destination.INBOX}\" on this T3 server. Pick one."
                     else -> "To ${shell.projects[target]} · ${choice.why.label} · a new thread"
                 },
-                style = Small.copy(color = if (target == null && shell.loaded) Amber else Muted),
+                style = Small.copy(color = if (target == null && shell.loaded) Or else Mute),
             )
             Projects(shell.projects, target) { picked = it }
             if (capture != null) Shot(capture, attach) { attach = !attach }
             Field(text, opened) { text = it; failure = null }
-            failure?.let { Text("Not sent: $it", style = Small.copy(color = Red)) }
+            failure?.let { Text("Not sent: $it", style = Small.copy(color = Bad)) }
             connectionLine(status)?.let { Text(it, style = Small) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 Pill("Close", enabled = !sending) { close() }
@@ -243,7 +236,7 @@ private fun Shot(capture: Capture, attach: Boolean, toggle: () -> Unit) {
         }
         if (bitmap != null) {
             Column(Modifier.padding(end = 4.dp)) {
-                Text(if (attach) "The screen goes with it" else "The screen stays here", style = Small.copy(color = Ink))
+                Text(if (attach) "The screen goes with it" else "The screen stays here", style = Small.copy(color = Txt))
                 capture.appLabel?.let { Text(it, style = Small) }
             }
             Pill(if (attach) "Remove" else "Attach") { toggle() }
@@ -260,12 +253,12 @@ private fun Field(value: String, opened: Int, onChange: (String) -> Unit) {
         onChange,
         Modifier.fillMaxWidth().focusRequester(focus),
         placeholder = { Text("Ask an agent… (@project to name one)", color = Dim) },
-        textStyle = TextStyle(color = Ink, fontSize = 14.sp),
+        textStyle = TextStyle(color = Txt, fontSize = 14.sp),
         shape = RoundedCornerShape(12.dp),
         maxLines = 6,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Ink, unfocusedTextColor = Ink, cursorColor = Amber,
-            focusedBorderColor = Muted, unfocusedBorderColor = Color(0x2AFFFFFF),
+            focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Or,
+            focusedBorderColor = Mute, unfocusedBorderColor = Edge,
         ),
     )
 }
@@ -273,13 +266,13 @@ private fun Field(value: String, opened: Int, onChange: (String) -> Unit) {
 @Composable
 private fun Pill(text: String, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val shape = RoundedCornerShape(9.dp)
-    val base = if (primary) Modifier.background(if (enabled) Ink else Muted, shape) else Modifier.border(1.dp, if (enabled) Color(0x33FFFFFF) else Color(0x14FFFFFF), shape)
+    val base = if (primary) Modifier.background(if (enabled) Txt else Mute, shape) else Modifier.border(1.dp, if (enabled) Edge else Line, shape)
     Text(
         text,
         style = TextStyle(
             color = when {
-                primary -> Color(0xFF0B0D10)
-                enabled -> Ink
+                primary -> Bg
+                enabled -> Txt
                 else -> Dim
             },
             fontSize = 12.sp,

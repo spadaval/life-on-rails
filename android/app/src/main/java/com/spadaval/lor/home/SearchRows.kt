@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.ui.*
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -71,7 +72,7 @@ internal fun ResultRow(value: Any, go: Boolean, at: At, home: HomeContext) {
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp)
-            .then(if (go) Modifier.background(Amber.copy(alpha = 0.08f), shape).border(1.dp, Amber.copy(alpha = 0.55f), shape) else Modifier)
+            .then(if (go) Modifier.background(Or.copy(alpha = 0.08f), shape).border(1.dp, Or.copy(alpha = 0.55f), shape) else Modifier)
             .clickable(role = Role.Button) { openFound(value, at, home) }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -105,13 +106,13 @@ private fun Gear() {
     Canvas(Modifier.size(22.dp)) {
         val w = size.width
         val line = Stroke(width = 1.6.dp.toPx())
-        drawCircle(Muted, radius = 0.16f * w, center = center, style = line)
-        drawCircle(Muted, radius = 0.32f * w, center = center, style = line)
+        drawCircle(Mute, radius = 0.16f * w, center = center, style = line)
+        drawCircle(Mute, radius = 0.32f * w, center = center, style = line)
         for (k in 0 until 8) {
             val a = Math.toRadians(k * 45.0)
             val c = Offset(center.x + (0.32f * w * cos(a)).toFloat(), center.y + (0.32f * w * sin(a)).toFloat())
             val e = Offset(center.x + (0.46f * w * cos(a)).toFloat(), center.y + (0.46f * w * sin(a)).toFloat())
-            drawLine(Muted, c, e, 2.4.dp.toPx(), StrokeCap.Round)
+            drawLine(Mute, c, e, 2.4.dp.toPx(), StrokeCap.Round)
         }
     }
 }
@@ -119,8 +120,8 @@ private fun Gear() {
 @Composable
 private fun RowText(title: String, sub: String, modifier: Modifier = Modifier) {
     Column(modifier.padding(start = 16.dp)) {
-        Text(title, style = TextStyle(color = Ink, fontSize = 15.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(sub, style = TextStyle(color = Muted, fontSize = 12.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, style = TextStyle(color = Txt, fontSize = 15.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(sub, style = TextStyle(color = Mute, fontSize = 12.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -154,8 +155,8 @@ internal fun AnswerCard(answer: Answer) {
             }
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        Text(answer.value, style = TextStyle(color = Ink, fontSize = 22.sp))
-        Text(answer.input, style = TextStyle(color = Muted, fontSize = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(answer.value, style = TextStyle(color = Txt, fontSize = 22.sp))
+        Text(answer.input, style = TextStyle(color = Mute, fontSize = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -190,8 +191,8 @@ private fun Person() {
     Canvas(Modifier.size(22.dp)) {
         val w = size.width
         val line = Stroke(width = 1.6.dp.toPx(), cap = StrokeCap.Round)
-        drawCircle(Muted, radius = 0.2f * w, center = Offset(0.5f * w, 0.32f * w), style = line)
-        drawArc(Muted, 180f, 180f, false, Offset(0.14f * w, 0.62f * w), Size(0.72f * w, 0.6f * w), style = line)
+        drawCircle(Mute, radius = 0.2f * w, center = Offset(0.5f * w, 0.32f * w), style = line)
+        drawArc(Mute, 180f, 180f, false, Offset(0.14f * w, 0.62f * w), Size(0.72f * w, 0.6f * w), style = line)
     }
 }
 
@@ -215,7 +216,7 @@ private fun Handset() {
             quadraticTo(0.1f * w, 0.1f * w, 0.22f * w, 0.1f * w)
             close()
         }
-        drawPath(p, Ink, style = line)
+        drawPath(p, Txt, style = line)
     }
 }
 
@@ -228,8 +229,8 @@ private fun Bubble() {
         val p = Path().apply {
             addRoundRect(RoundRect(0.1f * w, 0.14f * w, 0.9f * w, 0.7f * w, CornerRadius(0.12f * w)))
         }
-        drawPath(p, Ink, style = line)
-        drawLine(Ink, Offset(0.3f * w, 0.7f * w), Offset(0.22f * w, 0.9f * w), line.width, StrokeCap.Round)
-        drawLine(Ink, Offset(0.22f * w, 0.9f * w), Offset(0.46f * w, 0.7f * w), line.width, StrokeCap.Round)
+        drawPath(p, Txt, style = line)
+        drawLine(Txt, Offset(0.3f * w, 0.7f * w), Offset(0.22f * w, 0.9f * w), line.width, StrokeCap.Round)
+        drawLine(Txt, Offset(0.22f * w, 0.9f * w), Offset(0.46f * w, 0.7f * w), line.width, StrokeCap.Round)
     }
 }

@@ -69,14 +69,14 @@ fun SettingsScreen() {
             OutlinedTextField(value = device, onValueChange = { device = it }, label = { Text("This phone's name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             Text("Recorded on everything this phone sends.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {
+                Button(shape = androidx.compose.ui.graphics.RectangleShape, onClick = {
                     prefs.serverUrl = server
                     prefs.deviceName = device
                     server = prefs.serverUrl
                     device = prefs.deviceName
                     result = "Saved."
                 }) { Text("Save") }
-                OutlinedButton(onClick = {
+                OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = {
                     scope.launch {
                         result = "Checking…"
                         result = withContext(Dispatchers.IO) {
@@ -90,7 +90,7 @@ fun SettingsScreen() {
         }
         Section("T3 Code") {
             Text("Pair with a T3 Code server and watch its threads. A debug view for the launcher's agent page.", style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(onClick = { showT3 = true }, modifier = Modifier.padding(top = 8.dp)) { Text("T3 connection (debug)") }
+            OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { showT3 = true }, modifier = Modifier.padding(top = 8.dp)) { Text("T3 connection (debug)") }
         }
         Section("Quick send") {
             Text(
@@ -99,7 +99,7 @@ fun SettingsScreen() {
                 style = MaterialTheme.typography.bodySmall,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) OutlinedButton(onClick = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = {
                     context.getSystemService(StatusBarManager::class.java).requestAddTileService(
                         ComponentName(context, AskTileService::class.java),
                         context.getString(R.string.ask_tile_label),
@@ -107,7 +107,7 @@ fun SettingsScreen() {
                         context.mainExecutor,
                     ) {}
                 }) { Text("Add the Ask tile") }
-                OutlinedButton(onClick = {
+                OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = {
                     runCatching { context.startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)) }
                 }) { Text("Choose the assistant") }
             }
@@ -155,9 +155,9 @@ private fun LiveUpdatesSettings() {
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.padding(top = 8.dp),
     )
-    if (!notify) OutlinedButton(onClick = { ask.launch(Manifest.permission.POST_NOTIFICATIONS) }, modifier = Modifier.padding(top = 8.dp)) {
+    if (!notify) OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { ask.launch(Manifest.permission.POST_NOTIFICATIONS) }, modifier = Modifier.padding(top = 8.dp)) {
         Text("Allow notifications")
-    } else if (!promote && Build.VERSION.SDK_INT >= 36) OutlinedButton(onClick = {
+    } else if (!promote && Build.VERSION.SDK_INT >= 36) OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = {
         runCatching {
             context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
         }

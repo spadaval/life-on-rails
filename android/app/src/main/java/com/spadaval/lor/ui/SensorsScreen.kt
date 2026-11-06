@@ -144,6 +144,7 @@ fun SensorsScreen() {
                     Text(prefs.lastSyncErrors, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
                 }
                 Button(
+                    shape = androidx.compose.ui.graphics.RectangleShape,
                     enabled = !syncing,
                     modifier = Modifier.padding(top = 8.dp),
                     onClick = {
@@ -182,7 +183,7 @@ fun SensorsScreen() {
                     )
                     if (a.action != null) {
                         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.End) {
-                            OutlinedButton(onClick = { request(sensor) }) { Text(a.action) }
+                            OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { request(sensor) }) { Text(a.action) }
                         }
                     }
                 }

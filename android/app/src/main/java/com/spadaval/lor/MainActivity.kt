@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -16,7 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
@@ -44,7 +45,8 @@ import com.spadaval.lor.ui.TimerScreen
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Light bar icons: the app is dark whatever the system's mode (launcher polish 6.1).
+        enableEdgeToEdge(SystemBarStyle.dark(android.graphics.Color.TRANSPARENT), SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         // Exported, so any app can pass any number: keep it to a tab that exists.
         val start = intent.getIntExtra(EXTRA_TAB, 0).coerceIn(0, TABS.lastIndex)
         setContent {
@@ -56,7 +58,12 @@ class MainActivity : ComponentActivity() {
                             HomeRoleStrip()
                             PrimaryTabRow(selectedTabIndex = tab) {
                                 TABS.forEachIndexed { i, label ->
-                                    Tab(selected = tab == i, onClick = { tab = i }, text = { Text(label) })
+                                    Tab(
+                                        selected = tab == i, onClick = { tab = i }, text = { Text(label) },
+                                        // DESIGN.md: the active one amber, the rest Dust.
+                                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
                             }
                         }
@@ -114,10 +121,10 @@ private fun HomeRoleStrip() {
     }
     val ask = rememberAskForHome { home = isHome(context) }
     if (home) return
-    Surface(color = MaterialTheme.colorScheme.secondaryContainer) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Use LoR as your home screen", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            FilledTonalButton(onClick = ask) { Text("Set as home") }
+            Button(shape = androidx.compose.ui.graphics.RectangleShape, onClick = ask) { Text("Set as home") }
         }
     }
 }

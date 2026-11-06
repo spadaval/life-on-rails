@@ -90,8 +90,8 @@ fun TimerScreen() {
                 running.optString("title").takeUnless { it.isBlank() || it == "null" }?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
                 Text(elapsed(((pausedAt ?: now) - start) / 1000), style = MaterialTheme.typography.displayMedium, modifier = Modifier.padding(vertical = 8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(enabled = !busy, onClick = { act { it.timer("stop", prefs.deviceName) } }) { Text("Stop") }
-                    OutlinedButton(enabled = !busy, onClick = { act { it.timer(if (pausedAt != null) "resume" else "pause", prefs.deviceName) } }) {
+                    Button(shape = androidx.compose.ui.graphics.RectangleShape, enabled = !busy, onClick = { act { it.timer("stop", prefs.deviceName) } }) { Text("Stop") }
+                    OutlinedButton(shape = androidx.compose.ui.graphics.RectangleShape, enabled = !busy, onClick = { act { it.timer(if (pausedAt != null) "resume" else "pause", prefs.deviceName) } }) {
                         Text(if (pausedAt != null) "Resume" else "Pause")
                     }
                 }
@@ -115,7 +115,7 @@ fun TimerScreen() {
                 }
                 val all = s.optJSONArray("intents")
                 if (all != null && all.length() > 0) {
-                    TextButton(onClick = { showAll = !showAll }) { Text(if (showAll) "Hide the rest" else "Something else… (${all.length()})") }
+                    TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { showAll = !showAll }) { Text(if (showAll) "Hide the rest" else "Something else… (${all.length()})") }
                     if (showAll) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             for (i in 0 until all.length()) {

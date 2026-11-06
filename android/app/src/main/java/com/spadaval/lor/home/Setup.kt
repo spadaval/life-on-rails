@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.ui.*
 import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -130,7 +131,7 @@ internal fun SetupCard(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Set up this phone", style = TextStyle(color = Ink, fontSize = 15.sp), modifier = Modifier.weight(1f))
+            Text("Set up this phone", style = TextStyle(color = Txt, fontSize = 15.sp), modifier = Modifier.weight(1f))
             Pill("Skip set-up") {
                 prefs.setupDone = true
                 shown = false
@@ -166,8 +167,8 @@ private fun Step(mark: Mark, title: String, detail: String? = null, actions: @Co
     Row {
         StepMark(mark)
         Column(Modifier.padding(start = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, style = TextStyle(color = if (mark == Mark.DONE) Muted else Ink, fontSize = 14.sp))
-            detail?.let { Text(it, style = TextStyle(color = Muted, fontSize = 12.sp)) }
+            Text(title, style = TextStyle(color = if (mark == Mark.DONE) Mute else Txt, fontSize = 14.sp))
+            detail?.let { Text(it, style = TextStyle(color = Mute, fontSize = 12.sp)) }
             actions()
         }
     }
@@ -181,12 +182,12 @@ private fun StepMark(mark: Mark) {
         val line = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round)
         when (mark) {
             Mark.DONE -> {
-                drawLine(Muted, Offset(0.18f * w, 0.52f * w), Offset(0.42f * w, 0.76f * w), line.width, StrokeCap.Round)
-                drawLine(Muted, Offset(0.42f * w, 0.76f * w), Offset(0.84f * w, 0.26f * w), line.width, StrokeCap.Round)
+                drawLine(Mute, Offset(0.18f * w, 0.52f * w), Offset(0.42f * w, 0.76f * w), line.width, StrokeCap.Round)
+                drawLine(Mute, Offset(0.42f * w, 0.76f * w), Offset(0.84f * w, 0.26f * w), line.width, StrokeCap.Round)
             }
             Mark.TODO -> drawCircle(Dim, radius = 0.4f * w, style = line)
             // Machinery that failed: the coral dot every failed state uses.
-            Mark.FAILED -> drawCircle(Coral, radius = 3.dp.toPx())
+            Mark.FAILED -> drawCircle(Bad, radius = 3.dp.toPx())
         }
     }
 }

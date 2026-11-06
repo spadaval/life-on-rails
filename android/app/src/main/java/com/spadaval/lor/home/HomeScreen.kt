@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.ui.*
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -102,16 +103,7 @@ import java.time.format.DateTimeFormatter
  * Motion is one-shot only: the drawer slides in and out, nothing loops (strategy: calm).
  */
 
-internal val Ink = Color(0xFFECEBE6)
-internal val Muted = Color(0xFF9097A1)
-internal val Dim = Color(0xFF616871)
-internal val Line = Color(0x14FFFFFF)
-private val Panel = Color(0xF215181D)
-internal val Sheet = Color(0xFF0B0D10)
-internal val Amber = Color(0xFFF08A2C)
-/** The backing of a state drawn on home (the broken banner, a home note, the set-up card), so it reads on any wallpaper. */
-internal val StateFill = Color(0xDD15181D)
-internal val LabelStyle = TextStyle(color = Ink, fontSize = 12.sp, shadow = Shadow(Color(0x99000000), Offset(0f, 1f), 3f))
+internal val LabelStyle = TextStyle(color = Txt, fontSize = 12.sp, shadow = Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 1f), 3f))
 
 /** What the activity can reset on a home press. */
 class HomeUi {
@@ -318,7 +310,7 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
                 val columns = if (wide) 5 else 4
                 if (n == 0 && layout is LayoutState.Broken) {
                     BrokenBanner(
-                        layout, appsLoad == AppsLoad.LOADED, TextStyle(color = Ink, fontSize = 13.sp),
+                        layout, appsLoad == AppsLoad.LOADED, TextStyle(color = Txt, fontSize = 13.sp),
                         Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp).fillMaxWidth()
                             .background(StateFill, RoundedCornerShape(14.dp)).border(1.dp, Line, RoundedCornerShape(14.dp))
                             .padding(horizontal = 14.dp),
@@ -396,7 +388,7 @@ private fun DockSkeleton(count: Int) {
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 12.dp)
-            .background(Color(0x10FFFFFF), RoundedCornerShape(22.dp))
+            .background(Txt.copy(alpha = 0.06f), RoundedCornerShape(22.dp))
             .border(1.dp, Line, RoundedCornerShape(22.dp))
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -417,8 +409,8 @@ private fun HomeNote(title: String, detail: String?, onClick: (() -> Unit)? = nu
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Text(title, style = TextStyle(color = Ink, fontSize = 16.sp))
-        detail?.let { Text(it, style = TextStyle(color = Muted, fontSize = 14.sp), modifier = Modifier.padding(top = 4.dp)) }
+        Text(title, style = TextStyle(color = Txt, fontSize = 16.sp))
+        detail?.let { Text(it, style = TextStyle(color = Mute, fontSize = 14.sp), modifier = Modifier.padding(top = 4.dp)) }
     }
 }
 
@@ -478,7 +470,7 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeCo
                             // DESIGN.md's selection on the item a drop would go onto.
                             .then(
                                 if (home.drag.held?.lit == Target.Onto(spot as Spot.Page)) {
-                                    Modifier.background(Color(0x14F08A2C), RoundedCornerShape(16.dp)).border(1.dp, Color(0x8CF08A2C), RoundedCornerShape(16.dp))
+                                    Modifier.background(Or.copy(alpha = 0.08f), RoundedCornerShape(16.dp)).border(1.dp, Or.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
                                 } else Modifier,
                             ),
                         contentAlignment = Alignment.TopCenter,
@@ -505,7 +497,7 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 12.dp)
-            .background(Color(0x10FFFFFF), RoundedCornerShape(22.dp))
+            .background(Txt.copy(alpha = 0.06f), RoundedCornerShape(22.dp))
             .border(1.dp, Line, RoundedCornerShape(22.dp))
             .dropZone(drag, "dock$page") { b -> Zone.Area(Place.Dock, b) }
             .padding(vertical = 10.dp)
@@ -538,7 +530,7 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
 private fun PageDots(current: Int, count: Int, modifier: Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         (0 until count).forEach { page ->
-            val color = if (page == current) Color(0xB0FFFFFF) else Color(0x30FFFFFF)
+            val color = if (page == current) Txt.copy(alpha = 0.7f) else Txt.copy(alpha = 0.2f)
             Box(Modifier.size(6.dp).background(color, if (page == 0) RoundedCornerShape(2.dp) else CircleShape))
         }
     }
@@ -563,7 +555,7 @@ internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)?
         Box {
             AppIcon(app, 52.dp)
             // A new app's dot (launcher polish 2.2), until it is first opened from the launcher.
-            if (dot) Box(Modifier.align(Alignment.TopEnd).size(10.dp).background(Amber, CircleShape).border(1.5.dp, Sheet, CircleShape))
+            if (dot) Box(Modifier.align(Alignment.TopEnd).size(10.dp).background(Or, CircleShape).border(1.5.dp, Bg, CircleShape))
         }
         Spacer(Modifier.height(5.dp))
         Text(app.label, style = LabelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
@@ -601,7 +593,7 @@ private fun FolderIcon(folder: ResolvedFolder) {
         } else Column(
             Modifier
                 .size(52.dp)
-                .background(Color(0x18FFFFFF), RoundedCornerShape(15.dp))
+                .background(Txt.copy(alpha = 0.09f), RoundedCornerShape(15.dp))
                 .border(1.dp, Line, RoundedCornerShape(15.dp))
                 .padding(6.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -615,7 +607,7 @@ private fun FolderIcon(folder: ResolvedFolder) {
 @Composable
 private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -> Unit) {
     Box(
-        Modifier.fillMaxSize().background(Color(0x99000000)).pointerInput(onClose) { detectTapGestures { onClose() } },
+        Modifier.fillMaxSize().background(Scrim).pointerInput(onClose) { detectTapGestures { onClose() } },
         contentAlignment = Alignment.Center,
     ) {
         val drag = home.drag
@@ -625,16 +617,16 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
             Modifier
                 .widthIn(max = 360.dp)
                 .padding(24.dp)
-                .background(Panel, RoundedCornerShape(24.dp))
+                .background(PanelFace.copy(alpha = 0.95f), RoundedCornerShape(24.dp))
                 .border(1.dp, Line, RoundedCornerShape(24.dp))
                 // The card takes a drop after the folder's last app (launcher polish 4.4).
                 .dropZone(drag, "card") { b -> Zone.Area(Place.InFolder(spot), b) }
                 .swallowTaps()
                 .padding(16.dp),
         ) {
-            Text(folder.folder.name, style = TextStyle(color = Ink, fontSize = 18.sp), modifier = Modifier.padding(start = 6.dp))
+            Text(folder.folder.name, style = TextStyle(color = Txt, fontSize = 18.sp), modifier = Modifier.padding(start = 6.dp))
             folder.folder.reason?.let {
-                Text(it, style = TextStyle(color = Muted, fontSize = 13.sp), modifier = Modifier.padding(start = 6.dp, top = 4.dp))
+                Text(it, style = TextStyle(color = Mute, fontSize = 13.sp), modifier = Modifier.padding(start = 6.dp, top = 4.dp))
             }
             Spacer(Modifier.height(14.dp))
             folder.apps.chunked(4).forEach { row ->
@@ -799,7 +791,6 @@ private fun HeldItem(held: Held) {
 }
 
 /** The top bars' backing: opaque, since they sit over the date header. */
-private val BarFill = Color(0xFF15181D)
 
 /** Edit mode's bar, or Remove while something is held. */
 @Composable
@@ -812,30 +803,30 @@ private fun TopBar(ui: HomeUi, modifier: Modifier) {
         val lit = held.lit == Target.Remove
         Box(
             modifier.padding(12.dp).fillMaxWidth().height(56.dp)
-                .background(BarFill, shape)
-                .background(if (lit) Color(0x14F08A2C) else Color.Transparent, shape)
-                .border(1.dp, if (lit) Color(0x8CF08A2C) else Line, shape)
+                .background(PanelFace, shape)
+                .background(if (lit) Or.copy(alpha = 0.08f) else Color.Transparent, shape)
+                .border(1.dp, if (lit) Or.copy(alpha = 0.55f) else Line, shape)
                 .dropZone(drag, "remove") { b -> Zone.Remove(b) },
             contentAlignment = Alignment.Center,
         ) {
-            Text("Remove", style = TextStyle(color = if (lit) Ink else Muted, fontSize = 15.sp))
+            Text("Remove", style = TextStyle(color = if (lit) Txt else Mute, fontSize = 15.sp))
         }
         return
     }
     Row(
-        modifier.padding(12.dp).fillMaxWidth().background(BarFill, shape).border(1.dp, Line, shape).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        modifier.padding(12.dp).fillMaxWidth().background(PanelFace, shape).border(1.dp, Line, shape).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             "Drag apps to move them. Drop one on another to make a folder.",
-            style = TextStyle(color = Ink, fontSize = 14.sp),
+            style = TextStyle(color = Txt, fontSize = 14.sp),
             modifier = Modifier.weight(1f),
         )
         Box(
-            Modifier.padding(start = 8.dp).background(Amber, RoundedCornerShape(10.dp)).clickable { drag.editing = false }
+            Modifier.padding(start = 8.dp).background(Or, RoundedCornerShape(10.dp)).clickable { drag.editing = false }
                 .padding(horizontal = 18.dp, vertical = 12.dp),
         ) {
-            Text("Done", style = TextStyle(color = Color(0xFF1A0D02), fontSize = 15.sp))
+            Text("Done", style = TextStyle(color = OnOr, fontSize = 15.sp))
         }
     }
 }
@@ -855,12 +846,12 @@ private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, close: () -> U
                 title = { Text("Rename folder") },
                 text = { OutlinedTextField(text, { text = it }, singleLine = true) },
                 confirmButton = {
-                    TextButton(onClick = { close(); if (text.trim() != name) home.actions.edit("$name is ${text.trim()} now.") { it.renameFolder(at, text) } }) { Text("Rename") }
+                    TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { close(); if (text.trim() != name) home.actions.edit("$name is ${text.trim()} now.") { it.renameFolder(at, text) } }) { Text("Rename") }
                 },
-                dismissButton = { TextButton(onClick = close) { Text("Cancel") } },
+                dismissButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = close) { Text("Cancel") } },
             )
         }
-        covering -> DropdownMenu(true, close, containerColor = Color(0xFF1B1F25), shape = RoundedCornerShape(16.dp)) {
+        covering -> DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
             val cover = folder.folder.cover
             folder.apps.forEach { (app, a) ->
                 val ref = a.item as AppRef
@@ -872,7 +863,7 @@ private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, close: () -> U
                 close(); if (cover != null) home.actions.edit("$name shows four apps.") { it.setCover(at, null) }
             }
         }
-        else -> DropdownMenu(true, close, containerColor = Color(0xFF1B1F25), shape = RoundedCornerShape(16.dp)) {
+        else -> DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
             FolderMenuItem("Rename…") { renaming = true }
             FolderMenuItem("Cover app…") { covering = true }
             FolderMenuItem("Remove from home") { close(); home.actions.edit("$name is off home.") { it.removeAt(at) } }
@@ -882,5 +873,5 @@ private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, close: () -> U
 
 @Composable
 private fun FolderMenuItem(text: String, onClick: () -> Unit) {
-    DropdownMenuItem(text = { Text(text, style = TextStyle(color = Ink, fontSize = 15.sp)) }, onClick = onClick)
+    DropdownMenuItem(text = { Text(text, style = TextStyle(color = Txt, fontSize = 15.sp)) }, onClick = onClick)
 }

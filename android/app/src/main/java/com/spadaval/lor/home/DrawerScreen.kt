@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.ui.*
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -256,7 +257,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
             }
         }
     }
-    Column(Modifier.fillMaxSize().background(Sheet).swallowTaps().safeDrawingPadding().padding(top = 12.dp)) {
+    Column(Modifier.fillMaxSize().background(Bg).swallowTaps().safeDrawingPadding().padding(top = 12.dp)) {
         OutlinedTextField(
             field,
             { field = it; ui.query = it.text },
@@ -265,8 +266,8 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Ink, unfocusedTextColor = Ink, cursorColor = Ink,
-                focusedBorderColor = Muted, unfocusedBorderColor = Line,
+                focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Txt,
+                focusedBorderColor = Mute, unfocusedBorderColor = Line,
             ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = { go() }),
@@ -314,7 +315,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
                             contentAlignment = Alignment.TopCenter,
                         ) {
                             // Go's target, while the field has focus (launcher polish 5.1): DESIGN.md's selection.
-                            if (e.go) Box(Modifier.matchParentSize().background(Amber.copy(alpha = 0.08f), RoundedCornerShape(12.dp)).border(1.dp, Amber.copy(alpha = 0.55f), RoundedCornerShape(12.dp)))
+                            if (e.go) Box(Modifier.matchParentSize().background(Or.copy(alpha = 0.08f), RoundedCornerShape(12.dp)).border(1.dp, Or.copy(alpha = 0.55f), RoundedCornerShape(12.dp)))
                             MenuTile(e.app, at, home, dot = e.dot)
                         }
                         is Entry.Row -> ResultRow(e.value, e.go, at, home)
@@ -338,8 +339,8 @@ private fun RecentSearches(searches: List<String>, pick: (String) -> Unit, clear
         Modifier.horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        searches.forEach { q -> Chip(q, Ink, Line) { pick(q) } }
-        Chip("Clear", Muted, Color.Transparent, clear)
+        searches.forEach { q -> Chip(q, Txt, Line) { pick(q) } }
+        Chip("Clear", Mute, Color.Transparent, clear)
     }
 }
 
@@ -363,10 +364,10 @@ private fun ViewSwitch(view: DrawerView, choose: (DrawerView) -> Unit) {
             val on = v == view
             Text(
                 label,
-                style = TextStyle(color = if (on) Ink else Muted, fontSize = 13.sp, fontWeight = if (on) FontWeight.Medium else FontWeight.Normal),
+                style = TextStyle(color = if (on) Txt else Mute, fontSize = 13.sp, fontWeight = if (on) FontWeight.Medium else FontWeight.Normal),
                 modifier = Modifier
-                    .background(if (on) Amber.copy(alpha = 0.08f) else Color.Transparent, RoundedCornerShape(10.dp))
-                    .border(1.dp, if (on) Amber.copy(alpha = 0.55f) else Line, RoundedCornerShape(10.dp))
+                    .background(if (on) Or.copy(alpha = 0.08f) else Color.Transparent, RoundedCornerShape(10.dp))
+                    .border(1.dp, if (on) Or.copy(alpha = 0.55f) else Line, RoundedCornerShape(10.dp))
                     .semantics { role = Role.Tab; selected = on }
                     .clickable { if (!on) choose(v) }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -378,7 +379,7 @@ private fun ViewSwitch(view: DrawerView, choose: (DrawerView) -> Unit) {
 @Composable
 private fun SectionHeader(title: String, reason: String?) {
     Column(Modifier.fillMaxWidth().padding(start = 12.dp, top = 10.dp).semantics(mergeDescendants = true) { heading() }) {
-        Text(title.uppercase(), style = TextStyle(color = Muted, fontSize = 12.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Medium))
+        Text(title.uppercase(), style = TextStyle(color = Mute, fontSize = 12.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Medium))
         reason?.let { Text(it, style = TextStyle(color = Dim, fontSize = 12.sp), modifier = Modifier.padding(top = 2.dp)) }
     }
 }
@@ -426,7 +427,7 @@ private fun LetterRail(letters: List<Pair<String, Int>>, grid: LazyGridState, mo
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         letters.forEach { (letter, _) ->
-            Text(letter, style = TextStyle(color = if (letter == current) Amber else Muted, fontSize = 11.sp, fontWeight = FontWeight.Medium))
+            Text(letter, style = TextStyle(color = if (letter == current) Or else Mute, fontSize = 11.sp, fontWeight = FontWeight.Medium))
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.spadaval.lor.agent
 
+import com.spadaval.lor.ui.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -80,21 +81,9 @@ import java.time.format.DateTimeFormatter
  * the thread, or LoR's dashboard. Nothing moves on its own: the page redraws when data changes.
  */
 
-internal val Ink = Color(0xFFECEBE6)
-internal val Muted = Color(0xFF9097A1)
-internal val Dim = Color(0xFF616871)
-internal val Line = Color(0x14FFFFFF)
-internal val CardFill = Color(0xDD15181D)
-private val Veil = Color(0xD90B0D10)
-internal val Amber = Color(0xFFE3A857)
-private val Green = Color(0xFF84B98F)
-internal val Red = Color(0xFFE2806F)
-private val Blue = Color(0xFF82A7E2)
-private val T3Tile = Color(0xFF3B3F8F)
-private val LorTile = Color(0xFF2C4A3A)
 
-internal val Body = TextStyle(color = Ink, fontSize = 14.sp)
-internal val Small = TextStyle(color = Muted, fontSize = 12.sp)
+internal val Body = TextStyle(color = Txt, fontSize = 14.sp)
+internal val Small = TextStyle(color = Mute, fontSize = 12.sp)
 private val Heading = TextStyle(color = Dim, fontSize = 11.sp, letterSpacing = 0.8.sp)
 
 @Composable
@@ -119,7 +108,7 @@ fun AgentPage() {
         Box(Modifier.fillMaxHeight().then(if (maxWidth >= 600.dp) Modifier.width(520.dp) else Modifier.fillMaxWidth())) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 120.dp)) {
                 Today(model)
-                model.notice?.let { Text(it, style = Small.copy(color = Red), modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
+                model.notice?.let { Text(it, style = Small.copy(color = Bad), modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
                 if (status == T3Connection.Status.NotPaired || status is T3Connection.Status.Rejected) PairCard(model.connection, status, Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
                 else T3State(status, shell.loaded)
                 if (running.isNotEmpty()) {
@@ -145,8 +134,8 @@ fun AgentPage() {
                 cards.forEach { T3QueueCard(it, model, live) }
                 needs.forEach { need ->
                     QueueCard(
-                        tile = "LoR", tileColor = LorTile, tileLabel = "Open in LoR", onTile = { model.openLor(taskPath(need.id), LaunchFrom.AGENT_ICON) },
-                        kind = "LoR", kindColor = Green, where = "flagged", title = need.title, detail = need.note,
+                        tile = "LoR", tileColor = TempLorTile, tileLabel = "Open in LoR", onTile = { model.openLor(taskPath(need.id), LaunchFrom.AGENT_ICON) },
+                        kind = "LoR", kindColor = TempGreen, where = "flagged", title = need.title, detail = need.note,
                     ) { Pill("Open", primary = true) { model.openLor(taskPath(need.id), LaunchFrom.AGENT_CARD) } }
                 }
                 AgentStates.notes(lorSource, t3Source, cards.size, needs.size)
@@ -182,7 +171,7 @@ private fun taskPath(id: String) = "/tasks?id=$id"
 @Composable
 private fun Header(title: String, right: String? = null) {
     Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 8.dp)) {
-        Text(title.uppercase(), style = Heading.copy(color = Ink, fontWeight = FontWeight.SemiBold), modifier = Modifier.weight(1f))
+        Text(title.uppercase(), style = Heading.copy(color = Txt, fontWeight = FontWeight.SemiBold), modifier = Modifier.weight(1f))
         right?.let { Text(it, style = Heading) }
     }
 }
@@ -216,7 +205,7 @@ private fun Today(model: AgentModel) {
 @Composable
 private fun Unreachable(text: String, model: AgentModel) {
     Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(6.dp).background(Red, CircleShape))
+        Box(Modifier.size(6.dp).background(Bad, CircleShape))
         Text(text, style = Small, modifier = Modifier.weight(1f).padding(start = 8.dp, end = 10.dp))
         Pill(if (model.retrying) "Trying…" else "Retry", enabled = !model.retrying) { model.retry() }
     }
@@ -237,13 +226,13 @@ private fun TodayBody(lor: DeviceHome, zone: ZoneId) {
         val since = running.start.atZone(zone).format(Clock)
         Text(
             if (running.paused) "Paused: ${running.title}" else "Timer: ${running.title} · since $since",
-            style = Small.copy(color = if (running.paused) Muted else Green, fontSize = 13.sp),
+            style = Small.copy(color = if (running.paused) Mute else TempGreen, fontSize = 13.sp),
             modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 10.dp),
         )
     }
     if (one != null) {
         Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 10.dp)) {
-            Text("NEXT · ${one.kicker.uppercase()}", style = Heading.copy(color = Green))
+            Text("NEXT · ${one.kicker.uppercase()}", style = Heading.copy(color = TempGreen))
             Text(one.text, style = Body.copy(fontSize = 17.sp, lineHeight = 22.sp), modifier = Modifier.padding(top = 3.dp))
             one.why?.let { Text(it, style = Small, modifier = Modifier.padding(top = 2.dp)) }
         }
@@ -254,7 +243,7 @@ private fun TodayBody(lor: DeviceHome, zone: ZoneId) {
             events.forEach { e ->
                 Row {
                     Text(e.start.atZone(zone).format(Clock), style = Small, modifier = Modifier.widthIn(min = 44.dp))
-                    Text(e.title, style = Small.copy(color = Ink), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(e.title, style = Small.copy(color = Txt), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -278,13 +267,13 @@ private fun DayArc(lor: DeviceHome) {
             (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * c.y + t * t * b.y,
         )
         val whole = Path().apply { moveTo(a.x, a.y); quadraticTo(c.x, c.y, b.x, b.y) }
-        drawPath(whole, Color(0x22FFFFFF), style = Stroke(2.dp.toPx()))
+        drawPath(whole, Frame, style = Stroke(2.dp.toPx()))
         val part = Path().apply {
             moveTo(a.x, a.y)
             for (i in 1..40) at(done * i / 40).let { lineTo(it.x, it.y) }
         }
-        drawPath(part, Green, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
-        drawCircle(Green, 4.dp.toPx(), at(done))
+        drawPath(part, TempGreen, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        drawCircle(TempGreen, 4.dp.toPx(), at(done))
     }
     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 2.dp)) {
         Text(lor.day.wakeStart.atZone(zone).format(Clock), style = Small.copy(color = Dim, fontSize = 10.sp))
@@ -312,7 +301,7 @@ private fun T3State(status: T3Connection.Status, loaded: Boolean) {
 @Composable
 internal fun Failed(text: String, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(6.dp).background(Red, CircleShape))
+        Box(Modifier.size(6.dp).background(Bad, CircleShape))
         Text(text, style = Small, modifier = Modifier.padding(start = 8.dp))
     }
 }
@@ -326,7 +315,7 @@ private fun RunningRow(thread: T3Thread, open: () -> Unit) {
             .padding(horizontal = 18.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(6.dp).background(Blue, CircleShape))
+        Box(Modifier.size(6.dp).background(TempBlue, CircleShape))
         Text(thread.title, style = Body.copy(fontSize = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 10.dp))
         Text(thread.projectTitle, style = Small, maxLines = 1, modifier = Modifier.padding(start = 8.dp))
     }
@@ -337,7 +326,7 @@ private fun T3QueueCard(card: T3Card, model: AgentModel, live: Boolean) {
     val busy = card.key in model.busy
     val ready = live && !busy
     var open by remember(card.key) { mutableStateOf(false) }
-    val color = if (card.kind == T3Card.Kind.FAILED) Red else Amber
+    val color = if (card.kind == T3Card.Kind.FAILED) Bad else Or
     val detail = model.failures[card.key]
         ?: when (card.kind) {
             T3Card.Kind.APPROVAL -> "Asks to run a ${card.request!!.kind.replace('_', ' ')}"
@@ -345,9 +334,9 @@ private fun T3QueueCard(card: T3Card, model: AgentModel, live: Boolean) {
             T3Card.Kind.QUESTION -> null
         }
     QueueCard(
-        tile = "T3", tileColor = T3Tile, tileLabel = "Open in T3", onTile = { model.openThread(card.thread.id, LaunchFrom.AGENT_ICON) },
+        tile = "T3", tileColor = TempT3Tile, tileLabel = "Open in T3", onTile = { model.openThread(card.thread.id, LaunchFrom.AGENT_ICON) },
         kind = card.kind.label, kindColor = color, where = card.thread.projectTitle, title = card.thread.title,
-        detail = detail, detailColor = if (card.key in model.failures) Red else Muted,
+        detail = detail, detailColor = if (card.key in model.failures) Bad else Mute,
         below = if (card.kind == T3Card.Kind.QUESTION && open) ({ Choices(card, model, live, busy) }) else null,
     ) {
         when (card.kind) {
@@ -424,7 +413,7 @@ private fun QueueCard(
     where: String,
     title: String,
     detail: String?,
-    detailColor: Color = Muted,
+    detailColor: Color = Mute,
     below: (@Composable () -> Unit)? = null,
     actions: @Composable () -> Unit,
 ) {
@@ -432,7 +421,7 @@ private fun QueueCard(
         Modifier
             .padding(horizontal = 10.dp, vertical = 3.dp)
             .fillMaxWidth()
-            .background(CardFill, RoundedCornerShape(14.dp))
+            .background(StateFill, RoundedCornerShape(14.dp))
             .border(1.dp, Line, RoundedCornerShape(14.dp))
             .padding(start = 8.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
     ) {
@@ -464,13 +453,13 @@ private fun QueueCard(
 @Composable
 internal fun Pill(text: String, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val shape = RoundedCornerShape(9.dp)
-    val base = if (primary) Modifier.background(if (enabled) Ink else Muted, shape) else Modifier.border(1.dp, if (enabled) Color(0x33FFFFFF) else Line, shape)
+    val base = if (primary) Modifier.background(if (enabled) Txt else Mute, shape) else Modifier.border(1.dp, if (enabled) Edge else Line, shape)
     Text(
         text,
         style = TextStyle(
             color = when {
-                primary -> Color(0xFF0B0D10)
-                enabled -> Ink
+                primary -> Bg
+                enabled -> Txt
                 else -> Dim
             },
             fontSize = 12.sp,
@@ -491,8 +480,8 @@ internal fun Field(value: String, placeholder: String, modifier: Modifier = Modi
         textStyle = Body,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Ink, unfocusedTextColor = Ink, cursorColor = Amber,
-            focusedBorderColor = Muted, unfocusedBorderColor = Color(0x2AFFFFFF),
+            focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Or,
+            focusedBorderColor = Mute, unfocusedBorderColor = Edge,
         ),
     )
 }
@@ -503,7 +492,7 @@ private fun SendButton(modifier: Modifier, onClick: () -> Unit) {
     Box(
         modifier
             .size(52.dp)
-            .background(Ink, CircleShape)
+            .background(Txt, CircleShape)
             .clickable(role = Role.Button, onClickLabel = "Quick send", onClick = onClick)
             .semantics { contentDescription = "Quick send" },
         contentAlignment = Alignment.Center,
@@ -514,7 +503,7 @@ private fun SendButton(modifier: Modifier, onClick: () -> Unit) {
             val plane = Path().apply {
                 moveTo(0.1f * w, 0.1f * h); lineTo(0.95f * w, 0.5f * h); lineTo(0.1f * w, 0.9f * h); lineTo(0.22f * w, 0.5f * h); close()
             }
-            drawPath(plane, Color(0xFF0B0D10))
+            drawPath(plane, Bg)
         }
     }
 }

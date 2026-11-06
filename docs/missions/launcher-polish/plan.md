@@ -1035,7 +1035,7 @@ Agreed with Sumeet, 2026-11-05:
 - R15, taken: 6.4 and 6.5 add a line to the spec's launcher section.
 - R16, no action: the order stands; 6.7 is the first to cut if needed.
 
-#### 6.1 One look: `DESIGN.md`'s colours and type in one place, and the stock screens dark. Status: todo
+#### 6.1 One look: `DESIGN.md`'s colours and type in one place, and the stock screens dark. Status: done
 - **Goal.** Every colour and type style the app draws comes from one file that mirrors `DESIGN.md`, and the screens that are stock Material today (Home settings, every dialog and menu, the LoR app and its strip) are dark and in its type.
   - **`ui/Look.kt`:** `DESIGN.md`'s colours as Compose `Color`s under its names (`Bg`, `Well`, `PanelFace`, `Raised`, `Line`, `Edge`, `Frame`, `Txt`, `Mute`, `Dim`, `Or`, `OrDeep`, `Cy`, `Bad`, and `OnOr` `#1a0d02`), its selection (8% amber fill, 1 dp amber edge at 55%) as one modifier, and its type scale (display, headline, title, body, body small, label, button) as `TextStyle`s in Saira and Saira Condensed, tabular numerals, with the condensed caps' letter spacing. Sizes in sp are `DESIGN.md`'s px. Nothing below 12 sp.
   - **Fonts:** Saira (the variable file, at 400, 500 and 600) and Saira Condensed (Medium, SemiBold) in `res/font` (the answers), the licence shipped with them as `assets/fonts/OFL.txt`, and each file named in a comment in `Look.kt` with its source.
@@ -1050,6 +1050,19 @@ Agreed with Sumeet, 2026-11-05:
   - `grep` finds no `Color(0x` outside `ui/Look.kt` in `home/`, `agent/` and `quicksend/` (data marks like the arc's track use tokens with alpha), and `dynamicDarkColorScheme` is gone.
   - **On `T3_Phone_API35`,** with the system in light mode (`cmd uimode night no`): screenshots of Home settings, the broken-file dialog (a file broken with `run-as`, as 3.1), Rename… on a folder, the app menu, the home menu, and the LoR app with its strip (another home made default, as 3.5), each dark, square and in Saira, with light status-bar icons; and each of the LoR app's tabs and `T3DebugScreen`, with no baseline purple anywhere. The same screens in dark mode look the same.
   - `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed: `ui/Palette.kt` (`DESIGN.md`'s colours as ARGB values, `luminance`, `contrast` and `over`, no Compose in it so the JVM tests reach it), `ui/Look.kt` (the colours as Compose `Color`s under `DESIGN.md`'s names, `StateFill`, `Scrim`, `Veil`, the four temporaries for 6.2, `selection()`, Saira and Saira Condensed, `Type`, and `LorTheme`), the fonts in `res/font` with `assets/fonts/OFL.txt`. Every per-file colour constant in `home/`, `agent/` and `quicksend/` is gone; `LorTheme` moved out of `ui/Common.kt`. `LookTest` (3 cases); 182 tests pass on boat.
+  - **On `T3_Phone_API35`,** with the system in light mode (`settings appearance light`):
+    - the LoR app's four tabs, the debug screen and the strip (the Pixel Launcher made home with `cmd package set-home-activity`, then LoR made home again) were dark, square and in Saira, with light status-bar icons; a scan of each screenshot for Material's baseline purples found none. The active tab is amber, the others Dust;
+    - Home settings: the title in condensed caps, section heads in condensed caps Dust;
+    - a folder's menu and Rename… (square, dark, Saira, amber text buttons); the broken-file dialog (a file broken with `run-as`), which "Use the last good layout" then put right, and the file was put back to its sum from before.
+  - **Choices.**
+    - Material's primary container is the selection tint over Panel Face, not Raised: `contentColorFor` matches a container's colour against the scheme in order, so a Raised card took the primary container's on-colour and drew its titles amber (seen, then fixed).
+    - Material's buttons ignore the theme's shapes (their shape is "full" by spec), so every `Button`, `OutlinedButton` and `TextButton` is given `RectangleShape`. The `Switch` stays Material's rounded one, like a status dot.
+    - Home settings' title is written in capitals ("HOME SETTINGS"): `TextStyle` has no capitals transform.
+    - The theme no longer follows the system's light or dark, so dark mode was not shot separately: there is one scheme.
+    - Home's labels and the date are still the system font; 6.2 and 6.3 give them Saira and the wallpaper's ink.
+  - Reviewed with the increment.
 
 #### 6.2 Home, the drawer, the agent page and quick send in the Elite look. Status: todo
 - **Goal.** The launcher looks like LoR: `DESIGN.md`'s surfaces, shapes and colour jobs on everything it draws, and refusals said in the bar instead of a toast.
