@@ -72,6 +72,26 @@ fun Modifier.framedPanel(face: Color = PanelFace): Modifier = background(face, C
 val DismissColors: androidx.compose.material3.ButtonColors
     @Composable get() = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = Txt)
 
+/**
+ * DESIGN.md's motion (launcher polish 7.1): one-shot, and it follows the finger. Nothing loops.
+ * Android's animator duration scale (and "Remove animations") reaches these through Compose's own
+ * MotionDurationScale, so at 0 each ends at once.
+ */
+object Motion {
+    /** Fades and feedback (DESIGN.md's 150 ms colour transition). */
+    const val QUICK = 150
+
+    /** A thing taking its new place: a tile, a folder, a settling icon. */
+    const val MOVE = 220
+
+    fun <T> quick(): androidx.compose.animation.core.TweenSpec<T> = androidx.compose.animation.core.tween(QUICK, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    fun <T> move(): androidx.compose.animation.core.TweenSpec<T> = androidx.compose.animation.core.tween(MOVE, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+
+    /** Whatever a finger let go of: no bounce, started from the finger's velocity by its caller. */
+    fun <T> settle(): androidx.compose.animation.core.SpringSpec<T> =
+        androidx.compose.animation.core.spring(dampingRatio = 1f, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
+}
+
 /** DESIGN.md's selection: an 8% amber fill with a 1 dp amber edge at 55%. */
 fun Modifier.selection(shape: Shape = RectangleShape): Modifier =
     background(Or.copy(alpha = 0.08f), shape).border(1.dp, Or.copy(alpha = 0.55f), shape)

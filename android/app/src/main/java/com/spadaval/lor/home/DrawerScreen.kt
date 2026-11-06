@@ -42,6 +42,10 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -218,11 +222,20 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
     val focus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    // Opened ready to type, when the file asks (launcher polish 5.5).
-    LaunchedEffect(Unit) {
-        if (home.file?.drawer?.keyboard == true) {
+    // Opened ready to type, when the file asks (launcher polish 5.5), once the drawer has settled
+    // open (7.1), so a swipe that goes back down leaves no keyboard.
+    val settledOpen by remember { derivedStateOf { ui.drawer && !ui.drawerHeld && ui.drawerShown >= 1f } }
+    LaunchedEffect(settledOpen) {
+        if (settledOpen && home.file?.drawer?.keyboard == true) {
             focus.requestFocus()
             keyboard?.show()
+        }
+    }
+    // A finger taking the drawer puts the keyboard away, as a drag on the list does.
+    LaunchedEffect(ui.drawerHeld) {
+        if (ui.drawerHeld && focused) {
+            keyboard?.hide()
+            focusManager.clearFocus()
         }
     }
     fun go() {
@@ -233,26 +246,15 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
     val saved = home.file?.drawer?.view ?: DrawerView.SECTIONS
     // Shown at once; the file catches up when the write lands.
     var view by remember(saved) { mutableStateOf(saved) }
-    val closeAt = with(LocalDensity.current) { 120.dp.toPx() }
-    // A pull down past the top of the list closes the drawer.
+    // A pull down at the top of the list moves the drawer; home's root measures it (launcher polish 7.1).
     val pullToClose = remember {
         object : NestedScrollConnection {
-            var pulled = 0f
-
             // A drag on the list puts the keyboard away so the list can be read (as Kvaesitso does).
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (source == NestedScrollSource.UserInput && available.y != 0f && focused) {
                     // Hidden as well as unfocused, so the keyboard goes whatever losing focus does.
                     keyboard?.hide()
                     focusManager.clearFocus()
-                }
-                return Offset.Zero
-            }
-
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput) {
-                    pulled = if (available.y > 0) pulled + available.y else 0f
-                    if (pulled > closeAt) { pulled = 0f; ui.drawer = false; ui.query = "" }
                 }
                 return Offset.Zero
             }
@@ -297,11 +299,15 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
                 else build(view, apps, home.file, stats, columns, now)
             }
             val grid = rememberLazyGridState()
+            val atTop by remember { derivedStateOf { !grid.canScrollBackward } }
+            SideEffect { ui.drawerAtTop = atTop }
+            val rail = with(LocalDensity.current) { if (built.letters.isEmpty()) 0f else 28.dp.toPx() }
             // A new view starts at its top.
             LaunchedEffect(view) { grid.scrollToItem(0) }
             LazyVerticalGrid(
                 GridCells.Fixed(columns),
-                Modifier.fillMaxSize().nestedScroll(pullToClose),
+                Modifier.fillMaxSize().nestedScroll(pullToClose)
+                    .onGloballyPositioned { c -> ui.drawerPullArea = c.boundsInRoot().let { it.copy(right = it.right - rail) } },
                 state = grid,
                 contentPadding = PaddingValues(start = 8.dp, end = if (built.letters.isEmpty()) 8.dp else 28.dp, top = 8.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),

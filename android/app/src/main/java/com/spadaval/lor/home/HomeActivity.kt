@@ -74,8 +74,12 @@ class HomeActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (intent.action != Intent.ACTION_MAIN || !intent.hasCategory(Intent.CATEGORY_HOME)) return
         // Launcher3's alreadyOnHome: home had focus and the press didn't bring it to the front.
-        val alreadyOnHome = hasWindowFocus() && intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT == 0
-        if (alreadyOnHome && ui.atRest) QuickSend.open(this, QuickSend.From.HOME) else ui.homePressed()
+        val broughtToFront = intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT != 0
+        val alreadyOnHome = hasWindowFocus() && !broughtToFront
+        // Home on screen before the press closes what is open with motion; brought from elsewhere,
+        // there is nothing to watch, so it shuts at once (launcher polish 7.1).
+        val wasVisible = !broughtToFront && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+        if (alreadyOnHome && ui.atRest) QuickSend.open(this, QuickSend.From.HOME) else ui.homePressed(animate = wasVisible)
     }
 
     /**

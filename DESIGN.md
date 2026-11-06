@@ -240,6 +240,15 @@ Round shapes are reserved for small status dots (6px: the timer dot, the health 
 
 Lines carry state: solid is confirmed, dashed is not yet confirmed or not yet travelled, a fainter dashed bronze is unlabelled phone or place time.
 
+## Motion
+
+Calm. Motion is one-shot and follows the finger: a thing moves because a hand moved it or a tap asked for it, and it stops. Nothing loops, pulses, shimmers or spins, and nothing moves on its own (a reread, an undo or a cold start puts things in place at once).
+
+- **Feedback and fades:** 150ms (the colour transition above).
+- **A thing taking its new place** (a tile, a folder from its tile, a settling icon): about 220ms, standard ease (fast out, slow in).
+- **Whatever a finger lets go of** (the phone's drawer): it follows the finger 1:1, then settles with a spring that has no bounce, starting at the finger's speed.
+- **Remove animations** (Android's setting, the animator duration scale at 0): every motion ends at once, and nothing is left part-way.
+
 ## Components
 
 ### Buttons

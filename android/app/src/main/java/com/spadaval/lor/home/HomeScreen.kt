@@ -20,17 +20,25 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animate
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onSizeChanged
+import com.spadaval.lor.ui.Motion
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -132,7 +140,26 @@ internal val labelStyle: TextStyle
 
 /** What the activity can reset on a home press. */
 class HomeUi {
+    /** The drawer's target: open or not. Set from anywhere; [HomeScreen] moves [drawerShown] to it. */
     var drawer by mutableStateOf(false)
+
+    /**
+     * Where the drawer is, from 0 (closed) to 1 (open) (launcher polish 7.1). A finger sets it
+     * while [drawerHeld]; otherwise one effect in [HomeScreen] animates it to [drawer].
+     */
+    var drawerShown by mutableFloatStateOf(0f)
+    var drawerHeld by mutableStateOf(false)
+
+    /** The velocity (drawer heights per second, up positive) a finger let the drawer go with. */
+    var drawerFling = 0f
+
+    /** Set by a home press that should jump rather than animate; each effect takes its own. */
+    var snapDrawer = false
+    var snapPager = false
+
+    /** The drawer's list is at its top, and where it is in root coordinates (its letter rail left out). */
+    var drawerAtTop = true
+    var drawerPullArea: Rect? = null
     /**
      * The open folder: its place in the file (launcher polish 4.1: by place, since names may
      * repeat) and its name, so an edit that moves another item into that place closes it.
@@ -154,8 +181,14 @@ class HomeUi {
     /** Home with nothing open over it: a home press here opens quick send instead. */
     val atRest: Boolean get() = !drawer && folder == null && homeMenu == null && page == 1 && !drag.editing && drag.held == null
 
-    fun homePressed() {
+    /**
+     * A home press ([animate] false when home wasn't on screen before it: then everything shuts
+     * at once, since there's nothing to watch).
+     */
+    fun homePressed(animate: Boolean = true) {
         // A home press puts a held item back and leaves edit mode.
+        snapDrawer = !animate
+        snapPager = !animate
         drag.held = null
         drag.editing = false
         drawer = false
@@ -227,13 +260,34 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val pager = rememberPagerState(initialPage = 1) { 1 + pageCount }
     // The system bars' icons follow the ink: dark over a light wallpaper on home's pages, light on
     // the agent page's veil, the drawer and an open folder (6's review, R1).
-    val darkBarIcons = ink.ink == Ink.DARK && pager.currentPage >= 1 && !ui.drawer && folder == null
+    // The drawer counts once any of it is under the status bar (launcher polish 7.1), decided in the
+    // frame it crosses the bar rather than when a close starts.
+    var heightPx by remember { mutableIntStateOf(0) }
+    val barPx = WindowInsets.statusBars.getTop(LocalDensity.current)
+    val drawerUnderBar by remember(heightPx, barPx) { derivedStateOf { (1f - ui.drawerShown) * heightPx < barPx } }
+    val darkBarIcons = ink.ink == Ink.DARK && pager.currentPage >= 1 && !drawerUnderBar && folder == null
     val view = androidx.compose.ui.platform.LocalView.current
-    LaunchedEffect(darkBarIcons) {
-        val window = (view.context as? android.app.Activity)?.window ?: return@LaunchedEffect
+    var barsDark by remember { mutableStateOf<Boolean?>(null) }
+    SideEffect {
+        if (barsDark == darkBarIcons) return@SideEffect
+        val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
         androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
             isAppearanceLightStatusBars = darkBarIcons
             isAppearanceLightNavigationBars = darkBarIcons
+        }
+        barsDark = darkBarIcons
+    }
+    // The drawer goes to its target, unless a finger has it; a home press from elsewhere jumps (7.1).
+    LaunchedEffect(ui.drawer, ui.drawerHeld, ui.homePresses) {
+        if (ui.drawerHeld) return@LaunchedEffect
+        val to = if (ui.drawer) 1f else 0f
+        val fling = ui.drawerFling
+        ui.drawerFling = 0f
+        if (ui.snapDrawer) {
+            ui.snapDrawer = false
+            ui.drawerShown = to
+        } else if (ui.drawerShown != to) {
+            animate(ui.drawerShown, to, fling, Motion.settle()) { v, _ -> ui.drawerShown = v }
         }
     }
     // A target waits 300 ms under the finger before the working copy takes it (Kvaesitso's attemptMove).
@@ -276,7 +330,13 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             final
         }
     }
-    LaunchedEffect(ui.homePresses) { if (ui.homePresses > 0) pager.animateScrollToPage(1) }
+    LaunchedEffect(ui.homePresses) {
+        if (ui.homePresses == 0) return@LaunchedEffect
+        if (ui.snapPager) {
+            ui.snapPager = false
+            pager.scrollToPage(1)
+        } else pager.animateScrollToPage(1)
+    }
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { ui.page = it } }
     BackHandler(enabled = ui.folder != null || ui.drawer || pager.currentPage != 1 || drag.editing) {
         when {
@@ -291,18 +351,19 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val latestDrop by rememberUpdatedState<(Held, Target?) -> Unit>(::dropHeld)
     val dots by Dots.withDots.collectAsState()
     CompositionLocalProvider(LocalHomeLook provides (file?.look ?: HomeLook()), LocalDots provides dots) {
-    Box(Modifier.fillMaxSize().dragging(ui, { latestHome }, { h, t -> latestDrop(h, t) })) {
+    val haptics = LocalHapticFeedback.current
+    Box(Modifier.fillMaxSize().onSizeChanged { heightPx = it.height }.dragging(ui, { latestHome }, { h, t -> latestDrop(h, t) }).drawerPull(ui, haptics)) {
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1, userScrollEnabled = held == null) { page ->
             if (page == 0) AgentPage() else CompositionLocalProvider(LocalWallInk provides ink) { HomePage(page - 1, placed, layout, appsLoad, ui, home) }
         }
         // On the agent page the dots sit on its dark veil, not the wallpaper (6.8: dark ink vanished there).
         PageDots(pager.currentPage, 1 + pageCount, if (pager.currentPage == 0) SurfaceInk.mark else ink.mark, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
-        AnimatedVisibility(
-            ui.drawer,
-            enter = slideInVertically { it / 3 } + fadeIn(),
-            exit = slideOutVertically { it / 3 } + fadeOut(),
-        ) {
-            Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, stats, search, ui, home)
+        // The drawer, wherever the finger or its settle has it (launcher polish 7.1); home stays still under it.
+        val drawerShows by remember { derivedStateOf { ui.drawerShown > 0f } }
+        if (drawerShows) {
+            Box(Modifier.fillMaxSize().graphicsLayer { translationY = (1f - ui.drawerShown) * size.height }) {
+                Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, stats, search, ui, home)
+            }
         }
         folder?.let { FolderPanel(it, home, onClose = { ui.folder = null }) }
         // Edit mode's bar, and Remove while something is held (launcher polish 4.3).
@@ -316,25 +377,26 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
 
 @Composable
 private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad: AppsLoad, ui: HomeUi, home: HomeContext) {
-    val threshold = with(LocalDensity.current) { 56.dp.toPx() }
-    var dragged by remember { mutableStateOf(0f) }
+    val haptics = LocalHapticFeedback.current
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                detectVerticalDragGestures(onDragStart = { dragged = 0f }) { change, dy ->
-                    dragged += dy
-                    if (dragged < -threshold && !ui.drawer) {
-                        change.consume()
-                        ui.drawer = true
-                    }
+                // A swipe up brings the drawer with the finger (launcher polish 7.1).
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    if (ui.drawer || ui.drag.held != null) return@awaitEachGesture
+                    val tracker = VelocityTracker()
+                    val first = awaitVerticalSlop(down, tracker, PointerEventPass.Main) ?: return@awaitEachGesture
+                    // Only a swipe that starts upward is the drawer's.
+                    if (first.position.y > down.position.y) return@awaitEachGesture
+                    followDrawer(down, first, DrawerFinger(ui, haptics, size.height.toFloat(), density, fromOpen = false), tracker, PointerEventPass.Main)
                 }
             }
             .safeDrawingPadding(),
     ) {
         // Under everything: a long press that no app or folder took, on empty home, opens the home
         // menu. Overlapping siblings get a touch only when the ones drawn above it don't.
-        val haptics = LocalHapticFeedback.current
         Box(
             Modifier.matchParentSize().pointerInput(Unit) {
                 detectTapGestures(onLongPress = {
@@ -899,4 +961,89 @@ private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, close: () -> U
 @Composable
 private fun FolderMenuItem(text: String, onClick: () -> Unit) {
     DropdownMenuItem(text = { Text(text, style = Type.body.copy(color = Txt, fontSize = 15.sp)) }, onClick = onClick)
+}
+
+/**
+ * A finger moving the drawer (launcher polish 7.1): 1:1 with its travel, a tick at the commit
+ * point either way, and on release the drawer settles where [DrawerMotion.settles] says, from the
+ * finger's velocity.
+ */
+private class DrawerFinger(val ui: HomeUi, val haptics: HapticFeedback, val heightPx: Float, val density: Float, val fromOpen: Boolean) {
+    private val start = ui.drawerShown
+    private val point = DrawerMotion.commitPoint(fromOpen, start)
+    init {
+        ui.drawerHeld = true
+    }
+
+    /** The finger is [travel] px below where it pressed (up negative). */
+    fun move(travel: Float) {
+        val before = ui.drawerShown
+        val now = (start - travel / heightPx).coerceIn(0f, 1f)
+        ui.drawerShown = now
+        if (DrawerMotion.crossed(point, before, now)) haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+    }
+
+    /** Let go at [vy] px/s (down positive). */
+    fun release(vy: Float) {
+        val open = DrawerMotion.settles(fromOpen, start, ui.drawerShown, -vy / density)
+        android.util.Log.d("LorMotion", "drawer let go at ${ui.drawerShown} from $start, ${-vy / density} dp/s up: ${if (open) "open" else "closed"}")
+        ui.drawerFling = -vy / heightPx
+        ui.drawer = open
+        if (!open) ui.query = ""
+        ui.drawerHeld = false
+    }
+}
+
+/**
+ * The pull down that closes the open drawer from the top of its list (launcher polish 7.1),
+ * measured on home's root, which doesn't move, in the Initial pass as [dragging] is: the list moves
+ * with the drawer, so its own scroll deltas would make the drawer lag. A press in the list (not its
+ * letter rail) with the list at its top, moved down past the touch slop, is taken.
+ */
+private fun Modifier.drawerPull(ui: HomeUi, haptics: HapticFeedback): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val area = ui.drawerPullArea
+        if (!ui.drawer || ui.drawerShown < 1f || !ui.drawerAtTop || ui.drag.held != null || area == null || !area.contains(down.position)) return@awaitEachGesture
+        val tracker = VelocityTracker()
+        // Only a pull that starts downward is the drawer's.
+        val first = awaitVerticalSlop(down, tracker, PointerEventPass.Initial) ?: return@awaitEachGesture
+        if (first.position.y < down.position.y) return@awaitEachGesture
+        followDrawer(down, first, DrawerFinger(ui, haptics, size.height.toFloat(), density, fromOpen = true), tracker, PointerEventPass.Initial)
+    }
+}
+
+/**
+ * Waits for [down]'s finger to pass the touch slop; returns that move when it went mostly
+ * vertically, else null (a tap, a lift, a sideways swipe, or a move something else took).
+ */
+private suspend fun AwaitPointerEventScope.awaitVerticalSlop(down: PointerInputChange, tracker: VelocityTracker, pass: PointerEventPass): PointerInputChange? {
+    tracker.addPosition(down.uptimeMillis, down.position)
+    while (true) {
+        val c = awaitPointerEvent(pass).changes.firstOrNull { it.id == down.id } ?: return null
+        if (!c.pressed || c.isConsumed) return null
+        tracker.addPosition(c.uptimeMillis, c.position)
+        val d = c.position - down.position
+        if (d.getDistance() > viewConfiguration.touchSlop) return if (kotlin.math.abs(d.y) > kotlin.math.abs(d.x)) c else null
+    }
+}
+
+/** Moves the drawer with [down]'s finger from [first] on, measured from where it pressed, and lets it go on the lift. */
+private suspend fun AwaitPointerEventScope.followDrawer(down: PointerInputChange, first: PointerInputChange, finger: DrawerFinger, tracker: VelocityTracker, pass: PointerEventPass) {
+    first.consume()
+    finger.move(first.position.y - down.position.y)
+    while (true) {
+        val c = awaitPointerEvent(pass).changes.firstOrNull { it.id == down.id }
+        if (c == null) {
+            finger.release(0f)
+            return
+        }
+        c.consume()
+        tracker.addPosition(c.uptimeMillis, c.position)
+        finger.move(c.position.y - down.position.y)
+        if (!c.pressed) {
+            finger.release(tracker.calculateVelocity().y)
+            return
+        }
+    }
 }

@@ -1339,7 +1339,7 @@ Agreed with Sumeet, 2026-11-05:
 - R9, fixed: the tick is at 30% of travel from where the gesture started (7.1).
 - R10, taken: the no-loops grep covers indeterminate progress indicators (7.8).
 
-#### 7.1 The drawer follows the finger. Status: todo
+#### 7.1 The drawer follows the finger. Status: done
 - **Goal.** The drawer moves with the finger from home and back down, settles from where it is let go, and ticks at the point where a release would commit.
   - **Motion rules.** `ui/Look.kt` gains `Motion`:
     - `QUICK`: 150 ms, for fades and feedback (`DESIGN.md`'s colour transition);
@@ -1377,6 +1377,23 @@ Agreed with Sumeet, 2026-11-05:
   - **The keyboard,** with `drawer.keyboard: true`: a swipe up to 20% and back down leaves no keyboard (`dumpsys input_method`'s `mInputShown`), and a full open shows it.
   - **A home press** from Settings, with the drawer left open: the first frame of home in a recording shows no drawer.
   - **`assembleDebug testDebugUnitTest`** passes on boat.
+
+- **2026-11-06.** Landed: `Motion` in `ui/Look.kt`; `home/Motion.kt` (`DrawerMotion`: the commit point, `settles` and `crossed`); in `HomeScreen.kt`, `HomeUi.drawerShown`, `drawerHeld`, the snap flags and `homePressed(animate)`, one `LaunchedEffect` moving the drawer to its target, `DrawerFinger`, home's swipe and the root's `drawerPull` (both through `awaitVerticalSlop` and `followDrawer`), and the status bar's `SideEffect`; in `DrawerScreen.kt`, the keyboard on settle, the list's top and pull area, and `pullToClose` reduced to its keyboard hide; `HomeActivity.onNewIntent` passes whether home was visible; `DESIGN.md` has "Motion". `MotionTest` (3 cases); 203 tests pass on boat. Each release logs one `LorMotion` debug line (where it was let go, the velocity, and the result), which the checks read.
+  - **On `T3_Phone_API35`,** with `input motionevent` and the drawer's top edge found in each screenshot as the first row of 40 rows of Deep Space:
+    - a press at y 1800 moved to 840 (40%) and held: the top edge at 1440, the finger's travel exactly. The first build lagged by the touch slop (21 px), so the travel is now measured from the press, not from the slop;
+    - moved back to 1560 (10%) and held: the edge at 2160; released, it closed;
+    - to 40% and released slowly: it opened;
+    - in the drawer, a pull from y 700 held at three points: the edge at 300, 600 and 1200 for 300, 600 and 1200 px of travel; released at half, it closed.
+  - **A fling:** `input swipe` can't make one. It sends its lift well after its last move, so Compose's velocity tracker (which takes a pointer as stopped after 40 ms without a move) reads about 0, and a 300 px swipe in 80 ms let go at 12.5% closed. agent-device's `gesture fling up` from y 1800 let go at 13.5% at 1223 dp/s and opened.
+  - **Recordings:** a `screenrecord` of an open (to 40%, let go) and a close (a pull of 800 px, let go), read frame by frame: the edge went 2306, 2102, 1904, 1700, 1440 with the finger, then 1236, 1060, 225, 0 settling; and 304, 602, 800 with the finger, then 867, 1028, 1224, 1751, 1994, 2152, 2288, 2336 to closed. No frame went back.
+  - **The tick:** `dumpsys vibrator_manager` lists `performHapticFeedback(constant=23)` (`GESTURE_THRESHOLD_ACTIVATE`) from LoR for each crossing.
+  - **The status bar,** over a plain `#f2f2f2` wallpaper (`LorLook`: dark text): with the drawer pulled down 40 px (its top under the bar) the clock's ink was light, and pulled down 400 px it was dark.
+  - **The keyboard,** with `drawer.keyboard: true` written with `run-as`: a swipe to 20% and back left `mInputShown=false`; a full open, `true`.
+  - **A home press** from Settings with the drawer left open: a recording at 30 frames a second showed home's first frame with no drawer.
+  - **Found and fixed on the way:** a swipe that starts downward on home with the drawer shut took the drawer too, and `input motionevent`'s spaced events gave it a nonsense velocity that opened the drawer. Only a swipe that starts upward takes the drawer now; 7.6 gives the downward one to the shade.
+  - **Choices.** The pull down in the drawer is taken anywhere in the list but its letter rail, once the list is at its top. A press that catches the drawer mid-settle measures its commit point from where it caught it.
+  - **Not checked here:** "Remove animations" (7.8 checks every motion at once).
+  - Reviewed with the increment.
 
 #### 7.2 Folders open from their tile. Status: todo
 - **Goal.** The folder panel grows out of the tile that was tapped and goes back into it.
