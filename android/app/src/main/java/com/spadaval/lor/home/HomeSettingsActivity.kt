@@ -64,11 +64,11 @@ class HomeSettingsActivity : ComponentActivity() {
         setContent {
             val apps by store.apps.collectAsStateWithLifecycle()
             val layout by store.layout.collectAsStateWithLifecycle()
-            val appsLoaded by store.appsLoaded.collectAsStateWithLifecycle()
+            val appsLoad by store.appsLoad.collectAsStateWithLifecycle()
             LorTheme {
                 CompositionLocalProvider(LocalIcons provides icons) {
                     Surface(Modifier.fillMaxSize()) {
-                        HomeSettings(apps, layout, appsLoaded, ::edit, ::restore, ::open)
+                        HomeSettings(apps, layout, appsLoad == AppsLoad.LOADED, ::edit, ::restore, ::open)
                     }
                 }
             }

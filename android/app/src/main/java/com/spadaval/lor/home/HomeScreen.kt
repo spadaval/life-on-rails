@@ -139,7 +139,7 @@ private fun place(layout: Layout, apps: List<HomeApp>): Pair<List<Placed>, List<
 }
 
 @Composable
-fun HomeScreen(apps: List<HomeApp>, appsLoaded: Boolean, layout: LayoutState, stats: LaunchStats, ui: HomeUi, actions: HomeActions) {
+fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, stats: LaunchStats, ui: HomeUi, actions: HomeActions) {
     // While the file is broken, everything draws from the last good layout (launcher polish 3.1).
     val file = layout.shown
     val home = remember(actions, file, apps) { HomeContext(actions, file, apps) }
@@ -159,7 +159,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoaded: Boolean, layout: LayoutState, st
     }
     Box(Modifier.fillMaxSize()) {
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
-            if (page == 0) AgentPage() else HomePage(placed, layout, appsLoaded, ui, home)
+            if (page == 0) AgentPage() else HomePage(placed, layout, appsLoad, ui, home)
         }
         PageDots(pager.currentPage, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
         AnimatedVisibility(
@@ -174,7 +174,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoaded: Boolean, layout: LayoutState, st
 }
 
 @Composable
-private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutState, appsLoaded: Boolean, ui: HomeUi, home: HomeContext) {
+private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutState, appsLoad: AppsLoad, ui: HomeUi, home: HomeContext) {
     val threshold = with(LocalDensity.current) { 56.dp.toPx() }
     var dragged by remember { mutableStateOf(0f) }
     BoxWithConstraints(
@@ -206,16 +206,20 @@ private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutS
         val header = @Composable { DateHeader(if (wide) 40 else 30) }
         val body = @Composable { mod: Modifier ->
             Column(mod) {
-                when (layout) {
-                    LayoutState.Loading -> {}
-                    is LayoutState.Broken -> {
-                        BrokenBanner(layout, appsLoaded, LabelStyle.copy(color = Ink, fontSize = 13.sp), Modifier.padding(horizontal = 20.dp), home.actions::restore)
-                        if (placed != null) HomeGrid(placed.first, if (wide) 5 else 4, ui, home)
-                    }
-                    is LayoutState.Ready -> HomeGrid(placed!!.first, if (wide) 5 else 4, ui, home)
+                val columns = if (wide) 5 else 4
+                if (layout is LayoutState.Broken) {
+                    BrokenBanner(layout, appsLoad == AppsLoad.LOADED, LabelStyle.copy(color = Ink, fontSize = 13.sp), Modifier.padding(horizontal = 20.dp), home.actions::restore)
+                }
+                val body = homeBody(appsLoad, home.file, placed?.first?.size ?: 0)
+                when (body) {
+                    HomeBody.NOTHING -> {}
+                    HomeBody.SKELETON -> Skeleton(home.file!!.current.home, columns)
+                    HomeBody.APPS_DIDNT_LOAD -> HomeNote("Apps didn't load. Trying again.", null)
+                    HomeBody.EMPTY -> HomeNote("Home is empty.", "Swipe up for your apps. Long-press one and choose Add to home.") { ui.drawer = true }
+                    HomeBody.GRID -> HomeGrid(placed!!.first, columns, ui, home)
                 }
                 Spacer(Modifier.weight(1f))
-                Dock(placed?.second.orEmpty(), home)
+                if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.second.orEmpty(), home)
             }
         }
         if (wide) {
@@ -230,6 +234,61 @@ private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutS
             }
         }
         ui.homeMenu?.let { HomeMenu(it, home) { ui.homeMenu = null } }
+    }
+}
+
+/**
+ * Home while the app list loads (launcher polish 3.2): a still slot where each of the file's items
+ * will be, the size of its icon, so nothing moves when the icons arrive. Nothing shimmers (calm).
+ */
+@Composable
+private fun Skeleton(items: List<LayoutItem>, columns: Int) {
+    Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        items.take(LayoutFile.MAX_HOME).chunked(columns).forEach { row ->
+            Row(Modifier.fillMaxWidth()) {
+                row.forEach { item ->
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
+                        Column(Modifier.width(76.dp).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(Modifier.size(52.dp).background(Line, if (item is Folder) RoundedCornerShape(15.dp) else CircleShape))
+                            // The label's height, so the rows sit where the tiles will.
+                            Spacer(Modifier.height(5.dp))
+                            Text("", style = LabelStyle)
+                        }
+                    }
+                }
+                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DockSkeleton(count: Int) {
+    if (count == 0) return
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 12.dp)
+            .background(Color(0x10FFFFFF), RoundedCornerShape(22.dp))
+            .border(1.dp, Line, RoundedCornerShape(22.dp))
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        repeat(count) { Box(Modifier.size(48.dp).background(Line, CircleShape)) }
+    }
+}
+
+/** A line or two in home's grid area, over the wallpaper; [onClick], if any, makes it a button. */
+@Composable
+private fun HomeNote(title: String, detail: String?, onClick: (() -> Unit)? = null) {
+    Column(
+        Modifier
+            .padding(horizontal = 12.dp)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+    ) {
+        Text(title, style = LabelStyle.copy(fontSize = 16.sp))
+        detail?.let { Text(it, style = LabelStyle.copy(color = Ink.copy(alpha = 0.75f), fontSize = 14.sp), modifier = Modifier.padding(top = 4.dp)) }
     }
 }
 

@@ -56,10 +56,10 @@ class HomeActivity : ComponentActivity() {
             val apps by model.apps.collectAsStateWithLifecycle()
             val layout by model.layout.collectAsStateWithLifecycle()
             val stats by model.stats.collectAsStateWithLifecycle()
-            val appsLoaded by model.appsLoaded.collectAsStateWithLifecycle()
+            val appsLoad by model.appsLoad.collectAsStateWithLifecycle()
             LorTheme {
                 CompositionLocalProvider(LocalIcons provides icons) {
-                    HomeScreen(apps, appsLoaded, layout, stats, ui, actions)
+                    HomeScreen(apps, appsLoad, layout, stats, ui, actions)
                 }
             }
         }

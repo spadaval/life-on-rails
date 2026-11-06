@@ -175,7 +175,8 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, ui: HomeUi, home: H
                 view = v
                 home.actions.edit(null) { it.copy(drawer = it.drawer.copy(view = v)) }
             }
-        } else if (results.isEmpty()) {
+        } else if (results.isEmpty() && apps.isNotEmpty()) {
+            // While the app list loads (launcher polish 3.2), nothing matches, but there's nothing to say yet.
             Text("No app called \"${ui.query.trim()}\".", style = TextStyle(color = Muted, fontSize = 14.sp), modifier = Modifier.padding(24.dp))
         }
         BoxWithConstraints(Modifier.fillMaxSize()) {

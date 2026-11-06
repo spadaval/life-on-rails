@@ -62,6 +62,31 @@ val LayoutState.shown: LayoutFile?
         LayoutState.Loading -> null
     }
 
+/** How the app list's last load went: not done yet, done, or back with no apps (tried again on resume). */
+enum class AppsLoad { LOADING, LOADED, EMPTY }
+
+/** What home's grid shows (launcher polish 3.2). */
+enum class HomeBody {
+    /** The date header alone: nothing to shape a skeleton with yet. */
+    NOTHING,
+    /** A still slot where each of the file's items will be. */
+    SKELETON,
+    /** The app list came back empty. */
+    APPS_DIDNT_LOAD,
+    /** The layout places nothing on home. */
+    EMPTY,
+    GRID,
+}
+
+/** What home's grid shows, from the app list's load, the layout home draws, and how many home items it placed. */
+fun homeBody(apps: AppsLoad, layout: LayoutFile?, placed: Int): HomeBody = when {
+    apps == AppsLoad.LOADING -> if (layout == null) HomeBody.NOTHING else HomeBody.SKELETON
+    apps == AppsLoad.EMPTY -> HomeBody.APPS_DIDNT_LOAD
+    layout == null -> HomeBody.NOTHING
+    placed == 0 -> HomeBody.EMPTY
+    else -> HomeBody.GRID
+}
+
 /** A package whose activities changed, so its icons are stale. */
 data class PackageChange(val packages: List<String>, val user: UserHandle)
 
@@ -88,9 +113,9 @@ class HomeStore(private val context: Context) {
 
     /** The app list loaded in full at least once; until then no default layout is written. */
     private var loaded = false
-    private val _appsLoaded = MutableStateFlow(false)
-    /** Whether the app list has loaded in full; home shows its skeleton until it has. */
-    val appsLoaded: StateFlow<Boolean> = _appsLoaded
+    private val _appsLoad = MutableStateFlow(AppsLoad.LOADING)
+    /** How the app list's last load went; home shows its skeleton until the first one ends. */
+    val appsLoad: StateFlow<AppsLoad> = _appsLoad
 
     private val _apps = MutableStateFlow<List<HomeApp>>(emptyList())
     val apps: StateFlow<List<HomeApp>> = _apps
@@ -127,8 +152,10 @@ class HomeStore(private val context: Context) {
             addAction(Intent.ACTION_MANAGED_PROFILE_UNLOCKED)
         }
         ContextCompat.registerReceiver(context, profiles, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        // The file first, so home's skeleton has its shape while the app list loads (launcher
+        // polish 3.2); with no file, the default waits for the list (loadApps reads it then).
+        serially { if (store.file.exists()) readLayout() }
         serially { loadApps() }
-        serially { readLayout() }
         serially { if (statsFile.exists()) _stats.value = LaunchStats.parse(statsFile.readText()) }
     }
 
@@ -200,9 +227,10 @@ class HomeStore(private val context: Context) {
         _apps.value = all
         // An empty list means the load didn't really happen (a phone always has apps): try again on resume.
         loaded = all.isNotEmpty()
-        _appsLoaded.value = loaded
+        _appsLoad.value = if (loaded) AppsLoad.LOADED else AppsLoad.EMPTY
+        Log.i(TAG, "loaded the app list (${all.size} activities)")
         // A layout that was waiting on the app list for its default can be made now.
-        if (loaded && _layout.value is LayoutState.Broken && !store.file.exists()) readLayout()
+        if (loaded && !store.file.exists()) readLayout()
     }
 
     private fun activities(pkg: String?, user: UserHandle): List<HomeApp> =
@@ -210,6 +238,11 @@ class HomeStore(private val context: Context) {
 
     /** Reads the layout file; any failure shows as Broken rather than leaving home on Loading. */
     private fun readLayout() {
+        // No file and no app list yet: the default can't be made, so home is still loading.
+        if (!loaded && !store.file.exists()) {
+            _layout.value = LayoutState.Loading
+            return
+        }
         _layout.value = try {
             val wrote = !store.file.exists()
             val read = store.read(if (loaded) ::defaultLayout else null)

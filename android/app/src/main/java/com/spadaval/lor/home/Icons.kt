@@ -4,7 +4,9 @@ import android.os.UserHandle
 import android.util.Log
 import android.util.LruCache
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,5 +62,7 @@ fun AppIcon(app: HomeApp, size: Dp, modifier: Modifier = Modifier) {
     var bitmap by remember(app) { mutableStateOf(icons.cached(app)) }
     LaunchedEffect(app) { if (bitmap == null) bitmap = icons.load(app) }
     val b = bitmap
-    if (b != null) Image(b, contentDescription = null, modifier = modifier.size(size)) else Spacer(modifier.size(size))
+    // Until it loads, the still slot home's skeleton draws (launcher polish 3.2), so the icon arrives in place.
+    if (b != null) Image(b, contentDescription = null, modifier = modifier.size(size))
+    else Box(modifier.size(size).background(Line, CircleShape))
 }
