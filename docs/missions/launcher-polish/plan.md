@@ -1548,7 +1548,7 @@ Agreed with Sumeet, 2026-11-05:
   - **Not checked:** the frame-exact first frame after a reboot (the read time after a reboot is recorded above; a reboot wasn't repeated for a recording).
   - Reviewed with the increment.
 
-#### 7.8 The feel, measured. Status: todo
+#### 7.8 The feel, measured. Status: done
 - **Goal.** The increment shown as a whole, and shown not to cost home its speed (strategy: "A feature that costs home-press or drawer-open latency is cut or deferred").
   - **Home-press latency.** Two builds in one emulator session on `T3_Phone_API35`: the last commit before Increment 7's code, and the build after 7.7. For each, ten `am start -W -a android.intent.action.MAIN -c android.intent.category.HOME` with Settings in front. After 7.7, the median `TotalTime` is within 10% of before.
   - **Drawer frames.** On both builds, `dumpsys gfxinfo com.spadaval.lor reset`, then ten opens and closes by `input swipe`, then the janky-frame share and the 90th-percentile frame time. `gfxinfo framestats` also gives each open's first frame (the frame the drawer first shows) and its slowest; a worse first frame after is a finding for the review.
@@ -1566,6 +1566,31 @@ Agreed with Sumeet, 2026-11-05:
   - Recordings kept for the review in `~/.cache/lor-launcher-builds/inc7`, deleted after it.
   - **For the real Fold,** listed for when Sumeet says: the haptics as felt, the launch animation and the shade gesture on One UI, and predictive back's progress.
 - **Done when.** The numbers and what each recording showed are recorded under this issue; the increment's review, by a fresh agent, has the recordings.
+- **2026-11-06.** Measured; no code changed. Both builds on `T3_Phone_API35` in one emulator session: "before" is `edcc355` (the last commit before Increment 7's code), "after" is `6a0a478` (7.7). The emulator renders with `swiftshader_indirect` (software GL on the host's CPU), so frame times are far above a phone's on both builds; only the comparison means anything.
+  - **Home-press latency** (`am start -W … HOME`, ten times each with Settings in front, after one warm-up):
+    - before: `TotalTime` 43, 49, 56, 51, 86, 69, 65, 43, 61, 49 ms, median 53.5;
+    - after: 49, 93, 39, 79, 41, 46, 39, 52, 46, 72 ms, median 47.5.
+
+    After is within 10% of before (11% faster; the spread run to run is wider than the difference, so read it as no worse, not as faster).
+  - **Drawer frames,** ten opens (`input swipe 540 1800 540 600 300`) and closes (`input swipe 540 700 540 1900 300`) per build. Both builds open and close with those swipes (checked by screenshot before the runs).
+    - `dumpsys gfxinfo` over the ten pairs: before 378 frames, 65.1% janky, 90th percentile 85 ms; after 521 frames, 51.3% janky, 90th percentile 69 ms. After draws more frames (the drawer follows the finger instead of flipping at 56 dp and sliding), each cheaper.
+    - Per gesture, from `gfxinfo framestats` after a reset (frame time = `FrameCompleted − IntendedVsync`, medians of ten): an open's first frame 65.4 ms before, 50.1 after; its slowest 108.8 before, 100.3 after. A close's first frame 33.5 before, 16.8 after; its slowest 122.3 before, 96.7 after. No worse first frame after.
+    - **For the review:** the after build's 90th percentile (69 ms) is over 16 ms, as the plan asked to flag. The before build's is worse on the same renderer, so it is the software renderer, not the motion; real frame times are **[real Fold]**.
+  - **No loops:** `grep -rnE "rememberInfiniteTransition|infiniteRepeatable|RepeatMode|CircularProgressIndicator|LinearProgressIndicator"` over `android/app/src/main/java` finds nothing. The `while (true)` loops in `HomeScreen.kt` are pointer-event loops and the held drag's page turn at an edge (stops when the finger leaves the edge), not animations.
+  - **Remove animations** (`animator_duration_scale`, `transition_animation_scale`, `window_animation_scale` all 0; set back to 1 after, read back as 1), each recorded and read frame by frame:
+    - the drawer by the finger (`input motionevent`, let go at 37.5%): its top edge went 1808, 1500 with the finger, then 200 (open) in the next frame; pulled down 900 px and let go at 62.5%: 300, 600, 900 with the finger, then gone in the next frame;
+    - the drawer by a tap on empty home's note (`home: []` written with `run-as`, then the backup put back): shut, then open in the next frame; back: open, then shut in the next frame;
+    - a folder (Google) by a tap: shut, then the full panel and scrim; a tap outside: the full panel, then gone;
+    - a drag's settle (Calendar dropped onto Settings, making a folder): one frame with the tiles mid-change (the dropped icon over Settings' old slot, the new folder drawn over Life on Rails), then the final layout. That is the one frame a settle takes to start; nothing stopped part-way. The layout was put back from the backup after;
+    - a launch (Gmail from home): home, then Gmail full screen.
+  - **The Fold** (`T3_Fold_API35` unfolded, 2076×2152, booted through the device hub; the same after build installed; the Google folder moved to the first row's last cell for the check, and the Fold's `layout.json` put back after, sum `e86e7fb8…`):
+    - the drawer by the finger: rose with the finger, let go at 37% (`LorMotion`: open) and settled open over three frames; pulled down and let go at 67% (closed): it slid down and away, no frame going back;
+    - the folder in the right-hand column (top right): the panel's frames lie on the line from the tile to its place left of centre, growing on the way, and the close goes back along it into the tile;
+    - a launch of Gmail: one frame of a partly grown window over the top right, where Gmail's icon is, then full screen (the emulator records about 10 frames a second, so only one mid-frame was caught).
+    - The Gmail launch adds one launch to the Fold's `launch-stats.json`, which wasn't backed up there.
+  - **Kept for the review** in `~/.cache/lor-launcher-builds/inc7`: `review/` (contact sheets of 7.7's cold start and recreation, the "Remove animations" folder, drag and launch, and the Fold's drawer, folder and launch) and `m/` (the latency lists, `gfxinfo` dumps and each gesture's `framestats`, with `m/fs.py` that reads them). Deleted after the review.
+  - **For the real Fold,** for when Sumeet says: the haptics as felt (the long press, the drawer's threshold, pickup, drop and refusal); the launch from the icon on One UI, and whether One UI closes an app back into its icon for a third-party home (`GestureNavContract`, not used); predictive back's progress on the drawer and a folder as felt, and Home settings' back animation (7.3); the drawer's frame times on real hardware (the emulator's software renderer can't say). The shade gesture is no longer on the list: it is held (7.6).
+  - Reviewed with the increment.
 
 ### Increment 8: The Fold, and holding state. Status: backlog
 
