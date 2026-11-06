@@ -218,6 +218,8 @@ private fun HomeSettings(
             item { Section("Look") }
             item { LookRows(file.look) { done, look -> edit(done) { it.copy(look = look) } } }
         }
+        // Android's notification access is the switch; it doesn't depend on the file (launcher polish 6.6).
+        item { DotsRow(open) }
         item { Section("Search") }
         if (file != null) {
             item {
@@ -338,6 +340,32 @@ private fun LookRows(look: HomeLook, set: (String, HomeLook) -> Unit) {
         Options("Icon shape", "For apps' own icons; a pack's keep theirs", HomeLook.IconShape.entries.map { it.title }, look.iconShape.ordinal) {
             set("Icons are ${HomeLook.IconShape.entries[it].title.lowercase()}.", look.copy(iconShape = HomeLook.IconShape.entries[it]))
         }
+    }
+}
+
+/** Notification dots: on with LoR's notification access, else a way to the system's page for it. */
+@Composable
+private fun DotsRow(open: (Intent) -> Unit) {
+    val context = LocalContext.current
+    var on by remember { mutableStateOf(Dots.granted(context)) }
+    LifecycleResumeEffect(Unit) {
+        on = Dots.granted(context)
+        onPauseOrDispose {}
+    }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Notification dots", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                if (on) "On: an app with a notification has a dot" else "Off: allow LoR under Notification access",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = {
+            open(
+                Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                    .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, Dots.component(context).flattenToString()),
+            )
+        }) { Text(if (on) "Settings" else "Allow") }
     }
 }
 

@@ -56,6 +56,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -108,6 +110,18 @@ import java.time.format.DateTimeFormatter
 
 /** Home's look from `layout.json` (launcher polish 6.4), for everything home and the drawer draw. */
 val LocalHomeLook = staticCompositionLocalOf { HomeLook() }
+
+/** The `package#user` keys of apps with a notification dot (launcher polish 6.6). */
+val LocalDots = staticCompositionLocalOf { emptySet<String>() }
+
+/**
+ * A dot on an icon's corner: a new app (2.2) or a notification (6.6), one dot either way. Neutral,
+ * Starlight edged in Deep Space (Sumeet, 2026-11-06), so amber keeps its one job.
+ */
+@Composable
+internal fun BoxScope.Dot() {
+    Box(Modifier.align(Alignment.TopEnd).size(10.dp).background(Txt, CircleShape).border(1.5.dp, Bg, CircleShape))
+}
 
 /** The icon size the look asks for. */
 internal val iconSize: Dp @Composable get() = LocalHomeLook.current.iconSize.dp
@@ -264,7 +278,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // The drag handler lives across recompositions, so it reads the latest of these.
     val latestHome by rememberUpdatedState(home)
     val latestDrop by rememberUpdatedState<(Held, Target?) -> Unit>(::dropHeld)
-    CompositionLocalProvider(LocalHomeLook provides (file?.look ?: HomeLook())) {
+    val dots by Dots.withDots.collectAsState()
+    CompositionLocalProvider(LocalHomeLook provides (file?.look ?: HomeLook()), LocalDots provides dots) {
     Box(Modifier.fillMaxSize().dragging(ui, { latestHome }, { h, t -> latestDrop(h, t) })) {
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1, userScrollEnabled = held == null) { page ->
             if (page == 0) AgentPage() else CompositionLocalProvider(LocalWallInk provides ink) { HomePage(page - 1, placed, layout, appsLoad, ui, home) }
@@ -529,11 +544,14 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
                 contentAlignment = Alignment.Center,
             ) {
                 WithAppMenu(app, at, home, spot) { menu ->
-                    AppIcon(
-                        app, dockIcon,
-                        Modifier.semantics { contentDescription = app.label }
-                            .combinedClickable(onLongClickLabel = "Menu", onLongClick = menu) { if (!drag.editing) home.actions.open(app, at) },
-                    )
+                    Box {
+                        AppIcon(
+                            app, dockIcon,
+                            Modifier.semantics { contentDescription = app.label }
+                                .combinedClickable(onLongClickLabel = "Menu", onLongClick = menu) { if (!drag.editing) home.actions.open(app, at) },
+                        )
+                        if (app.dotKey in LocalDots.current) Dot()
+                    }
                 }
             }
         }
@@ -573,7 +591,7 @@ internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)?
         Box {
             AppIcon(app, iconSize)
             // A new app's dot (launcher polish 2.2), until it is first opened from the launcher.
-            if (dot) Box(Modifier.align(Alignment.TopEnd).size(10.dp).background(Txt, CircleShape).border(1.5.dp, Bg, CircleShape))
+            if (dot || app.dotKey in LocalDots.current) Dot()
         }
         if (label) {
             Spacer(Modifier.height(5.dp))
@@ -601,7 +619,12 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: () ->
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        FolderIcon(folder)
+        Box {
+            FolderIcon(folder)
+            // A folder has a dot when an app in it has one (Launcher3's FolderIcon).
+            val dots = LocalDots.current
+            if (folder.apps.any { it.first.dotKey in dots }) Dot()
+        }
         if (label) {
             Spacer(Modifier.height(5.dp))
             Text(folder.folder.name, style = labelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
