@@ -19,7 +19,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.spadaval.lor.ui.Bg
-import com.spadaval.lor.ui.Mute
 import com.spadaval.lor.ui.Txt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -42,11 +41,11 @@ const val HINT_DARK_TEXT = 1
 /** Dark ink when the wallpaper supports dark text; light otherwise, and when there are no colours (null). */
 fun inkFor(hints: Int?): Ink = if (hints != null && hints and HINT_DARK_TEXT != 0) Ink.DARK else Ink.LIGHT
 
-/** An ink's colours: [text] and [aside] for words, [mark] for dots, and a shadow for light ink. */
-class WallInk(val ink: Ink, val text: Color, val aside: Color, val mark: Color, val shadow: Shadow?)
+/** An ink's colours: [text] for words, [mark] for dots, and a shadow for light ink. */
+class WallInk(val ink: Ink, val text: Color, val mark: Color, val shadow: Shadow?)
 
 /** Light text on a surface LoR draws (the drawer, a folder panel): no shadow. */
-val SurfaceInk = WallInk(Ink.LIGHT, Txt, Mute, Txt, null)
+val SurfaceInk = WallInk(Ink.LIGHT, Txt, Txt, null)
 
 /** What [AppTile]'s label and the header draw with; home's pages provide the wallpaper's, panels keep [SurfaceInk]. */
 val LocalWallInk = staticCompositionLocalOf { SurfaceInk }
@@ -58,11 +57,11 @@ fun wallInk(ink: Ink): WallInk {
         when (ink) {
             // A still shadow in dp, so light text stays legible over a light patch of a photo.
             Ink.LIGHT -> with(density) {
-                WallInk(Ink.LIGHT, Txt, Mute, Txt, Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 1.dp.toPx()), 3.dp.toPx()))
+                WallInk(Ink.LIGHT, Txt, Txt, Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 1.dp.toPx()), 3.dp.toPx()))
             }
-            // Deep Space for text and asides alike: on the darkest wallpaper with the hint (about
-            // #858585) it reads at about 5.3:1, which a grey aside would not.
-            Ink.DARK -> WallInk(Ink.DARK, Bg, Bg, Bg, null)
+            // Deep Space for all text: on the darkest wallpaper with the hint (about #858585) it
+            // reads at about 5.3:1, which a grey would not.
+            Ink.DARK -> WallInk(Ink.DARK, Bg, Bg, null)
         }
     }
 }

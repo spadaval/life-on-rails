@@ -63,7 +63,11 @@ fun headerEvent(events: List<DeviceHome.Event>, now: Instant, zone: ZoneId): Str
     return left.firstOrNull { it.start.atZone(zone).toLocalDate() == today }?.let { "${it.title} at ${Clock.format(it.start.atZone(zone))}" }
 }
 
-/** Now, read again each minute (`ACTION_TIME_TICK`, while home is composed), on resume, and when the time or zone changes. */
+/**
+ * Now, read again each minute (`ACTION_TIME_TICK`) and when the time or zone changes, while home is
+ * started: the receiver is registered on start and let go on stop, so a home in the background
+ * takes no ticks. Starting again reads the time at once.
+ */
 @Composable
 private fun rememberMinute(): Instant {
     val context = LocalContext.current
@@ -81,12 +85,29 @@ private fun rememberMinute(): Instant {
             addAction(Intent.ACTION_TIME_CHANGED)
             addAction(Intent.ACTION_TIMEZONE_CHANGED)
         }
-        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        val resumed = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) now = Instant.now() }
-        lifecycle.addObserver(resumed)
-        onDispose {
+        var registered = false
+        fun start() {
+            if (registered) return
+            ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+            registered = true
+            now = Instant.now()
+        }
+        fun stop() {
+            if (!registered) return
             context.unregisterReceiver(receiver)
-            lifecycle.removeObserver(resumed)
+            registered = false
+        }
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> start()
+                Lifecycle.Event.ON_STOP -> stop()
+                else -> {}
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            stop()
         }
     }
     return now

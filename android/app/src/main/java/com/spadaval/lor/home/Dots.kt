@@ -107,6 +107,7 @@ class DotListener : NotificationListenerService() {
     }
 
     override fun onListenerConnected() {
+        connected = true
         scope.launch {
             val all = try { activeNotifications.orEmpty() } catch (e: SecurityException) { emptyArray() }
             val ranking = currentRanking
@@ -114,8 +115,11 @@ class DotListener : NotificationListenerService() {
         }
     }
 
+    /** Between connect and disconnect; a post queued on [scope] that runs after the clear must not put a dot back. */
+    @Volatile private var connected = false
+
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
-        scope.launch { Dots.put(note(sbn, rankingMap)) }
+        scope.launch { if (connected) Dots.put(note(sbn, rankingMap)) }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap?) {
@@ -124,6 +128,7 @@ class DotListener : NotificationListenerService() {
 
     override fun onNotificationRankingUpdate(rankingMap: RankingMap?) {
         scope.launch {
+            if (!connected) return@launch
             val all = try { activeNotifications.orEmpty() } catch (e: SecurityException) { emptyArray() }
             Dots.replace(all.map { note(it, rankingMap) })
         }
@@ -132,10 +137,12 @@ class DotListener : NotificationListenerService() {
     // Synchronously: access taken away unbinds and destroys the service at once, cancelling the scope
     // before a launched clear would run (seen on the emulator), which left the dots up.
     override fun onListenerDisconnected() {
+        connected = false
         Dots.replace(emptyList())
     }
 
     override fun onDestroy() {
+        connected = false
         scope.cancel()
         Dots.replace(emptyList())
         super.onDestroy()

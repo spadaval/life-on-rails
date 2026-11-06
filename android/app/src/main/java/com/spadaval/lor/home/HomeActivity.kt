@@ -45,7 +45,7 @@ class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Home's labels are light over the wallpaper, so the system bar icons are too.
+        // Light system bar icons to start; HomeScreen turns them dark over a light wallpaper (6's review, R1).
         enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
         launcherApps = getSystemService(LauncherApps::class.java)
         val icons = Icons(this, (HomeLook.ICON_SIZES.last * resources.displayMetrics.density).toInt())

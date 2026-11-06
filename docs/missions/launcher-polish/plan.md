@@ -1029,6 +1029,7 @@ Agreed with Sumeet, 2026-11-05:
 - R7, taken: dark system bars, every colour role named, the LoR tabs and debug screen screenshotted, the shared theme recorded as a scope choice (6.1).
 - R8, taken: the listener's rebind after an update is checked, `requestRebind` if needed; the key's user matches `HomeApp.key`; themed icons from API 33 (6.5, 6.6).
 - R9, taken: the notification set stays in memory only (answers, 6.6).
+- R10 and R11 were the two questions put to Sumeet, the ink over a light wallpaper and the dots' colour; he answered both on 2026-11-06 (above).
 - R12, taken: the pack index on its own dispatcher, with the pack's `Resources` and resolved ids.
 - R13, taken: Schema additions say nested fields are optional, what `iconPack` may hold, and that a hand-written default is dropped on the next phone edit.
 - R14, taken: Increment 8's note names the two `Icons` sizes.
@@ -1244,6 +1245,25 @@ Agreed with Sumeet, 2026-11-05:
     - the test images deleted, Arcticons uninstalled, and notification access off.
   - Reviewed with the increment.
 
+**Review, 2026-11-06.** A fresh agent reviewed 6fee72d..a8ccd89: contract pass with gaps, fitness pass. The coordinator decided each finding; what was done:
+- R1, fixed: the system bar icons stayed light over a light wallpaper. Home now sets them dark (`WindowInsetsControllerCompat`, status and navigation) while a home page shows with dark ink and no drawer or folder is open, and light otherwise. On `T3_Phone_API35` over a plain `#f2f2f2` wallpaper, the clock's pixels were `#616161` on home, and white on the drawer and on the agent page.
+- R2, fixed: three of 6.8's claims hadn't been made in the code. The edit-mode bar's edge, the drawer search field's unfocused border (now with the amber focus) and the recent-search chips now use `Edge`, so 6.8's notes are true.
+- R3, fixed: a look edit in Home settings wrote the look the screen had captured, so two quick taps lost the first. `LookRows` now passes a change applied to the look the file holds when written.
+- R4, fixed: a post queued on the listener's thread could put a dot back after the clear. Posts and ranking updates are now ignored while the listener is not connected.
+- R5, fixed: `appfilter`'s parser and streams are closed (`use`).
+- R6, fixed: the plan review's dispositions now say R10 and R11 were the two questions put to Sumeet, answered on 2026-11-06.
+- R7, no action: "Reviewed with the increment" is this plan's convention, and this note records the review.
+- R8, fixed: `DESIGN.md`'s "Over the wallpaper" says the hint describes the wallpaper as a whole, so patches aren't guaranteed. It names the folder tile's preview fill among what follows the ink, and the system bar icons (R1).
+- R9, run on `T3_Phone_API35`:
+  - Label size 13 from Home settings, then Undo: `layout.json`'s `sha256` went from `e86e7fb8…` to `0d1a250b…` and back to `e86e7fb8…`, with `wrote` then `undid the last edit` in `LorHome`.
+  - `"look": {"iconSize": 44}` written with `run-as`: after a trip to Settings and back, Gmail's label sat 21 px (8 dp) higher, the 52 to 44 dp difference.
+  - The file was put back to its sum after both.
+- R10, fixed: the header's minute tick registers on start and unregisters on stop, and reads the time on start.
+- R11, fixed: dropped a stray KDoc in `HomeScreen.kt`, the doubled header comment, Toggle's stranded KDoc (now on `Toggle`), and the unused `WallInk.aside`.
+- R12, deferred to Increment 8: `LookTest` checks `Palette`'s constants for each ink, not that `wallInk()` picks them (noted there).
+
+199 tests pass on boat. The emulator's wallpaper was set back to the on-device default (`LorLook`: light text), and the test image was deleted.
+
 ### Increment 7: Motion and feel. Status: backlog
 
 **Goal.** The drawer follows the finger open and closed (replacing the 56 dp flip in `HomePage`). Apps open from their icon's bounds (`ActivityOptions.makeScaleUpAnimation` or a clip reveal). Folders open from their tile. Haptics on long press, pickup, drop, and the drawer threshold. Predictive back for the drawer, folders and menus. Configurable gestures: swipe down for notifications, double-tap to lock, a gesture for quick send.
@@ -1276,7 +1296,9 @@ Carried from T3 Launcher's reviews:
 
 **From Increment 6's plan (2026-11-06).** The cover and inner screens' own grids are 6.4's `look.grid` (`narrow` and `wide`); this increment builds the inner-screen layout on them. The process-scoped icon cache stays here: Increment 6 keeps `Icons` per activity, but puts the icon pack's index in `HomeStore` and keys the cache by the icon style. There are two `Icons` today, home's (56 dp bitmaps) and Home settings' (40 dp), so the process cache keys on size as well as app and style; moving it into `HomeStore` changes where it lives, not what it holds.
 
-**From 6.8's critique (2026-11-06).** On the unfolded Fold: the Remove bar shown while something is held covers home's first row, so a drop meant for a row-1 icon removes the held app (Undo restores it); the left half holds only the date; the agent page's Send button floats mid-screen at the content column's edge.
+**From Increment 6's review (2026-11-06).** `LookTest` checks `Palette`'s constants for each ink, not that `wallInk()` picks them; a test of `wallInk`'s colours needs Compose's `Density` on the JVM.
+
+**From 6.8's critique (2026-11-06). On the unfolded Fold: the Remove bar shown while something is held covers home's first row, so a drop meant for a row-1 icon removes the held app (Undo restores it); the left half holds only the date; the agent page's Send button floats mid-screen at the content column's edge.
 
 **Provisional Done when.** On `T3_Fold_API35`, a fold, an unfold, a dark-mode switch and a font-scale change each recreate home with its open drawer and scroll kept and with no app-list or icon reload (a debug log line per load, counted before and after), each carried item has a fix and a test or emulator check, and the inner-screen layout is screenshotted. **[real Fold]** The same on the device.
 

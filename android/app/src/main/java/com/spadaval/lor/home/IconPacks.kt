@@ -142,11 +142,14 @@ class IconPackHolder(private val context: Context, private val scope: CoroutineS
     @Suppress("DiscouragedApi")
     private fun read(res: Resources, pack: String): Sequence<Pair<String, String>> {
         val xmlId = res.getIdentifier("appfilter", "xml", pack)
-        val parser: XmlPullParser = if (xmlId != 0) res.getXml(xmlId) else {
-            val rawId = res.getIdentifier("appfilter", "raw", pack)
-            val input = if (rawId != 0) res.openRawResource(rawId) else res.assets.open("appfilter.xml")
-            XmlPullParserFactory.newInstance().newPullParser().apply { setInput(input, "UTF-8") }
+        if (xmlId != 0) return res.getXml(xmlId).use { items(it) }
+        val rawId = res.getIdentifier("appfilter", "raw", pack)
+        return (if (rawId != 0) res.openRawResource(rawId) else res.assets.open("appfilter.xml")).use { input ->
+            items(XmlPullParserFactory.newInstance().newPullParser().apply { setInput(input, "UTF-8") })
         }
+    }
+
+    private fun items(parser: XmlPullParser): Sequence<Pair<String, String>> {
         val out = ArrayList<Pair<String, String>>()
         while (parser.next() != XmlPullParser.END_DOCUMENT) {
             if (parser.eventType != XmlPullParser.START_TAG || parser.name != "item") continue

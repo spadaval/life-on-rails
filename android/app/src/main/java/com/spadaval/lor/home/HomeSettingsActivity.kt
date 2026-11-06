@@ -219,7 +219,8 @@ private fun HomeSettings(
         }
         if (file != null) {
             item { Section("Look") }
-            item { LookRows(file.look) { done, look -> edit(done) { it.copy(look = look) } } }
+            // A change applies to the look the file holds when written, so two quick taps both land (6 review, R3).
+            item { LookRows(file.look) { done, change -> edit(done) { it.copy(look = change(it.look)) } } }
         }
         // Android's notification access is the switch; it doesn't depend on the file (launcher polish 6.6).
         item { DotsRow(open) }
@@ -308,43 +309,42 @@ private fun ContactsRow(open: (Intent) -> Unit) {
     }
 }
 
-/** A setting that is on or off: the whole row toggles it, read as one switch. */
 /** Home's look (launcher polish 6.4): columns per class of screen, labels, label and icon size. */
 @Composable
-private fun LookRows(look: HomeLook, set: (String, HomeLook) -> Unit) {
+private fun LookRows(look: HomeLook, set: (String, (HomeLook) -> HomeLook) -> Unit) {
     val here = if (LocalConfiguration.current.screenWidthDp >= HomeLook.WIDE_DP) "wide" else "narrow"
     fun mark(cls: String) = if (cls == here) " (this screen)" else ""
     Column {
         Choices("Home grid, narrow screens${mark("narrow")}", "Columns under 600 dp wide", HomeLook.NARROW_HOME.toList(), look.grid.narrow.home) {
-            set("Home has $it columns on narrow screens.", look.copy(grid = look.grid.copy(narrow = look.grid.narrow.copy(home = it))))
+            set("Home has $it columns on narrow screens.") { l -> l.copy(grid = l.grid.copy(narrow = l.grid.narrow.copy(home = it))) }
         }
         Choices("Home grid, wide screens${mark("wide")}", "Columns from 600 dp wide", HomeLook.WIDE_HOME.toList(), look.grid.wide.home) {
-            set("Home has $it columns on wide screens.", look.copy(grid = look.grid.copy(wide = look.grid.wide.copy(home = it))))
+            set("Home has $it columns on wide screens.") { l -> l.copy(grid = l.grid.copy(wide = l.grid.wide.copy(home = it))) }
         }
         Choices("Drawer grid, narrow screens${mark("narrow")}", "Columns under 600 dp wide", HomeLook.NARROW_DRAWER.toList(), look.grid.narrow.drawer) {
-            set("The drawer has $it columns on narrow screens.", look.copy(grid = look.grid.copy(narrow = look.grid.narrow.copy(drawer = it))))
+            set("The drawer has $it columns on narrow screens.") { l -> l.copy(grid = l.grid.copy(narrow = l.grid.narrow.copy(drawer = it))) }
         }
         Choices("Drawer grid, wide screens${mark("wide")}", "Columns from 600 dp wide", HomeLook.WIDE_DRAWER.toList(), look.grid.wide.drawer) {
-            set("The drawer has $it columns on wide screens.", look.copy(grid = look.grid.copy(wide = look.grid.wide.copy(drawer = it))))
+            set("The drawer has $it columns on wide screens.") { l -> l.copy(grid = l.grid.copy(wide = l.grid.wide.copy(drawer = it))) }
         }
         Toggle("Labels on home", "Names under apps and folders on home; the drawer always has them", look.labels) {
-            set(if (look.labels) "Home has no labels." else "Home has labels.", look.copy(labels = !look.labels))
+            set(if (look.labels) "Home has no labels." else "Home has labels.") { l -> l.copy(labels = !l.labels) }
         }
         Choices("Label size", "In sp", HomeLook.LABEL_SIZES.toList(), look.labelSize) {
-            set("Labels are $it sp.", look.copy(labelSize = it))
+            set("Labels are $it sp.") { l -> l.copy(labelSize = it) }
         }
         Choices("Icon size", "In dp, on home, in the dock, folders and the drawer", HomeLook.ICON_SIZES.step(4).toList(), look.iconSize) {
-            set("Icons are $it dp.", look.copy(iconSize = it))
+            set("Icons are $it dp.") { l -> l.copy(iconSize = it) }
         }
         Options("Header", "Over home's first page; a tap opens the calendar", HomeLook.Header.entries.map { it.title }, look.header.ordinal) {
-            set("The header shows ${HomeLook.Header.entries[it].title.lowercase()}.", look.copy(header = HomeLook.Header.entries[it]))
+            set("The header shows ${HomeLook.Header.entries[it].title.lowercase()}.") { l -> l.copy(header = HomeLook.Header.entries[it]) }
         }
-        IconPackRow(look.iconPack) { set(if (it == null) "Apps draw their own icons." else "Icons come from the pack.", look.copy(iconPack = it)) }
+        IconPackRow(look.iconPack) { set(if (it == null) "Apps draw their own icons." else "Icons come from the pack.") { l -> l.copy(iconPack = it) } }
         Toggle("Themed icons", "Apps with a monochrome icon draw it in LoR's colours", look.themedIcons) {
-            set(if (look.themedIcons) "Themed icons are off." else "Themed icons are on.", look.copy(themedIcons = !look.themedIcons))
+            set(if (look.themedIcons) "Themed icons are off." else "Themed icons are on.") { l -> l.copy(themedIcons = !l.themedIcons) }
         }
         Options("Icon shape", "For apps' own icons; a pack's keep theirs", HomeLook.IconShape.entries.map { it.title }, look.iconShape.ordinal) {
-            set("Icons are ${HomeLook.IconShape.entries[it].title.lowercase()}.", look.copy(iconShape = HomeLook.IconShape.entries[it]))
+            set("Icons are ${HomeLook.IconShape.entries[it].title.lowercase()}.") { l -> l.copy(iconShape = HomeLook.IconShape.entries[it]) }
         }
     }
 }
@@ -435,6 +435,7 @@ private fun Choices(title: String, subtitle: String, options: List<Int>, chosen:
     }
 }
 
+/** A setting that is on or off: the whole row toggles it, read as one switch. */
 @Composable
 private fun Toggle(title: String, subtitle: String, on: Boolean, toggle: () -> Unit) {
     Row(

@@ -225,6 +225,17 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // A file changed from outside (an agent, adb) may hold another folder at the open one's place.
     LaunchedEffect(reads) { ui.folder = null }
     val pager = rememberPagerState(initialPage = 1) { 1 + pageCount }
+    // The system bars' icons follow the ink: dark over a light wallpaper on home's pages, light on
+    // the agent page's veil, the drawer and an open folder (6's review, R1).
+    val darkBarIcons = ink.ink == Ink.DARK && pager.currentPage >= 1 && !ui.drawer && folder == null
+    val view = androidx.compose.ui.platform.LocalView.current
+    LaunchedEffect(darkBarIcons) {
+        val window = (view.context as? android.app.Activity)?.window ?: return@LaunchedEffect
+        androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = darkBarIcons
+            isAppearanceLightNavigationBars = darkBarIcons
+        }
+    }
     // A target waits 300 ms under the finger before the working copy takes it (Kvaesitso's attemptMove).
     LaunchedEffect(held, held?.pending) {
         val t = held?.pending ?: return@LaunchedEffect
@@ -335,7 +346,6 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
         )
         val wide = maxWidth >= 600.dp
         val widthDp = maxWidth.value
-        // Only home's first page has the date; the pages after it start where its grid starts.
         // Only home's first page has the header (launcher polish 6.7: date, clock or none); the pages after it start where its grid would.
         val headerStyle = LocalHomeLook.current.header
         val header = @Composable {
@@ -807,8 +817,6 @@ private fun HeldItem(held: Held) {
     }
 }
 
-/** The top bars' backing: opaque, since they sit over the date header. */
-
 /** Edit mode's bar, or Remove while something is held. */
 @Composable
 private fun TopBar(ui: HomeUi, modifier: Modifier) {
@@ -831,7 +839,7 @@ private fun TopBar(ui: HomeUi, modifier: Modifier) {
         return
     }
     Row(
-        modifier.padding(12.dp).fillMaxWidth().background(PanelFace, shape).border(1.dp, Line, shape).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        modifier.padding(12.dp).fillMaxWidth().background(PanelFace, shape).border(1.dp, Edge, shape).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(

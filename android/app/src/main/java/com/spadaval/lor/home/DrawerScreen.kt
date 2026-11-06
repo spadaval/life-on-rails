@@ -268,7 +268,8 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
             shape = RectangleShape,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Txt,
-                focusedBorderColor = Mute, unfocusedBorderColor = Line,
+                // DESIGN.md's field: an Edge border, amber at 70% when focused.
+                focusedBorderColor = Or.copy(alpha = 0.7f), unfocusedBorderColor = Edge,
             ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = { go() }),
@@ -340,7 +341,7 @@ private fun RecentSearches(searches: List<String>, pick: (String) -> Unit, clear
         Modifier.horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        searches.forEach { q -> Chip(q, Txt, Line) { pick(q) } }
+        searches.forEach { q -> Chip(q, Txt, Edge) { pick(q) } }
         Chip("Clear", Mute, Color.Transparent, clear)
     }
 }
