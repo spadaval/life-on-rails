@@ -24,7 +24,7 @@ A phone edit rereads the file, applies the change to the parsed `LayoutFile`, se
 
 Agreed with Sumeet, 2026-11-05:
 - **T3 Launcher is closed** (2026-11-05). Its Increments 7 to 10, which the items below name, moved out to a later mission; their text is under "Handed on" in [its plan](../t3-launcher/plan.md#handed-on-2026-11-05), with the list of real-Fold checks.
-- **Search.** Shortcuts and conversations (`LauncherApps.getShortcuts`) move here, to Increment 5. LoR people and T3 threads in search stay in T3 Launcher Increment 8, which adds them as two more kinds to Increment 5's `Search.run` and finds a person's chats by the conversation shortcut's label (Increment 5's answers).
+- **Search.** Shortcuts and conversations (`LauncherApps.getShortcuts`) move here, to Increment 5. LoR people and T3 threads in search stay in T3 Launcher Increment 8, which adds them as two more kinds to Increment 5's `Search.run` and finds a person's chats by the conversation shortcut's label (Increment 5's answers). Open for that increment (from Increment 5's plan review): who merges a person shown twice, once as an Android contact (5.6) and once as a LoR person.
 - **Smart folders.** This mission sorts the drawer on the phone (Increment 2) and adds the schema field for drawer sections. T3 Launcher Increment 9 has an agent refine those sections and write their reasons.
 - **A broken file and agent edits** (from Increment 3's review). The broken-file dialog's "Use the last good layout" doesn't recheck that `layout.json` is still broken, so a file an agent fixed while the dialog was open would be set aside (kept as `layout.json.broken`). Recheck when agent edits land.
 - **The drawer's view.** Switching the drawer's view writes `drawer.view` to the file (P1), so once T3 Launcher Increment 7 syncs the file, each switch is a change there (from Increment 2's plan review).
@@ -732,15 +732,16 @@ Agreed with Sumeet, 2026-11-05:
 - *The matcher, in tiers.* `Match.tier(q, name)` returns the first that holds, or none. `q` and `name` are prepared once: lower case, accents stripped (as `AppSearch.normalize` does now), and a compact form with everything but letters and digits removed, so "wifi" is a prefix of "Wi-Fi" and "tmobile" of "T-Mobile". Word starts are `AppSearch`'s breaks (a space or symbol, a digit after a non-digit, a capital after a lower-case letter), so "YouTube" has the initials "yt".
   0. The name (or its compact form) starts with `q` (or its compact form).
   1. A later word starts with `q`.
-  2. Initials: `q` (2 or more characters, no space) is a prefix of the name's initials ("yt" → YouTube, "gm" → Google Maps).
-  3. The name contains `q` (3 or more characters, as now).
-  4. In order: `q`'s characters appear in the name in order, the first at a word start (2 or more characters): "wfi" → Wi-Fi, "clk" → Clock.
-  5. A typo (4 or more characters): the optimal-string-alignment distance (Damerau–Levenshtein without repeated edits, about 20 lines) between `q` and the name's first `q.length` characters, or a word's, is at most 1, or 2 from 8 characters ("yuotube" → YouTube, "pfotos" → Photos).
+  2. Words in order: `q` has several words, and each is a prefix of a word of the name, in order ("goo map" → Google Maps; Lawnchair's ordered word-prefix rule).
+  3. Initials: `q` (2 or more characters, no space) is a prefix of the name's initials ("yt" → YouTube, "gm" → Google Maps).
+  4. The name contains `q` (3 or more characters, as now).
+  5. In order: `q`'s characters, spaces left out, appear in the name in order, the first at a word start (2 or more characters): "wfi" → Wi-Fi, "clk" → Clock.
+  6. A typo (4 or more characters, on the compact forms): the optimal-string-alignment distance (Damerau–Levenshtein without repeated edits, about 20 lines) between `q` and the closest prefix of the name, or of a word, whose length is within one of `q`'s (the smallest of the last row's entries for lengths |q|−1 to |q|+1), is at most 1, or 2 from 8 characters. So a swapped, changed, dropped or added letter each costs one: "yuotube" and "yotube" → YouTube, "pfotos" → Photos, "settngs" → Settings.
 
-  Today's three tiers are 0, 1 and 3, so what matches now still matches, and with no launch weights in the same order. A result's tier is the best over its names (an app's label; a shortcut's short and long labels; a settings page's title and aliases; a contact's name).
+  Today's three tiers are 0, 1 and 4, so what matches now still matches, and with no launch weights in the same order. A result's tier is the best over its names (an app's label; a shortcut's short and long labels; a settings page's title and aliases; a contact's name).
 - *Ranking.*
   - **Within a kind:** by tier, then for apps by 2.1's launch weight (higher first), then as the source lists them (apps by label). Kvaesitso blends score and weight; here a better kind of match always wins, and use orders the ties. Only apps carry weights: other kinds rank by tier and then by label until use ordering them is felt.
-  - **Across kinds:** kinds are blocks, never interleaved. An answer (5.4) comes first. The other blocks are ordered by their best result's tier, ties in a fixed order: Apps, Shortcuts (with conversations), Settings, Contacts. So "wifi" puts the Wi-Fi page above an app that only matched by a typo, while "maps" keeps Maps first. Each block has a header only when more than one block shows.
+  - **Across kinds:** kinds are blocks, never interleaved. An answer (5.4) comes first. The other blocks are ordered by their best result's tier, ties in a fixed order: Apps, Shortcuts (with conversations), Settings, Contacts. So "wfi" puts the Wi-Fi page (in order) above an app that only matched by a typo, while "maps" keeps Maps first. A tie stays with the fixed order: with WiFi Analyzer installed, "wifi" matches it and the Wi-Fi page both at tier 0, and the app's block comes first (an open question for Sumeet). Each block has a header only when more than one block shows.
   - **Go** opens the first result in drawn order that opens something (not an answer); with none, the first no-results row, as now. Increment 3's critique left "no Go hint" to this increment: while the field has focus, Go's target takes `DESIGN.md`'s selection (an 8% amber fill, a 1 dp amber edge at 55%).
   - **Minimum lengths:** apps from 1 character, every other kind from 2, so one letter doesn't fill the screen with shortcuts and contacts.
   - **No results:** the web, store and agent rows (3.4) still show only when nothing matches, as the strategy's Outcome says ("hands off … when nothing matches"): when no block has a result. An answer alone still shows them, under it, since it opens nothing. The line "Nothing matches "<query>"." replaces "No app called …", and is left out under an answer.
@@ -753,42 +754,59 @@ Agreed with Sumeet, 2026-11-05:
   | Settings pages | a table in the app, each row kept if its intent resolves | with the app list | on a package change of the app that took a row |
   | Answers | pure functions of the query | n/a | n/a |
   | Contacts (5.6) | `ContactsContract`: names and phone numbers | when `READ_CONTACTS` is held, at start and on the resume after it is granted | a `ContentObserver` marks it stale; the next resume or drawer open rebuilds it |
-  | No-results targets (R5) | which app takes `ACTION_WEB_SEARCH` and `market://search` | with the app list | package changes |
+  | No-results targets (R5) | which app takes `ACTION_WEB_SEARCH` and `market://search` | with the app list | package changes, and each resume (a new default browser or store fires no package callback) |
 
   - The sources are built on their own single-thread dispatcher in `HomeStore`, not the layout's serial one, so a slow `getShortcuts` at start never holds up a layout edit.
-  - **Per keystroke, on the main thread:** the text field's state changes, and the drawer draws the newest results. The search itself (`Search.run(query, sources, stats)`, pure) runs on `Dispatchers.Default` in a `produceState` keyed on the query and the sources, so a newer keystroke cancels an older search. The results show a frame late at most. Go, when the results on screen are for an older text, runs the search once on the main thread before acting.
+  - **Per keystroke, on the main thread:** the text field's state changes, and the drawer draws the newest results. The search itself (`Search.run(query, sources, stats)`, pure) runs on `Dispatchers.Default` in a `produceState` keyed on the query and the sources, so a newer keystroke cancels an older search: `run` isn't suspending, so it checks for cancellation every 8 items (as Kvaesitso's `ensureActive`), and a result for an older text is never shown. The results show a frame late at most. "Nothing matches" and the no-results rows are drawn only when the results' query equals the field's text, so they don't flicker while typing. Go, when the results on screen are for an older text, runs the search once on the main thread before acting.
   - Each search logs one `LorSearch` line in debug builds with how many items it scored and how long it took (never the query), which the checks read.
 - *Shortcuts and conversations (the second Unknown).* The query adds `FLAG_MATCH_CACHED` (API 30, public), which is where messaging apps keep conversations they have shown in a notification. `FLAG_MATCH_PINNED` is left out: it returns what this launcher pinned, and LoR takes no pin requests. `FLAG_GET_PERSONS_DATA` needs `ACCESS_SHORTCUTS`, a permission only system apps get, so the people in a conversation are never read: a conversation is found by its label, which messaging apps set to the person's or group's name. A shortcut is a **conversation** when its categories hold `ShortcutInfo.SHORTCUT_CATEGORY_CONVERSATION` or it is cached; it is drawn as the chat's name with the app's name under it ("Alice · WhatsApp"). T3 Launcher Increment 8 relies on this label matching to put a LoR person's chats beside their card, and adds its people and threads as two more kinds to the same `Search.run`, matcher and block order; nothing here is built for it beyond keeping kinds a list.
 - *Settings pages* are a table of about 30 rows in `home/SettingsPages.kt`: a title in Android's words ("Wi-Fi", "Bluetooth", "Display"), a few aliases ("wifi", "wireless", "internet"; "dark theme", "brightness"), and the `Settings.ACTION_*` intent. LoR's own Home settings and LoR app settings are rows too. A row whose intent resolves to nothing on this phone is dropped when the index is built, so One UI's differences remove rows instead of breaking them.
-- *Answers.* A calculator and units in `home/Answers.kt`, pure, no library: a small recursive-descent parser (numbers with `.` or `,` as the decimal point, `+ - * / × ÷ ^`, parentheses, unary minus) that answers only when the query holds an operator and a digit and parses whole; and a unit table (length, mass, volume, temperature, speed, data). An answer is drawn as a card at the top of the results; a tap copies the value. It never records a launch.
+- *Answers.* A calculator and units in `home/Answers.kt`, pure, no library: a small recursive-descent parser (numbers with the locale's decimal point, where a comma followed by exactly three digits is a thousands separator, so "1,000*3" is 3000; `+ - * / × ÷ ^`, parentheses, unary minus) that answers only when the query holds an operator and a digit and parses whole, and not when its only operators are `-` between groups of digits ("555-1234", "2026-11-06": a number or a date, not a sum); and a unit table (length, mass, volume, temperature, speed, data). An answer is drawn as a card at the top of the results; a tap copies the value. It never records a launch.
 - *Recent searches and apps when the field is empty.* Recent searches are what happened, like launch counts, so they live in `launch-stats.json` (a `searches` list, not in `layout.json`). Recent apps already exist: the Sections view opens on the Recent row (2.2), so nothing new is drawn for them. The A–Z and Most used views add no Recent row; Most used is already by use.
 - *The keyboard option* is a look setting, so it is in `layout.json` (P1, and the `no-adb` criterion): `drawer.keyboard`, set from Home settings. See [Schema additions](#schema-additions).
-- *Contacts (the third Unknown).* Sumeet is being asked for `READ_CONTACTS` now (2026-11-06). 5.6 holds contacts, last, and waits for his answer; 5.1 to 5.5 don't depend on it. Calling uses `ACTION_DIAL` (the dialer opens with the number; no permission). A call in one tap would need `CALL_PHONE`, a second runtime permission, which is his to grant, so it is listed for him and not planned. If he says no to contacts, 5.6 is superseded and the Outcome's "contacts" comes back to him (an Outcome change).
+- *Contacts (the third Unknown).* Sumeet said yes to `READ_CONTACTS` (2026-11-06). 5.6 holds contacts, last; 5.1 to 5.5 don't depend on it. Calling uses `ACTION_DIAL` (the dialer opens with the number; no permission). A call in one tap would need `CALL_PHONE`, a second runtime permission, which is his to grant, so it is listed for him and not planned.
 - *Nothing here needs a version bump or an Outcome change.* The one schema addition, `drawer.keyboard`, is optional.
+
+**Plan review, 2026-11-06.** A fresh agent reviewed the plan (daf07ed): contract pass, fitness fail pending small fixes, all taken. Dispositions:
+- R1, fixed: a typo compares `q` with the name's prefixes of length |q|−1 to |q|+1, so a dropped or added letter costs one edit ("yotube", "settngs" in `SearchTest`).
+- R2, fixed: the decimal point comes from the locale, a comma before exactly three digits is a thousands separator, and a query whose only operators are `-` between digit groups (a phone number, a date) gets no answer; tests for each.
+- R4, fixed: `HomeStore.resume()` also re-resolves the web and store targets, off the main thread, since a new default browser or store fires no package callback.
+- R5, fixed: `run` checks for cancellation every 8 items; "Nothing matches" and the rows wait for results of the field's text.
+- R6, fixed: multi-word queries: words in order is a tier (2), and the in-order and typo tiers run on the compact forms ("goo map" in `SearchTest`).
+- R7, fixed: the "wifi" example was wrong (WiFi Analyzer ties at tier 0 and its block wins); corrected, and the tie is an open question for Sumeet.
+- R8, fixed: `HomeStore.searched(query)` records a recent search, every way of opening from search calls it, and `LaunchStats` keeps `searches` through a launch, `toJson` and `parse` (tested).
+- R9, fixed: conversions to 4 significant digits ("1 MB" is 0.001 GB).
+- R10, taken: 5.1 and 5.2 check each `LorSearch` line under 16 ms and no janky frames in `dumpsys gfxinfo`.
+- R11, fixed: 5.3 updates the spec's Launches row.
+- R12, clarified: the Shortcuts block's cap of 5 (the one app's first); numbers matched on digits only; 5.6's rename check waits for the rebuild.
+- R13, no action: `launch-stats.json` is the right file for recent searches.
+- Added to the cross-links (T3 Launcher Increment 8): who merges a person shown twice, as an Android contact and a LoR person.
+- Sumeet's answers (2026-11-06) are recorded: contacts yes (5.6 no longer waits), notification dots yes (Increment 6), and for Increment 7 swipe down for notifications only.
 
 #### 5.1 The matcher, ranking across kinds, and search off the main thread. Status: todo
 - **Goal.** Apps are found by initials, letters in order and typos; search becomes a list of kinds that the later issues fill; a keystroke asks Android nothing.
   - **The matcher.** `home/Search.kt` (no Android in it): `Match.prepare(name)` and `Match.tier(q, prepared)` as the answers say. `AppSearch` goes; its tests move to `SearchTest` and keep passing. `HomeApp` prepares its label once (`val searchName by lazy`), which also closes Increment 8's "normalised search labels cached".
   - **Kinds.** `SearchResult`, a sealed type: `App(app)`, `Shortcut(…)` and `Setting(…)` and `Contact(…)` (empty until their issues), `Answer(…)` (5.4). `Search.run(query, sources, weights)` returns `Results(query, blocks, answer, go)`: the blocks in order, each with its kind and results, and the result Go opens. The ranking is the answers' (tiers, weights for apps, block order, minimum lengths). `sources` holds the prepared lists; a test builds them from plain values.
-  - **The no-results targets (R5).** `HomeStore` resolves which app takes `ACTION_WEB_SEARCH` and `market://search` (and the store's label) after each app-list load and package change, on the sources' dispatcher, logging one `LorSearch` line with what it found. `elsewhere(targets, query)` becomes pure, building only the intents' query text per keystroke.
+  - **The no-results targets (R5).** `HomeStore` resolves which app takes `ACTION_WEB_SEARCH` and `market://search` (and the store's label) after each app-list load, package change and resume, on the sources' dispatcher, logging one `LorSearch` line with what it found. `elsewhere(targets, query)` becomes pure, building only the intents' query text per keystroke.
   - **Off the main thread.** The drawer runs `Search.run` on `Dispatchers.Default` in a `produceState` keyed on the query and the sources, with Go's fallback as the answers say, and one debug `LorSearch` line per search (items scored, milliseconds).
   - **Drawing.** Results are the app tiles as now; a block header ("Apps", …, as `SectionHeader`) only when more than one block shows. Go's target takes the selection while the field has focus. The field's placeholder becomes "Search". "No app called …" becomes "Nothing matches "<query>"."
   - **The spec's** line on the drawer and search (`docs/v2-product-engineering-spec.md`, "The drawer and search") says search matches initials, letters in order and typos.
   - Head the file with the sources read (Kvaesitso, GPL-3.0, ideas only; Lawnchair `AppMatcher`, Apache-2.0).
 - **Done when.**
   - **JVM tests** (`SearchTest`):
-    - each tier, with the edge of each: "yt" → YouTube and "gm" → Google Maps by initials; "wfi" → Wi-Fi and "clk" → Clock in order, while "ae" doesn't match Camera (its "a" isn't at a word start); "settimgs" → Settings, "yuotube" → YouTube, "pfotos" → Photos as typos, while "cak" (3 characters) finds no Calendar; "wifi" → Wi-Fi and "tmobile" → T-Mobile by the compact form;
+    - each tier, with the edge of each: "goo map" → Google Maps by words in order; "yt" → YouTube and "gm" → Google Maps by initials; "wfi" → Wi-Fi and "clk" → Clock in order, while "ae" doesn't match Camera (its "a" isn't at a word start); "settimgs" and "settngs" → Settings, "yuotube" and "yotube" → YouTube, "pfotos" → Photos as typos, while "cak" (3 characters) finds no Calendar; "wifi" → Wi-Fi and "tmobile" → T-Mobile by the compact form;
     - `AppSearchTest`'s cases, unchanged in result and order (no launch weights);
     - within a tier, a heavier launch weight first; a better tier beats a heavier weight;
     - across kinds, with plain-value fixtures of every kind: blocks by best tier, ties in the fixed order; an answer first; Go skips the answer; a 1-character query gives apps only; the no-results rows with nothing but an answer, and none when a block has a result;
     - `elsewhere(targets, query)`: no web row with no web target, the store's label, the agent row always.
-  - **On `T3_Phone_API35`:** "yt" shows YouTube with the Go selection, and Go opens it; "yuotube" and "pfotos" find YouTube and Photos; "clk" finds Clock; "zzqx" shows "Nothing matches "zzqx"." and the rows; with the F-Droid 1.23.2 client installed during the check (as 3.4), the store row appears on the next "zzqx" without a restart, with one `LorSearch` targets line at the install and none while typing. The `LorSearch` lines while typing "photos" letter by letter are recorded (items, ms).
+  - **On `T3_Phone_API35`:** "yt" shows YouTube with the Go selection, and Go opens it; "yuotube" and "pfotos" find YouTube and Photos; "clk" finds Clock; "zzqx" shows "Nothing matches "zzqx"." and the rows; with the F-Droid 1.23.2 client installed during the check (as 3.4), the store row appears on the next "zzqx" without a restart, with one `LorSearch` targets line at the install and none while typing. The `LorSearch` lines while typing "photos" letter by letter are recorded (items, ms), each under 16 ms, and `dumpsys gfxinfo com.spadaval.lor` reset before and read after typing shows no janky frames.
   - `assembleDebug testDebugUnitTest` passes on boat.
 
 #### 5.2 Shortcuts and conversations in search. Status: todo
 - **Goal.** Typing a shortcut's or a chat's name finds it, and a tap opens it.
   - **The index.** In `HomeStore`, on the sources' dispatcher, when `hasShortcutHostPermission()`: `getShortcuts` with `FLAG_MATCH_DYNAMIC | FLAG_MATCH_MANIFEST | FLAG_MATCH_CACHED` for each profile in `launcherApps.profiles` (a locked profile's `IllegalStateException` leaves it out), enabled shortcuts only, each with its labels prepared. Refreshed as the answers' table says; `HomeStore`'s `LauncherApps.Callback` gains `onShortcutsChanged`. Not the default home: the list is empty.
   - **In search.** A shortcut shows when its app is in the drawer's list (so a hidden app's shortcuts don't), its owner being the activity it names or else the package's first. Rows, at most 5: the shortcut's icon (loaded when drawn, on IO, as the menu does; the app's icon until then), its short label, and under it the app's name; a conversation reads "<chat> · <app>". When the apps block holds exactly one app, its shortcuts (the menu's five) show in the Shortcuts block too, matched or not (Lawnchair).
+  - **At most 5 rows** in the block: the one app's shortcuts first (when there is one app), then matched shortcuts and conversations, without repeats, to 5.
   - **Opening** goes through `HomeActions.openShortcut` with `At(SEARCH, query)`, so a failure toasts as from the menu and the launch is recorded with `from: search`, `query` and `shortcut`. The spec's Launches row says a shortcut opened from search is recorded that way.
   - The spec's line on search names shortcuts and conversations.
 - **Done when.**
@@ -799,14 +817,15 @@ Agreed with Sumeet, 2026-11-05:
     - a conversation: `adb emu sms send 5551234 "hello"`, then the notification seen, makes Messages publish a conversation shortcut (`dumpsys shortcut` shows it, with its flags, recorded); searching its label finds it as a conversation and a tap opens that chat. A second message from another number becomes searchable without restarting LoR (`onShortcutsChanged`). If Messages publishes no shortcut on this image, that is recorded, the conversation is covered by the JVM test, and a WhatsApp chat is checked **[real Fold]**;
     - a dynamic shortcut is found in `dumpsys shortcut` (Messages' conversations are dynamic or cached; whichever is seen is recorded) and found by search;
     - with Clock hidden, "timer" shows no Clock shortcut;
-    - with the Pixel Launcher made home and LoR's home started directly (as 3.5 did), search shows no shortcuts and no error.
+    - with the Pixel Launcher made home and LoR's home started directly (as 3.5 did), search shows no shortcuts and no error;
+    - with apps, shortcuts and settings loaded, the `LorSearch` lines while typing "timer" are each under 16 ms, and `dumpsys gfxinfo` shows no janky frames while typing.
   - `assembleDebug testDebugUnitTest` passes on boat.
 
 #### 5.3 Settings pages. Status: todo
 - **Goal.** "wifi", "wfi" or "bluetooth" opens that page of Android's settings.
   - `home/SettingsPages.kt`: the table (title, aliases, intent), about 30 rows, with LoR's Home settings and LoR app settings among them. Kept rows are resolved with the app list (the answers' table). Rows: a still gear glyph like 3.4's, the title, and "Settings" under it in the muted colour.
   - Opening starts the intent; it records a launch with `from: search`, `query`, and the package that took it (`takenBy`), as the web row does. LoR's own rows record nothing (nothing left the launcher).
-  - The spec's line on search names settings pages.
+  - The spec's line on search names settings pages, and its Launches row says a settings page opened from search is a launch with `from: search`, its `query`, and the package that took it.
 - **Done when.**
   - **JVM tests:** every title is unique, and each alias finds its row ("wifi", "bt", "dark theme"); "wfi" finds Wi-Fi.
   - **On `T3_Phone_API35`:** "wfi" shows Wi-Fi and a tap opens Wi-Fi settings; "bluetooth" opens Bluetooth; "dark" finds Display; "home settings" opens LoR's Home settings; the queued launch for Wi-Fi has `from: search` and `package: com.android.settings`. The rows the emulator dropped (if any) are recorded from the `LorSearch` line. Which rows One UI keeps is **[real Fold]**.
@@ -814,32 +833,32 @@ Agreed with Sumeet, 2026-11-05:
 
 #### 5.4 A calculator and units. Status: todo
 - **Goal.** "12*7" and "5 km" are answered in the drawer.
-  - `home/Answers.kt` as the answers say. A calculation is written with up to 10 significant digits, a conversion with at most 2 decimal places, both without trailing zeros; a result that isn't finite (division by zero) is no answer. A unit query is "<number> <unit> [to|in <unit>]"; without a target, each unit has one (km ↔ mi, m ↔ ft, cm ↔ in, kg ↔ lb, g ↔ oz, l ↔ gal (US), °C ↔ °F, km/h ↔ mph, MB → GB, and so on).
+  - `home/Answers.kt` as the answers say. A calculation is written with up to 10 significant digits, a conversion with 4, both without trailing zeros (so "1 MB" is 0.001 GB, not 0); a result that isn't finite (division by zero) is no answer. A unit query is "<number> <unit> [to|in <unit>]"; without a target, each unit has one (km ↔ mi, m ↔ ft, cm ↔ in, kg ↔ lb, g ↔ oz, l ↔ gal (US), °C ↔ °F, km/h ↔ mph, MB → GB, and so on).
   - The card at the top of the results: the value in Ink at 22 sp, the query under it in the muted colour, no fill beyond `StateFill`'s card; a tap copies the value to the clipboard (Android 13 and later shows its own confirmation, so no toast).
 - **Done when.**
-  - **JVM tests** (`AnswersTest`): "2+2" 4, "2 + 3 * 4" 14, "(2+3)*4" 20, "2^10" 1024, "-3+5" 2, "1,5*2" 3, "10/4" 2.5, "1/3" 0.3333333333; no answer for "1/0", "2+", "42", "maps", "(1"; "5 km" 3.11 mi, "5 km to m" 5000 m, "100 f" 37.78 °C, "70 kg in lb" 154.32 lb; no answer for "5 km to kg" or "5 foo".
-  - **On `T3_Phone_API35`:** "12*7" shows 84 on the card, with the no-results rows under it; a tap and a paste into the field show 84; "5 km" shows 3.11 mi; Go on "12*7" runs the web search (the answer isn't Go's target).
+  - **JVM tests** (`AnswersTest`): "2+2" 4, "2 + 3 * 4" 14, "(2+3)*4" 20, "2^10" 1024, "-3+5" 2, "1,5*2" 3, "10/4" 2.5, "1/3" 0.3333333333; no answer for "1/0", "2+", "42", "maps", "(1"; "5 km" 3.107 mi, "5 km to m" 5000 m, "100 f" 37.78 °C, "70 kg in lb" 154.3 lb, "1 mb" 0.001 GB; "1,000*3" 3000; no answer for "555-1234" or "2026-11-06"; no answer for "5 km to kg" or "5 foo".
+  - **On `T3_Phone_API35`:** "12*7" shows 84 on the card, with the no-results rows under it; a tap and a paste into the field show 84; "5 km" shows 3.107 mi; Go on "12*7" runs the web search (the answer isn't Go's target).
   - `assembleDebug testDebugUnitTest` passes on boat.
 
 #### 5.5 The empty field, and the drawer with the keyboard up. Status: todo
 - **Goal.** An empty field offers what was searched lately, and the drawer can open ready to type.
-  - **Recent searches.** `LaunchStats` gains `searches`: the last 5 queries that opened something (a result, Go, or a no-results row), trimmed, newest first, one per text ignoring case, written with the counts. While the field has focus and is empty, they show as a row of chips under it (the view switch's chip look), with "Clear" last; a tap puts the text in the field; Clear empties the list.
+  - **Recent searches.** `LaunchStats` gains `searches`: the last 5 queries that opened something (a result, Go, or a no-results row), trimmed, newest first, one per text ignoring case. `launched`, `toJson` and `parse` keep them. `HomeStore.searched(query)` records one and writes the file; every way of opening something from search (an app, a shortcut, a settings page, a contact's row, Call or Message, Go, a no-results row) calls it. While the field has focus and is empty, they show as a row of chips under it (the view switch's chip look), with "Clear" last; a tap puts the text in the field; Clear empties the list.
   - **The keyboard.** `drawer.keyboard` (see [Schema additions](#schema-additions)) is parsed into `Drawer` and written back. Home settings gets a switch, "Open the drawer with the keyboard up", which edits the file (with Undo, as its other edits). When it is on, opening the drawer focuses the field and shows the keyboard. Whether it is on or not, a drag that scrolls the drawer's list hides the keyboard and clears the field's focus (Kvaesitso does this), so the list can be read.
   - The spec's line on the drawer says both.
 - **Done when.**
-  - **JVM tests:** `LaunchStats` keeps 5 searches, newest first, one per text ignoring case, and a file without `searches` parses; `drawer.keyboard` parses, refuses a non-boolean, and is written only when true.
+  - **JVM tests:** `LaunchStats` keeps 5 searches, newest first, one per text ignoring case, a launch keeps them, they survive `toJson` and `parse`, and a file without `searches` parses; `drawer.keyboard` parses, refuses a non-boolean, and is written only when true.
   - **On `T3_Phone_API35`:** "cal" then Calendar; the drawer opened again and the field tapped shows a "cal" chip; a tap shows Calendar's results; after a force-stop the chip is still there; Clear removes it and `launch-stats.json` has no `searches` left. With the switch on, the file has `"keyboard": true` and a swipe up opens the drawer with the keyboard shown (`dumpsys input_method` `mInputShown=true`); a scroll of the list hides it; with the switch off, a swipe up shows no keyboard. Undo after the switch gives back the file's sum.
   - `assembleDebug testDebugUnitTest` passes on boat.
 
-#### 5.6 Contacts. Status: todo, waiting on Sumeet's answer on `READ_CONTACTS` (asked 2026-11-06)
+#### 5.6 Contacts. Status: todo (Sumeet granted `READ_CONTACTS`, 2026-11-06)
 - **Goal.** A contact is found by name or number, and called, texted or opened from the result.
   - **The permission.** `READ_CONTACTS` in the manifest. Home settings gets "Contacts in search": Allow, which asks Android at run time, or, once Android has stopped asking, opens LoR's App info. Search itself never asks.
   - **The index,** as the answers' table says: each contact's id, lookup key, display name and phone numbers (`ContactsContract.Contacts` and `CommonDataKinds.Phone`), in memory, rebuilt when stale.
-  - **In search:** matched by name (the matcher), and, for a query of 3 or more digits, by numbers that contain them. Rows, at most 5: a still person glyph, the name, the first number under it; at the right a Call button (`ACTION_DIAL` with `tel:`) and a Message button (`ACTION_SENDTO` with `smsto:`), shown when there is a number, each one node ("Call Alice", "Message Alice"). A tap on the row opens the contact (`ACTION_VIEW` on its lookup URI). Each records a launch with `from: search`, `query`, and the package that took it.
+  - **In search:** matched by name (the matcher), and, for a query of 3 or more digits, by numbers whose digits (everything else dropped, on both sides) contain them. Rows, at most 5: a still person glyph, the name, the first number under it; at the right a Call button (`ACTION_DIAL` with `tel:`) and a Message button (`ACTION_SENDTO` with `smsto:`), shown when there is a number, each one node ("Call Alice", "Message Alice"). A tap on the row opens the contact (`ACTION_VIEW` on its lookup URI). Each records a launch with `from: search`, `query`, and the package that took it.
   - The spec's line on search and its Launches row say so.
 - **Done when.**
   - **JVM tests:** a name by word start and by typo; a number by digits, only from 3 digits; contacts after apps of the same tier.
-  - **On `T3_Phone_API35`,** contacts added with the Contacts app or `content insert`: Allow in Home settings shows the system's dialog and, granted, search finds "Alice" from "ali" and "alcie"; Call opens the dialer with her number; Message opens Messages to it; a tap opens her contact; "555" finds her by number; a contact renamed in the Contacts app is found by the new name after returning to home. With the permission denied, Home settings says so and search shows no contacts and no prompt. With 1,000 contacts inserted, the `LorSearch` lines while typing a name are recorded and stay under 16 ms each.
+  - **On `T3_Phone_API35`,** contacts added with the Contacts app or `content insert`: Allow in Home settings shows the system's dialog and, granted, search finds "Alice" from "ali" and "alcie"; Call opens the dialer with her number; Message opens Messages to it; a tap opens her contact; "555" finds her by number; a contact renamed in the Contacts app is found by the new name after returning to home and waiting for the rebuild (a `LorSearch` line says it rebuilt). With the permission denied, Home settings says so and search shows no contacts and no prompt. With 1,000 contacts inserted, the `LorSearch` lines while typing a name are recorded and stay under 16 ms each.
   - `assembleDebug testDebugUnitTest` passes on boat.
 
 ### Increment 6: The look. Status: backlog
@@ -849,6 +868,8 @@ Agreed with Sumeet, 2026-11-05:
 **Provisional Done when.** Each setting changes home on the emulator and is in the file. A sideloaded icon pack applies. Dots appear for a test notification. Screenshots on a light and a dark wallpaper both read.
 
 **Unknowns.** Notification dots need a `NotificationListenerService` that Sumeet enables in Settings (strategy, Authority). Whether the agent page's veil should also follow the wallpaper.
+
+**2026-11-06 (Sumeet).** Yes to notification dots: a `NotificationListenerService` that he enables in Settings.
 
 ### Increment 7: Motion and feel. Status: backlog
 
@@ -861,6 +882,8 @@ Agreed with Sumeet, 2026-11-05:
 **Provisional Done when.** Each motion recorded on the emulator; no animation loops; home-press latency is no worse than before (the median within 10%): with another app in front, `am start -W -a android.intent.action.MAIN -c android.intent.category.HOME` ten times on the build before and after, comparing the median `TotalTime` (with home already in front it reports nothing).
 
 **Unknowns.** Double-tap to lock needs an accessibility service or device admin, and swipe down for notifications needs either the hidden `StatusBarManager.expandNotificationsPanel` (by reflection, with `EXPAND_STATUS_BAR`) or an accessibility service. An accessibility service comes back to Sumeet.
+
+**2026-11-06 (Sumeet).** Of the configurable gestures, swipe down for notifications only, through the hidden `StatusBarManager.expandNotificationsPanel` (`EXPAND_STATUS_BAR` is install-time, so nothing to grant). No double-tap to lock and no accessibility service.
 
 ### Increment 8: The Fold, and holding state. Status: backlog
 
@@ -918,7 +941,7 @@ Optional fields this mission adds to `layout.json` schema version 1, each writte
 
 ## Open questions for Sumeet
 
-Permissions he must grant (contacts, notification access, an accessibility service) are asked for when their increment starts.
+Permissions he must grant are asked for when their increment starts. Answered 2026-11-06: contacts in search, yes (5.6); notification access for dots, yes (Increment 6); no accessibility service and no double-tap to lock, and swipe down for notifications through the hidden call (Increment 7).
 
 From Increment 3 (2026-11-06), none blocking:
 - Once agents edit `layout.json`, should a broken file go back to the agent (an "Ask the agent to fix it" button, or a quiet restore with a one-line notice) rather than a parser error on home?
@@ -927,5 +950,5 @@ From Increment 3 (2026-11-06), none blocking:
 - An event running past midnight reads "until 0:30" in the all-clear line; is that fine?
 
 From Increment 5 (2026-11-06):
-- `READ_CONTACTS` for contacts in search (asked now; 5.6 waits on it). If the answer is no, 5.6 is superseded and the Outcome's "contacts" is his to drop.
+- When a query equals a settings page's title or alias ("wifi") and an app matches it as well (WiFi Analyzer), both are tier 0 and the app's block comes first. Should the settings page win then?
 - Calling a contact opens the dialer with the number (`ACTION_DIAL`, no permission). A call in one tap needs `CALL_PHONE`, a second runtime permission; not planned unless he wants it.
