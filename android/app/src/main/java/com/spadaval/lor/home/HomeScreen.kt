@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,18 +30,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -58,9 +49,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -68,7 +56,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -96,13 +83,14 @@ import java.time.format.DateTimeFormatter
  * Motion is one-shot only: the drawer slides in and out, nothing loops (strategy: calm).
  */
 
-private val Ink = Color(0xFFECEBE6)
-private val Muted = Color(0xFF9097A1)
-private val Dim = Color(0xFF616871)
-private val Line = Color(0x14FFFFFF)
+internal val Ink = Color(0xFFECEBE6)
+internal val Muted = Color(0xFF9097A1)
+internal val Dim = Color(0xFF616871)
+internal val Line = Color(0x14FFFFFF)
 private val Panel = Color(0xF215181D)
-private val Sheet = Color(0xFF0B0D10)
-private val LabelStyle = TextStyle(color = Ink, fontSize = 12.sp, shadow = Shadow(Color(0x99000000), Offset(0f, 1f), 3f))
+internal val Sheet = Color(0xFF0B0D10)
+internal val Amber = Color(0xFFF08A2C)
+internal val LabelStyle = TextStyle(color = Ink, fontSize = 12.sp, shadow = Shadow(Color(0x99000000), Offset(0f, 1f), 3f))
 
 /** What the activity can reset on a home press. */
 class HomeUi {
@@ -151,7 +139,7 @@ private fun place(layout: Layout, apps: List<HomeApp>): Pair<List<Placed>, List<
 }
 
 @Composable
-fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, actions: HomeActions) {
+fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, stats: LaunchStats, ui: HomeUi, actions: HomeActions) {
     val file = (layout as? LayoutState.Ready)?.file
     val home = remember(actions, file, apps) { HomeContext(actions, file, apps) }
     val placed = remember(apps, file) { file?.let { place(it.current, apps) } }
@@ -178,7 +166,7 @@ fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, actions: Ho
             enter = slideInVertically { it / 3 } + fadeIn(),
             exit = slideOutVertically { it / 3 } + fadeOut(),
         ) {
-            Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, file?.hidden?.size ?: 0, ui, home)
+            Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, stats, ui, home)
         }
         folder?.let { FolderPanel(it, home, onClose = { ui.folder = null }) }
     }
@@ -339,20 +327,24 @@ private fun PageDots(current: Int, modifier: Modifier) {
 
 /** An app tile whose tap opens it from [at] and whose long press opens its menu. */
 @Composable
-private fun MenuTile(app: HomeApp, at: At, home: HomeContext, width: Dp = 76.dp, beforeOpen: () -> Unit = {}) {
+internal fun MenuTile(app: HomeApp, at: At, home: HomeContext, width: Dp = 76.dp, dot: Boolean = false, beforeOpen: () -> Unit = {}) {
     WithAppMenu(app, at, home) { menu ->
-        AppTile(app, width, menu) { beforeOpen(); home.actions.open(app, at) }
+        AppTile(app, width, menu, dot) { beforeOpen(); home.actions.open(app, at) }
     }
 }
 
 @Composable
-private fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
+internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)? = null, dot: Boolean = false, onClick: () -> Unit) {
     Column(
         Modifier.width(width).combinedClickable(onLongClickLabel = onLongClick?.let { "Menu" }, onLongClick = onLongClick, onClick = onClick)
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        AppIcon(app, 52.dp)
+        Box {
+            AppIcon(app, 52.dp)
+            // A new app's dot (launcher polish 2.2), until it is first opened from the launcher.
+            if (dot) Box(Modifier.align(Alignment.TopEnd).size(10.dp).background(Amber, CircleShape).border(1.5.dp, Sheet, CircleShape))
+        }
         Spacer(Modifier.height(5.dp))
         Text(app.label, style = LabelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
@@ -415,70 +407,8 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
     }
 }
 
-@Composable
-private fun Drawer(apps: List<HomeApp>, hidden: Int, ui: HomeUi, home: HomeContext) {
-    // Something typed makes it a search, recorded with the text as typed.
-    val at = if (ui.query.isBlank()) At(LaunchFrom.DRAWER) else At(LaunchFrom.SEARCH, query = ui.query)
-    val results = remember(apps, ui.query) { AppSearch.search(ui.query, apps) { it.label } }
-    val closeAt = with(LocalDensity.current) { 120.dp.toPx() }
-    // A pull down past the top of the list closes the drawer.
-    val pullToClose = remember {
-        object : NestedScrollConnection {
-            var pulled = 0f
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput) {
-                    pulled = if (available.y > 0) pulled + available.y else 0f
-                    if (pulled > closeAt) { pulled = 0f; ui.drawer = false; ui.query = "" }
-                }
-                return Offset.Zero
-            }
-        }
-    }
-    Column(
-        Modifier.fillMaxSize().background(Sheet).swallowTaps()
-            .safeDrawingPadding().padding(top = 12.dp),
-    ) {
-        OutlinedTextField(
-            ui.query,
-            { ui.query = it },
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            placeholder = { Text("Search apps", color = Dim) },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Ink, unfocusedTextColor = Ink, cursorColor = Ink,
-                focusedBorderColor = Muted, unfocusedBorderColor = Line,
-            ),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { results.firstOrNull()?.let { home.actions.open(it, at) } }),
-        )
-        if (results.isEmpty() && ui.query.isNotBlank()) {
-            Text("No app called \"${ui.query.trim()}\".", style = TextStyle(color = Muted, fontSize = 14.sp), modifier = Modifier.padding(24.dp))
-        }
-        LazyVerticalGrid(
-            GridCells.Adaptive(80.dp),
-            Modifier.fillMaxSize().nestedScroll(pullToClose),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(results, key = { it.key }) { app ->
-                Box(contentAlignment = Alignment.TopCenter) { MenuTile(app, at, home) }
-            }
-            if (hidden > 0 && ui.query.isBlank()) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Text(
-                        "Hidden apps ($hidden)",
-                        style = TextStyle(color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center),
-                        modifier = Modifier.fillMaxWidth().clickable { home.actions.settings() }.padding(vertical = 20.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
 /**
  * Keeps taps from reaching what is under a panel. Unlike an empty `clickable`, it adds no
  * semantics, so the panel's apps stay separate nodes for TalkBack and agent-device.
  */
-private fun Modifier.swallowTaps(): Modifier = pointerInput(Unit) { detectTapGestures {} }
+internal fun Modifier.swallowTaps(): Modifier = pointerInput(Unit) { detectTapGestures {} }
