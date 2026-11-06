@@ -75,7 +75,12 @@ class HomeActivity : ComponentActivity() {
         if (alreadyOnHome && ui.atRest) QuickSend.open(this, QuickSend.From.HOME) else ui.homePressed()
     }
 
-    /** A drag cut off (the shade, a call, the screen going off) puts the item back, as Launcher3 does on cancel. */
+    /**
+     * A drag cut off by home pausing or losing window focus puts the item back, as Launcher3 does
+     * on cancel. Shown for the notification shade. Compose turns a cancelled press into a release,
+     * so a cut-off whose cancel reaches Compose before this (screen off, a call, gesture navigation
+     * taking the touch: not tried) may still drop where the finger was; Increment 8 holds that.
+     */
     override fun onPause() {
         super.onPause()
         ui.drag.held = null
@@ -83,7 +88,10 @@ class HomeActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (!hasFocus) ui.drag.held = null
+        if (!hasFocus && ui.drag.held != null) {
+            android.util.Log.i("LorHome", "a drag was put back: home lost window focus")
+            ui.drag.held = null
+        }
     }
 
     override fun onResume() {

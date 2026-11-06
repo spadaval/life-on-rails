@@ -397,9 +397,9 @@ Agreed with Sumeet, 2026-11-05:
 - R3 and R8, fixed:
   - `targetAt` takes the held item's own place and never returns `Onto` for it. `DragTest` covers it. On the emulator, Maps dropped back on its own icon's centre wrote nothing.
   - A drawer app's drop says "Added." even after steps put it in the working copy.
-- R4, fixed: `HomeActivity` drops the held item on pause and on losing window focus, so a cut-off drag puts the item back. The handler's `drag.held !== held` check then returns. On the emulator, a drag held while the notification shade was pulled down (`cmd statusbar expand-notifications`) and then lifted wrote nothing.
+- R4, fixed for what was shown: `HomeActivity` drops the held item on pause and on losing window focus, and the handler's `drag.held !== held` check then returns. On the emulator, a drag held while the notification shade was pulled down (`cmd statusbar expand-notifications`) and then lifted wrote nothing. Screen-off, a call and gesture navigation taking the touch weren't tried; see Increment 8.
 - R5, fixed: `drop` looks up a target page with `getOrNull` and refuses `HOME_CHANGED`, and a dock insert is clamped, so a stale target can't crash home. `HomeEditTest` covers both.
-- R6, fixed: a folder moved by hand (on a page, to another page, to a new page) is pinned, and one dropped in place is unchanged. `HomeEditTest` covers it.
+- R6, fixed: a folder moved by hand (on a page, to another page, to a new page) is pinned, and one dropped in place is unchanged. `HomeEditTest` covers it. This fix broke dragging an unpinned folder; the second review's R1 below repairs it.
 - R7, run:
   - a dock app onto home with an extra page present (above);
   - a move on home, then Undo: the same sum, `wrote layout.json` then `undid the last edit`;
@@ -411,6 +411,23 @@ Agreed with Sumeet, 2026-11-05:
 
 `assembleDebug testDebugUnitTest` passes on boat (146 tests).
 
+- **Second review, 2026-11-06.** A fresh agent reviewed 23adafb: contract and fitness fail. The coordinator decided each finding; what was done:
+  - R1, fixed (a regression from R6's pin). A step put the pinned folder in the working copy but kept the unpinned one in `from`, so every later step, `takes` and the release failed `check` with "Home changed". `Held.step` now records what the copy holds at the new place. `HomeEditTest` has two steps in a row on one unpinned folder, the second using the `from` the first produced, then Remove.
+
+    On `T3_Phone_API35`, the default (unpinned) Google folder, in one drag:
+    - held left of Calendar: it stepped to the front;
+    - held left of Photos: it stepped again;
+    - over Remove: the bar lit (screenshot);
+    - released: the folder was removed, with one `wrote layout.json`.
+  - R2, not reproduced, so nothing changed beyond a log line. The concern: the app menu's popup takes window focus (`dumpsys window` shows `Pop-Up Window` focused after a long press), and a late focus loss might drop a drag picked up just after it. `HomeActivity` now logs `a drag was put back: home lost window focus` whenever that clear drops a drag.
+    - Eleven fast pickups were run in one device-side shell command: down on Maps, then the 16 dp move sent 380 to 440 ms later, against a 400 ms long-press timeout. All eleven landed and none logged a put-back; the focus loss came before the pickup each time.
+    - The shade case was checked again and logged the put-back.
+  - R3, deferred: the pause and focus clear is shown only for the shade. The code comment and R4 above now say so, and Increment 8 holds the rest.
+  - R4, fixed: the drop's `AtEnd(InFolder)` looks its page up with `getOrNull` too. `HomeEditTest` checks a stale one refuses `HOME_CHANGED`.
+  - R5: R6's note above now says what the test covers and what broke.
+  - The coordinator's answer to the open question: a folder dragged away and back to where it started may write `pinned: true` with "Moved.". That is a hand edit to a folder, so it pins it; kept.
+
+  `assembleDebug testDebugUnitTest` passes on boat (147 tests), built into `~/.cache/lor-launcher-builds/inc4` because `/tmp` is over its per-user quota.
 - **Not installed the usual way:** the build's copy-back hit the scratch area's disk quota (other sessions' files fill `/tmp`), so the APK was streamed from the build's archive into `cmd package install -S` on the emulator, and the test counts were read from the archive.
 
 #### 4.1 Pages, covers, and edits by place. Status: done
@@ -725,6 +742,7 @@ Carried from T3 Launcher's reviews:
 - From Increment 4's review:
   - (a) Drag sources and zones are snapshots taken in `onGloballyPositioned`, which (ui 1.12.1) doesn't run again when only its callback changes. A tile whose item changed without a new layout keeps an old `From.At`, which can show the wrong icon under the finger or cause a "Home changed" refusal, but never a wrong write. Store only bounds, and look up the placed item at pickup.
   - (b) `Held.takes` runs a full `drop` on every move over an `Onto` or `Remove` target. Compute it once per target change if the Fold shows it.
+  - (c) A drag cut off by the screen going off, a call, or gesture navigation taking the touch wasn't tried. Compose turns a cancelled press into a release, so when the cancel reaches Compose before `HomeActivity`'s pause or focus loss, the item may drop where the finger was. Only the shade was shown to put it back. Tell a cancel from a release (for example from the raw `MotionEvent`), or check each case on the device.
 
 **Provisional Done when.** On `T3_Fold_API35`, a fold, an unfold, a dark-mode switch and a font-scale change each recreate home with its open drawer and scroll kept and with no app-list or icon reload (a debug log line per load, counted before and after), each carried item has a fix and a test or emulator check, and the inner-screen layout is screenshotted. **[real Fold]** The same on the device.
 

@@ -208,4 +208,16 @@ class HomeEditTest {
         assertEquals(HOME_CHANGED, refused { f.drop(at(f, Spot.Page(0, 0)), Target.AtEnd(Place.OnPage(3))) })
         assertEquals(listOf(ref("a.a")), f.drop(at(f, Spot.Page(0, 0)), Target.Before(Spot.Dock(7))).file.current.dock)
     }
+
+    @Test
+    fun anUnpinnedFolderStepsTwiceWithTheFromTheFirstStepGave() {
+        // From the review of the review's fixes (R1): the first step pins the folder in the copy, and the second checks against it.
+        val f = file(listOf(ref("a.a"), ref("b.b"), Folder("F", listOf(ref("x.x")))))
+        val first = f.drop(at(f, Spot.Page(0, 2)), Target.Before(Spot.Page(0, 0)), strip = false)
+        val from = From.At(first.at!!, first.file.itemAt(first.at!!)!!)
+        val second = first.file.drop(from, Target.Before(Spot.Page(0, 2)), strip = false)
+        assertEquals(listOf("a.a", "[F: x.x]", "b.b"), second.file.pages[0])
+        assertEquals(listOf("a.a", "b.b"), second.file.drop(From.At(second.at!!, second.file.itemAt(second.at!!)!!), Target.Remove).file.pages[0])
+        assertEquals(HOME_CHANGED, refused { f.drop(at(f, Spot.Page(0, 0)), Target.AtEnd(Place.InFolder(Spot.Page(5, 0)))) })
+    }
 }

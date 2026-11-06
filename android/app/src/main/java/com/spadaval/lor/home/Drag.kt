@@ -122,7 +122,8 @@ class Held(
         try {
             val d = work.drop(from, to, home.installed, strip = false, nameFor = home::nameFor)
             work = d.file
-            d.at?.let { from = From.At(it, item) }
+            // What the copy holds there now: a moved folder is pinned in it, and the next step checks against that.
+            d.at?.let { from = From.At(it, d.file.itemAt(it) ?: item) }
         } catch (e: LayoutError) {
             // A full dock or page, a folder into the dock: the item stays where it is.
         }

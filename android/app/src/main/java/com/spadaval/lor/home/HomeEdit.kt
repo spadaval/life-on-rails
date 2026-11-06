@@ -314,7 +314,7 @@ fun LayoutFile.drop(
             }
             Place.Dock -> { at = Spot.Dock(layout.dock.size); layout = layout.copy(dock = layout.dock + ref!!) }
             is Place.InFolder -> {
-                val f = layout.allPages[p.folder.page].getOrNull(p.folder.index) as? Folder ?: throw LayoutError(HOME_CHANGED)
+                val f = layout.allPages.getOrNull(p.folder.page)?.getOrNull(p.folder.index) as? Folder ?: throw LayoutError(HOME_CHANGED)
                 at = Spot.InFolder(p.folder.page, p.folder.index, f.apps.size)
                 layout = layout.insertInFolder(p.folder, f.apps.size, ref!!)
             }
