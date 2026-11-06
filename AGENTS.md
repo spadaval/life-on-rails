@@ -18,7 +18,7 @@ Single-user self-hosted personal OS. What LoR is, what it is not, and how it sit
 - Server functions return JSON-safe values only (ISO strings, not Dates).
 - Config is the env file only (`~/.config/life-on-rails/env`); every comment in it on its own line.
 - Binds `127.0.0.1:3847`. The `:3848` listener is the only thing `tailscale serve` targets, and it checks the owner's identity header. The one listener on the home network is the TRMNL X's (`LOR_TRMNL_BIND:3849`, off when unset): the firmware's `/api/setup|display|log` and its images, every call keyed; and the firmware build in `LOR_TRMNL_FIRMWARE` by its exact name, unkeyed because the updater sends no headers. Nothing else.
-- Never log tokens or store them in tables. Titles and subjects may be logged.
+- Credentials live in mode-0600 files under `~/.config/life-on-rails/`: the env file for keys set by hand, a file of their own for tokens LoR obtains at runtime (like `google-token.json`), which LoR writes when it gets them. Never in tables or logs. Titles and subjects may be logged.
 
 ## Commands
 
