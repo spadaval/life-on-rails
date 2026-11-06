@@ -50,7 +50,7 @@ class HomeLookTest {
         refused("""{"labelSize": 11}""", "look.labelSize: 11 is not between 12 and 14")
         refused("""{"iconSize": 52.5}""", "look.iconSize: must be a whole number")
         refused("""{"labels": "no"}""", "look.labels: must be true or false")
-        refused("""{"colour": 1}""", "look: unknown field \"colour\" (allowed: grid, labels, labelSize, iconSize)")
+        refused("""{"colour": 1}""", "look: unknown field \"colour\" (allowed: grid, labels, labelSize, iconSize, iconPack, themedIcons, iconShape)")
         refused("""{"grid": {"tall": {}}}""", "look.grid: unknown field \"tall\" (allowed: narrow, wide)")
         refused("""[]""", "look: must be an object")
     }

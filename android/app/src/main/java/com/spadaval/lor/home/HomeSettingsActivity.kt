@@ -49,6 +49,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.heightIn
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.produceState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import com.spadaval.lor.ui.selection
@@ -80,13 +84,14 @@ class HomeSettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(SystemBarStyle.dark(android.graphics.Color.TRANSPARENT), SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         val store = (application as LorApp).home
-        val icons = Icons((40 * resources.displayMetrics.density).toInt())
+        val icons = Icons(this, (40 * resources.displayMetrics.density).toInt())
         setContent {
             val apps by store.apps.collectAsStateWithLifecycle()
             val layout by store.layout.collectAsStateWithLifecycle()
+            val packIndex by store.packs.index.collectAsStateWithLifecycle()
             val appsLoad by store.appsLoad.collectAsStateWithLifecycle()
             LorTheme {
-                CompositionLocalProvider(LocalIcons provides icons) {
+                ProvideIcons(icons, layout.shown?.look, packIndex) {
                     Surface(Modifier.fillMaxSize()) {
                         Box(Modifier.fillMaxSize()) {
                             HomeSettings(apps, layout, appsLoad == AppsLoad.LOADED, ::edit, ::restore, ::open)
@@ -325,6 +330,52 @@ private fun LookRows(look: HomeLook, set: (String, HomeLook) -> Unit) {
         }
         Choices("Icon size", "In dp, on home, in the dock, folders and the drawer", HomeLook.ICON_SIZES.step(4).toList(), look.iconSize) {
             set("Icons are $it dp.", look.copy(iconSize = it))
+        }
+        IconPackRow(look.iconPack) { set(if (it == null) "Apps draw their own icons." else "Icons come from the pack.", look.copy(iconPack = it)) }
+        Toggle("Themed icons", "Apps with a monochrome icon draw it in LoR's colours", look.themedIcons) {
+            set(if (look.themedIcons) "Themed icons are off." else "Themed icons are on.", look.copy(themedIcons = !look.themedIcons))
+        }
+        Options("Icon shape", "For apps' own icons; a pack's keep theirs", HomeLook.IconShape.entries.map { it.title }, look.iconShape.ordinal) {
+            set("Icons are ${HomeLook.IconShape.entries[it].title.lowercase()}.", look.copy(iconShape = HomeLook.IconShape.entries[it]))
+        }
+    }
+}
+
+/** The icon pack: None, then each installed pack (launcher polish 6.5), read when shown. */
+@Composable
+private fun IconPackRow(chosen: String?, pick: (String?) -> Unit) {
+    val context = LocalContext.current
+    val packs by produceState<List<InstalledPack>?>(null) { value = withContext(Dispatchers.IO) { installedPacks(context.packageManager) } }
+    val list = packs
+    val names = listOf("None") + list.orEmpty().map { it.label }
+    val at = if (chosen == null) 0 else list?.indexOfFirst { it.packageName == chosen }?.takeIf { it >= 0 }?.plus(1) ?: -1
+    val about = when {
+        list == null -> "Looking for packs…"
+        chosen != null && at < 0 -> "$chosen isn't installed; apps draw their own icons"
+        list.isEmpty() -> "No icon packs are installed (ADW or Nova packs)"
+        else -> "ADW and Nova packs; apps a pack lacks keep their own icon"
+    }
+    Options("Icon pack", about, names, at) { i -> pick(if (i == 0) null else list!![i - 1].packageName) }
+}
+
+/** A row of named choices, the chosen one in DESIGN.md's selection. */
+@Composable
+private fun Options(title: String, subtitle: String, options: List<String>, chosen: Int, pick: (Int) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = MaterialTheme.typography.bodyLarge)
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(Modifier.padding(top = 6.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEachIndexed { i, name ->
+                val on = i == chosen
+                Box(
+                    Modifier.heightIn(min = 48.dp)
+                        .then(if (on) Modifier.selection() else Modifier.border(1.dp, MaterialTheme.colorScheme.outline))
+                        .selectable(on, role = Role.RadioButton) { if (!on) pick(i) }
+                        .semantics { contentDescription = "$title: $name" }
+                        .padding(horizontal = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text(name, style = MaterialTheme.typography.bodyLarge) }
+            }
         }
     }
 }

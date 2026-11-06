@@ -191,8 +191,12 @@ class HomeStore(private val context: Context) {
         }
     }
 
+    /** The icon pack the look names, parsed once for the process (launcher polish 6.5). */
+    val packs = IconPackHolder(context, scope)
+
     init {
         launcherApps.registerCallback(callback)
+        scope.launch { layout.collect { state -> state.shown?.let { packs.want(it.look.iconPack) } } }
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_MANAGED_PROFILE_ADDED)
             addAction(Intent.ACTION_MANAGED_PROFILE_REMOVED)
@@ -432,6 +436,7 @@ class HomeStore(private val context: Context) {
 
     private fun changed(packages: List<String>, user: UserHandle) = serially {
         _changes.tryEmit(PackageChange(packages, user))
+        packs.changed(packages)
         val fresh = packages.flatMap { pkg -> activities(pkg, user) }
         _apps.value = (_apps.value.filterNot { it.packageName in packages && it.user == user } + fresh).sortedWith(byLabel)
         resolveTargets()

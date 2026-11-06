@@ -13,7 +13,15 @@ data class HomeLook(
     val labels: Boolean = true,
     val labelSize: Int = 12,
     val iconSize: Int = 52,
+    /** An icon pack's package name (launcher polish 6.5); null draws the apps' own icons. */
+    val iconPack: String? = null,
+    /** Apps with a monochrome layer draw it in LoR's colours (6.5). */
+    val themedIcons: Boolean = false,
+    val iconShape: IconShape = IconShape.SYSTEM,
 ) {
+    /** The mask for adaptive icons; pack icons keep their own shape. */
+    enum class IconShape(val id: String, val title: String) { SYSTEM("system", "System"), SQUARE("square", "Square"), CIRCLE("circle", "Circle") }
+
     /** Columns of home's grid and the drawer's, for one class of screen. */
     data class Columns(val home: Int, val drawer: Int)
 
@@ -37,6 +45,9 @@ data class HomeLook(
         if (!labels) put("labels", false)
         if (labelSize != DEFAULT.labelSize) put("labelSize", labelSize)
         if (iconSize != DEFAULT.iconSize) put("iconSize", iconSize)
+        iconPack?.let { put("iconPack", it) }
+        if (themedIcons) put("themedIcons", true)
+        if (iconShape != IconShape.SYSTEM) put("iconShape", iconShape.id)
     }
 
     companion object {
@@ -50,10 +61,11 @@ data class HomeLook(
         val WIDE_DRAWER = 4..10
         val LABEL_SIZES = 12..14
         val ICON_SIZES = 44..56
+        private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
 
         fun parse(v: Any): HomeLook {
             if (v !is JSONObject) throw LayoutError("look: must be an object")
-            v.only("look", "grid", "labels", "labelSize", "iconSize")
+            v.only("look", "grid", "labels", "labelSize", "iconSize", "iconPack", "themedIcons", "iconShape")
             var grid = Grid()
             if (v.has("grid")) {
                 val g = v.opt("grid") as? JSONObject ?: throw LayoutError("look.grid: must be an object")
@@ -73,6 +85,15 @@ data class HomeLook(
                 labels = labels,
                 labelSize = v.int("look", "labelSize", LABEL_SIZES) ?: DEFAULT.labelSize,
                 iconSize = v.int("look", "iconSize", ICON_SIZES) ?: DEFAULT.iconSize,
+                iconPack = if (v.has("iconPack")) {
+                    (v.opt("iconPack") as? String)?.takeIf { PACKAGE.matches(it) }
+                        ?: throw LayoutError("look.iconPack: \"${v.opt("iconPack")}\" is not a package name")
+                } else null,
+                themedIcons = if (v.has("themedIcons")) v.opt("themedIcons") as? Boolean ?: throw LayoutError("look.themedIcons: must be true or false") else false,
+                iconShape = if (v.has("iconShape")) {
+                    IconShape.entries.firstOrNull { it.id == v.opt("iconShape") }
+                        ?: throw LayoutError("look.iconShape: must be one of ${IconShape.entries.joinToString { it.id }}")
+                } else IconShape.SYSTEM,
             )
         }
 
