@@ -56,8 +56,11 @@ val OnOr = Color(Palette.ON_OR)
 val StateFill = PanelFace.copy(alpha = 0xDD / 255f)
 /** The scrim behind an open folder or sheet. */
 val Scrim = Color(0x99000000)
-/** The agent page's veil over the wallpaper. */
-val Veil = Bg.copy(alpha = 0xD9 / 255f)
+/**
+ * The agent page's veil over the wallpaper (launcher polish 6.3): strong enough that Far Dust on it
+ * reads at 4.5:1 over white, the worst wallpaper, so it needn't follow the wallpaper.
+ */
+val Veil = Bg.copy(alpha = Palette.VEIL_ALPHA.toFloat())
 
 /** DESIGN.md's one silhouette: the top-left and bottom-right corners clipped at 6 dp, for outer panels. */
 val Chamfer: Shape = CutCornerShape(topStart = 6.dp, topEnd = 0.dp, bottomEnd = 6.dp, bottomStart = 0.dp)

@@ -56,6 +56,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -104,7 +105,9 @@ import java.time.format.DateTimeFormatter
  * Motion is one-shot only: the drawer slides in and out, nothing loops (strategy: calm).
  */
 
-internal val LabelStyle = TextStyle(fontFamily = Saira, color = Txt, fontSize = 12.sp, shadow = Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 1f), 3f))
+/** An app's or folder's label in the ink of what it stands on (launcher polish 6.3: the wallpaper's on home). */
+internal val labelStyle: TextStyle
+    @Composable get() = LocalWallInk.current.let { TextStyle(fontFamily = Saira, color = it.text, fontSize = 12.sp, shadow = it.shadow) }
 
 /** What the activity can reset on a home press. */
 class HomeUi {
@@ -185,6 +188,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // While an item is held, home draws the drag's working copy; just after a drop, what it wrote (launcher polish 4.3).
     val drag = ui.drag
     val held = drag.held
+    // What home draws straight on the wallpaper takes the wallpaper's ink (launcher polish 6.3).
+    val ink = wallInk(rememberWallpaperInk())
     val file = held?.work ?: drag.landing ?: layout.shown
     val home = remember(actions, file, apps) { HomeContext(actions, file, apps, drag) }
     val placed = remember(apps, file) { file?.let { place(it.current, apps) } }
@@ -254,9 +259,9 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val latestDrop by rememberUpdatedState<(Held, Target?) -> Unit>(::dropHeld)
     Box(Modifier.fillMaxSize().dragging(ui, { latestHome }, { h, t -> latestDrop(h, t) })) {
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1, userScrollEnabled = held == null) { page ->
-            if (page == 0) AgentPage() else HomePage(page - 1, placed, layout, appsLoad, ui, home)
+            if (page == 0) AgentPage() else CompositionLocalProvider(LocalWallInk provides ink) { HomePage(page - 1, placed, layout, appsLoad, ui, home) }
         }
-        PageDots(pager.currentPage, 1 + pageCount, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
+        PageDots(pager.currentPage, 1 + pageCount, ink.mark, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
         AnimatedVisibility(
             ui.drawer,
             enter = slideInVertically { it / 3 } + fadeIn(),
@@ -372,7 +377,7 @@ private fun Skeleton(items: List<LayoutItem>, columns: Int) {
                             Box(Modifier.size(52.dp).background(Line, if (item is Folder) RectangleShape else CircleShape))
                             // The label's height, so the rows sit where the tiles will.
                             Spacer(Modifier.height(5.dp))
-                            Text("", style = LabelStyle)
+                            Text("", style = labelStyle)
                         }
                     }
                 }
@@ -416,7 +421,7 @@ private fun HomeNote(title: String, detail: String?, onClick: (() -> Unit)? = nu
 @Composable
 private fun DateHeader(size: Int) {
     val today = rememberToday().format(DateTimeFormatter.ofPattern("EEEE d MMMM"))
-    Text(today,style = LabelStyle.copy(fontSize = size.sp), modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 28.dp))
+    Text(today,style = labelStyle.copy(fontSize = size.sp), modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 28.dp))
 }
 
 /**
@@ -525,10 +530,10 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
 }
 
 @Composable
-private fun PageDots(current: Int, count: Int, modifier: Modifier) {
+private fun PageDots(current: Int, count: Int, mark: Color, modifier: Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         (0 until count).forEach { page ->
-            val color = if (page == current) Txt.copy(alpha = 0.7f) else Txt.copy(alpha = 0.2f)
+            val color = if (page == current) mark.copy(alpha = 0.7f) else mark.copy(alpha = 0.3f)
             Box(Modifier.size(6.dp).background(color, if (page == 0) RectangleShape else CircleShape))
         }
     }
@@ -556,7 +561,7 @@ internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)?
             if (dot) Box(Modifier.align(Alignment.TopEnd).size(10.dp).background(Txt, CircleShape).border(1.5.dp, Bg, CircleShape))
         }
         Spacer(Modifier.height(5.dp))
-        Text(app.label, style = LabelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+        Text(app.label, style = labelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
 }
 
@@ -579,7 +584,7 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: () ->
     ) {
         FolderIcon(folder)
         Spacer(Modifier.height(5.dp))
-        Text(folder.folder.name, style = LabelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(folder.folder.name, style = labelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -591,7 +596,7 @@ private fun FolderIcon(folder: ResolvedFolder) {
         } else Column(
             Modifier
                 .size(52.dp)
-                .background(Txt.copy(alpha = 0.09f)).border(1.dp, Edge)
+                .background(LocalWallInk.current.text.copy(alpha = 0.09f)).border(1.dp, Edge)
                 .padding(6.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {

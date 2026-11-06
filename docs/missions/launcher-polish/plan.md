@@ -1084,7 +1084,7 @@ Agreed with Sumeet, 2026-11-05:
   - **Choices.** The folder panel's title stays sentence case: it is the folder's name, not a section head. The agent page's page dot is a small square, home's pages round. The pill's label sits in `Type.button` at its old 12 sp.
   - Reviewed with the increment.
 
-#### 6.3 Over the wallpaper. Status: todo
+#### 6.3 Over the wallpaper. Status: done
 - **Goal.** What home draws straight on the wallpaper reads on a light and a dark one, and the agent page reads on any.
   - **`home/Wallpaper.kt`:** `WallInk` (text, aside, mark, shadow) and a pure `wallInk(hints: Int): WallInk` that picks dark ink when `hints` has `WallpaperColors.HINT_SUPPORTS_DARK_TEXT`, else light (the answers). `rememberWallInk()` reads `WallpaperManager.getWallpaperColors(FLAG_SYSTEM)` on IO once and follows `addOnColorsChangedListener` (main looper, `FLAG_SYSTEM` only), removing it on dispose; one `LorLook` line when the ink changes. It is provided as a `CompositionLocal` under home.
   - **Who uses it** (dark ink: Sumeet, 2026-11-06): `LabelStyle` (home's and the folder panel's labels), the date header (and 6.7's event line), page dots, and the folder tile's preview fill and edge. The dock, the cards and the bars are panels (6.2) and don't change with it. The light ink's shadow is in dp, replacing today's raw-px `Shadow(…, 3f)`.
@@ -1094,6 +1094,12 @@ Agreed with Sumeet, 2026-11-05:
   - **JVM test:** `wallInk` gives dark ink for the dark-text hint (alone and with the dark-theme hint), light ink for none and for the dark-theme hint alone; `wallInk` treats null colours as no hints; `LookTest` checks each ink's text against its worst case (dark ink, text and aside, on `#858585`, the darkest wallpaper Android gives the dark-text hint; light ink without its shadow on `#101010`) at 4.5:1 or more, and Far Dust on the veil over white at 4.5:1.
   - **On `T3_Phone_API35`,** on the light, dark and default wallpapers (the answers): home (labels, the date, a folder tile, page dots with an extra page) and the agent page, screenshotted. `LorLook` logs the ink each time the wallpaper changes, without a restart. Measured from the pixels: labels and the date at 4.5:1 or more on the light and the dark wallpaper; on the default one, recorded. The agent page's Far Dust (the arc's times) on the light wallpaper at 4.5:1 or more.
   - `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed: `home/Wallpaper.kt` (`Ink`, the pure `inkFor(hints)`, `WallInk` with its text, aside, mark and shadow, `SurfaceInk` for panels, `LocalWallInk`, `rememberWallpaperInk()` reading the colours on IO and following `OnColorsChangedListener`, one `LorLook` line per read or change). Home's pages provide the wallpaper's ink; the drawer and the folder panel keep `SurfaceInk` (no shadow on a dark surface). `labelStyle` (labels and the date header), the page dots and the folder tile's preview fill take it. The veil is Deep Space at 92% (`Palette.VEIL_ALPHA`). `DESIGN.md` has "Over the wallpaper" under Colors, and its Don'ts point at it. `WallpaperTest` (2) and `LookTest` (5); 186 tests pass on boat.
+  - **On `T3_Phone_API35`,** with a plain `#f2f2f2` and a plain `#101010` PNG pushed to `/sdcard/Pictures` and set with Photos' Set wallpaper (started by an `ATTACH_DATA` intent, confirmed with agent-device): `LorLook` logged `dark text` and `light text` as each was set, and home redrew in the new ink without a trip away. Measured from the screenshots (the text's extreme pixel against the wallpaper's): on the light one, Gmail's label, Settings' label and the date 17.3:1 (Deep Space on `#f2f2f2`); on the dark one, Gmail's label 15.7:1 and the date 16.0:1. On the agent page over the light wallpaper, the arc's times in Far Dust 4.7:1 and the heading 13.3:1.
+  - **Not checked:** the default (mixed) wallpaper's contrast, measured at the end of the increment when it is put back (see 6.8).
+  - **Choices.** The dock's panel at 72% Panel Face reads as a grey band over a white wallpaper; it is a surface, so it stays dark, as the answers say.
+  - Reviewed with the increment.
 
 #### 6.4 Look settings: grid, labels and icon size. Status: todo
 - **Goal.** Columns per screen, labels on or off, label size and icon size are in `layout.json` and set from Home settings, and home and the drawer draw from them.

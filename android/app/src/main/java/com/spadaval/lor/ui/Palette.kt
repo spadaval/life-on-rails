@@ -23,6 +23,9 @@ object Palette {
     const val BAD = 0xFFE0735A         // Hull-Breach Coral
     const val ON_OR = 0xFF1A0D02       // text on a solid amber fill
 
+    /** The agent page's veil: Deep Space at 92% (launcher polish 6.3). */
+    const val VEIL_ALPHA = 0xEB / 255.0
+
     /** WCAG relative luminance of an opaque colour. */
     fun luminance(argb: Long): Double {
         fun channel(shift: Int): Double {

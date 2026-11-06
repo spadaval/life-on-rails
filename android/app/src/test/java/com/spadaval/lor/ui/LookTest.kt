@@ -24,6 +24,23 @@ class LookTest {
     }
 
     @Test
+    fun eachWallpaperInkReadsOnItsWorstWallpaper() {
+        // Dark ink, text and asides alike, on the darkest wallpaper Android gives the dark-text hint.
+        reads(Palette.BG, 0xFF858585, "dark ink on #858585")
+        // Light ink, without its shadow, on a near-black wallpaper.
+        reads(Palette.TXT, 0xFF101010, "light ink on #101010")
+        reads(Palette.MUTE, 0xFF101010, "light ink's aside on #101010")
+    }
+
+    @Test
+    fun theAgentPagesFaintestTextReadsOnItsVeilOverWhite() {
+        val veil = Palette.over(Palette.BG, Palette.VEIL_ALPHA, 0xFFFFFFFF)
+        reads(Palette.DIM, veil, "Far Dust on the veil over white")
+        // The old 85% veil didn't.
+        assertTrue(contrast(Palette.DIM, Palette.over(Palette.BG, 0xD9 / 255.0, 0xFFFFFFFF)) < 4.5)
+    }
+
+    @Test
     fun theLaunchersOldDimWouldFail() {
         // 3.6's critique: the launcher's Dim (0xFF616871) read at 2.3 to 3.5:1. Far Dust replaces it.
         assertTrue(contrast(0xFF616871, Palette.PANEL) < 4.5)

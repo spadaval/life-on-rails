@@ -182,6 +182,13 @@ A near-monochrome blue-black instrument panel with warm grey type, lit by one am
 
 **The Never Red Rule.** Under target, behind, overdue and unstarted are shown dim (`mute` / `dim`), never coral. Coral is reserved for machinery that has failed.
 
+### Over the wallpaper (the phone's home)
+The launcher on the phone draws some text straight on Sumeet's wallpaper: app and folder labels, the date header and its next-event line, the page dots. That text is the one exception, by Sumeet's decision (2026-11-06), to "dark only" and to the No-Glow rule, because the wallpaper is his and may be light:
+- **Light ink** (the default): Starlight text and Dust asides with a still text shadow (1dp down, 3dp blur, black at 60%). The shadow is for legibility over a photo, never for emphasis.
+- **Dark ink**, when Android says the wallpaper supports dark text (`WallpaperColors.HINT_SUPPORTS_DARK_TEXT`): Deep Space for text and asides alike, no shadow. The darkest wallpaper with that hint is about `#858585`, where Deep Space reads at about 5.3:1 and a grey aside wouldn't.
+- Everything LoR draws as a surface (the drawer, the dock's panel, folders, cards, menus, settings) stays dark on any wallpaper.
+- The agent page sits on a veil of Deep Space at 92% over the wallpaper, enough for Far Dust to read at 4.5:1 even over white, so it doesn't follow the wallpaper.
+
 ## Typography
 
 **Display Font:** Saira Condensed (500, 600), falling back to Saira, then ui-sans-serif
@@ -306,8 +313,8 @@ The one place LoR is not dark: the TRMNL X on the fridge, e-paper read from acro
 - **Do** keep numerals tabular.
 
 ### Don't:
-- **Don't** add a light theme. The paper frame on the wall display is not one; it is a separate drawing.
-- **Don't** use shadows, glows, blur, scanlines or pulsing; the selected star's reticle is the strongest emphasis the world has.
+- **Don't** add a light theme. The paper frame on the wall display is not one; it is a separate drawing. Dark text over a light wallpaper on the phone's home is not one either (see Over the wallpaper).
+- **Don't** use shadows, glows, blur, scanlines or pulsing; the selected star's reticle is the strongest emphasis the world has. The one shadow is light text's over the phone's wallpaper (see Over the wallpaper).
 - **Don't** put fake HUD numbers, decorative telemetry or invented coordinates on screen; every figure is real data.
 - **Don't** use coral for overdue, behind, or under target; coral means a machine has failed.
 - **Don't** round corners on buttons, inputs, chips or panels; the only round shapes are status dots and map bodies.
