@@ -276,9 +276,10 @@ export async function messageHistory(
 
 // ---- the loop ----
 
-let lastPoll = 0;
+// Counted from start, so the health job's first run at boot is not an alarm.
+let lastPoll = Date.now();
 
-/** When the channel last heard back from WhatsApp; 0 until it has. */
+/** When the channel last heard back from WhatsApp, or when the process started. */
 export function lastChannelPoll(): number {
   return lastPoll;
 }

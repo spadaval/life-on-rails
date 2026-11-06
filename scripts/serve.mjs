@@ -37,6 +37,11 @@ const port = Number(process.env.LOR_PORT || 3847);
 const servePort = Number(process.env.LOR_SERVE_PORT || 3848);
 const owner = (process.env.LOR_OWNER_LOGIN || "").trim().toLowerCase();
 
+// srvx's own SIGTERM handling closes the listeners but leaves the process up, and
+// the scheduler and the channel loop keep it running: a stopped test server went
+// on polling WhatsApp. A signal ends the process.
+for (const sig of ["SIGTERM", "SIGINT"]) process.on(sig, () => process.exit(0));
+
 const assets = serveStatic({ dir: path.join(root, "dist/client") });
 const fetch = (request) => app.fetch(request);
 
@@ -50,7 +55,7 @@ const apiFromLoopbackOnly = (request, next) => {
   return next();
 };
 
-serve({ hostname, port, fetch, middleware: [apiFromLoopbackOnly, assets], silent: true });
+serve({ hostname, port, fetch, middleware: [apiFromLoopbackOnly, assets], silent: true, gracefulShutdown: false });
 console.log(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: "listening", hostname, port }));
 
 if (owner) {
@@ -60,7 +65,7 @@ if (owner) {
     if (new URL(request.url).pathname.startsWith("/api/")) return new Response("not found\n", { status: 404 });
     return next();
   };
-  serve({ hostname: "127.0.0.1", port: servePort, fetch, middleware: [ownerOnly, assets], silent: true });
+  serve({ hostname: "127.0.0.1", port: servePort, fetch, middleware: [ownerOnly, assets], silent: true, gracefulShutdown: false });
   console.log(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: "listening (owner only)", hostname: "127.0.0.1", port: servePort }));
 }
 
@@ -79,6 +84,6 @@ if (trmnlBind) {
     const body = request.method === "POST" ? await request.text() : undefined;
     return app.fetch(new Request(url, { method: request.method, headers: request.headers, body }));
   };
-  serve({ hostname: trmnlBind, port: trmnlPort, fetch: trmnlFetch, silent: true });
+  serve({ hostname: trmnlBind, port: trmnlPort, fetch: trmnlFetch, silent: true, gracefulShutdown: false });
   console.log(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: "listening (trmnl)", hostname: trmnlBind, port: trmnlPort }));
 }

@@ -1,6 +1,8 @@
 // Runs once when the server bundle is loaded by the production entry
 // (scripts/serve.mjs sets LOR_RUN_JOBS=1). Under `vite dev` this does nothing,
-// so a dev server can never own the clock.
+// so a dev server can never own the clock. LOR_NO_JOBS=1 (the throwaway test
+// server, scripts/ui-server.sh) serves without the scheduler or the channel:
+// they would poll WhatsApp, Google and mail with the real keys in the env file.
 import { sql } from "../db/client.js";
 import { ensureSeed } from "../db/seed.js";
 import { channelConfigured, runChannelLoop } from "./channel/channel.js";
@@ -21,6 +23,7 @@ async function start(): Promise<void> {
     log("error", "database unavailable at boot", { err: errorMessage(err) });
     process.exit(1);
   }
+  if (process.env.LOR_NO_JOBS === "1") return;
   registerJobs(JOBS);
   await startScheduler();
   if (channelConfigured()) void runChannelLoop(sql);
