@@ -189,6 +189,12 @@ class HomeUi {
      */
     var back by mutableFloatStateOf(0f)
 
+    /**
+     * Raised when something opens while a back gesture's scale is still on it (a drawer caught, a
+     * folder tapped mid-close): HomeScreen eases [back] to 0 rather than jumping it (7's review).
+     */
+    var backResets by mutableIntStateOf(0)
+
     /** The drawer's list is at its top, so a pull down there moves the drawer (launcher polish 7.1). */
     var drawerAtTop = true
     /** Where the drawer's list is, in root coordinates, its letter rail left out: where that pull starts. */
@@ -343,7 +349,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         val fling = ui.drawerFling
         ui.drawerFling = 0f
         // An open starts whole, though a back gesture's close was caught before it ended (7's review, R2).
-        if (to == 1f) ui.back = 0f
+        if (to == 1f && ui.back > 0f) ui.backResets++
         if (ui.snapDrawer) {
             ui.snapDrawer = false
             ui.drawerShown = to
@@ -426,7 +432,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         if (folderOpen) {
             folderFading = false
             ui.snapFolder = false
-            ui.back = 0f
+            if (ui.back > 0f) ui.backResets++
             // The panel's first frame is its slowest (on the emulator, 140 ms); start the clock after it,
             // or the motion would be over before it is seen. It is drawn at nothing until then.
             if (folderShown.value == 0f) repeat(2) { withFrameNanos {} }
@@ -458,6 +464,10 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // (Kvaesitso's `LauncherScaffold`, GPL-3.0, ideas only; Lawnchair's `onBackProgressed`, Apache-2.0).
     // Before Android 14 only the commit arrives, and it is the whole behaviour.
     val backScope = rememberCoroutineScope()
+    // A new open eases away what is left of a back gesture's scale, as a cancelled gesture does.
+    LaunchedEffect(ui.backResets) {
+        if (ui.back > 0f) animate(ui.back, 0f, animationSpec = Motion.quick()) { v, _ -> ui.back = v }
+    }
     PredictiveBackHandler(enabled = ui.folder != null || ui.drawer || pager.currentPage != 1 || drag.editing) { events ->
         val what = when {
             ui.folder != null -> Back.FOLDER
@@ -1275,7 +1285,7 @@ private class DrawerFinger(val ui: HomeUi, val haptics: HapticFeedback, val heig
     private val point = DrawerMotion.commitPoint(fromOpen, start)
     init {
         ui.drawerHeld = true
-        ui.back = 0f
+        if (ui.back > 0f) ui.backResets++
     }
 
     /** The finger is [travel] px below where it pressed (up negative). */

@@ -7,7 +7,10 @@ package com.spadaval.lor.home
  * and Kvaesitso's `LauncherScaffold` (GPL-3.0; ideas only: the tick at the commit point).
  */
 object DrawerMotion {
-    /** How far from where a gesture started a release commits, as a share of the drawer's height. */
+    /**
+     * The share of the travel left, from where a gesture started toward the other end, past which
+     * a release commits: 30% of the drawer's height from fully closed or open (see [commitPoint]).
+     */
     const val COMMIT = 0.3f
 
     /** A fling faster than this (dp/s) decides by its direction alone. */

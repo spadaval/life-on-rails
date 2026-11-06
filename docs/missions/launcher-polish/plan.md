@@ -1352,13 +1352,13 @@ Agreed with Sumeet, 2026-11-05:
     - One `LaunchedEffect` in `HomeScreen` moves `drawerShown` to the target: `settle(0)`, or `snapTo` when `snap` is set, with the pager's `scrollToPage(1)` in place of `animateScrollToPage`. It leaves the position alone while a finger owns it.
   - **From home.** `HomePage`'s vertical drag, replacing the 56 dp flip, moves the drawer 1:1 with the finger's upward travel (`drawerShown = travel / height`), back down too within the same gesture. On release, a pure `drawerSettles(fromOpen, shown, velocityDpS): Boolean` in a new `home/Motion.kt` chooses:
     - a fling faster than 800 dp/s decides by its direction;
-    - otherwise the drawer ends open if it has travelled more than 30% of its height from where the gesture started.
+    - otherwise the drawer ends open if it has travelled more than 30% of the travel left from where the gesture started toward the other end (30% of its height from fully closed or open; as built after Increment 7's review, R1).
 
     `settle(velocity)` takes it there, and `drawer` takes the result.
   - **Back down from the drawer.** At the top of the list, a downward pull moves the drawer down 1:1, replacing today's close after 120 dp (`pullToClose`; its keyboard hide stays).
     - The pull is measured where nothing moves: on the root `Box`, in `PointerEventPass.Initial` and root coordinates, as `dragging` already watches. The list moves with the drawer, so its nested-scroll deltas, in its own moving coordinates, would make the drawer lag and jitter.
     - Once the list is at its top and the finger has moved down past the touch slop, the root handler takes the gesture and consumes its moves. Pulling back up within the gesture raises the drawer again, and the release is settled by the same rule, with the velocity from a `VelocityTracker` on those events.
-  - **The threshold tick.** While a finger moves the drawer, each crossing of the point 30% of its height from where the gesture started gives `HapticFeedbackType.GestureThresholdActivate` (Kvaesitso's threshold haptic).
+  - **The threshold tick.** While a finger moves the drawer, each crossing of that commit point (30% of the travel left from where the gesture started) gives `HapticFeedbackType.GestureThresholdActivate` (Kvaesitso's threshold haptic).
   - **The keyboard** (5.5's `drawer.keyboard`) is asked for when the drawer settles open, not when it starts to show, so a swipe that goes back down leaves no keyboard up.
   - **The status bar's icons** (from Increment 6's second review) are dark only while no part of the drawer is under the status bar (its top edge below the bar's bottom inset) and no folder is shown. This is decided in a `SideEffect` from a `derivedStateOf`, so the icons change in the frame the drawer crosses the bar and the position isn't read on every frame.
 - **Done when.**
@@ -1391,7 +1391,7 @@ Agreed with Sumeet, 2026-11-05:
   - **The keyboard,** with `drawer.keyboard: true` written with `run-as`: a swipe to 20% and back left `mInputShown=false`; a full open, `true`.
   - **A home press** from Settings with the drawer left open: a recording at 30 frames a second showed home's first frame with no drawer.
   - **Found and fixed on the way:** a swipe that starts downward on home with the drawer shut took the drawer too, and `input motionevent`'s spaced events gave it a nonsense velocity that opened the drawer. Only a swipe that starts upward takes the drawer now; 7.6 gives the downward one to the shade.
-  - **Choices.** The pull down in the drawer is taken anywhere in the list but its letter rail, once the list is at its top. A press that catches the drawer mid-settle measures its commit point from where it caught it.
+  - **Choices.** The pull down in the drawer is taken anywhere in the list but its letter rail, once the list is at its top. A press that catches the drawer mid-settle measures its commit point from where it caught it, as 30% of the travel left toward the other end (after Increment 7's review, R1).
   - **Not checked here:** "Remove animations" (7.8 checks every motion at once).
   - Reviewed with the increment.
 
@@ -1605,6 +1605,7 @@ Agreed with Sumeet, 2026-11-05:
 - R10, deferred: `animatePlacement` (HomeScreen.kt) launches `animateTo` from the placement lambda, so several placement passes in one frame can each restart the 220 ms tween to the same target; keep the last requested target with the holder and launch only when it changes. Harmless in 7.5's recordings.
 
 207 tests pass on boat (`assembleDebug testDebugUnitTest`). `layout.json` and `launch-stats.json` were left as they were; the animation scales read back as 1.
+- A second fresh agent reviewed 3ee48a4: pass, with two points, both taken by the orchestrator: a new open (a drawer caught, a folder tapped mid-close) now eases what is left of a back gesture's scale to full size over `Motion.quick()` instead of jumping it in one frame (`HomeUi.backResets`); and `COMMIT`'s KDoc and 7.1's text now describe the commit point as 30% of the travel left.
 
 ### Increment 8: The Fold, and holding state. Status: backlog
 
