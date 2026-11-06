@@ -341,7 +341,7 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
                         HomeBody.NOTHING -> {}
                         HomeBody.SKELETON -> Skeleton(home.file!!.current.allPages.getOrElse(n) { emptyList() }, columns)
                         HomeBody.APPS_DIDNT_LOAD -> if (n == 0) HomeNote("Apps didn't load. Trying again.", null)
-                        HomeBody.EMPTY -> if (n == 0) HomeNote("Home is empty.", "Swipe up for your apps. Long-press one and choose Add to home.") { ui.drawer = true }
+                        HomeBody.EMPTY -> if (n == 0) HomeNote("Home is empty.", "Swipe up for your apps, then drag one here, or long-press it and choose Add to home.") { ui.drawer = true }
                         HomeBody.GRID -> HomeGrid(placed!!.pages.getOrElse(n) { emptyList() }, columns, ui, home)
                     }
                 }

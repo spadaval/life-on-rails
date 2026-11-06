@@ -620,7 +620,7 @@ Agreed with Sumeet, 2026-11-05:
     - The dock is drawn on each page and slides with it, as 4.1 says.
   - Reviewed with the increment.
 
-#### 4.6 From the drawer to home, and empty home's words. Status: todo
+#### 4.6 From the drawer to home, and empty home's words. Status: done
 - **Goal.** An app is dragged from the drawer onto home, as on any launcher, and empty home says so.
   - **From the drawer.** A main-profile app's tile in the drawer (sections, A–Z, Most used, search results) starts a drag the same way: long press, menu, 16 dp. The drawer closes, the drag goes on over home as `FromDrawer`, and the drop rules of 4.1 apply.
 
@@ -635,6 +635,21 @@ Agreed with Sumeet, 2026-11-05:
   - with `home: []`, the new words show, and a drawer app dropped on them puts it on home.
 
   The spec's launcher section says apps are dragged from the drawer. `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed:
+  - each main-profile tile in the drawer (every view and search results) is a source of layer 2. Picking it up closes the drawer, and the drag goes on over home as `FromDrawer` (the spike showed the press survives the drawer leaving);
+  - empty home's new words.
+
+  `assembleDebug testDebugUnitTest` passes on boat (144 tests).
+  - **On `T3_Phone_API35`,** each from a drawer search:
+    - Lexica dragged onto home's space went to the end of home.
+    - Voice Recorder dropped on Calendar's icon made a folder of the two.
+    - Contacts (in the Google folder on home) dropped on the dock's last cell was added to the dock: on home in a folder and in the dock is allowed.
+    - Maps, already on home, dropped on home was refused: the same sum.
+    - The work profile's Chrome, long-pressed and moved, kept its menu (New tab, App info), the drawer stayed open, and nothing was written. The main profile's Chrome, the same way, closed the drawer and was refused on home (already there).
+    - With `home: []` written with `run-as`, home said "Home is empty." and "Swipe up for your apps, then drag one here, or long-press it and choose Add to home.". Lexica dragged from the drawer onto it made `home: ["com.serwylo.lexica"]`.
+  - The spec's launcher section says what can be picked up and where it can go.
+  - Reviewed with the increment.
 
 ### Increment 5: Search that finds more. Status: backlog
 

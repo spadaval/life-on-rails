@@ -205,7 +205,13 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, ui: HomeUi, home: H
                 items(built.entries, key = { it.key }, span = { if (it is Entry.Tile) GridItemSpan(1) else GridItemSpan(maxLineSpan) }) { e ->
                     when (e) {
                         is Entry.Header -> SectionHeader(e.title, e.reason)
-                        is Entry.Tile -> Box(contentAlignment = Alignment.TopCenter) { MenuTile(e.app, at, home, dot = e.dot) }
+                        // A main-profile app can be picked up and dragged onto home (launcher polish 4.6); refs can't name a work-profile one.
+                        is Entry.Tile -> Box(
+                            Modifier.dragSource(home.drag, e.key) { b ->
+                                if (e.app.mainProfile) Source(b, From.Drawer(e.app.id, home.refFor(e.app)), 2, e.app, null) else null
+                            },
+                            contentAlignment = Alignment.TopCenter,
+                        ) { MenuTile(e.app, at, home, dot = e.dot) }
                         is Entry.HiddenApps -> Text(
                             "Hidden apps (${e.count})",
                             style = TextStyle(color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center),
