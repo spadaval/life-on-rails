@@ -25,8 +25,8 @@ Worth shipping on its own: the long-press menu, hidden apps and the organised dr
 
 # Success Criteria
 
-- `no-adb`: anything `layout.json` can say about home, dock, folders, hidden apps and the drawer can be changed on the phone without adb or an agent. Shown at close by a walk through the schema on the emulator, one change per field.
-- `nice`: Sumeet uses it as his home on the Fold for a few days after the last increment and says it's nice to live in, or names what isn't. A named human judgment; asked for at close.
+- `no-adb`: every field of `layout.json` that says what home holds or how it looks can be changed on the phone, without adb or an agent: home and its pages, the dock, folders (name, apps, order), hidden apps, drawer sections, look settings and widgets. Left out: `version`; `active`, `layouts` and `expires`, which T3 Launcher Increment 10 gives a phone UI; and a folder's or section's `reason`, which agents write. Shown at close on the emulator, one change per field, reading the file after each.
+- `nice`: Sumeet says it's nice to live in, or names what isn't. A named human judgment, asked for at close on the build he is running then; how long he has run it is his to say, and the mission does not wait for a trial.
 
 # Shape
 

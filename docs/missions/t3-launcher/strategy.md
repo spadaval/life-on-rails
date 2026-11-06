@@ -14,7 +14,7 @@ Sources: T3 threads "Agent-first Android launcher vision" (201b0ae4, 2026-11-02)
 LoR's Android app (`android/`, package `com.spadaval.lor`) is Sumeet's default home app on the Fold, and he uses it every day:
 
 - **The left-most page is the agent page.** It shows the queue (T3 approvals, questions and failures; LoR Needs you and the next action), running turns, Today, and a quick-send button.
-- **Home is an ordinary, good launcher.** Its layout is a JSON file in a git repo. Agents edit that file, the launcher shows each change for approval, and a revert undoes it.
+- **Home is drawn from a JSON file in a git repo.** Agents edit that file, the launcher shows each change for approval, and a revert undoes it. Making it a good launcher in its own right is the [Launcher polish](../launcher-polish/strategy.md) mission.
 - **A prompt can be sent from anywhere.** A quick-send sheet opens from home, from a Quick Settings tile, and from the side key as the default assistant, with the screen attached.
 - **Running turns show as Live Updates.**
 - **The LoR sensor records how each app was launched.**
