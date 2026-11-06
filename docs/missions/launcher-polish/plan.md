@@ -589,7 +589,7 @@ Agreed with Sumeet, 2026-11-05:
   - **Not seen:** the refusal toast for the folder dropped in the dock, since the screenshot was not taken. `HomeEditTest` covers its message.
   - Reviewed with the increment.
 
-#### 4.5 Pages by dragging. Status: todo
+#### 4.5 Pages by dragging. Status: done
 - **Goal.** Items move between home's pages, and a page is made by dropping on a new one.
   - **The edge.** While something is held, a finger within 24 dp of the screen's right or left edge for 500 ms turns the pager one page that way. It never turns to the agent page.
   - **A new page.** While something is held, and there are fewer than 4 extra pages, an empty page follows the last. A drop there is `AtEnd(NewPage)`. When the drag ends without a drop there, the empty page goes.
@@ -602,6 +602,23 @@ Agreed with Sumeet, 2026-11-05:
   - with 4 extra pages, no empty page follows the last.
 
   Undo after the new page brings the sum back. `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed in `HomeScreen.kt`:
+  - the edge turn: a `LaunchedEffect` on the held item's `edge` turns the pager every 500 ms, between home and the last page only, and a turn once started finishes;
+  - the empty page after the last while something is held, whose space is `AtEnd(NewPage)`.
+
+  Also fixed, found here: the home menu was drawn by every composed page (two or three menus at once with pages), and is now drawn only by the page that was long-pressed.
+  - **On `T3_Phone_API35`,** starting from a file with two extra pages:
+    - Calendar held at home's right edge for 0.75 s turned to page 2, and dropped there it was last on page 2.
+    - Calendar from page 2, held at the right edge for 1.9 s, reached the empty page; dropped there, the file gained page 4 holding it.
+    - Dragged back, held at the left edge for 4 s, it reached home and stayed there (no turn to the agent page). Dropped on home, page 4 left the file and the pager.
+    - With four extra pages, Photos held at the last page's right edge for 1.6 s and dropped went to the end of that page; no fifth page followed.
+    - A drop that made a new page, then Undo at once: the same sum, `undid the last edit`.
+  - **Bug found and fixed:** the first build stopped the pager between two pages when the finger left the edge during a turn. With user scroll off while held, nothing settled it; now the turn finishes.
+  - **Choices.**
+    - Each turn waits 500 ms after the last one ended, so reaching the third page takes about 2 s.
+    - The dock is drawn on each page and slides with it, as 4.1 says.
+  - Reviewed with the increment.
 
 #### 4.6 From the drawer to home, and empty home's words. Status: todo
 - **Goal.** An app is dragged from the drawer onto home, as on any launcher, and empty home says so.

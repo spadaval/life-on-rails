@@ -14,7 +14,9 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -123,6 +125,8 @@ class HomeUi {
     var homePresses by mutableStateOf(0)
     /** Where on home a long press on empty space opened the home menu. */
     var homeMenu by mutableStateOf<Offset?>(null)
+    /** The home page that long press was on, so only that page draws the menu. */
+    var homeMenuPage by mutableStateOf(0)
     /** The Undo bar after an edit (launcher polish 4.2). */
     val undo = UndoBarState()
     /** What is held, and edit mode (launcher polish 4.3). */
@@ -196,7 +200,9 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     }
     // An edit that empties the open folder removes it, so the panel closes.
     LaunchedEffect(ui.folder, folder, placed) { if (ui.folder != null && folder == null && placed != null) ui.folder = null }
-    val pageCount = file?.current?.allPages?.size ?: 1
+    // While something is held, an empty page follows the last, for a drop that makes one (launcher polish 4.5).
+    val filePages = file?.current?.allPages?.size ?: 1
+    val pageCount = filePages + if (held != null && held.work.current.pages.size < LayoutFile.MAX_PAGES) 1 else 0
     // A file changed from outside (an agent, adb) may hold another folder at the open one's place.
     LaunchedEffect(reads) { ui.folder = null }
     val pager = rememberPagerState(initialPage = 1) { 1 + pageCount }
@@ -206,6 +212,18 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         delay(300)
         held.step(t)
         held.pending = null
+    }
+    // Held at the screen's edge for 500 ms, the pager turns a page that way, never to the agent page (launcher polish 4.5).
+    LaunchedEffect(held, held?.edge) {
+        val e = held?.edge ?: 0
+        if (e == 0) return@LaunchedEffect
+        while (true) {
+            delay(500)
+            val to = pager.currentPage + e
+            if (to !in 1 until pager.pageCount) break
+            // A turn once started finishes, or the pager would stop between pages (user scroll is off while held).
+            withContext(NonCancellable) { pager.animateScrollToPage(to) }
+        }
     }
     fun dropHeld(h: Held, t: Target?) {
         drag.held = null
@@ -287,6 +305,7 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
                 detectTapGestures(onLongPress = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     ui.homeMenu = it
+                    ui.homeMenuPage = n
                 })
             },
         )
@@ -312,7 +331,11 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
                 // The page's space, from its first row to the dock, takes a drop after its last item.
                 Box(
                     Modifier.weight(1f).fillMaxWidth()
-                        .dropZone(home.drag, "page$n") { b -> if (drops) Zone.Area(Place.OnPage(n), b) else null },
+                        .dropZone(home.drag, "page$n") { b ->
+                            // The page past the file's last is the new one a drag shows.
+                            val place = if (n >= (home.file?.current?.allPages?.size ?: 1)) Place.NewPage else Place.OnPage(n)
+                            if (drops) Zone.Area(place, b) else null
+                        },
                 ) {
                     when (body) {
                         HomeBody.NOTHING -> {}
@@ -336,7 +359,7 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
                 body(Modifier.weight(1f))
             }
         }
-        ui.homeMenu?.let { HomeMenu(it, home, onEdit = { ui.drag.editing = true }) { ui.homeMenu = null } }
+        ui.homeMenu?.takeIf { ui.homeMenuPage == n }?.let { HomeMenu(it, home, onEdit = { ui.drag.editing = true }) { ui.homeMenu = null } }
     }
 }
 
