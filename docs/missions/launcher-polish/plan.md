@@ -120,7 +120,7 @@ Agreed with Sumeet, 2026-11-05:
 - Its open question, whether a new or renamed section may take an automatic section's name: refused, as the code did; 2.3's Goal now says so.
 - A second fresh agent reviewed the fixes (c007d9f): pass. Its R1, rows keyed by place could let an open dialog follow the wrong section after a reread, is fixed by keying by name now that names are unique. Its R2 is carried to Increment 4. No build from this mission has been on the real phone, so no file there can hold a repeated name.
 
-### Increment 3: No blank or raw screens. Status: active
+### Increment 3: No blank or raw screens. Status: done
 
 **Goal.** A designed state for each of:
 - home loading (the last good layout cached, else a quiet skeleton);
@@ -306,6 +306,7 @@ Agreed with Sumeet, 2026-11-05:
 - R3, carried to the cross-links below (agent edits): restore doesn't check the file is still broken.
 - R5, carried to Increment 5: the no-results rows ask the package manager on each keystroke.
 - R7, no action: a pasted link that `URI()` rejects can echo its own fragment on screen, never in a log.
+- A second fresh agent reviewed the fixes: pass. Its two points are taken: the spec and code comment now say what Needs you's count does (a number once both sources are read, or whenever something is listed), and the LoR app keeps one list of its tabs.
 - Its open question (an event past midnight reads "until 0:30") and the critique's three (should a broken file go to the agent; is the set-up card worth keeping; should Needs you show a count) are for Sumeet, listed under "Open questions for Sumeet".
 
 ### Increment 4: Edit mode. Status: backlog, after 1

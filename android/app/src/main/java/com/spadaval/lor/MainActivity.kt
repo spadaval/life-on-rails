@@ -46,17 +46,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // Exported, so any app can pass any number: keep it to a tab that exists.
-        val start = intent.getIntExtra(EXTRA_TAB, 0).coerceIn(0, TABS - 1)
+        val start = intent.getIntExtra(EXTRA_TAB, 0).coerceIn(0, TABS.lastIndex)
         setContent {
             LorTheme {
                 var tab by rememberSaveable { mutableIntStateOf(start) }
-                val tabs = listOf("Timer", "Sensors", "Settings", "Dashboard")
                 Scaffold(
                     topBar = {
                         Column(Modifier.statusBarsPadding()) {
                             HomeRoleStrip()
                             PrimaryTabRow(selectedTabIndex = tab) {
-                                tabs.forEachIndexed { i, label ->
+                                TABS.forEachIndexed { i, label ->
                                     Tab(selected = tab == i, onClick = { tab = i }, text = { Text(label) })
                                 }
                             }
@@ -78,7 +77,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val EXTRA_TAB = "tab"
-        private const val TABS = 4
+        private val TABS = listOf("Timer", "Sensors", "Settings", "Dashboard")
         const val SETTINGS = 2
 
         /** The LoR app in its own task, on [tab] (the Settings tab for home's set-up card). */

@@ -137,7 +137,8 @@ fun AgentPage() {
                     status == T3Connection.Status.Connecting || status == T3Connection.Status.Stopped -> AgentStates.Source.READING
                     else -> AgentStates.Source.UNSEEN
                 }
-                // A count only when it is the whole count: with a source unseen, "0" would claim what the page can't know.
+                // A number once both sources are read, or whenever something is listed; with nothing
+                // listed and a source not yet seen, none: "0" would claim what the page can't know.
                 val count = cards.size + needs.size
                 val whole = lorSource == AgentStates.Source.SEEN && t3Source == AgentStates.Source.SEEN
                 Header("Needs you", if (whole || count > 0) count.toString() else null)
