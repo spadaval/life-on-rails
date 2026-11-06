@@ -1195,6 +1195,12 @@ Agreed with Sumeet, 2026-11-05:
   - Check `no-adb` for the look: each `look` field changed once from Home settings, the file read after each (most are already shown by 6.4 to 6.7; list them in one place here).
 - **Done when.** The critique's report and each finding's handling are recorded here; fixes are built on boat and their screens shot again; the increment's review, by a fresh agent, has the screenshots.
 
+- **2026-11-06, not done; handed back to the coordinator.** What is in hand and what is left:
+  - **The critique** needs Assessments A and B as two separate sub-agents, and this session was told not to spawn any (the host is short of memory). It is the coordinator's to arrange.
+  - **The Fold:** `start-t3-emulator T3_Fold_API35` started the unit and the emulator aborted 13 s later (`core-dump`, `status=6/ABRT`, 1.4 GB peak), so the Fold screenshots and 6.4's check of `grid.wide` on the unfolded screen are still to do. The phone emulator was started again.
+  - **The default (mixed) wallpaper,** from 6.3, measured during 6.5 with the same method (the text's extreme pixel against the wallpaper's, light ink): over the light sky, Gmail's label 2.8:1, Calendar's 3.5:1 and the date 3.4:1; over the dark part, YouTube's label 15.3:1. The answers expected this: Android gives that wallpaper no dark-text hint, so its light patches keep light ink with the shadow, recorded, not guaranteed. For the critique.
+  - **`no-adb` for the look,** each field changed from Home settings and read from the file: `grid.narrow.home`, `grid.narrow.drawer`, `labelSize`, `iconSize` (6.4); `iconPack`, `themedIcons`, `iconShape` (6.5); `header` (6.7). Not yet from Home settings: `grid.wide.*` (needs the wide screen) and `labels` (its switch was not pressed in a check).
+
 ### Increment 7: Motion and feel. Status: backlog
 
 **Goal.** The drawer follows the finger open and closed (replacing the 56 dp flip in `HomePage`). Apps open from their icon's bounds (`ActivityOptions.makeScaleUpAnimation` or a clip reveal). Folders open from their tile. Haptics on long press, pickup, drop, and the drawer threshold. Predictive back for the drawer, folders and menus. Configurable gestures: swipe down for notifications, double-tap to lock, a gesture for quick send.
