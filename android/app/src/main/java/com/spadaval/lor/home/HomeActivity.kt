@@ -220,7 +220,11 @@ class HomeActivity : ComponentActivity() {
             lifecycleScope.launch {
                 model.edit(change = change)
                     .onSuccess { if (it.undoable) ui.undo.show(done ?: "Home changed.") }
-                    .onFailure { say("Can't: ${it.message ?: "the layout couldn't be changed"}.") }
+                    .onFailure {
+                        // A refused write ticks as a refused drop does (launcher polish 7.5).
+                        window.decorView.performHapticFeedback(android.view.HapticFeedbackConstants.REJECT)
+                        say("Can't: ${it.message ?: "the layout couldn't be changed"}.")
+                    }
                 after()
             }
         }

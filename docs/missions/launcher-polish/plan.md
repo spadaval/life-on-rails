@@ -1470,7 +1470,7 @@ Agreed with Sumeet, 2026-11-05:
   - Not checked: how it looks on One UI (**[real Fold]**). Seen on the way, not changed: the drawer's Recent row takes the launched app at once, so the drawer's rows shift under the growing window.
   - Reviewed with the increment.
 
-#### 7.5 Motion in a drag, and its haptics. Status: todo
+#### 7.5 Motion in a drag, and its haptics. Status: done
 - **Goal.** While something is held, the items it moves ease to their new places; when it is let go, it settles where it went; pickup and drop each have a tick (carried from Increment 4).
   - **Keyed tiles.** `HomeGrid` becomes one `Layout` that places keyed tiles in rows: a `Row` per row can't carry a tile's state from one row to the next. A pure `itemKeys(items)` in `home/Motion.kt` keys each item by what it is (an app's ref; a folder's name), with an occurrence number for a repeat, so two folders with one name don't collide (names may repeat, R4 of Increment 1). The dock's row and the folder panel's grid are keyed the same way.
   - **Easing to new places.** `Modifier.animatePlacement(enabled)`, the `onPlaced` and `Animatable<IntOffset>` pattern. When a keyed tile's place in its parent changes, it is drawn at the old place and eases to the new over `MOVE`.
@@ -1497,6 +1497,16 @@ Agreed with Sumeet, 2026-11-05:
   - **No motion on its own:** Undo after a move puts the tiles back without easing.
   - **4.3's checks still pass:** a reorder and a drop on Remove, then Undo, each with the file's sum.
   - `assembleDebug testDebugUnitTest` passes on boat.
+- **2026-11-06.** Landed: `itemKeys` in `Motion.kt` (`MotionTest` case); in `HomeScreen.kt`, `CellGrid` (one `Layout` of equal cells, used by `HomeGrid` and the folder panel), tiles in `key(…)` by `itemKeys` in the grid, the dock and the folder panel, their zones and sources keyed by item rather than slot, `Modifier.animatePlacement(drag)` after the zone and source in each chain, `SettleItem` and the settle in `dropHeld`; in `Drag.kt`, `Settle` (with its own progress) and `DragState.settling` and `hides`; `HomeActivity.edit` ticks `REJECT` on a refused write. 206 tests pass on boat. Checked on `T3_Phone_API35` with `input motionevent`, with `animator_duration_scale` at 5 so a 220 ms motion spans about ten recorded frames (set back to 1 after):
+  - **Easing:** Calendar held left of Maps (the tile it displaces) for 1.5 s: Maps eased one slot right over about 17 frames; in a longer move (Calendar to the page's end) YouTube went from the second row's first cell to the first row's last along the diagonal, the others sliding left.
+  - **Settling:** let go at the page's end, the icon went from the finger into its slot (second row, fourth cell) over about 11 frames, and the tile, hidden until then, showed in its place. Dropped on Remove, YouTube faded where it was let go while the tiles after it slid left. Maps dropped onto Photos: the folder was made in Photos' slot and the icon moved into it, fading at the end. LoR dropped straight on a full dock (five apps, no step): "Can't: the dock is full (5 apps)." and the icon rose from the dock back into its slot.
+  - **Fixed on the way:** the settle first shared one progress, so a new settle drew one frame at the last one's end (the icon in its slot before setting off); each `Settle` now has its own.
+  - **Haptics:** `dumpsys vibrator_manager` lists, for each drag, `constant=0` (the long press), `23` (`GESTURE_THRESHOLD_ACTIVATE`, the pickup), then `13` (`GESTURE_END`) for a drop that landed or `17` (`REJECT`) for the full dock.
+  - **No motion on its own:** after a move, Undo swapped Calendar and Gmail back between one frame and the next, at 5× scale.
+  - **4.3's checks:** a reorder changed the file's sum (`446a48d8…` to `e86e7fb8…`) and Undo put it back (`446a48d8…`); a drop on Remove (`63691ad6…` to `31f8a8f6…`), then Undo (`63691ad6…`).
+  - **Choices.** A folder made by a drop is a new tile (its key is its name), so it appears in its slot rather than easing. A refused write (`HomeActivity.edit`) ticks `REJECT` for any edit, not only a drop: every refused edit is a refusal. With no tile on screen to go to (a page that went, a folder that is shut), the icon fades where it was let go.
+  - **Not checked:** the haptics as felt (**[real Fold]**); the emulator logs them but has no motor.
+  - Reviewed with the increment.
 
 #### 7.6 Swipe down for the notifications, double tap for quick send. Status: todo
 - **Goal.** Sumeet's two gestures, on home's pages only, while nothing is open over home and nothing is held.

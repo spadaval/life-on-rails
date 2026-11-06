@@ -62,3 +62,20 @@ object FolderMotion {
         return Frame((s0 + (1f - s0) * shown) * back, bx, by, (shown * 3f).coerceAtMost(1f))
     }
 }
+
+/**
+ * A key per item for home's tiles (launcher polish 7.5), so a tile keeps its state when an edit
+ * moves it to another row or slot: an app by its ref, a folder by its name, each with the
+ * occurrence of that key so far, since folder names may repeat (Increment 1's R4).
+ */
+fun itemKeys(items: List<LayoutItem>): List<String> {
+    val seen = HashMap<String, Int>()
+    return items.map { item ->
+        val base = when (item) {
+            is AppRef -> "app:$item"
+            is Folder -> "folder:${item.name}"
+        }
+        val n = seen.merge(base, 1, Int::plus)!!
+        "$base#$n"
+    }
+}

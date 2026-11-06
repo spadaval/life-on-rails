@@ -64,4 +64,19 @@ class MotionTest {
         org.junit.Assert.assertEquals(0f, FolderMotion.at(1f, card, tile).dx, 1e-4f)
         org.junit.Assert.assertEquals(-380f, FolderMotion.at(0f, card, tile, back = 0.9f).dx, 1e-3f)
     }
+
+    @Test
+    fun itemKeysAreUniqueForFoldersWithOneNameAndFollowTheirItems() {
+        val a = AppRef("com.a")
+        val f1 = Folder("Tools", listOf(AppRef("com.b")))
+        val f2 = Folder("Tools", listOf(AppRef("com.c")))
+        val keys = itemKeys(listOf(a, f1, f2))
+        org.junit.Assert.assertEquals(3, keys.toSet().size)
+        // The same items in another order keep their keys (apps and the folder names that differ).
+        val b = AppRef("com.b", "com.b.Main")
+        val f = Folder("Media", emptyList())
+        val one = itemKeys(listOf(a, b, f)).zip(listOf(a, b, f)).toMap()
+        val other = itemKeys(listOf(f, a, b)).zip(listOf(f, a, b)).toMap()
+        org.junit.Assert.assertEquals(one, other)
+    }
 }

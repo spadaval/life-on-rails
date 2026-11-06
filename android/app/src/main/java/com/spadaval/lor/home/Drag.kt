@@ -138,12 +138,32 @@ class Held(
     }
 }
 
+/**
+ * The icon a drop let go of (launcher polish 7.5), drawn from where the finger left it ([from], its
+ * centre in root coordinates) to the tile at [to]: into its slot ([Kind.SLOT], hidden until it
+ * arrives), onto the app or folder it went into ([Kind.ONTO], fading as it gets there), or fading
+ * where it is ([Kind.FADE], removed, or with no slot to go to). Kvaesitso's drop eases the item
+ * back the same way (GPL-3.0, ideas only).
+ */
+class Settle(val app: HomeApp?, val folder: ResolvedFolder?, val from: Offset, val to: Spot?, val kind: Kind) {
+    enum class Kind { SLOT, ONTO, FADE }
+
+    /** From 0 (let go) to 1 (there); its own, so a new settle never draws a frame at the last one's end. */
+    val progress = androidx.compose.animation.core.Animatable(0f)
+}
+
 /** The drag's state for home: what is held, what can be picked up and dropped on, and edit mode. */
 class DragState {
     var held: Held? by mutableStateOf(null)
 
     /** Edit mode (4.3): a bar with Done, and taps that open no app. */
     var editing: Boolean by mutableStateOf(false)
+
+    /** The icon let go, on its way to where it went (launcher polish 7.5). */
+    var settling: Settle? by mutableStateOf(null)
+
+    /** Whether the tile at [spot] is hidden: it is held there, or the settling icon is on its way to it. */
+    fun hides(spot: Spot): Boolean = held?.spot == spot || settling?.let { it.kind == Settle.Kind.SLOT && it.to == spot } == true
 
     /** What a drop wrote, drawn until the store shows it, so home doesn't flash back to before it. */
     var landing: LayoutFile? by mutableStateOf(null)
