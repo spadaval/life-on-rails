@@ -200,7 +200,12 @@ class HomeStore(private val context: Context) {
             lastUndo = it.undo.takeIf { undoable }
             Log.i(TAG, "wrote layout.json (an edit from the phone)")
             Edited(it.layout, undoable)
-        }.onFailure { Log.i(TAG, "layout edit refused: ${it.message}") }
+        }.onFailure {
+            Log.i(TAG, "layout edit refused: ${it.message}")
+            // A file changed from outside since the last read (home rereads only on resume): read
+            // it now, so trying again works on what is there (the open folder closes through reads).
+            if (store.file.lastModified() != stamp) readLayout()
+        }
     }
 
     /** Puts the file back as it was before the last edit ([LayoutStore.undo]). Fails with the reason. */

@@ -295,17 +295,23 @@ fun LayoutFile.drop(
         if (layout.dock.size >= LayoutFile.MAX_DOCK) throw LayoutError("the dock is full (${LayoutFile.MAX_DOCK} apps)")
     }
 
-    // Into the target.
+    // Into the target. A folder moved by hand is Sumeet's now (pinned), as any hand edit to a folder.
+    val placed = if (item is Folder) item.copy(pinned = true) else item
     var at: Spot? = null
     when (val t = target) {
         Target.Remove -> {}
         is Target.Before -> when (val s = t.spot) {
-            is Spot.Page -> { layout = layout.insertOnPage(s.page, s.index, item); at = s }
-            is Spot.Dock -> { layout = layout.copy(dock = layout.dock.toMutableList().apply { add(s.index, ref!!) }); at = s }
+            is Spot.Page -> { layout = layout.insertOnPage(s.page, s.index, placed); at = s }
+            is Spot.Dock -> { layout = layout.copy(dock = layout.dock.toMutableList().apply { add(s.index.coerceIn(0, size), ref!!) }); at = s }
             is Spot.InFolder -> { layout = layout.insertInFolder(s.folder, s.app, ref!!); at = s }
         }
         is Target.AtEnd -> when (val p = t.place) {
-            is Place.OnPage -> { at = Spot.Page(p.page, layout.allPages[p.page].size); layout = layout.insertOnPage(p.page, layout.allPages[p.page].size, item) }
+            is Place.OnPage -> {
+                // A target from a page that is gone (the file changed under the drag) refuses rather than crashing home.
+                val size = layout.allPages.getOrNull(p.page)?.size ?: throw LayoutError(HOME_CHANGED)
+                at = Spot.Page(p.page, size)
+                layout = layout.insertOnPage(p.page, size, placed)
+            }
             Place.Dock -> { at = Spot.Dock(layout.dock.size); layout = layout.copy(dock = layout.dock + ref!!) }
             is Place.InFolder -> {
                 val f = layout.allPages[p.folder.page].getOrNull(p.folder.index) as? Folder ?: throw LayoutError(HOME_CHANGED)
@@ -315,7 +321,7 @@ fun LayoutFile.drop(
             Place.NewPage -> {
                 if (layout.pages.size >= LayoutFile.MAX_PAGES) throw LayoutError("home has ${LayoutFile.MAX_PAGES + 1} pages already")
                 at = Spot.Page(layout.pages.size + 1, 0)
-                layout = layout.copy(pages = layout.pages + Page(listOf(item)))
+                layout = layout.copy(pages = layout.pages + Page(listOf(placed)))
             }
         }
         is Target.Onto -> {
@@ -348,7 +354,7 @@ private fun LayoutFile.inPlace(spot: Spot, to: Target): Boolean = when (to) {
         else -> false
     }
     is Target.AtEnd -> when (val p = to.place) {
-        is Place.OnPage -> spot is Spot.Page && spot.page == p.page && spot.index == current.allPages[p.page].lastIndex
+        is Place.OnPage -> spot is Spot.Page && spot.page == p.page && spot.index == current.allPages.getOrNull(p.page)?.lastIndex
         Place.Dock -> spot is Spot.Dock && spot.index == current.dock.lastIndex
         is Place.InFolder -> spot is Spot.InFolder && spot.folder == p.folder &&
             spot.app == (itemAt(p.folder) as? Folder)?.apps?.lastIndex

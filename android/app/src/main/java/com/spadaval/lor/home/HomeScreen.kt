@@ -228,7 +228,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     fun dropHeld(h: Held, t: Target?) {
         drag.held = null
         var final = h.work
-        var said = if (h.fromDrawer && h.spot == null) null else "Moved."
+        // A drawer app is added wherever it lands, even after steps put it in the working copy.
+        var said: String? = if (h.fromDrawer) "Added." else "Moved."
         if (t != null) {
             try {
                 final = h.work.drop(h.from, t, h.home.installed, strip = false, nameFor = h.home::nameFor).file
@@ -515,8 +516,9 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
             // Equal cells, so the space between icons belongs to one of them.
             Box(
                 Modifier.weight(1f)
-                    .dropZone(drag, spot.spot) { b -> Zone.Item(spot.spot, b, b.top, iconPx) }
-                    .dragSource(drag, spot.spot) { b -> Source(b, spot, 0, app, null) }
+                    // Keyed by page too: the dock is drawn on every page, and neighbours stay composed.
+                    .dropZone(drag, page to spot.spot) { b -> Zone.Item(spot.spot, b, b.top, iconPx) }
+                    .dragSource(drag, page to spot.spot) { b -> Source(b, spot, 0, app, null) }
                     .alpha(if (drag.held?.spot == spot.spot) 0f else 1f),
                 contentAlignment = Alignment.Center,
             ) {
@@ -736,7 +738,10 @@ private fun Modifier.dragging(ui: HomeUi, home: () -> HomeContext, drop: (Held, 
                     is From.Drawer -> f.ref
                 }
                 drag.held = Held(file, source.from, item, source.app, source.folder, home()).also { it.finger = c.position }
-                if (source.layer == 2) ui.drawer = false
+                if (source.layer == 2) {
+                    ui.drawer = false
+                    ui.query = ""
+                }
                 break
             }
         }
@@ -754,7 +759,7 @@ private fun Modifier.dragging(ui: HomeUi, home: () -> HomeContext, drop: (Held, 
             held.finger = c.position
             val width = size.width.toFloat()
             val zones = drag.zones.values.filter { !it.box.empty && it.box.centerX in 0f..width }
-            val t = targetAt(c.position.x, c.position.y, zones, held.isFolder, ui.folder?.spot)
+            val t = targetAt(c.position.x, c.position.y, zones, held.isFolder, ui.folder?.spot, held.spot)
             if (!c.pressed) {
                 drop(held, t)
                 return@awaitEachGesture

@@ -367,7 +367,7 @@ Agreed with Sumeet, 2026-11-05:
   Back, Done or a home press leave it. Remove shows only while something is held, as in Launcher3.
 - *A folder's cover app* is one of its apps, drawn as the folder's tile in place of the four-app preview, with the folder's name under it. A tap still opens the folder. Nova's "tap opens the cover, swipe opens the folder" is left out because a vertical swipe on home opens the drawer.
 - *A new folder's name* is the title of the two apps' category when they share one (Media, Tools…), else "Folder". Names may repeat (R4), so no number is added.
-- *Accessibility.* Every drag edit except order and pages also has a menu way: Add and Remove, Rename, Cover app, Move to section. Order has no way but dragging; Launcher3's accessibility "Move" actions wait until that is felt.
+- *Accessibility.* Every drag edit except order, pages and folders also has a menu way: Add and Remove, Rename, Cover app, Move to section. Order, moving between pages, and making or adding to a folder have no way but dragging; Launcher3's accessibility "Move" actions wait until that is felt.
 - *A spike before 4.1* settles the two things that could reshape the controller: (1) whether an app menu (`DropdownMenu`, a popup window) opened mid-press cancels that press's later moves for a handler on home's root; (2) whether a drag survives the drawer leaving the screen mid-gesture. If (1) cancels, the app menu is drawn in home's own window instead of a popup; if (2) fails, the drawer stays composed (invisible) until the drag ends. The results are recorded here.
   - **Results, 2026-11-06.** A throwaway build logged every pointer event on `HomeScreen`'s root in the Initial pass. Driven with `input motionevent` on `T3_Phone_API35`:
     - (1) A press on Maps on home, held until its menu opened, then moved down 260 px: every move and the release reached the root, still pressed, with the menu open. The popup doesn't cancel the press, so the app menu stays a `DropdownMenu`.
@@ -384,6 +384,34 @@ Agreed with Sumeet, 2026-11-05:
 - R7, taken: one rule for empty pages, with a drag's page kept until the drop (4.1).
 - R8, recorded as a choice (4.1, the section carry).
 - R9, taken: the R3 test covers Add to home for B (4.1).
+
+**Review, 2026-11-06.** A fresh agent reviewed 7b11b8c..a1a9fa7: contract pass with gaps, fitness fail. The coordinator decided each finding; what was done:
+- R1, fixed: a refused edit rereads the file when it changed since the last read (`HomeStore.edit`). Before, one outside write made every later drag refuse until home resumed. On `T3_Phone_API35`, a write with `run-as` while home was in front:
+  - the next drag was refused (`layout edit refused: Home changed; try again`, then `read layout.json`);
+  - the drag after it landed, and the dock held the outside write's app.
+- R2, fixed: the dock's per-icon zones and sources are keyed by page, as its space already was. Before, the neighbour page's dock shared their entries, and a page leaving removed both. With an extra page present:
+  - Messages dragged from the dock onto home landed there;
+  - Phone dragged within the dock reordered it (chrome, dialer, maps).
+
+  The first runs of this check had hit quick send, which a home press had opened, not home.
+- R3 and R8, fixed:
+  - `targetAt` takes the held item's own place and never returns `Onto` for it. `DragTest` covers it. On the emulator, Maps dropped back on its own icon's centre wrote nothing.
+  - A drawer app's drop says "Added." even after steps put it in the working copy.
+- R4, fixed: `HomeActivity` drops the held item on pause and on losing window focus, so a cut-off drag puts the item back. The handler's `drag.held !== held` check then returns. On the emulator, a drag held while the notification shade was pulled down (`cmd statusbar expand-notifications`) and then lifted wrote nothing.
+- R5, fixed: `drop` looks up a target page with `getOrNull` and refuses `HOME_CHANGED`, and a dock insert is clamped, so a stale target can't crash home. `HomeEditTest` covers both.
+- R6, fixed: a folder moved by hand (on a page, to another page, to a new page) is pinned, and one dropped in place is unchanged. `HomeEditTest` covers it.
+- R7, run:
+  - a dock app onto home with an extra page present (above);
+  - a move on home, then Undo: the same sum, `wrote layout.json` then `undid the last edit`;
+  - Messages from the dock onto home, then Undo: the same sum;
+  - the Google folder dropped in the dock showed "Can't: folders don't go in the dock." (screenshot), with the sum unchanged.
+- R9, fixed: the answers' accessibility line now lists folders among the edits only dragging makes.
+- Also fixed: picking an app up from a drawer search clears the query. On the emulator, the keyboard was up before the pickup and down during the drag (`mInputShown`), and the drawer opened again with an empty field.
+- (a) and (b), recorded under Increment 8, not fixed.
+
+`assembleDebug testDebugUnitTest` passes on boat (146 tests).
+
+- **Not installed the usual way:** the build's copy-back hit the scratch area's disk quota (other sessions' files fill `/tmp`), so the APK was streamed from the build's archive into `cmd package install -S` on the emulator, and the test counts were read from the archive.
 
 #### 4.1 Pages, covers, and edits by place. Status: done
 - **Goal.** The schema and the pure edits that every later issue draws and drags with, and home drawing pages and covers. No dragging yet.
@@ -694,6 +722,9 @@ Carried from T3 Launcher's reviews:
 - the icon-cache race, a stale icon after a package change (3.2);
 - normalised search labels cached (3.2);
 - R3, a duplicate thread when a slow launch is retried; R4, quick-send text lost after a failed send once the sheet is gone; R5, the thumbnail decoded at full size on the main thread (4).
+- From Increment 4's review:
+  - (a) Drag sources and zones are snapshots taken in `onGloballyPositioned`, which (ui 1.12.1) doesn't run again when only its callback changes. A tile whose item changed without a new layout keeps an old `From.At`, which can show the wrong icon under the finger or cause a "Home changed" refusal, but never a wrong write. Store only bounds, and look up the placed item at pickup.
+  - (b) `Held.takes` runs a full `drop` on every move over an `Onto` or `Remove` target. Compute it once per target change if the Fold shows it.
 
 **Provisional Done when.** On `T3_Fold_API35`, a fold, an unfold, a dark-mode switch and a font-scale change each recreate home with its open drawer and scroll kept and with no app-list or icon reload (a debug log line per load, counted before and after), each carried item has a fix and a test or emulator check, and the inner-screen layout is screenshotted. **[real Fold]** The same on the device.
 

@@ -75,6 +75,17 @@ class HomeActivity : ComponentActivity() {
         if (alreadyOnHome && ui.atRest) QuickSend.open(this, QuickSend.From.HOME) else ui.homePressed()
     }
 
+    /** A drag cut off (the shade, a call, the screen going off) puts the item back, as Launcher3 does on cancel. */
+    override fun onPause() {
+        super.onPause()
+        ui.drag.held = null
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus) ui.drag.held = null
+    }
+
     override fun onResume() {
         super.onResume()
         model.resume()

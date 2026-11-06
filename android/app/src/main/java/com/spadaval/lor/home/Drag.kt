@@ -55,7 +55,7 @@ const val ONTO_SHARE = 0.55f
  * then an item (onto its icon's centre, else in front of it, or after it on its right half), then
  * a list's space after its items. Null where nothing takes a drop, so the item goes back.
  */
-fun targetAt(x: Float, y: Float, zones: List<Zone>, heldIsFolder: Boolean, openFolder: Spot.Page?): Target? {
+fun targetAt(x: Float, y: Float, zones: List<Zone>, heldIsFolder: Boolean, openFolder: Spot.Page?, heldAt: Spot? = null): Target? {
     zones.firstOrNull { it is Zone.Remove && it.box.contains(x, y) }?.let { return Target.Remove }
     val shown = zones.filter { z ->
         when (z) {
@@ -70,7 +70,8 @@ fun targetAt(x: Float, y: Float, zones: List<Zone>, heldIsFolder: Boolean, openF
         val cy = z.iconTop + z.iconSize / 2
         val dx = x - z.box.centerX
         val dy = y - cy
-        if (spot is Spot.Page && !heldIsFolder && dx * dx + dy * dy <= (ONTO_SHARE * z.iconSize).let { it * it }) return Target.Onto(spot)
+        // Never onto the held item's own (empty) slot: that is where it already is.
+        if (spot is Spot.Page && spot != heldAt && !heldIsFolder && dx * dx + dy * dy <= (ONTO_SHARE * z.iconSize).let { it * it }) return Target.Onto(spot)
         return Target.Before(if (x > z.box.centerX) spot.next() else spot)
     }
     return shown.firstOrNull { it is Zone.Area && it.box.contains(x, y) }?.let { Target.AtEnd((it as Zone.Area).place) }

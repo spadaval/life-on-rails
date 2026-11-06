@@ -195,4 +195,17 @@ class HomeEditTest {
         assertEquals("Folder", folderName(Category.MEDIA, Category.TOOLS))
         assertEquals("Folder", folderName(null, null))
     }
+
+    @Test
+    fun aFolderMovedByHandIsPinnedAndAStaleTargetRefuses() {
+        // From the increment's review: R6 and R5.
+        val f = file(listOf(ref("a.a"), Folder("F", listOf(ref("x.x")))), listOf(ref("b.b")))
+        val moved = f.drop(at(f, Spot.Page(0, 1)), Target.Before(Spot.Page(0, 0))).file
+        assertTrue((moved.current.home[0] as Folder).pinned)
+        assertTrue((f.drop(at(f, Spot.Page(0, 1)), Target.AtEnd(Place.OnPage(1))).file.current.pages[0].items[1] as Folder).pinned)
+        assertTrue((f.drop(at(f, Spot.Page(0, 1)), Target.AtEnd(Place.NewPage)).file.current.pages[1].items[0] as Folder).pinned)
+        assertFalse("in place, nothing changes", (f.drop(at(f, Spot.Page(0, 1)), Target.AtEnd(Place.OnPage(0))).file.current.home[1] as Folder).pinned)
+        assertEquals(HOME_CHANGED, refused { f.drop(at(f, Spot.Page(0, 0)), Target.AtEnd(Place.OnPage(3))) })
+        assertEquals(listOf(ref("a.a")), f.drop(at(f, Spot.Page(0, 0)), Target.Before(Spot.Dock(7))).file.current.dock)
+    }
 }

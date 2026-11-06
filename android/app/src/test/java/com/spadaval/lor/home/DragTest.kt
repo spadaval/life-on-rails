@@ -44,4 +44,10 @@ class DragTest {
         assertNull("outside the card, nothing until it closes", at(50f, 130f, open = Spot.Page(0, 1)))
         assertEquals("closed, the folder's apps aren't targets", Target.AtEnd(Place.OnPage(0)), at(60f, 350f))
     }
+
+    @Test
+    fun neverOntoTheHeldItemsOwnSlot() {
+        assertEquals(Target.Before(Spot.Page(0, 0)), targetAt(45f, 130f, zones, false, null, heldAt = Spot.Page(0, 0)))
+        assertEquals(Target.Onto(Spot.Page(0, 1)), targetAt(150f, 130f, zones, false, null, heldAt = Spot.Page(0, 0)))
+    }
 }
