@@ -1274,7 +1274,7 @@ Agreed with Sumeet, 2026-11-05:
 
 **Closed, 2026-11-06.** A third fresh agent reviewed 470a6df (the dots lock, the toggles, the markdown): pass. Two notes, no action: the listener's `connected` is now one per process, so a stale write from an old instance during a re-grant could leave dots wrong until the next ranking update (pick up a connection generation if that is ever seen); and the race's test covers `DotBook`, while the listener's wiring through it is checked by reading. Increment 6 is done.
 
-### Increment 7: Motion and feel. Status: active
+### Increment 7: Motion and feel. Status: done
 
 **Goal** (revised 2026-11-06 with Sumeet's answer below). The drawer follows the finger open and closed (replacing the 56 dp flip in `HomePage`). Apps open from their icon's bounds. Folders open from their tile. Haptics on long press, pickup, drop, and the drawer threshold. Predictive back for the drawer, folders and menus. Two gestures on home: swipe down for notifications, and a gesture for quick send. Motion inside a drag, carried from Increment 4.
 
@@ -1605,7 +1605,8 @@ Agreed with Sumeet, 2026-11-05:
 - R10, deferred: `animatePlacement` (HomeScreen.kt) launches `animateTo` from the placement lambda, so several placement passes in one frame can each restart the 220 ms tween to the same target; keep the last requested target with the holder and launch only when it changes. Harmless in 7.5's recordings.
 
 207 tests pass on boat (`assembleDebug testDebugUnitTest`). `layout.json` and `launch-stats.json` were left as they were; the animation scales read back as 1.
-- A second fresh agent reviewed 3ee48a4: pass, with two points, both taken by the orchestrator: a new open (a drawer caught, a folder tapped mid-close) now eases what is left of a back gesture's scale to full size over `Motion.quick()` instead of jumping it in one frame (`HomeUi.backResets`); and `COMMIT`'s KDoc and 7.1's text now describe the commit point as 30% of the travel left.
+- A second fresh agent reviewed 3ee48a4: pass, with two points, both taken by the orchestrator: a new open (a drawer caught, a folder tapped mid-close) now eases what is left of a back gesture's scale to full size over `Motion.quick()` instead of jumping it in one frame (`HomeUi.backResets`); and `COMMIT`'s KDoc and 7.1's text now describe the commit point as 30% of the travel left. Checked: boat build, 207 tests; on `T3_Phone_API35` a drawer closed by back, caught at 0.013 and reopened (`LorMotion`: let go at 0.47 … open), no crash; the easing wasn't recorded frame by frame. (So R2 above now eases rather than jumps.)
+- A third fresh agent reviewed db1e65a: pass. Deferred: the reset's ease isn't cancelled when a new back gesture starts within its 150 ms, so the two writers can alternate briefly; keep one job for "back easing to 0", shared with the cancel path, and cancel it when a back gesture starts, when this code is next touched (the panels work will be). Increment 7 is done.
 
 ### Increment 8: The Fold, and holding state. Status: backlog
 
