@@ -73,7 +73,7 @@ Agreed with Sumeet, 2026-11-05:
 - Checks it found missing, run on the emulator: Add to dock on Maps from home; Hide on Camera in the dock (took it out of the dock, into `hidden`); a sideways swipe to the agent page still works under the new long-press layer.
 - A second fresh agent reviewed the fixes (4b5e962): pass. Its one gap, that no JVM test failed if `toJson` stopped unescaping, is closed by a test on the JVM's `<\/`.
 
-### Increment 2: An organised drawer. Status: backlog
+### Increment 2: An organised drawer. Status: active
 
 **Goal.** The drawer opens on sections instead of one A–Z grid: a row of suggested apps, Recent, Frequent, then categories (Work, Communication, Money, Travel, Media, Games, Tools, System, Other). A–Z (with a letter rail for fast scrolling) and Most used are a tap away, and the drawer remembers the view. The work profile has its own section. A newly installed app carries a dot and sits in "New" for three days. Sections are edited by hand: move an app to another section from its menu, rename, reorder or hide a section, and make a new one. A section edited by hand is `pinned` and the sorter leaves it alone.
 
@@ -83,6 +83,24 @@ Agreed with Sumeet, 2026-11-05:
 - Where Recent and Frequent come from on the phone. The launch sensor sends launches to LoR and keeps nothing local. Likely a small local count beside it, or `UsageStatsManager` (the app has `PACKAGE_USAGE_STATS`). Read how Kvaesitso ranks.
 - The category table: `ApplicationInfo.category` is unset for many apps. A table of common packages in the app fills the gaps; how big it needs to be shows on Sumeet's real app list **[real Fold]** (an adb `pm list packages` from the Fold, with his say-so).
 - The schema field for drawer sections, shaped so T3 Launcher Increment 9 can add agent-written sections with reasons and `pinned` without changing it. Written into [Schema additions](#schema-additions).
+
+**Answers, 2026-11-05 (orchestrator).**
+- *Recent and Frequent* come from the launcher's own launch counts, as Kvaesitso does (`SearchableDao`: a launch count, and a weight that rises toward 1 with each launch, `w += α(1 − w)`, while every other app's decays, `w *= 1 − α`). They live in `launch-stats.json` in the app's files, not in `layout.json`: they are what happened, not what home is. No Usage access is needed and nothing is queried when the drawer opens. Launches made outside the launcher (a notification, Recents) don't count, as in Kvaesitso.
+- *The suggested row* is Frequent: ranked by that weight, which already favours what is used lately. A separate suggested row would repeat the same apps, so the drawer opens on Recent and Frequent, one row each. Most used, the view, ranks by the plain count.
+- *Categories*: a table of packages in the app first, then `ApplicationInfo.category` (`GAME` → Games; `AUDIO`, `VIDEO`, `IMAGE`, `NEWS` → Media; `SOCIAL` → Communication; `MAPS` → Travel; `PRODUCTIVITY` → Work; `ACCESSIBILITY` → System), then a system app with neither → System, else Other. The table starts with the emulator's apps and common ones; sizing it on Sumeet's app list stays **[real Fold]**.
+- *Sections in the file*: see `drawer` under [Schema additions](#schema-additions). The phone's sorter never writes the file: it places each app at run time, and only hand edits write. An app a section lists by hand stays there whatever its category, so a hand edit survives every later sort.
+
+#### 2.1 Launch counts, categories and the sorter. Status: todo
+- **Goal.** `LaunchStats` (`home/Drawer.kt`, no Android in it) holds per app a count, a weight and the last launch time, with `recent(n)`, `frequent(n)` and `mostUsed()`; `HomeStore` loads it, records each launch from home, dock, folder, drawer, search and an app shortcut, and writes it (temporary file renamed over, on the serial dispatcher). `categoryOf(packageName, category, system)` in `Drawer.kt` holds the table. `sortDrawer(apps, drawer)` returns the sections in order, each with its apps: the file's sections in their order, then a section for each category no file section takes, in the default order; an app goes to the first section that lists it, else to the section of its category. `drawer` is parsed into `LayoutFile` and written back.
+- **Done when.** JVM tests cover the ranking (weights after a sequence of launches, recent order, the count), categorising (table, then category, then system, then Other), sorting (a listed app beats its category; a section for a category takes its apps; categories nobody takes are appended; hidden sections are kept but marked), and `drawer`'s parsing errors and round trip.
+
+#### 2.2 The drawer's views. Status: todo, after 2.1
+- **Goal.** The drawer opens on Sections: Recent and Frequent (one row each, left out while empty), New (apps first installed in the last three days, from `PackageInfo.firstInstallTime`, with a dot until opened from the launcher), the sorted sections with their names (and a section's `reason` under it, as a folder shows one), and Work profile last. A switch at the top changes to A–Z, with letter headers and a letter rail on the right that jumps on a tap or a drag, or to Most used. The view is written to the file (`drawer.view`). Typing in search shows the results as today, whatever the view. A section with no apps is left out of the drawer.
+- **Done when.** On `T3_Phone_API35` with about 40 apps (the emulator's, plus small open-source apps sideloaded from F-Droid), every app shows in exactly one section, the views switch and the choice survives a restart, the rail jumps to a letter, and an app installed during the check shows in New with a dot.
+
+#### 2.3 Editing sections by hand. Status: todo, after 2.2
+- **Goal.** From an app's menu, "Move to section" lists the sections and moves it. Home settings gets "Drawer sections": each section with rename, move up and down, hide or show, and "New section". Each edit writes the file and sets the touched section's `pinned`; an edit that needs a section the file doesn't hold yet adds it, and a reorder writes every section in its new order.
+- **Done when.** JVM tests cover each edit and its refusals (a name used twice, an empty name). On the emulator, each edit lands in the file, and after a fresh install of an app of a moved app's category, and a restart, the moved app is still where it was put.
 
 ### Increment 3: No blank or raw screens. Status: backlog
 
@@ -165,6 +183,8 @@ Carried from T3 Launcher's reviews:
 Optional fields this mission adds to `layout.json` schema version 1, each written here by the issue that adds it. Version 1's rules hold: unknown fields are errors, and an addition never changes an existing field's meaning.
 
 - (1.1) Top-level `hidden`: a list of apps, written as in `home`; the phone writes package names. A package name hides every activity of that package, as `AppRef.matches` matches. It applies to main-profile apps only; a work-profile copy of the package stays. A hidden app is left out of the drawer and search in every layout. One placed on home, the dock or in a folder by the file is still shown there; Hide from the menu removes it from those places too.
+
+- (2.1) Top-level `drawer`, optional: `{ "view": "sections" | "az" | "used", "sections": [section, …] }`, both optional. A section is `{ "name": string, "category"?: string, "apps"?: [app, …], "hidden"?: bool, "pinned"?: bool, "reason"?: string }`. `name` is unique among sections. `category` is one of `work`, `communication`, `money`, `travel`, `media`, `games`, `tools`, `system`, `other`, and at most one section takes each. `apps` lists apps written as in `home`; an app in two sections' `apps` is an error. A section takes the apps it lists, then the apps of its category that no section lists. A category no section takes gets a section of its own, after the file's, named for the category. `hidden` leaves a section out of the drawer (its apps stay in A–Z, Most used and search). `pinned` marks a section edited by hand; the phone sets it, and T3 Launcher Increment 9's agent leaves a pinned section alone. `reason` is a line shown under the section's name, which that agent writes. Recent, Frequent, New and Work profile are drawn by the drawer and aren't sections in the file.
 
 ## Open questions for Sumeet
 
