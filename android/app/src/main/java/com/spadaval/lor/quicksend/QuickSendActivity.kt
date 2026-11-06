@@ -1,5 +1,6 @@
 package com.spadaval.lor.quicksend
 
+import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -117,7 +118,7 @@ class QuickSendActivity : ComponentActivity() {
     }
 }
 
-private val Small = TextStyle(color = Mute, fontSize = 12.sp)
+private val Small = Type.bodySmall.copy(fontSize = 12.sp)
 
 @Composable
 private fun Sheet(connection: T3Connection, from: QuickSend.From, initial: String, opened: Int, close: () -> Unit) {
@@ -155,8 +156,7 @@ private fun Sheet(connection: T3Connection, from: QuickSend.From, initial: Strin
                 .padding(8.dp)
                 .widthIn(max = 560.dp)
                 .fillMaxWidth()
-                .background(PanelFace, RoundedCornerShape(22.dp))
-                .border(1.dp, Edge, RoundedCornerShape(22.dp))
+                .framedPanel(PanelFace)
                 // Taps on the sheet itself don't reach the scrim.
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                 .padding(14.dp),
@@ -228,7 +228,7 @@ private fun Shot(capture: Capture, attach: Boolean, toggle: () -> Unit) {
                 bitmap,
                 contentDescription = "Screenshot",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.height(72.dp).widthIn(max = 40.dp).clip(RoundedCornerShape(6.dp)).border(1.dp, Edge, RoundedCornerShape(6.dp)),
+                modifier = Modifier.height(72.dp).widthIn(max = 40.dp).clip(RectangleShape).border(1.dp, Edge, RectangleShape),
             )
             bitmap != null -> {}
             !capture.shotDone -> Text("Taking the screenshot…", style = Small)
@@ -253,8 +253,8 @@ private fun Field(value: String, opened: Int, onChange: (String) -> Unit) {
         onChange,
         Modifier.fillMaxWidth().focusRequester(focus),
         placeholder = { Text("Ask an agent… (@project to name one)", color = Dim) },
-        textStyle = TextStyle(color = Txt, fontSize = 14.sp),
-        shape = RoundedCornerShape(12.dp),
+        textStyle = Type.body.copy(color = Txt, fontSize = 14.sp),
+        shape = RectangleShape,
         maxLines = 6,
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Or,
@@ -265,13 +265,13 @@ private fun Field(value: String, opened: Int, onChange: (String) -> Unit) {
 
 @Composable
 private fun Pill(text: String, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(9.dp)
-    val base = if (primary) Modifier.background(if (enabled) Txt else Mute, shape) else Modifier.border(1.dp, if (enabled) Edge else Line, shape)
+    val shape = RectangleShape
+    val base = if (primary) Modifier.background(if (enabled) Or else OrDeep, shape) else Modifier.border(1.dp, if (enabled) Edge else Line, shape)
     Text(
         text,
-        style = TextStyle(
+        style = Type.button.copy(
             color = when {
-                primary -> Bg
+                primary -> OnOr
                 enabled -> Txt
                 else -> Dim
             },

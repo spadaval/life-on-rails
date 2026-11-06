@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

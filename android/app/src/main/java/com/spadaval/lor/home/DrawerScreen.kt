@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
 import android.util.Log
 import androidx.compose.foundation.background
@@ -264,7 +265,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
             Modifier.fillMaxWidth().padding(horizontal = 16.dp).focusRequester(focus).onFocusChanged { focused = it.isFocused },
             placeholder = { Text("Search", color = Dim) },
             singleLine = true,
-            shape = RoundedCornerShape(16.dp),
+            shape = RectangleShape,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Txt,
                 focusedBorderColor = Mute, unfocusedBorderColor = Line,
@@ -315,13 +316,13 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
                             contentAlignment = Alignment.TopCenter,
                         ) {
                             // Go's target, while the field has focus (launcher polish 5.1): DESIGN.md's selection.
-                            if (e.go) Box(Modifier.matchParentSize().background(Or.copy(alpha = 0.08f), RoundedCornerShape(12.dp)).border(1.dp, Or.copy(alpha = 0.55f), RoundedCornerShape(12.dp)))
+                            if (e.go) Box(Modifier.matchParentSize().selection())
                             MenuTile(e.app, at, home, dot = e.dot)
                         }
                         is Entry.Row -> ResultRow(e.value, e.go, at, home)
                         is Entry.HiddenApps -> Text(
                             "Hidden apps (${e.count})",
-                            style = TextStyle(color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center),
+                            style = Type.body.copy(color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center),
                             modifier = Modifier.fillMaxWidth().clickable { home.actions.settings() }.padding(vertical = 20.dp),
                         )
                     }
@@ -348,10 +349,10 @@ private fun RecentSearches(searches: List<String>, pick: (String) -> Unit, clear
 private fun Chip(text: String, color: Color, edge: Color, onClick: () -> Unit) {
     Text(
         text,
-        style = TextStyle(color = color, fontSize = 13.sp),
+        style = Type.body.copy(color = color, fontSize = 13.sp),
         maxLines = 1,
         modifier = Modifier
-            .border(1.dp, edge, RoundedCornerShape(10.dp))
+            .border(1.dp, edge, RectangleShape)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     )
@@ -364,10 +365,10 @@ private fun ViewSwitch(view: DrawerView, choose: (DrawerView) -> Unit) {
             val on = v == view
             Text(
                 label,
-                style = TextStyle(color = if (on) Txt else Mute, fontSize = 13.sp, fontWeight = if (on) FontWeight.Medium else FontWeight.Normal),
+                style = Type.body.copy(color = if (on) Txt else Mute, fontSize = 13.sp, fontWeight = if (on) FontWeight.Medium else FontWeight.Normal),
                 modifier = Modifier
-                    .background(if (on) Or.copy(alpha = 0.08f) else Color.Transparent, RoundedCornerShape(10.dp))
-                    .border(1.dp, if (on) Or.copy(alpha = 0.55f) else Line, RoundedCornerShape(10.dp))
+                    .background(if (on) Or.copy(alpha = 0.08f) else Color.Transparent, RectangleShape)
+                    .border(1.dp, if (on) Or.copy(alpha = 0.55f) else Line, RectangleShape)
                     .semantics { role = Role.Tab; selected = on }
                     .clickable { if (!on) choose(v) }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -379,8 +380,8 @@ private fun ViewSwitch(view: DrawerView, choose: (DrawerView) -> Unit) {
 @Composable
 private fun SectionHeader(title: String, reason: String?) {
     Column(Modifier.fillMaxWidth().padding(start = 12.dp, top = 10.dp).semantics(mergeDescendants = true) { heading() }) {
-        Text(title.uppercase(), style = TextStyle(color = Mute, fontSize = 12.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Medium))
-        reason?.let { Text(it, style = TextStyle(color = Dim, fontSize = 12.sp), modifier = Modifier.padding(top = 2.dp)) }
+        Text(title.uppercase(), style = Type.title)
+        reason?.let { Text(it, style = Type.bodySmall.copy(color = Dim), modifier = Modifier.padding(top = 2.dp)) }
     }
 }
 
@@ -427,7 +428,7 @@ private fun LetterRail(letters: List<Pair<String, Int>>, grid: LazyGridState, mo
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         letters.forEach { (letter, _) ->
-            Text(letter, style = TextStyle(color = if (letter == current) Or else Mute, fontSize = 11.sp, fontWeight = FontWeight.Medium))
+            Text(letter, style = Type.body.copy(color = if (letter == current) Or else Mute, fontSize = 12.sp, fontWeight = FontWeight.Medium))
         }
     }
 }

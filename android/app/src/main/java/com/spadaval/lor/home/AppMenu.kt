@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
 import android.content.pm.ApplicationInfo
 import android.content.pm.ShortcutInfo
@@ -218,7 +219,7 @@ fun HomeMenu(at: Offset, home: HomeContext, onEdit: () -> Unit, close: () -> Uni
 @Composable
 private fun Item(text: String, icon: ImageBitmap? = null, onClick: () -> Unit) {
     DropdownMenuItem(
-        text = { Text(text, style = TextStyle(color = Txt, fontSize = 15.sp)) },
+        text = { Text(text, style = Type.body.copy(color = Txt, fontSize = 15.sp)) },
         onClick = onClick,
         leadingIcon = if (icon != null) {
             { Image(icon, contentDescription = null, modifier = Modifier.size(22.dp)) }

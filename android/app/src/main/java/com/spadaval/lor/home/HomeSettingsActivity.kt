@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import androidx.compose.ui.graphics.RectangleShape
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -7,7 +8,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -102,21 +102,21 @@ class HomeSettingsActivity : ComponentActivity() {
         lifecycleScope.launch {
             (application as LorApp).home.edit(change = change)
                 .onSuccess { if (it.undoable) undo.show(done ?: "Home changed.") }
-                .onFailure { toast("Can't: ${it.message}.") }
+                .onFailure { say("Can't: ${it.message}.") }
         }
     }
 
     private fun undo() {
         lifecycleScope.launch {
-            (application as LorApp).home.undo().onFailure { toast("Can't: ${it.message}.") }
+            (application as LorApp).home.undo().onFailure { say("Can't: ${it.message}.") }
         }
     }
 
     private fun restore() {
         lifecycleScope.launch {
             (application as LorApp).home.restore()
-                .onSuccess { toast("layout.json is put right. The broken one is layout.json.broken.") }
-                .onFailure { toast("Can't: ${it.message}.") }
+                .onSuccess { say("layout.json is put right. The broken one is layout.json.broken.") }
+                .onFailure { say("Can't: ${it.message}.") }
         }
     }
 
@@ -124,11 +124,15 @@ class HomeSettingsActivity : ComponentActivity() {
         try {
             startActivity(intent)
         } catch (e: RuntimeException) {
-            toast("That screen can't be opened.")
+            fail("That screen can't be opened.")
         }
     }
 
-    private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+    /** A refusal or a plain notice, in the bar without Undo (launcher polish 6.2: no toasts). */
+    private fun say(text: String) = undo.say(text, failed = false)
+
+    /** Something that failed: the bar with 3.6's coral dot. */
+    private fun fail(text: String) = undo.say(text, failed = true)
 
     companion object {
         fun open(context: Context) = context.startActivity(Intent(context, HomeSettingsActivity::class.java))

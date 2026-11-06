@@ -125,13 +125,12 @@ internal fun SetupCard(modifier: Modifier = Modifier) {
     Column(
         modifier
             .fillMaxWidth()
-            .background(StateFill, RoundedCornerShape(14.dp))
-            .border(1.dp, Line, RoundedCornerShape(14.dp))
+            .framedPanel(StateFill)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Set up this phone", style = TextStyle(color = Txt, fontSize = 15.sp), modifier = Modifier.weight(1f))
+            Text("Set up this phone", style = Type.body.copy(color = Txt, fontSize = 15.sp), modifier = Modifier.weight(1f))
             Pill("Skip set-up") {
                 prefs.setupDone = true
                 shown = false
@@ -167,8 +166,8 @@ private fun Step(mark: Mark, title: String, detail: String? = null, actions: @Co
     Row {
         StepMark(mark)
         Column(Modifier.padding(start = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, style = TextStyle(color = if (mark == Mark.DONE) Mute else Txt, fontSize = 14.sp))
-            detail?.let { Text(it, style = TextStyle(color = Mute, fontSize = 12.sp)) }
+            Text(title, style = Type.body.copy(color = if (mark == Mark.DONE) Mute else Txt, fontSize = 14.sp))
+            detail?.let { Text(it, style = Type.body.copy(color = Mute, fontSize = 12.sp)) }
             actions()
         }
     }

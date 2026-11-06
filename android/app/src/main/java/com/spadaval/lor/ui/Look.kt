@@ -2,6 +2,7 @@ package com.spadaval.lor.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -58,11 +59,11 @@ val Scrim = Color(0x99000000)
 /** The agent page's veil over the wallpaper. */
 val Veil = Bg.copy(alpha = 0xD9 / 255f)
 
-// Colours the agent page uses that have no job in DESIGN.md; 6.2 replaces them.
-val TempGreen = Color(0xFF84B98F)
-val TempBlue = Color(0xFF82A7E2)
-val TempT3Tile = Color(0xFF3B3F8F)
-val TempLorTile = Color(0xFF2C4A3A)
+/** DESIGN.md's one silhouette: the top-left and bottom-right corners clipped at 6 dp, for outer panels. */
+val Chamfer: Shape = CutCornerShape(topStart = 6.dp, topEnd = 0.dp, bottomEnd = 6.dp, bottomStart = 0.dp)
+
+/** An outer panel (DESIGN.md, Cards): [face] in the chamfer, held in a 1 dp Frame Bronze edge. */
+fun Modifier.framedPanel(face: Color = PanelFace): Modifier = background(face, Chamfer).border(1.dp, Frame, Chamfer)
 
 /** DESIGN.md's selection: an 8% amber fill with a 1 dp amber edge at 55%. */
 fun Modifier.selection(shape: Shape = RectangleShape): Modifier =

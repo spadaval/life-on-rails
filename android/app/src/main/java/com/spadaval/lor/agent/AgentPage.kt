@@ -1,5 +1,6 @@
 package com.spadaval.lor.agent
 
+import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -82,9 +84,10 @@ import java.time.format.DateTimeFormatter
  */
 
 
-internal val Body = TextStyle(color = Txt, fontSize = 14.sp)
-internal val Small = TextStyle(color = Mute, fontSize = 12.sp)
-private val Heading = TextStyle(color = Dim, fontSize = 11.sp, letterSpacing = 0.8.sp)
+internal val Body = Type.body.copy(fontSize = 14.sp)
+internal val Small = Type.bodySmall.copy(fontSize = 12.sp)
+/** Section heads: DESIGN.md's title, condensed caps in Dust (launcher polish 6.2). */
+private val Heading = Type.title
 
 @Composable
 fun AgentPage() {
@@ -134,8 +137,8 @@ fun AgentPage() {
                 cards.forEach { T3QueueCard(it, model, live) }
                 needs.forEach { need ->
                     QueueCard(
-                        tile = "LoR", tileColor = TempLorTile, tileLabel = "Open in LoR", onTile = { model.openLor(taskPath(need.id), LaunchFrom.AGENT_ICON) },
-                        kind = "LoR", kindColor = TempGreen, where = "flagged", title = need.title, detail = need.note,
+                        tile = "LoR", tileColor = Raised, tileLabel = "Open in LoR", onTile = { model.openLor(taskPath(need.id), LaunchFrom.AGENT_ICON) },
+                        kind = "LoR", kindColor = Mute, where = "flagged", title = need.title, detail = need.note,
                     ) { Pill("Open", primary = true) { model.openLor(taskPath(need.id), LaunchFrom.AGENT_CARD) } }
                 }
                 AgentStates.notes(lorSource, t3Source, cards.size, needs.size)
@@ -149,7 +152,7 @@ fun AgentPage() {
                                 Modifier
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                                     .fillMaxWidth()
-                                    .border(1.dp, Line, RoundedCornerShape(12.dp))
+                                    .border(1.dp, Line, RectangleShape)
                                     .padding(horizontal = 12.dp, vertical = 10.dp),
                             ) {
                                 Text("All clear.", style = Body.copy(fontSize = 13.sp))
@@ -226,13 +229,13 @@ private fun TodayBody(lor: DeviceHome, zone: ZoneId) {
         val since = running.start.atZone(zone).format(Clock)
         Text(
             if (running.paused) "Paused: ${running.title}" else "Timer: ${running.title} · since $since",
-            style = Small.copy(color = if (running.paused) Mute else TempGreen, fontSize = 13.sp),
+            style = Small.copy(color = if (running.paused) Mute else Or, fontSize = 13.sp),
             modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 10.dp),
         )
     }
     if (one != null) {
         Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 10.dp)) {
-            Text("NEXT · ${one.kicker.uppercase()}", style = Heading.copy(color = TempGreen))
+            Text("NEXT · ${one.kicker.uppercase()}", style = Heading)
             Text(one.text, style = Body.copy(fontSize = 17.sp, lineHeight = 22.sp), modifier = Modifier.padding(top = 3.dp))
             one.why?.let { Text(it, style = Small, modifier = Modifier.padding(top = 2.dp)) }
         }
@@ -272,13 +275,13 @@ private fun DayArc(lor: DeviceHome) {
             moveTo(a.x, a.y)
             for (i in 1..40) at(done * i / 40).let { lineTo(it.x, it.y) }
         }
-        drawPath(part, TempGreen, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
-        drawCircle(TempGreen, 4.dp.toPx(), at(done))
+        drawPath(part, Or, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        drawCircle(Or, 4.dp.toPx(), at(done))
     }
     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 2.dp)) {
-        Text(lor.day.wakeStart.atZone(zone).format(Clock), style = Small.copy(color = Dim, fontSize = 10.sp))
-        Text("now · $leftText", style = Small.copy(fontSize = 10.sp), modifier = Modifier.weight(1f).padding(horizontal = 8.dp), textAlign = TextAlign.Center)
-        Text(lor.day.wakeEnd.atZone(zone).format(Clock), style = Small.copy(color = Dim, fontSize = 10.sp))
+        Text(lor.day.wakeStart.atZone(zone).format(Clock), style = Small.copy(color = Dim))
+        Text("now · $leftText", style = Small, modifier = Modifier.weight(1f).padding(horizontal = 8.dp), textAlign = TextAlign.Center)
+        Text(lor.day.wakeEnd.atZone(zone).format(Clock), style = Small.copy(color = Dim))
     }
 }
 
@@ -311,11 +314,12 @@ private fun RunningRow(thread: T3Thread, open: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clickable(onClickLabel = "Open in T3", onClick = open)
             .padding(horizontal = 18.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(6.dp).background(TempBlue, CircleShape))
+        Box(Modifier.size(6.dp).background(Cy, CircleShape))
         Text(thread.title, style = Body.copy(fontSize = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 10.dp))
         Text(thread.projectTitle, style = Small, maxLines = 1, modifier = Modifier.padding(start = 8.dp))
     }
@@ -334,7 +338,7 @@ private fun T3QueueCard(card: T3Card, model: AgentModel, live: Boolean) {
             T3Card.Kind.QUESTION -> null
         }
     QueueCard(
-        tile = "T3", tileColor = TempT3Tile, tileLabel = "Open in T3", onTile = { model.openThread(card.thread.id, LaunchFrom.AGENT_ICON) },
+        tile = "T3", tileColor = Raised, tileLabel = "Open in T3", onTile = { model.openThread(card.thread.id, LaunchFrom.AGENT_ICON) },
         kind = card.kind.label, kindColor = color, where = card.thread.projectTitle, title = card.thread.title,
         detail = detail, detailColor = if (card.key in model.failures) Bad else Mute,
         below = if (card.kind == T3Card.Kind.QUESTION && open) ({ Choices(card, model, live, busy) }) else null,
@@ -421,28 +425,29 @@ private fun QueueCard(
         Modifier
             .padding(horizontal = 10.dp, vertical = 3.dp)
             .fillMaxWidth()
-            .background(StateFill, RoundedCornerShape(14.dp))
-            .border(1.dp, Line, RoundedCornerShape(14.dp))
+            .framedPanel(StateFill)
             .padding(start = 8.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
+                    // A 48 dp touch target around the 32 dp tile (3.6's critique).
+                    .minimumInteractiveComponentSize()
                     .size(32.dp)
-                    .background(tileColor, RoundedCornerShape(9.dp))
+                    .background(tileColor, RectangleShape)
                     .clickable(role = Role.Button, onClickLabel = tileLabel, onClick = onTile)
                     .semantics { contentDescription = tileLabel },
                 contentAlignment = Alignment.Center,
-            ) { Text(tile, style = TextStyle(color = Color.White, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)) }
+            ) { Text(tile, style = Type.label.copy(color = Txt)) }
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                 Text(
                     buildString { append(kind); append(" · "); append(where) },
-                    style = Small.copy(fontSize = 11.sp, color = kindColor),
+                    style = Small.copy(color = kindColor),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(title, style = Body.copy(fontSize = 13.5.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                detail?.let { Text(it, style = Small.copy(fontSize = 11.5.sp, color = detailColor), maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                detail?.let { Text(it, style = Small.copy(color = detailColor), maxLines = 2, overflow = TextOverflow.Ellipsis) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) { actions() }
         }
@@ -452,13 +457,13 @@ private fun QueueCard(
 
 @Composable
 internal fun Pill(text: String, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(9.dp)
-    val base = if (primary) Modifier.background(if (enabled) Txt else Mute, shape) else Modifier.border(1.dp, if (enabled) Edge else Line, shape)
+    val shape = RectangleShape
+    val base = if (primary) Modifier.background(if (enabled) Or else OrDeep, shape) else Modifier.border(1.dp, if (enabled) Edge else Line, shape)
     Text(
         text,
-        style = TextStyle(
+        style = Type.button.copy(
             color = when {
-                primary -> Bg
+                primary -> OnOr
                 enabled -> Txt
                 else -> Dim
             },
@@ -478,7 +483,7 @@ internal fun Field(value: String, placeholder: String, modifier: Modifier = Modi
         modifier.fillMaxWidth(),
         placeholder = { Text(placeholder, color = Dim) },
         textStyle = Body,
-        shape = RoundedCornerShape(12.dp),
+        shape = RectangleShape,
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Or,
             focusedBorderColor = Mute, unfocusedBorderColor = Edge,
@@ -492,7 +497,7 @@ private fun SendButton(modifier: Modifier, onClick: () -> Unit) {
     Box(
         modifier
             .size(52.dp)
-            .background(Txt, CircleShape)
+            .background(Or)
             .clickable(role = Role.Button, onClickLabel = "Quick send", onClick = onClick)
             .semantics { contentDescription = "Quick send" },
         contentAlignment = Alignment.Center,
@@ -503,7 +508,7 @@ private fun SendButton(modifier: Modifier, onClick: () -> Unit) {
             val plane = Path().apply {
                 moveTo(0.1f * w, 0.1f * h); lineTo(0.95f * w, 0.5f * h); lineTo(0.1f * w, 0.9f * h); lineTo(0.22f * w, 0.5f * h); close()
             }
-            drawPath(plane, Bg)
+            drawPath(plane, OnOr)
         }
     }
 }

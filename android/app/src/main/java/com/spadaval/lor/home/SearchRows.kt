@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -67,7 +68,7 @@ internal fun openFound(value: Any, at: At, home: HomeContext) {
 
 @Composable
 internal fun ResultRow(value: Any, go: Boolean, at: At, home: HomeContext) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RectangleShape
     Row(
         Modifier
             .fillMaxWidth()
@@ -120,8 +121,8 @@ private fun Gear() {
 @Composable
 private fun RowText(title: String, sub: String, modifier: Modifier = Modifier) {
     Column(modifier.padding(start = 16.dp)) {
-        Text(title, style = TextStyle(color = Txt, fontSize = 15.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(sub, style = TextStyle(color = Mute, fontSize = 12.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, style = Type.body.copy(color = Txt, fontSize = 15.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(sub, style = Type.body.copy(color = Mute, fontSize = 12.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -143,20 +144,19 @@ private fun ShortcutIcon(s: SearchShortcut, home: HomeContext) {
 @Composable
 internal fun AnswerCard(answer: Answer) {
     val context = LocalContext.current
-    val shape = RoundedCornerShape(14.dp)
+    val shape = Chamfer
     Column(
         Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 12.dp)
-            .background(StateFill, shape)
-            .border(1.dp, Line, shape)
+            .framedPanel(StateFill)
             .clickable(role = Role.Button, onClickLabel = "Copy") {
                 context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(answer.input, answer.value))
             }
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        Text(answer.value, style = TextStyle(color = Txt, fontSize = 22.sp))
-        Text(answer.input, style = TextStyle(color = Mute, fontSize = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(answer.value, style = Type.body.copy(color = Txt, fontSize = 22.sp))
+        Text(answer.input, style = Type.body.copy(color = Mute, fontSize = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -103,7 +104,7 @@ import java.time.format.DateTimeFormatter
  * Motion is one-shot only: the drawer slides in and out, nothing loops (strategy: calm).
  */
 
-internal val LabelStyle = TextStyle(color = Txt, fontSize = 12.sp, shadow = Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 1f), 3f))
+internal val LabelStyle = TextStyle(fontFamily = Saira, color = Txt, fontSize = 12.sp, shadow = Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 1f), 3f))
 
 /** What the activity can reset on a home press. */
 class HomeUi {
@@ -310,9 +311,9 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
                 val columns = if (wide) 5 else 4
                 if (n == 0 && layout is LayoutState.Broken) {
                     BrokenBanner(
-                        layout, appsLoad == AppsLoad.LOADED, TextStyle(color = Txt, fontSize = 13.sp),
+                        layout, appsLoad == AppsLoad.LOADED, Type.body.copy(color = Txt, fontSize = 13.sp),
                         Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp).fillMaxWidth()
-                            .background(StateFill, RoundedCornerShape(14.dp)).border(1.dp, Line, RoundedCornerShape(14.dp))
+                            .framedPanel(StateFill)
                             .padding(horizontal = 14.dp),
                         home.actions::restore,
                     )
@@ -368,7 +369,7 @@ private fun Skeleton(items: List<LayoutItem>, columns: Int) {
                 row.forEach { item ->
                     Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
                         Column(Modifier.width(76.dp).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(Modifier.size(52.dp).background(Line, if (item is Folder) RoundedCornerShape(15.dp) else CircleShape))
+                            Box(Modifier.size(52.dp).background(Line, if (item is Folder) RectangleShape else CircleShape))
                             // The label's height, so the rows sit where the tiles will.
                             Spacer(Modifier.height(5.dp))
                             Text("", style = LabelStyle)
@@ -388,8 +389,7 @@ private fun DockSkeleton(count: Int) {
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 12.dp)
-            .background(Txt.copy(alpha = 0.06f), RoundedCornerShape(22.dp))
-            .border(1.dp, Line, RoundedCornerShape(22.dp))
+            .framedPanel(PanelFace.copy(alpha = 0.72f))
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
@@ -404,13 +404,12 @@ private fun HomeNote(title: String, detail: String?, onClick: (() -> Unit)? = nu
         Modifier
             .padding(horizontal = 12.dp)
             .fillMaxWidth()
-            .background(StateFill, RoundedCornerShape(14.dp))
-            .border(1.dp, Line, RoundedCornerShape(14.dp))
+            .framedPanel(StateFill)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Text(title, style = TextStyle(color = Txt, fontSize = 16.sp))
-        detail?.let { Text(it, style = TextStyle(color = Mute, fontSize = 14.sp), modifier = Modifier.padding(top = 4.dp)) }
+        Text(title, style = Type.body.copy(color = Txt, fontSize = 16.sp))
+        detail?.let { Text(it, style = Type.body.copy(color = Mute, fontSize = 14.sp), modifier = Modifier.padding(top = 4.dp)) }
     }
 }
 
@@ -470,7 +469,7 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeCo
                             // DESIGN.md's selection on the item a drop would go onto.
                             .then(
                                 if (home.drag.held?.lit == Target.Onto(spot as Spot.Page)) {
-                                    Modifier.background(Or.copy(alpha = 0.08f), RoundedCornerShape(16.dp)).border(1.dp, Or.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
+                                    Modifier.selection()
                                 } else Modifier,
                             ),
                         contentAlignment = Alignment.TopCenter,
@@ -497,8 +496,7 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 12.dp)
-            .background(Txt.copy(alpha = 0.06f), RoundedCornerShape(22.dp))
-            .border(1.dp, Line, RoundedCornerShape(22.dp))
+            .framedPanel(PanelFace.copy(alpha = 0.72f))
             .dropZone(drag, "dock$page") { b -> Zone.Area(Place.Dock, b) }
             .padding(vertical = 10.dp)
             .height(48.dp),
@@ -531,7 +529,7 @@ private fun PageDots(current: Int, count: Int, modifier: Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         (0 until count).forEach { page ->
             val color = if (page == current) Txt.copy(alpha = 0.7f) else Txt.copy(alpha = 0.2f)
-            Box(Modifier.size(6.dp).background(color, if (page == 0) RoundedCornerShape(2.dp) else CircleShape))
+            Box(Modifier.size(6.dp).background(color, if (page == 0) RectangleShape else CircleShape))
         }
     }
 }
@@ -555,7 +553,7 @@ internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)?
         Box {
             AppIcon(app, 52.dp)
             // A new app's dot (launcher polish 2.2), until it is first opened from the launcher.
-            if (dot) Box(Modifier.align(Alignment.TopEnd).size(10.dp).background(Or, CircleShape).border(1.5.dp, Bg, CircleShape))
+            if (dot) Box(Modifier.align(Alignment.TopEnd).size(10.dp).background(Txt, CircleShape).border(1.5.dp, Bg, CircleShape))
         }
         Spacer(Modifier.height(5.dp))
         Text(app.label, style = LabelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
@@ -593,8 +591,7 @@ private fun FolderIcon(folder: ResolvedFolder) {
         } else Column(
             Modifier
                 .size(52.dp)
-                .background(Txt.copy(alpha = 0.09f), RoundedCornerShape(15.dp))
-                .border(1.dp, Line, RoundedCornerShape(15.dp))
+                .background(Txt.copy(alpha = 0.09f)).border(1.dp, Edge)
                 .padding(6.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -617,16 +614,15 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
             Modifier
                 .widthIn(max = 360.dp)
                 .padding(24.dp)
-                .background(PanelFace.copy(alpha = 0.95f), RoundedCornerShape(24.dp))
-                .border(1.dp, Line, RoundedCornerShape(24.dp))
+                .framedPanel(PanelFace.copy(alpha = 0.95f))
                 // The card takes a drop after the folder's last app (launcher polish 4.4).
                 .dropZone(drag, "card") { b -> Zone.Area(Place.InFolder(spot), b) }
                 .swallowTaps()
                 .padding(16.dp),
         ) {
-            Text(folder.folder.name, style = TextStyle(color = Txt, fontSize = 18.sp), modifier = Modifier.padding(start = 6.dp))
+            Text(folder.folder.name, style = Type.body.copy(color = Txt, fontSize = 18.sp), modifier = Modifier.padding(start = 6.dp))
             folder.folder.reason?.let {
-                Text(it, style = TextStyle(color = Mute, fontSize = 13.sp), modifier = Modifier.padding(start = 6.dp, top = 4.dp))
+                Text(it, style = Type.body.copy(color = Mute, fontSize = 13.sp), modifier = Modifier.padding(start = 6.dp, top = 4.dp))
             }
             Spacer(Modifier.height(14.dp))
             folder.apps.chunked(4).forEach { row ->
@@ -798,7 +794,7 @@ private fun TopBar(ui: HomeUi, modifier: Modifier) {
     val drag = ui.drag
     val held = drag.held
     if (held == null && !drag.editing) return
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RectangleShape
     if (held != null) {
         val lit = held.lit == Target.Remove
         Box(
@@ -809,7 +805,7 @@ private fun TopBar(ui: HomeUi, modifier: Modifier) {
                 .dropZone(drag, "remove") { b -> Zone.Remove(b) },
             contentAlignment = Alignment.Center,
         ) {
-            Text("Remove", style = TextStyle(color = if (lit) Txt else Mute, fontSize = 15.sp))
+            Text("Remove", style = Type.body.copy(color = if (lit) Txt else Mute, fontSize = 15.sp))
         }
         return
     }
@@ -819,14 +815,14 @@ private fun TopBar(ui: HomeUi, modifier: Modifier) {
     ) {
         Text(
             "Drag apps to move them. Drop one on another to make a folder.",
-            style = TextStyle(color = Txt, fontSize = 14.sp),
+            style = Type.body.copy(color = Txt, fontSize = 14.sp),
             modifier = Modifier.weight(1f),
         )
         Box(
-            Modifier.padding(start = 8.dp).background(Or, RoundedCornerShape(10.dp)).clickable { drag.editing = false }
+            Modifier.padding(start = 8.dp).background(Or).clickable { drag.editing = false }
                 .padding(horizontal = 18.dp, vertical = 12.dp),
         ) {
-            Text("Done", style = TextStyle(color = OnOr, fontSize = 15.sp))
+            Text("Done", style = Type.body.copy(color = OnOr, fontSize = 15.sp))
         }
     }
 }
@@ -873,5 +869,5 @@ private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, close: () -> U
 
 @Composable
 private fun FolderMenuItem(text: String, onClick: () -> Unit) {
-    DropdownMenuItem(text = { Text(text, style = TextStyle(color = Txt, fontSize = 15.sp)) }, onClick = onClick)
+    DropdownMenuItem(text = { Text(text, style = Type.body.copy(color = Txt, fontSize = 15.sp)) }, onClick = onClick)
 }

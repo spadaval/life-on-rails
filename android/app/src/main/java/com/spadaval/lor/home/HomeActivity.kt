@@ -6,7 +6,6 @@ import android.content.pm.ShortcutInfo
 import android.net.Uri
 import android.graphics.Color
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.SystemBarStyle
@@ -37,7 +36,7 @@ import kotlinx.coroutines.withContext
  *
  * Launching follows Launcher3 / Lawnchair (`startActivitySafely`, Apache-2.0):
  * `LauncherApps.startMainActivity`, catching the failures of an app that went away before the
- * list refreshed. A crash on home is the worst outcome, so every failure ends in a toast.
+ * list refreshed. A crash on home is the worst outcome, so every failure ends in a line in the bar.
  */
 class HomeActivity : ComponentActivity() {
     private lateinit var launcherApps: LauncherApps
@@ -112,7 +111,7 @@ class HomeActivity : ComponentActivity() {
                 record(app, at, shortcut = null)
             } catch (e: RuntimeException) {
                 // ActivityNotFoundException, SecurityException, or a profile that was turned off.
-                toast("${app.label} can't be opened.")
+                fail("${app.label} can't be opened.")
             }
         }
 
@@ -164,7 +163,7 @@ class HomeActivity : ComponentActivity() {
                 record(app, at, shortcut.id)
             } catch (e: RuntimeException) {
                 // As open: the shortcut went away, its profile is locked, or home lost the permission.
-                toast("${shortcut.shortLabel ?: app.label} can't be opened.")
+                fail("${shortcut.shortLabel ?: app.label} can't be opened.")
             }
         }
 
@@ -172,7 +171,7 @@ class HomeActivity : ComponentActivity() {
             try {
                 launcherApps.startAppDetailsActivity(app.info.componentName, app.user, null, null)
             } catch (e: RuntimeException) {
-                toast("${app.label}'s info can't be opened.")
+                fail("${app.label}'s info can't be opened.")
             }
         }
 
@@ -183,7 +182,7 @@ class HomeActivity : ComponentActivity() {
             try {
                 startActivity(intent)
             } catch (e: RuntimeException) {
-                toast("${app.label} can't be uninstalled from here.")
+                fail("${app.label} can't be uninstalled from here.")
             }
         }
 
@@ -193,7 +192,7 @@ class HomeActivity : ComponentActivity() {
             try {
                 startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Wallpaper"))
             } catch (e: RuntimeException) {
-                toast("The wallpaper picker can't be opened.")
+                fail("The wallpaper picker can't be opened.")
             }
         }
 
@@ -201,16 +200,16 @@ class HomeActivity : ComponentActivity() {
             lifecycleScope.launch {
                 model.edit(change = change)
                     .onSuccess { if (it.undoable) ui.undo.show(done ?: "Home changed.") }
-                    .onFailure { toast("Can't: ${it.message ?: "the layout couldn't be changed"}.") }
+                    .onFailure { say("Can't: ${it.message ?: "the layout couldn't be changed"}.") }
                 after()
             }
         }
 
-        override fun refused(reason: String) = toast("Can't: $reason.")
+        override fun refused(reason: String) = say("Can't: $reason.")
 
         override fun undo() {
             lifecycleScope.launch {
-                model.undo().onFailure { toast("Can't: ${it.message ?: "the edit couldn't be undone"}.") }
+                model.undo().onFailure { say("Can't: ${it.message ?: "the edit couldn't be undone"}.") }
             }
         }
 
@@ -246,8 +245,8 @@ class HomeActivity : ComponentActivity() {
         override fun restore() {
             lifecycleScope.launch {
                 model.restore()
-                    .onSuccess { toast("layout.json is put right. The broken one is layout.json.broken.") }
-                    .onFailure { toast("Can't: ${it.message ?: "the layout couldn't be put right"}.") }
+                    .onSuccess { say("layout.json is put right. The broken one is layout.json.broken.") }
+                    .onFailure { say("Can't: ${it.message ?: "the layout couldn't be put right"}.") }
             }
         }
     }
@@ -264,7 +263,7 @@ class HomeActivity : ComponentActivity() {
             val pkg = takenBy(packageManager, intent)
             Launches.record(this, Launch(LaunchFrom.SEARCH, pkg, label = pkg?.let { Launches.label(this, it) }, query = query))
         } catch (e: RuntimeException) {
-            toast(failure)
+            fail(failure)
         }
     }
 
@@ -283,5 +282,9 @@ class HomeActivity : ComponentActivity() {
     /** The process's home store (launcher polish P1). */
     private val store: HomeStore get() = (application as LorApp).home
 
-    private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+    /** A refusal or a plain notice, in the bar without Undo (launcher polish 6.2: no toasts). */
+    private fun say(text: String) = ui.undo.say(text, failed = false)
+
+    /** Something that failed: the bar with 3.6's coral dot. */
+    private fun fail(text: String) = ui.undo.say(text, failed = true)
 }

@@ -93,7 +93,7 @@ internal fun NoResults(query: String, ways: List<Elsewhere>, line: Boolean, go: 
     Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
         if (line) Text(
             "Nothing matches \"${query.trim()}\".",
-            style = TextStyle(color = Mute, fontSize = 14.sp),
+            style = Type.body.copy(color = Mute, fontSize = 14.sp),
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         )
         ways.forEach { way ->
@@ -107,7 +107,7 @@ internal fun NoResults(query: String, ways: List<Elsewhere>, line: Boolean, go: 
                 Glyph(way.kind)
                 Text(
                     way.text,
-                    style = TextStyle(color = Txt, fontSize = 15.sp),
+                    style = Type.body.copy(color = Txt, fontSize = 15.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 16.dp),

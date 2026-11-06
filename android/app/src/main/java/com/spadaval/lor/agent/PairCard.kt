@@ -39,8 +39,7 @@ fun PairCard(connection: T3Connection, status: T3Connection.Status, modifier: Mo
     Column(
         modifier
             .fillMaxWidth()
-            .background(StateFill, RoundedCornerShape(14.dp))
-            .border(1.dp, Line, RoundedCornerShape(14.dp))
+            .framedPanel(StateFill)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

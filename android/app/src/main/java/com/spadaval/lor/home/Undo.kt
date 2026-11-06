@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -32,8 +35,12 @@ import kotlinx.coroutines.delay
  * underlined "undo" in the ink colour.
  */
 
-/** What the bar says; a new one (even with the same words) restarts its time. */
-class UndoMessage(val text: String)
+/**
+ * What the bar says; a new one (even with the same words) restarts its time. Without [undoable]
+ * it is a refusal or a notice (launcher polish 6.2: the launcher shows no toasts), and [failed]
+ * draws 3.6's coral dot for machinery that failed.
+ */
+class UndoMessage(val text: String, val undoable: Boolean = true, val failed: Boolean = false)
 
 /** The bar's state, held by the screen that shows it. */
 class UndoBarState {
@@ -41,6 +48,10 @@ class UndoBarState {
 
     fun show(text: String) {
         message = UndoMessage(text)
+    }
+
+    fun say(text: String, failed: Boolean) {
+        message = UndoMessage(text, undoable = false, failed = failed)
     }
 }
 
@@ -60,15 +71,15 @@ fun UndoBar(state: UndoBarState, onUndo: () -> Unit, modifier: Modifier = Modifi
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             // Opaque, unlike StateFill: it sits over icons on home and over text in Home settings.
-            .background(PanelFace, RoundedCornerShape(14.dp))
-            .border(1.dp, Line, RoundedCornerShape(14.dp))
+            .background(PanelFace).border(1.dp, Edge)
             .padding(start = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(message.text, style = TextStyle(color = Txt, fontSize = 14.sp), modifier = Modifier.weight(1f).padding(vertical = 12.dp))
-        Text(
+        if (message.failed) Spacer(Modifier.padding(end = 10.dp).size(6.dp).background(Bad, CircleShape))
+        Text(message.text, style = Type.body.copy(color = Txt, fontSize = 14.sp), modifier = Modifier.weight(1f).padding(vertical = 12.dp, horizontal = 0.dp).padding(end = 16.dp))
+        if (message.undoable) Text(
             "Undo",
-            style = TextStyle(color = Txt, fontSize = 14.sp, textDecoration = TextDecoration.Underline),
+            style = Type.body.copy(color = Txt, fontSize = 14.sp, textDecoration = TextDecoration.Underline),
             modifier = Modifier
                 .clickable {
                     state.message = null
