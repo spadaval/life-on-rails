@@ -189,4 +189,39 @@ class DrawerTest {
         assertEquals("drawer.sections[0].hidden: must be true or false", error("""{"sections": [{"name": "A", "hidden": 1}]}"""))
         assertEquals("drawer.sections[0].apps[0]: \"X\" is not a package name or package/activity", error("""{"sections": [{"name": "A", "apps": ["X"]}]}"""))
     }
+
+    @Test
+    fun recentSearchesKeepFiveNewestFirstOncePerText() {
+        var s = LaunchStats()
+        for (q in listOf("cal", "maps", " Cal ", "", "a", "b", "c", "d")) s = s.searched(q)
+        assertEquals(listOf("d", "c", "b", "a", "Cal"), s.searches)
+        // A launch keeps them, and they survive the file.
+        s = s.launched("x", 1)
+        assertEquals(listOf("d", "c", "b", "a", "Cal"), s.searches)
+        val back = LaunchStats.parse(s.toJson())
+        assertEquals(s.searches, back.searches)
+        assertEquals(s.entries, back.entries)
+        // Cleared, the file holds none.
+        assertFalse(s.clearSearches().toJson().contains("searches"))
+        assertEquals(emptyList<String>(), LaunchStats.parse(s.clearSearches().toJson()).searches)
+    }
+
+    @Test
+    fun aStatsFileWithoutSearchesParses() {
+        val s = LaunchStats.parse("""{"version": 1, "apps": {"a": {"count": 2, "weight": 0.5, "last": 7}}}""")
+        assertEquals(LaunchStats.Entry(2, 0.5, 7), s.entries["a"])
+        assertEquals(emptyList<String>(), s.searches)
+    }
+
+    @Test
+    fun drawerKeyboardParsesAndIsWrittenOnlyWhenTrue() {
+        assertTrue(parse("""{"keyboard": true}""").drawer.keyboard)
+        assertFalse(parse("""{"keyboard": false}""").drawer.keyboard)
+        assertFalse(parse("""{}""").drawer.keyboard)
+        assertEquals("drawer.keyboard: must be true or false", error("""{"keyboard": "yes"}"""))
+        val on = parse("""{"keyboard": true}""")
+        assertEquals(on, LayoutFile.parse(on.toJson()))
+        assertTrue(on.toJson().contains("\"keyboard\": true") || on.toJson().contains("\"keyboard\":true"))
+        assertFalse(parse("""{"keyboard": false}""").toJson().contains("keyboard"))
+    }
 }

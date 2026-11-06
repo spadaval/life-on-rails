@@ -85,6 +85,9 @@ interface HomeActions {
     /** Opens a settings page search found (launcher polish 5.3), recording a launch unless it is LoR's own. */
     fun openSetting(page: SettingsPage, query: String)
 
+    /** Empties the recent searches the empty search field offers (launcher polish 5.5). */
+    fun clearSearches()
+
     /** Takes a search that matched no app somewhere else ([Elsewhere]): the web, a store, or quick send. */
     fun elsewhere(way: Elsewhere, query: String)
 

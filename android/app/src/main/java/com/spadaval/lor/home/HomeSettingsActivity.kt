@@ -9,9 +9,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
@@ -41,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -185,6 +188,17 @@ private fun HomeSettings(
                 }
             }
         }
+        if (file != null) {
+            item { Section("Search") }
+            item {
+                val on = file.drawer.keyboard
+                Toggle("Open the drawer with the keyboard up", "Ready to type a search", on) {
+                    edit(if (on) "The drawer opens without the keyboard." else "The drawer opens with the keyboard up.") {
+                        it.copy(drawer = it.drawer.copy(keyboard = !on))
+                    }
+                }
+            }
+        }
         item { HorizontalDivider(Modifier.padding(top = 12.dp)) }
         item {
             Link("Default home app", "Choose which app is home") { open(Intent(Settings.ACTION_HOME_SETTINGS)) }
@@ -214,6 +228,22 @@ private fun Note(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
     )
+}
+
+/** A setting that is on or off: the whole row toggles it, read as one switch. */
+@Composable
+private fun Toggle(title: String, subtitle: String, on: Boolean, toggle: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().toggleable(on, role = Role.Switch, onValueChange = { toggle() }).padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(16.dp))
+        Switch(on, onCheckedChange = null)
+    }
 }
 
 @Composable

@@ -220,6 +220,7 @@ class HomeActivity : ComponentActivity() {
         }
 
         override fun openSetting(page: SettingsPage, query: String) {
+            if (page.lor) store.searched(query)
             when (page.action) {
                 SettingsPage.LOR_HOME -> return HomeSettingsActivity.open(this@HomeActivity)
                 SettingsPage.LOR_APP -> return MainActivity.open(this@HomeActivity, MainActivity.SETTINGS)
@@ -227,9 +228,12 @@ class HomeActivity : ComponentActivity() {
             startFromSearch(Intent(page.action), query, "${page.title} can't be opened.")
         }
 
+        override fun clearSearches() = store.clearSearches()
+
         override fun elsewhere(way: Elsewhere, query: String) {
             val intent = intentFor(way, query)
             if (intent == null) {
+                store.searched(query)
                 QuickSend.open(this@HomeActivity, QuickSend.From.HOME, text = query.trim())
                 return
             }
@@ -253,6 +257,7 @@ class HomeActivity : ComponentActivity() {
     private fun startFromSearch(intent: Intent, query: String, failure: String) {
         try {
             startActivity(Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            store.searched(query)
             val pkg = takenBy(packageManager, intent)
             Launches.record(this, Launch(LaunchFrom.SEARCH, pkg, label = pkg?.let { Launches.label(this, it) }, query = query))
         } catch (e: RuntimeException) {
@@ -261,7 +266,8 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun record(app: HomeApp, at: At, shortcut: String?) {
-        (application as LorApp).home.launched(app)
+        store.launched(app)
+        if (at.from == LaunchFrom.SEARCH) at.query?.let(store::searched)
         Launches.record(
             this,
             Launch(
@@ -270,6 +276,9 @@ class HomeActivity : ComponentActivity() {
             ),
         )
     }
+
+    /** The process's home store (launcher polish P1). */
+    private val store: HomeStore get() = (application as LorApp).home
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
 }

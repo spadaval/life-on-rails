@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import org.json.JSONArray
 import org.json.JSONObject
 
 /*
@@ -115,15 +116,28 @@ private val PACKAGES: Map<String, Category> = buildMap {
  * (`w *= 1 − α`), so the weight favours what is used often and lately. α is Kvaesitso's default
  * (`WEIGHT_FACTOR_MEDIUM`), and weights under its floor are dropped to 0.
  */
-class LaunchStats(val entries: Map<String, Entry> = emptyMap()) {
+class LaunchStats(
+    val entries: Map<String, Entry> = emptyMap(),
+    /** The last [SEARCHES] searches that opened something, newest first, one per text ignoring case (launcher polish 5.5). */
+    val searches: List<String> = emptyList(),
+) {
     data class Entry(val count: Int, val weight: Double, val last: Long)
+
+    /** Records [query] as the newest recent search; a blank one changes nothing. */
+    fun searched(query: String): LaunchStats {
+        val q = query.trim()
+        if (q.isEmpty()) return this
+        return LaunchStats(entries, (listOf(q) + searches.filterNot { it.equals(q, ignoreCase = true) }).take(SEARCHES))
+    }
+
+    fun clearSearches() = LaunchStats(entries)
 
     fun launched(key: String, at: Long): LaunchStats {
         val decayed = entries.mapValues { (k, e) ->
             if (k == key) e else e.copy(weight = (e.weight * (1 - ALPHA)).let { if (it < FLOOR) 0.0 else it })
         }
         val old = entries[key] ?: Entry(0, 0.0, 0)
-        return LaunchStats(decayed + (key to Entry(old.count + 1, old.weight + ALPHA * (1 - old.weight), at)))
+        return LaunchStats(decayed + (key to Entry(old.count + 1, old.weight + ALPHA * (1 - old.weight), at)), searches)
     }
 
     /** Keys, the last launched first. */
@@ -145,19 +159,26 @@ class LaunchStats(val entries: Map<String, Entry> = emptyMap()) {
         .put("apps", JSONObject().apply {
             entries.forEach { (k, e) -> put(k, JSONObject().put("count", e.count).put("weight", e.weight).put("last", e.last)) }
         })
+        .apply { if (searches.isNotEmpty()) put("searches", JSONArray(searches)) }
         .toString()
 
     companion object {
         const val ALPHA = 0.03
+        const val SEARCHES = 5
         private const val FLOOR = 0.001
 
         /** Parses [text]; anything unreadable starts the counts again rather than failing home. */
         fun parse(text: String): LaunchStats = try {
-            val apps = JSONObject(text).getJSONObject("apps")
-            LaunchStats(apps.keys().asSequence().associateWith { k ->
-                val e = apps.getJSONObject(k)
-                Entry(e.getInt("count"), e.getDouble("weight"), e.getLong("last"))
-            })
+            val root = JSONObject(text)
+            val apps = root.getJSONObject("apps")
+            val searches = root.optJSONArray("searches")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty()
+            LaunchStats(
+                apps.keys().asSequence().associateWith { k ->
+                    val e = apps.getJSONObject(k)
+                    Entry(e.getInt("count"), e.getDouble("weight"), e.getLong("last"))
+                },
+                searches.take(SEARCHES),
+            )
         } catch (e: Exception) {
             LaunchStats()
         }

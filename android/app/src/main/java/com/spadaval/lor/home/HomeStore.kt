@@ -199,6 +199,20 @@ class HomeStore(private val context: Context) {
         }
     }
 
+    /** Records [query] as a recent search (launcher polish 5.5): something was opened from it. */
+    fun searched(query: String) = serially {
+        val next = _stats.value.searched(query)
+        if (next.searches == _stats.value.searches) return@serially
+        _stats.value = next
+        writeAtomically(statsFile, next.toJson())
+    }
+
+    /** Empties the recent searches. */
+    fun clearSearches() = serially {
+        _stats.value = _stats.value.clearSearches()
+        writeAtomically(statsFile, _stats.value.toJson())
+    }
+
     /**
      * Home came to the front: reloads the app list if it never loaded, and rereads the layout file
      * if it changed since the last read or write (an agent or adb edited it).

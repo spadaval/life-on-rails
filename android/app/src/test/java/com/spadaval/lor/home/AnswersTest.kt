@@ -20,6 +20,7 @@ class AnswersTest {
         assertEquals("3000", v("1,000*3"))
         assertEquals("84", v("12×7"))
         assertEquals("-4", v("-2^2"))
+        assertEquals("1.2676506E30", v("2^100"))
     }
 
     @Test

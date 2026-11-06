@@ -2,6 +2,14 @@ package com.spadaval.lor.home
 
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -202,6 +210,19 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
     val nothing = searching && current && results.nothing && apps.isNotEmpty()
     val ways = remember(nothing, ui.query, sources.targets) { if (nothing) elsewhere(sources.targets, ui.query) else emptyList() }
     var focused by remember { mutableStateOf(false) }
+    // The field's text and cursor; a chip or a home press changes ui.query, which puts the cursor at the end.
+    var field by remember { mutableStateOf(TextFieldValue(ui.query, TextRange(ui.query.length))) }
+    if (field.text != ui.query) field = TextFieldValue(ui.query, TextRange(ui.query.length))
+    val focus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    // Opened ready to type, when the file asks (launcher polish 5.5).
+    LaunchedEffect(Unit) {
+        if (home.file?.drawer?.keyboard == true) {
+            focus.requestFocus()
+            keyboard?.show()
+        }
+    }
     fun go() {
         val r = if (current) results else searchAll(ui.query, apps, sources, stats)
         val first = r.go
@@ -215,6 +236,17 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
     val pullToClose = remember {
         object : NestedScrollConnection {
             var pulled = 0f
+
+            // A drag on the list puts the keyboard away so the list can be read (as Kvaesitso does).
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y != 0f && focused) {
+                    // Hidden as well as unfocused, so the keyboard goes whatever losing focus does.
+                    keyboard?.hide()
+                    focusManager.clearFocus()
+                }
+                return Offset.Zero
+            }
+
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
                 if (source == NestedScrollSource.UserInput) {
                     pulled = if (available.y > 0) pulled + available.y else 0f
@@ -226,9 +258,9 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
     }
     Column(Modifier.fillMaxSize().background(Sheet).swallowTaps().safeDrawingPadding().padding(top = 12.dp)) {
         OutlinedTextField(
-            ui.query,
-            { ui.query = it },
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).onFocusChanged { focused = it.isFocused },
+            field,
+            { field = it; ui.query = it.text },
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp).focusRequester(focus).onFocusChanged { focused = it.isFocused },
             placeholder = { Text("Search", color = Dim) },
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
@@ -241,6 +273,10 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
         )
         // A quick answer (launcher polish 5.4) heads the results; it opens nothing, so Go passes it by.
         if (searching) results.answer?.let { AnswerCard(it) }
+        // Recent searches, while the empty field has focus (launcher polish 5.5).
+        if (!searching && focused && stats.searches.isNotEmpty()) {
+            RecentSearches(stats.searches, { ui.query = it }, home.actions::clearSearches)
+        }
         if (!searching) {
             ViewSwitch(view) { v ->
                 view = v
@@ -293,6 +329,31 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
             if (built.letters.isNotEmpty()) LetterRail(built.letters, grid, Modifier.align(Alignment.CenterEnd))
         }
     }
+}
+
+/** The recent searches as chips, the view switch's look, with Clear last; a tap types one in. */
+@Composable
+private fun RecentSearches(searches: List<String>, pick: (String) -> Unit, clear: () -> Unit) {
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        searches.forEach { q -> Chip(q, Ink, Line) { pick(q) } }
+        Chip("Clear", Muted, Color.Transparent, clear)
+    }
+}
+
+@Composable
+private fun Chip(text: String, color: Color, edge: Color, onClick: () -> Unit) {
+    Text(
+        text,
+        style = TextStyle(color = color, fontSize = 13.sp),
+        maxLines = 1,
+        modifier = Modifier
+            .border(1.dp, edge, RoundedCornerShape(10.dp))
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    )
 }
 
 @Composable

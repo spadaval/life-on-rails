@@ -23,7 +23,8 @@ import java.time.format.DateTimeParseException
  *   "active": "default",
  *   "hidden": ["com.example.game"],                     // optional (launcher polish 1.1)
  *   "drawer": { "view": "sections",                      // optional (launcher polish 2.1)
- *               "sections": [{ "name": "Work", "category": "work", "apps": ["com.slack"] }] },
+ *               "sections": [{ "name": "Work", "category": "work", "apps": ["com.slack"] }],
+ *               "keyboard": true },                     // optional (launcher polish 5.5)
  *   "layouts": [
  *     { "name": "default",
  *       "expires": "2026-11-18T00:00:00Z",          // optional; read, not acted on until Increment 10
@@ -121,7 +122,7 @@ data class LayoutFile(
 
         private fun parseDrawer(v: Any): Drawer {
             if (v !is JSONObject) throw LayoutError("drawer: must be an object")
-            v.onlyKeys("drawer", "view", "sections")
+            v.onlyKeys("drawer", "view", "sections", "keyboard")
             val view = if (v.has("view")) {
                 val id = v.string("drawer", "view")
                 DrawerView.entries.firstOrNull { it.id == id }
@@ -141,7 +142,7 @@ data class LayoutFile(
                     throw LayoutError("drawer.sections: \"$b\" in \"${t.name}\" names an app \"$a\" in \"${s.name}\" already names")
                 }
             }
-            return Drawer(view, sections)
+            return Drawer(view, sections, keyboard = v.bool("drawer", "keyboard"))
         }
 
         private fun parseSection(at: String, v: Any): DrawerSection {
@@ -334,10 +335,16 @@ enum class DrawerView(val id: String) { SECTIONS("sections"), AZ("az"), USED("us
  * The drawer's part of the file (launcher polish 2.1). [view] is the last view chosen, null until
  * one is. [sections] are the sections the file holds, in order; see [allSections] and [sort].
  */
-data class Drawer(val view: DrawerView? = null, val sections: List<DrawerSection> = emptyList()) {
+data class Drawer(
+    val view: DrawerView? = null,
+    val sections: List<DrawerSection> = emptyList(),
+    /** Open the drawer with the search field focused and the keyboard up (launcher polish 5.5); written only when true. */
+    val keyboard: Boolean = false,
+) {
     fun toJson(): JSONObject = JSONObject().apply {
         if (view != null) put("view", view.id)
         if (sections.isNotEmpty()) put("sections", JSONArray(sections.map { it.toJson() }))
+        if (keyboard) put("keyboard", true)
     }
 }
 
