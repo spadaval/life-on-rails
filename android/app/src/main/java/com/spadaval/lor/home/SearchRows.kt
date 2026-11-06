@@ -1,5 +1,7 @@
 package com.spadaval.lor.home
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,6 +27,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -108,5 +111,29 @@ private fun ShortcutIcon(s: SearchShortcut, home: HomeContext) {
     Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
         val b = icon
         if (b != null) Image(b, contentDescription = null, modifier = Modifier.size(36.dp)) else AppIcon(s.owner, 36.dp)
+    }
+}
+
+/**
+ * A quick answer (launcher polish 5.4): the value, and the query under it. A tap copies the value;
+ * Android 13 and later confirm a copy themselves, so there is no toast.
+ */
+@Composable
+internal fun AnswerCard(answer: Answer) {
+    val context = LocalContext.current
+    val shape = RoundedCornerShape(14.dp)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp)
+            .background(StateFill, shape)
+            .border(1.dp, Line, shape)
+            .clickable(role = Role.Button, onClickLabel = "Copy") {
+                context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(answer.input, answer.value))
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(answer.value, style = TextStyle(color = Ink, fontSize = 22.sp))
+        Text(answer.input, style = TextStyle(color = Muted, fontSize = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

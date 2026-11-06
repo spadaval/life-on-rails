@@ -872,7 +872,7 @@ Agreed with Sumeet, 2026-11-05:
   - **Choices.** A page with the same name as a shortcut Android's Settings app publishes (Wi-Fi) shows twice, once in each block: they are different kinds and both open the page, so neither is dropped until it is felt. Which rows One UI keeps is **[real Fold]**.
   - Reviewed with the increment.
 
-#### 5.4 A calculator and units. Status: todo
+#### 5.4 A calculator and units. Status: done
 - **Goal.** "12*7" and "5 km" are answered in the drawer.
   - `home/Answers.kt` as the answers say. A calculation is written with up to 10 significant digits, a conversion with 4, both without trailing zeros (so "1 MB" is 0.001 GB, not 0); a result that isn't finite (division by zero) is no answer. A unit query is "<number> <unit> [to|in <unit>]"; without a target, each unit has one (km ↔ mi, m ↔ ft, cm ↔ in, kg ↔ lb, g ↔ oz, l ↔ gal (US), °C ↔ °F, km/h ↔ mph, MB → GB, and so on).
   - The card at the top of the results: the value in Ink at 22 sp, the query under it in the muted colour, no fill beyond `StateFill`'s card; a tap copies the value to the clipboard (Android 13 and later shows its own confirmation, so no toast).
@@ -880,6 +880,20 @@ Agreed with Sumeet, 2026-11-05:
   - **JVM tests** (`AnswersTest`): "2+2" 4, "2 + 3 * 4" 14, "(2+3)*4" 20, "2^10" 1024, "-3+5" 2, "1,5*2" 3, "10/4" 2.5, "1/3" 0.3333333333; no answer for "1/0", "2+", "42", "maps", "(1"; "5 km" 3.107 mi, "5 km to m" 5000 m, "100 f" 37.78 °C, "70 kg in lb" 154.3 lb, "1 mb" 0.001 GB; "1,000*3" 3000; no answer for "555-1234" or "2026-11-06"; no answer for "5 km to kg" or "5 foo".
   - **On `T3_Phone_API35`:** "12*7" shows 84 on the card, with the no-results rows under it; a tap and a paste into the field show 84; "5 km" shows 3.107 mi; Go on "12*7" runs the web search (the answer isn't Go's target).
   - `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed: `home/Answers.kt` (`Answers.of`, a recursive-descent calculator and a table of 30 units in six dimensions, `Measure`), passed to `Search.run` by `searchAll`, and `AnswerCard` in `SearchRows.kt`, drawn under the field whenever the results hold an answer. `AnswersTest` (7 cases: every case of Done when, and the locale's decimal comma); 167 tests pass on boat.
+  - **On `T3_Phone_API35`:**
+    - "12*7" showed a card reading 84 with "12*7" under it, and under the card the web, F-Droid and agent rows, without the "Nothing matches" line (screenshot);
+    - a tap on the card, then the field emptied and a paste (`KEYCODE_PASTE`), put "84" in the field;
+    - "5 km" showed 3.107 mi;
+    - "12*7" then Enter (the keyboard's Go) opened Google's search, and `queue.db` held a launch with `from: search`, `query: 12*7`, `package: com.google.android.googlequicksearchbox`.
+  - **Choices.**
+    - A sum needs an operator between two values, so "-42" and "(42)" get no answer.
+    - The decimal point is the locale's, and the other separator is one too, except before exactly three digits, where it separates thousands: "1,5" and "1,000" both read as written in an English locale, "1.000" is a thousand in a German one. The answer is written with the locale's point.
+    - The "only `-` between digits" rule is literal: "10-3" (a number or a date) has no answer, while "10 - 3" is 7.
+    - A unit typed without a target goes to its pair (km ↔ mi, kg ↔ lb, °C ↔ °F, …); data goes up one step (MB → GB), and GB and TB down to the step below. Data units are decimal (1 GB = 1000 MB). "in" is both the inch and the joining word: "5 in" is inches, "5 in in cm" works.
+    - A very large or very small result is written as `1.2676506E30`, not with every digit.
+  - Reviewed with the increment.
 
 #### 5.5 The empty field, and the drawer with the keyboard up. Status: todo
 - **Goal.** An empty field offers what was searched lately, and the drawer can open ready to type.

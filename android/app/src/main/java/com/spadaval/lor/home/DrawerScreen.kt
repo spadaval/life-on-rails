@@ -173,7 +173,7 @@ internal fun searchAll(query: String, apps: List<HomeApp>, sources: SearchSource
     }
     val entries: List<Found<Any>> = apps.map { Found(Kind.APPS, it.key, listOf(it.searchName), it) } +
         shortcuts + sources.settings + sources.contacts
-    val results = Search.run(query, entries, { e -> if (e.kind == Kind.APPS) stats.entries[e.key]?.weight ?: 0.0 else 0.0 }, check = check)
+    val results = Search.run(query, entries, { e -> if (e.kind == Kind.APPS) stats.entries[e.key]?.weight ?: 0.0 else 0.0 }, { Answers.of(it) }, check)
         .withShortcutsOfOneApp({ (it.value as HomeApp).packageName }) { one ->
             // The app's menu's shortcuts: its own activity's, manifest first, then by rank (1.2); not its cached chats.
             shortcuts.filter { (it.value as SearchShortcut).owner === one.value && !(it.value as SearchShortcut).hit.info.isCached }
@@ -239,6 +239,8 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = { go() }),
         )
+        // A quick answer (launcher polish 5.4) heads the results; it opens nothing, so Go passes it by.
+        if (searching) results.answer?.let { AnswerCard(it) }
         if (!searching) {
             ViewSwitch(view) { v ->
                 view = v
