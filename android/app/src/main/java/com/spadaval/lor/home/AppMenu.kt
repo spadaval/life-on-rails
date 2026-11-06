@@ -110,6 +110,21 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, close: () -> Unit) 
     val main = app.mainProfile && file != null
     val places = if (main) file!!.placesOf(app.id) else null
     val removable = (app.info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+    // "Move to section" turns the menu into the list of sections (launcher polish 2.3).
+    var picking by remember(app) { mutableStateOf(false) }
+    if (picking && file != null) {
+        val current = file.drawer.sectionOf(app.id, app.category)
+        DropdownMenu(true, close, containerColor = MenuPanel, shape = RoundedCornerShape(16.dp)) {
+            file.drawer.allSections().forEach { s ->
+                val here = s.name == current
+                Item(if (here) "${s.name} ✓" else s.name) {
+                    close()
+                    if (!here) actions.edit("${app.label} is in ${s.name} now.") { it.moveToSection(app.id, home.refFor(app), app.category, s.name) }
+                }
+            }
+        }
+        return
+    }
     DropdownMenu(true, close, containerColor = MenuPanel, shape = RoundedCornerShape(16.dp)) {
         shortcuts.forEach { s ->
             Item(s.info.shortLabel?.toString() ?: s.info.longLabel?.toString() ?: "Shortcut", s.icon) {
@@ -128,6 +143,7 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, close: () -> Unit) 
             }
             if (places.dock) Item("Remove from dock") { close(); actions.edit(null) { it.removeFromDock(app.id) } }
             else Item("Add to dock") { close(); actions.edit(null) { it.addToDock(app.id, ref) } }
+            Item("Move to section…") { picking = true }
             Item("Hide") {
                 close(); actions.edit("${app.label} is hidden. Home settings brings it back.") { it.hide(app.packageName) }
             }

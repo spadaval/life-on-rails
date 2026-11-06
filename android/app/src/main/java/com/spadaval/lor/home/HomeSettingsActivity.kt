@@ -9,6 +9,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,7 +67,7 @@ class HomeSettingsActivity : ComponentActivity() {
             LorTheme {
                 CompositionLocalProvider(LocalIcons provides icons) {
                     Surface(Modifier.fillMaxSize()) {
-                        HomeSettings(apps, layout, ::unhide, ::open)
+                        HomeSettings(apps, layout, ::edit, ::open)
                     }
                 }
             }
@@ -71,10 +79,11 @@ class HomeSettingsActivity : ComponentActivity() {
         (application as LorApp).home.resume()
     }
 
-    private fun unhide(ref: AppRef, label: String) {
+    /** Applies [change] to `layout.json`; [done] is said on success, a refusal says why. */
+    private fun edit(done: String?, change: (LayoutFile) -> LayoutFile) {
         lifecycleScope.launch {
-            (application as LorApp).home.edit { it.unhide(ref.packageName) }
-                .onSuccess { toast("$label is back in the drawer.") }
+            (application as LorApp).home.edit(change)
+                .onSuccess { if (done != null) toast(done) }
                 .onFailure { toast("Can't: ${it.message}.") }
         }
     }
@@ -100,7 +109,7 @@ private class Hidden(val ref: AppRef, val app: HomeApp?) {
 }
 
 @Composable
-private fun HomeSettings(apps: List<HomeApp>, layout: LayoutState, unhide: (AppRef, String) -> Unit, open: (Intent) -> Unit) {
+private fun HomeSettings(apps: List<HomeApp>, layout: LayoutState, edit: (String?, (LayoutFile) -> LayoutFile) -> Unit, open: (Intent) -> Unit) {
     val file = (layout as? LayoutState.Ready)?.file
     val hidden = remember(apps, file) {
         file?.hidden.orEmpty().map { ref ->
@@ -125,7 +134,22 @@ private fun HomeSettings(apps: List<HomeApp>, layout: LayoutState, unhide: (AppR
                     if (h.app != null) AppIcon(h.app, 40.dp) else Spacer(Modifier.size(40.dp))
                     Spacer(Modifier.width(16.dp))
                     Text(h.label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { unhide(h.ref, h.label) }) { Text("Unhide") }
+                    TextButton(onClick = { edit("${h.label} is back in the drawer.") { it.unhide(h.ref.packageName) } }) { Text("Unhide") }
+                }
+            }
+        }
+        if (file != null) {
+            item { Section("Drawer sections") }
+            val all = file.drawer.allSections()
+            items(all, key = { "section:" + it.name }) { s ->
+                SectionRow(file, s, first = s === all.first(), last = s === all.last(), edit)
+            }
+            item {
+                var naming by remember { mutableStateOf(false) }
+                TextButton(onClick = { naming = true }, modifier = Modifier.padding(horizontal = 8.dp)) { Text("New section") }
+                if (naming) NameDialog("New section", "") { name ->
+                    naming = false
+                    if (name != null) edit("$name is the last section.") { it.newSection(name) }
                 }
             }
         }
@@ -169,4 +193,83 @@ private fun Link(title: String, subtitle: String, onClick: () -> Unit) {
         Text(title, style = MaterialTheme.typography.bodyLarge)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
+}
+
+/** One drawer section, with its edits behind a menu (launcher polish 2.3). */
+@Composable
+private fun SectionRow(file: LayoutFile, s: DrawerSection, first: Boolean, last: Boolean, edit: (String?, (LayoutFile) -> LayoutFile) -> Unit) {
+    val inFile = file.drawer.sections.any { it.name == s.name }
+    var menu by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
+    var picking by remember { mutableStateOf(false) }
+    val about = listOfNotNull(
+        s.category?.let { "Takes ${it.title}" } ?: "No category",
+        s.apps.size.takeIf { it > 0 }?.let { "$it put here" },
+        "hidden".takeIf { s.hidden },
+    ).joinToString(" · ")
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(s.name, style = MaterialTheme.typography.bodyLarge)
+            Text(about, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Box {
+            TextButton(onClick = { menu = true }) { Text("Edit") }
+            DropdownMenu(menu, { menu = false }) {
+                DropdownMenuItem(text = { Text("Rename…") }, onClick = { menu = false; renaming = true })
+                DropdownMenuItem(text = { Text("Category…") }, onClick = { menu = false; picking = true })
+                if (!first) DropdownMenuItem(text = { Text("Move up") }, onClick = { menu = false; edit(null) { it.moveSection(s.name, -1) } })
+                if (!last) DropdownMenuItem(text = { Text("Move down") }, onClick = { menu = false; edit(null) { it.moveSection(s.name, 1) } })
+                DropdownMenuItem(
+                    text = { Text(if (s.hidden) "Show in the drawer" else "Hide from the drawer") },
+                    onClick = { menu = false; edit(null) { it.setSectionHidden(s.name, !s.hidden) } },
+                )
+                if (inFile) DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; edit("${s.name} is deleted.") { it.deleteSection(s.name) } })
+            }
+        }
+    }
+    if (renaming) NameDialog("Rename ${s.name}", s.name) { name ->
+        renaming = false
+        if (name != null && name != s.name) edit(null) { it.renameSection(s.name, name) }
+    }
+    if (picking) {
+        // The categories it may take: none, its own, or one no other section in the file takes
+        // (for a section not in the file yet, one no other section in the drawer takes).
+        val others = (if (inFile) file.drawer.sections else file.drawer.allSections()).filter { it.name != s.name }
+        val free = listOf<Category?>(null) + Category.entries.filter { c -> others.none { it.category == c } }
+        AlertDialog(
+            onDismissRequest = { picking = false },
+            confirmButton = { TextButton(onClick = { picking = false }) { Text("Cancel") } },
+            title = { Text("${s.name} takes") },
+            text = {
+                Column {
+                    free.forEach { c ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable {
+                                picking = false
+                                if (c != s.category) edit(null) { it.setSectionCategory(s.name, c) }
+                            }.padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = c == s.category, onClick = null)
+                            Spacer(Modifier.width(12.dp))
+                            Text(c?.title ?: "No category (only the apps put here)")
+                        }
+                    }
+                }
+            },
+        )
+    }
+}
+
+/** Asks for a section's name; [done] gets it, or null when cancelled. */
+@Composable
+private fun NameDialog(title: String, initial: String, done: (String?) -> Unit) {
+    var text by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = { done(null) },
+        confirmButton = { TextButton(onClick = { done(text.trim()) }, enabled = text.isNotBlank()) { Text("Save") } },
+        dismissButton = { TextButton(onClick = { done(null) }) { Text("Cancel") } },
+        title = { Text(title) },
+        text = { OutlinedTextField(text, { text = it }, singleLine = true, label = { Text("Name") }) },
+    )
 }

@@ -200,3 +200,103 @@ fun <T> Drawer.sort(apps: List<T>, id: (T) -> AppId, category: (T) -> Category):
     }
     return all.mapIndexed { i, s -> SortedSection(s.name, s.category, placed[i].orEmpty(), s.hidden, s.reason, i < inFile) }
 }
+
+/*
+ * Hand edits to the drawer's sections (launcher polish 2.3), pure like the layout edits in
+ * Layout.kt: each returns the edited file or throws a [LayoutError] saying why it refuses. A
+ * section an edit touches becomes `pinned`. An edit that needs a section the file doesn't hold
+ * yet writes every section in its current order first, the others unpinned, so nothing moves.
+ */
+
+/** The file's sections, made to hold every section the drawer shows. */
+private fun Drawer.full(): Drawer = copy(sections = allSections())
+
+private fun Drawer.indexOf(name: String): Int =
+    sections.indexOfFirst { it.name.equals(name, ignoreCase = true) }
+
+private fun LayoutFile.withDrawer(change: (Drawer) -> Drawer) = copy(drawer = change(drawer))
+
+private fun Drawer.checkName(name: String, except: String? = null): String {
+    val n = name.trim()
+    if (n.isEmpty()) throw LayoutError("a section needs a name")
+    allSections().firstOrNull { it.name.equals(n, ignoreCase = true) && !it.name.equals(except, ignoreCase = true) }?.let {
+        throw LayoutError("a section is already called \"${it.name}\"")
+    }
+    return n
+}
+
+/** The section [app] is in now, as [sort] places it. */
+fun Drawer.sectionOf(app: AppId, category: Category): String? =
+    sort(listOf(app), { it }, { category }).firstOrNull { it.apps.isNotEmpty() }?.name
+
+/** Moves [app] (written as [ref]) to the section named [target]. */
+fun LayoutFile.moveToSection(app: AppId, ref: AppRef, category: Category, target: String): LayoutFile = withDrawer { d ->
+    val full = d.full()
+    val to = full.indexOf(target).takeIf { it >= 0 } ?: throw LayoutError("there is no section called \"$target\"")
+    if (d.sectionOf(app, category).equals(full.sections[to].name, ignoreCase = true)) {
+        throw LayoutError("it's already in ${full.sections[to].name}")
+    }
+    val names = { r: AppRef -> r.matches(app.packageName, app.className) }
+    full.copy(sections = full.sections.mapIndexed { i, s ->
+        when {
+            i == to -> s.copy(apps = s.apps.filterNot(names) + ref, pinned = true)
+            s.apps.any(names) -> s.copy(apps = s.apps.filterNot(names), pinned = true)
+            else -> s
+        }
+    })
+}
+
+fun LayoutFile.renameSection(name: String, to: String): LayoutFile = withDrawer { d ->
+    val full = d.full()
+    val i = full.indexOf(name).takeIf { it >= 0 } ?: throw LayoutError("there is no section called \"$name\"")
+    val n = d.checkName(to, except = full.sections[i].name)
+    full.copy(sections = full.sections.mapIndexed { j, s -> if (j == i) s.copy(name = n, pinned = true) else s })
+}
+
+/**
+ * Gives the section [name] the [category] (null: none, so it holds only the apps it lists). The
+ * category must be free in the file: a category no file section takes is free, even though the
+ * drawer shows a section of its own for it.
+ */
+fun LayoutFile.setSectionCategory(name: String, category: Category?): LayoutFile = withDrawer { d ->
+    // An automatic section is written into the file first; a file section is changed where it is.
+    val base = if (d.indexOf(name) >= 0) d else d.full()
+    val i = base.indexOf(name).takeIf { it >= 0 } ?: throw LayoutError("there is no section called \"$name\"")
+    if (category != null) {
+        base.sections.withIndex().firstOrNull { (j, s) -> j != i && s.category == category }?.let { (_, s) ->
+            throw LayoutError("${s.name} takes ${category.title} already")
+        }
+    }
+    base.copy(sections = base.sections.mapIndexed { j, s -> if (j == i) s.copy(category = category, pinned = true) else s })
+}
+
+/** Moves the section [name] one place up ([by] -1) or down (+1); only it is pinned. */
+fun LayoutFile.moveSection(name: String, by: Int): LayoutFile = withDrawer { d ->
+    val full = d.full()
+    val i = full.indexOf(name).takeIf { it >= 0 } ?: throw LayoutError("there is no section called \"$name\"")
+    val j = i + by
+    if (j !in full.sections.indices) throw LayoutError("it's already ${if (by < 0) "first" else "last"}")
+    val list = full.sections.toMutableList()
+    list[i] = list[j].also { list[j] = list[i].copy(pinned = true) }
+    full.copy(sections = list)
+}
+
+fun LayoutFile.setSectionHidden(name: String, hidden: Boolean): LayoutFile = withDrawer { d ->
+    val full = d.full()
+    val i = full.indexOf(name).takeIf { it >= 0 } ?: throw LayoutError("there is no section called \"$name\"")
+    if (full.sections[i].hidden == hidden) throw LayoutError("it's already ${if (hidden) "hidden" else "shown"}")
+    full.copy(sections = full.sections.mapIndexed { j, s -> if (j == i) s.copy(hidden = hidden, pinned = true) else s })
+}
+
+/** Removes a section the file holds: its listed apps go back to their categories, its category to a section of its own. */
+fun LayoutFile.deleteSection(name: String): LayoutFile = withDrawer { d ->
+    val i = d.indexOf(name).takeIf { it >= 0 } ?: throw LayoutError("\"$name\" is made from its category and can't be deleted")
+    d.copy(sections = d.sections.filterIndexed { j, _ -> j != i })
+}
+
+/** Adds an empty section, without a category, after the others. */
+fun LayoutFile.newSection(name: String): LayoutFile = withDrawer { d ->
+    val n = d.checkName(name)
+    val full = d.full()
+    full.copy(sections = full.sections + DrawerSection(n, pinned = true))
+}
