@@ -35,6 +35,29 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun PairCard(connection: T3Connection, status: T3Connection.Status, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(CardFill, RoundedCornerShape(14.dp))
+            .border(1.dp, Line, RoundedCornerShape(14.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            if (status is T3Connection.Status.Rejected) "T3 refused this phone: ${status.error}. Pair again." else "Pair with T3",
+            style = Body.copy(fontSize = 14.sp),
+        )
+        Text("Scan the code in T3's Connections settings, or paste its pairing link.", style = Small)
+        PairActions(connection)
+    }
+}
+
+/**
+ * Scan code and Paste a link, with the link's field and the failure under them: the pairing card's
+ * actions, also in home's set-up card. [primary] is false where another action is the screen's one.
+ */
+@Composable
+fun PairActions(connection: T3Connection, primary: Boolean = true) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var pasting by rememberSaveable { mutableStateOf(false) }
@@ -54,21 +77,9 @@ fun PairCard(connection: T3Connection, status: T3Connection.Status, modifier: Mo
             result.fold({ link = ""; pasting = false }, { failure = "Can't pair: ${T3Connection.describe(it)}" })
         }
     }
-    Column(
-        modifier
-            .fillMaxWidth()
-            .background(CardFill, RoundedCornerShape(14.dp))
-            .border(1.dp, Line, RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            if (status is T3Connection.Status.Rejected) "T3 refused this phone: ${status.error}. Pair again." else "Pair with T3",
-            style = Body.copy(fontSize = 14.sp),
-        )
-        Text("Scan the code in T3's Connections settings, or paste its pairing link.", style = Small)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pill(if (pairing) "Pairing…" else "Scan code", primary = true, enabled = !pairing) {
+            Pill(if (pairing) "Pairing…" else "Scan code", primary = primary, enabled = !pairing) {
                 failure = null
                 PairScan.scan(context, { found, _ -> pair(found) }, { failure = it })
             }

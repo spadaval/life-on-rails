@@ -210,6 +210,8 @@ private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutS
                 if (layout is LayoutState.Broken) {
                     BrokenBanner(layout, appsLoad == AppsLoad.LOADED, LabelStyle.copy(color = Ink, fontSize = 13.sp), Modifier.padding(horizontal = 20.dp), home.actions::restore)
                 }
+                // Until the first run is done (launcher polish 3.5); the default layout is drawn under it.
+                SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
                 val body = homeBody(appsLoad, home.file, placed?.first?.size ?: 0)
                 when (body) {
                     HomeBody.NOTHING -> {}

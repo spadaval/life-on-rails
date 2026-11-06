@@ -56,6 +56,11 @@ class Prefs(context: Context) {
         get() = p.getString("whatsapp_uploaded", null) ?: ""
         set(value) = p.edit { putString("whatsapp_uploaded", value) }
 
+    /** Home's set-up card has been finished or dismissed once (launcher polish 3.5). What this phone has been through, so not in `layout.json`. */
+    var setupDone: Boolean
+        get() = p.getBoolean("setup_done", false)
+        set(value) = p.edit { putBoolean("setup_done", value) }
+
     var uploadedTotal: Long
         get() = p.getLong("uploaded_total", 0L)
         set(value) = p.edit { putLong("uploaded_total", value) }
