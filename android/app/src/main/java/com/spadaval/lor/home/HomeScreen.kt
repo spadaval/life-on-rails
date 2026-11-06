@@ -56,6 +56,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -105,9 +106,15 @@ import java.time.format.DateTimeFormatter
  * Motion is one-shot only: the drawer slides in and out, nothing loops (strategy: calm).
  */
 
+/** Home's look from `layout.json` (launcher polish 6.4), for everything home and the drawer draw. */
+val LocalHomeLook = staticCompositionLocalOf { HomeLook() }
+
+/** The icon size the look asks for. */
+internal val iconSize: Dp @Composable get() = LocalHomeLook.current.iconSize.dp
+
 /** An app's or folder's label in the ink of what it stands on (launcher polish 6.3: the wallpaper's on home). */
 internal val labelStyle: TextStyle
-    @Composable get() = LocalWallInk.current.let { TextStyle(fontFamily = Saira, color = it.text, fontSize = 12.sp, shadow = it.shadow) }
+    @Composable get() = LocalWallInk.current.let { TextStyle(fontFamily = Saira, color = it.text, fontSize = LocalHomeLook.current.labelSize.sp, shadow = it.shadow) }
 
 /** What the activity can reset on a home press. */
 class HomeUi {
@@ -257,6 +264,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // The drag handler lives across recompositions, so it reads the latest of these.
     val latestHome by rememberUpdatedState(home)
     val latestDrop by rememberUpdatedState<(Held, Target?) -> Unit>(::dropHeld)
+    CompositionLocalProvider(LocalHomeLook provides (file?.look ?: HomeLook())) {
     Box(Modifier.fillMaxSize().dragging(ui, { latestHome }, { h, t -> latestDrop(h, t) })) {
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1, userScrollEnabled = held == null) { page ->
             if (page == 0) AgentPage() else CompositionLocalProvider(LocalWallInk provides ink) { HomePage(page - 1, placed, layout, appsLoad, ui, home) }
@@ -275,6 +283,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         held?.let { HeldItem(it) }
         // Above the drawer and folders, clear of the dock.
         UndoBar(ui.undo, actions::undo, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 112.dp))
+    }
     }
 }
 
@@ -309,11 +318,12 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
             },
         )
         val wide = maxWidth >= 600.dp
+        val widthDp = maxWidth.value
         // Only home's first page has the date; the pages after it start where its grid starts.
         val header = @Composable { if (n == 0) DateHeader(if (wide) 40 else 30) else Spacer(Modifier.height(if (wide) 0.dp else 104.dp)) }
         val body = @Composable { mod: Modifier ->
             Column(mod) {
-                val columns = if (wide) 5 else 4
+                val columns = LocalHomeLook.current.columnsFor(widthDp).home
                 if (n == 0 && layout is LayoutState.Broken) {
                     BrokenBanner(
                         layout, appsLoad == AppsLoad.LOADED, Type.body.copy(color = Txt, fontSize = 13.sp),
@@ -373,8 +383,8 @@ private fun Skeleton(items: List<LayoutItem>, columns: Int) {
             Row(Modifier.fillMaxWidth()) {
                 row.forEach { item ->
                     Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
-                        Column(Modifier.width(76.dp).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(Modifier.size(52.dp).background(Line, if (item is Folder) RectangleShape else CircleShape))
+                        Column(Modifier.fillMaxWidth().widthIn(max = 76.dp).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(Modifier.size(iconSize).background(Line, if (item is Folder) RectangleShape else CircleShape))
                             // The label's height, so the rows sit where the tiles will.
                             Spacer(Modifier.height(5.dp))
                             Text("", style = labelStyle)
@@ -398,7 +408,7 @@ private fun DockSkeleton(count: Int) {
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        repeat(count) { Box(Modifier.size(48.dp).background(Line, CircleShape)) }
+        repeat(count) { Box(Modifier.size(iconSize).background(Line, CircleShape)) }
     }
 }
 
@@ -480,7 +490,7 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeCo
                         contentAlignment = Alignment.TopCenter,
                     ) {
                         when (item) {
-                            is Placed.App -> MenuTile(item.app, At(LaunchFrom.HOME), home, spot = item.at)
+                            is Placed.App -> MenuTile(item.app, At(LaunchFrom.HOME), home, spot = item.at, label = LocalHomeLook.current.labels)
                             is Placed.InFolder -> FolderTile(item.folder, home) { ui.folder = OpenFolder(item.folder.at.spot as Spot.Page, item.folder.folder.name) }
                         }
                     }
@@ -496,7 +506,8 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
     // An empty dock shows while something is held, so it can take it.
     if (apps.isEmpty() && home.drag.held == null) return
     val drag = home.drag
-    val iconPx = with(LocalDensity.current) { 48.dp.toPx() }
+    val dockIcon = iconSize
+    val iconPx = with(LocalDensity.current) { dockIcon.toPx() }
     Row(
         Modifier
             .fillMaxWidth()
@@ -504,7 +515,7 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
             .framedPanel(PanelFace.copy(alpha = 0.72f))
             .dropZone(drag, "dock$page") { b -> Zone.Area(Place.Dock, b) }
             .padding(vertical = 10.dp)
-            .height(48.dp),
+            .height(dockIcon),
     ) {
         val at = At(LaunchFrom.DOCK)
         apps.forEach { (app, spot) ->
@@ -519,7 +530,7 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
             ) {
                 WithAppMenu(app, at, home, spot) { menu ->
                     AppIcon(
-                        app, 48.dp,
+                        app, dockIcon,
                         Modifier.semantics { contentDescription = app.label }
                             .combinedClickable(onLongClickLabel = "Menu", onLongClick = menu) { if (!drag.editing) home.actions.open(app, at) },
                     )
@@ -541,27 +552,33 @@ private fun PageDots(current: Int, count: Int, mark: Color, modifier: Modifier) 
 
 /** An app tile whose tap opens it from [at] and whose long press opens its menu. */
 @Composable
-internal fun MenuTile(app: HomeApp, at: At, home: HomeContext, width: Dp = 76.dp, dot: Boolean = false, spot: From.At? = null, beforeOpen: () -> Unit = {}) {
+internal fun MenuTile(app: HomeApp, at: At, home: HomeContext, width: Dp = 76.dp, dot: Boolean = false, spot: From.At? = null, label: Boolean = true, beforeOpen: () -> Unit = {}) {
     WithAppMenu(app, at, home, spot) { menu ->
         // In edit mode a tap opens nothing (launcher polish 4.3).
-        AppTile(app, width, menu, dot) { if (!home.drag.editing) { beforeOpen(); home.actions.open(app, at) } }
+        AppTile(app, width, menu, dot, label) { if (!home.drag.editing) { beforeOpen(); home.actions.open(app, at) } }
     }
 }
 
 @Composable
-internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)? = null, dot: Boolean = false, onClick: () -> Unit) {
+internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)? = null, dot: Boolean = false, label: Boolean = true, onClick: () -> Unit) {
     Column(
-        Modifier.width(width).combinedClickable(onLongClickLabel = onLongClick?.let { "Menu" }, onLongClick = onLongClick, onClick = onClick)
+        // The cell's width, at most [width]: a tile never overflows a narrow column (launcher polish 6.4).
+        Modifier.fillMaxWidth().widthIn(max = width)
+            // Without a label the tile keeps its name for TalkBack.
+            .then(if (label) Modifier else Modifier.semantics { contentDescription = app.label })
+            .combinedClickable(onLongClickLabel = onLongClick?.let { "Menu" }, onLongClick = onLongClick, onClick = onClick)
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box {
-            AppIcon(app, 52.dp)
+            AppIcon(app, iconSize)
             // A new app's dot (launcher polish 2.2), until it is first opened from the launcher.
             if (dot) Box(Modifier.align(Alignment.TopEnd).size(10.dp).background(Txt, CircleShape).border(1.5.dp, Bg, CircleShape))
         }
-        Spacer(Modifier.height(5.dp))
-        Text(app.label, style = labelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+        if (label) {
+            Spacer(Modifier.height(5.dp))
+            Text(app.label, style = labelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+        }
     }
 }
 
@@ -573,8 +590,10 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: () ->
     val held = home.drag.held
     LaunchedEffect(held) { if (held != null) menu = false }
     if (menu) FolderMenu(folder, home) { menu = false }
+    val label = LocalHomeLook.current.labels
     Column(
-        Modifier.width(76.dp)
+        Modifier.fillMaxWidth().widthIn(max = 76.dp)
+            .then(if (label) Modifier else Modifier.semantics { contentDescription = folder.folder.name })
             .combinedClickable(onLongClickLabel = "Menu", onLongClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 menu = true
@@ -583,8 +602,10 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: () ->
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         FolderIcon(folder)
-        Spacer(Modifier.height(5.dp))
-        Text(folder.folder.name, style = labelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (label) {
+            Spacer(Modifier.height(5.dp))
+            Text(folder.folder.name, style = labelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
@@ -592,16 +613,16 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: () ->
 @Composable
 private fun FolderIcon(folder: ResolvedFolder) {
     if (folder.cover != null) {
-            AppIcon(folder.cover, 52.dp)
+            AppIcon(folder.cover, iconSize)
         } else Column(
             Modifier
-                .size(52.dp)
+                .size(iconSize)
                 .background(LocalWallInk.current.text.copy(alpha = 0.09f)).border(1.dp, Edge)
                 .padding(6.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             folder.apps.take(4).map { it.first }.chunked(2).forEach { pair ->
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { pair.forEach { AppIcon(it, 18.dp) } }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { pair.forEach { AppIcon(it, (iconSize - 16.dp) / 2) } }
             }
         }
 }
@@ -640,7 +661,7 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
                                 .alpha(if (drag.held?.spot == at.spot) 0f else 1f),
                             contentAlignment = Alignment.TopCenter,
                         ) {
-                            MenuTile(app, At(LaunchFrom.FOLDER, folder.folder.name), home, width = 72.dp, spot = at, beforeOpen = onClose)
+                            MenuTile(app, At(LaunchFrom.FOLDER, folder.folder.name), home, width = 72.dp, spot = at, label = LocalHomeLook.current.labels, beforeOpen = onClose)
                         }
                     }
                     repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -656,13 +677,14 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
  */
 internal fun Modifier.swallowTaps(): Modifier = pointerInput(Unit) { detectTapGestures {} }
 
-/** Where an app or folder tile's icon sits in its cell: 4 dp down, 52 dp across. */
+/** Where an app or folder tile's icon sits in its cell: 4 dp down, the look's icon size across. */
 private class TileIcon(val top: Float, val size: Float)
 
 @Composable
 private fun rememberTileIcon(): TileIcon {
     val density = LocalDensity.current
-    return remember(density) { with(density) { TileIcon(4.dp.toPx(), 52.dp.toPx()) } }
+    val size = iconSize
+    return remember(density, size) { with(density) { TileIcon(4.dp.toPx(), size.toPx()) } }
 }
 
 private fun Rect.toBounds() = Bounds(left, top, right, bottom)
@@ -782,10 +804,11 @@ private fun Modifier.dragging(ui: HomeUi, home: () -> HomeContext, drop: (Held, 
 @Composable
 private fun HeldItem(held: Held) {
     val density = LocalDensity.current
-    val half = with(density) { 26.dp.toPx() }
+    val size = iconSize
+    val half = with(density) { (size / 2).toPx() }
     Box(Modifier.offset { IntOffset((held.finger.x - half).roundToInt(), (held.finger.y - half).roundToInt()) }) {
         when {
-            held.app != null -> AppIcon(held.app, 52.dp)
+            held.app != null -> AppIcon(held.app, size)
             held.folder != null -> FolderIcon(held.folder)
         }
     }

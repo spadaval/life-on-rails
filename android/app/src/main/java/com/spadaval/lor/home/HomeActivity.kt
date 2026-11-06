@@ -48,7 +48,7 @@ class HomeActivity : ComponentActivity() {
         // Home's labels are light over the wallpaper, so the system bar icons are too.
         enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
         launcherApps = getSystemService(LauncherApps::class.java)
-        val icons = Icons((56 * resources.displayMetrics.density).toInt())
+        val icons = Icons((HomeLook.ICON_SIZES.last * resources.displayMetrics.density).toInt())
         model = HomeModel((application as LorApp).home, lifecycleScope, icons)
         // Back on home goes nowhere; HomeScreen's handlers close what is open first.
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {

@@ -25,6 +25,8 @@ import java.time.format.DateTimeParseException
  *   "drawer": { "view": "sections",                      // optional (launcher polish 2.1)
  *               "sections": [{ "name": "Work", "category": "work", "apps": ["com.slack"] }],
  *               "keyboard": true },                     // optional (launcher polish 5.5)
+ *   "look": { "grid": { "narrow": { "home": 5, "drawer": 5 }, "wide": { "home": 6 } },
+ *             "labels": false, "labelSize": 13, "iconSize": 48 },   // optional (launcher polish 6.4), HomeLook
  *   "layouts": [
  *     { "name": "default",
  *       "expires": "2026-11-18T00:00:00Z",          // optional; read, not acted on until Increment 10
@@ -47,6 +49,7 @@ data class LayoutFile(
     val layouts: List<Layout>,
     val hidden: List<AppRef> = emptyList(),
     val drawer: Drawer = Drawer(),
+    val look: HomeLook = HomeLook(),
 ) {
     val current: Layout get() = layouts.first { it.name == active }
 
@@ -56,6 +59,7 @@ data class LayoutFile(
             .put("active", active)
             .apply { if (hidden.isNotEmpty()) put("hidden", JSONArray(hidden.map { it.toString() })) }
             .apply { if (drawer != Drawer()) put("drawer", drawer.toJson()) }
+            .apply { look.toJson().takeIf { it.length() > 0 }?.let { put("look", it) } }
             .put("layouts", JSONArray(layouts.map { it.toJson() }))
             .toString(2),
     )
@@ -102,7 +106,7 @@ data class LayoutFile(
                 true
             }
             if (trailing) throw LayoutError("not JSON: more after the closing }")
-            root.onlyKeys("", "version", "active", "hidden", "drawer", "layouts")
+            root.onlyKeys("", "version", "active", "hidden", "drawer", "look", "layouts")
             val version = root.opt("version")
             if (version != VERSION) throw LayoutError("version: must be $VERSION, got ${version ?: "nothing"}")
             val layouts = root.array("", "layouts").mapIndexed { i, v -> parseLayout("layouts[$i]", v) }
@@ -117,7 +121,8 @@ data class LayoutFile(
                 throw LayoutError("hidden: \"$it\" is listed twice")
             }
             val drawer = if (root.has("drawer")) parseDrawer(root.opt("drawer")!!) else Drawer()
-            return LayoutFile(active, layouts, hidden, drawer)
+            val look = if (root.has("look")) HomeLook.parse(root.opt("look")!!) else HomeLook()
+            return LayoutFile(active, layouts, hidden, drawer, look)
         }
 
         private fun parseDrawer(v: Any): Drawer {

@@ -49,6 +49,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import com.spadaval.lor.ui.selection
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.border
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -201,6 +209,10 @@ private fun HomeSettings(
                 }
             }
         }
+        if (file != null) {
+            item { Section("Look") }
+            item { LookRows(file.look) { done, look -> edit(done) { it.copy(look = look) } } }
+        }
         item { Section("Search") }
         if (file != null) {
             item {
@@ -287,6 +299,57 @@ private fun ContactsRow(open: (Intent) -> Unit) {
 }
 
 /** A setting that is on or off: the whole row toggles it, read as one switch. */
+/** Home's look (launcher polish 6.4): columns per class of screen, labels, label and icon size. */
+@Composable
+private fun LookRows(look: HomeLook, set: (String, HomeLook) -> Unit) {
+    val here = if (LocalConfiguration.current.screenWidthDp >= HomeLook.WIDE_DP) "wide" else "narrow"
+    fun mark(cls: String) = if (cls == here) " (this screen)" else ""
+    Column {
+        Choices("Home grid, narrow screens${mark("narrow")}", "Columns under 600 dp wide", HomeLook.NARROW_HOME.toList(), look.grid.narrow.home) {
+            set("Home has $it columns on narrow screens.", look.copy(grid = look.grid.copy(narrow = look.grid.narrow.copy(home = it))))
+        }
+        Choices("Home grid, wide screens${mark("wide")}", "Columns from 600 dp wide", HomeLook.WIDE_HOME.toList(), look.grid.wide.home) {
+            set("Home has $it columns on wide screens.", look.copy(grid = look.grid.copy(wide = look.grid.wide.copy(home = it))))
+        }
+        Choices("Drawer grid, narrow screens${mark("narrow")}", "Columns under 600 dp wide", HomeLook.NARROW_DRAWER.toList(), look.grid.narrow.drawer) {
+            set("The drawer has $it columns on narrow screens.", look.copy(grid = look.grid.copy(narrow = look.grid.narrow.copy(drawer = it))))
+        }
+        Choices("Drawer grid, wide screens${mark("wide")}", "Columns from 600 dp wide", HomeLook.WIDE_DRAWER.toList(), look.grid.wide.drawer) {
+            set("The drawer has $it columns on wide screens.", look.copy(grid = look.grid.copy(wide = look.grid.wide.copy(drawer = it))))
+        }
+        Toggle("Labels on home", "Names under apps and folders on home; the drawer always has them", look.labels) {
+            set(if (look.labels) "Home has no labels." else "Home has labels.", look.copy(labels = !look.labels))
+        }
+        Choices("Label size", "In sp", HomeLook.LABEL_SIZES.toList(), look.labelSize) {
+            set("Labels are $it sp.", look.copy(labelSize = it))
+        }
+        Choices("Icon size", "In dp, on home, in the dock, folders and the drawer", HomeLook.ICON_SIZES.step(4).toList(), look.iconSize) {
+            set("Icons are $it dp.", look.copy(iconSize = it))
+        }
+    }
+}
+
+/** A row of numbers to pick one from, the chosen one in DESIGN.md's selection. */
+@Composable
+private fun Choices(title: String, subtitle: String, options: List<Int>, chosen: Int, pick: (Int) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = MaterialTheme.typography.bodyLarge)
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(Modifier.padding(top = 6.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { n ->
+                val on = n == chosen
+                Box(
+                    Modifier.size(48.dp)
+                        .then(if (on) Modifier.selection() else Modifier.border(1.dp, MaterialTheme.colorScheme.outline))
+                        .selectable(on, role = Role.RadioButton) { if (!on) pick(n) }
+                        .semantics { contentDescription = "$title: $n" },
+                    contentAlignment = Alignment.Center,
+                ) { Text("$n", style = MaterialTheme.typography.bodyLarge) }
+            }
+        }
+    }
+}
+
 @Composable
 private fun Toggle(title: String, subtitle: String, on: Boolean, toggle: () -> Unit) {
     Row(

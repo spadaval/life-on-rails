@@ -288,7 +288,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
             NoResults(ui.query, ways, line = results.answer == null) { home.actions.elsewhere(it, ui.query) }
         }
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val columns = if (maxWidth >= 600.dp) 6 else 4
+            val columns = LocalHomeLook.current.columnsFor(maxWidth.value).drawer
             val now = remember(apps, stats) { System.currentTimeMillis() }
             val goKey = if (focused && current) results.go?.key else null
             val built = remember(view, apps, home.file, stats, columns, searching, results, goKey) {
