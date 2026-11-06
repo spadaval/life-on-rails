@@ -158,13 +158,16 @@ class HomeActivity : ComponentActivity() {
             }
         }
 
-        override fun edit(done: String?, change: (LayoutFile) -> LayoutFile) {
+        override fun edit(done: String?, after: () -> Unit, change: (LayoutFile) -> LayoutFile) {
             lifecycleScope.launch {
                 model.edit(change = change)
                     .onSuccess { if (it.undoable) ui.undo.show(done ?: "Home changed.") }
                     .onFailure { toast("Can't: ${it.message ?: "the layout couldn't be changed"}.") }
+                after()
             }
         }
+
+        override fun refused(reason: String) = toast("Can't: $reason.")
 
         override fun undo() {
             lifecycleScope.launch {

@@ -491,7 +491,7 @@ Agreed with Sumeet, 2026-11-05:
     - An edit with no message says "Home changed." (the section edits in Home settings).
   - Reviewed with the increment.
 
-#### 4.3 Drag on home and the dock, Remove, and edit mode. Status: todo
+#### 4.3 Drag on home and the dock, Remove, and edit mode. Status: done
 - **Goal.** An app on home or in the dock can be picked up from its menu and moved anywhere on the page, in or out of the dock, or onto Remove. "Edit home" exists.
   - **Pick up.** The app's long press opens its menu as now. Once the finger has moved 16 dp from where it pressed, the menu closes and the drag starts, in `HomeUi`, from the tile's `Spot`. The tile keeps one `combinedClickable` node for TalkBack and agent-device; the drag's handler sits beside it and adds no semantics.
 
@@ -522,6 +522,33 @@ Agreed with Sumeet, 2026-11-05:
   - **Edit home:** the bar shows, a tap on an app leaves the foreground app as LoR (`agent-device appstate`), and back leaves edit mode. Entered again, a home press leaves it and doesn't open quick send.
   - Screenshots of edit mode and of a drag over Remove are kept for the review.
   - `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed.
+  - **Code.** `home/Drag.kt`: `Bounds`, `Zone`, `targetAt`, `Source`, `Held` (the working copy, its steps, and `takes`), `DragState` (held, edit mode, `landing`) and `dropMessage`. In `HomeScreen.kt`:
+    - the root's `dragging` handler, in the Initial pass;
+    - the `dropZone` and `dragSource` modifiers;
+    - the page's space as a zone, and the dock in equal cells, drawn while something is held even when empty;
+    - `HeldItem`, `TopBar` (edit mode's bar, or Remove), and the 300 ms step;
+    - the drop, written as one edit that refuses unless the file is still the one the drag started from.
+
+    Also "Edit home" in the home menu, and `HomeActions.refused` and `edit(…, after)`. `DragTest` (3) passes on boat with the rest (144).
+  - **On `T3_Phone_API35`,** each drag driven with `input motionevent` (down, 0.9 s, eight moves, a pause, up):
+    - Calendar dropped on the left half of the fourth tile moved it in front of that tile, with one `wrote layout.json`.
+    - The first try, 67 px from Life on Rails's icon centre, went onto it and made a folder "Work": the onto radius at work, and the Undo bar was too quick for the script to catch.
+    - Photos was dropped between Messages and Chrome in the dock (the dock then held five), and Life on Rails from home was added to the dock.
+    - With five in the dock, Calendar dropped straight on it showed "Can't: the dock is full (5 apps)." and the sum didn't change. On a slower path, Calendar first stayed 300 ms over home's space, moved to its end, and that move was written.
+    - Maps dragged to Remove (screenshot): the bar lit amber and the Maps slot was empty. Undo right after the drop gave back the same sum (`undid the last edit`).
+    - Maps dragged across home to an empty part of the page went to the end of home, and the pager stayed on home.
+    - Edit home showed the bar with Done (screenshot). A tap on Calendar left LoR's home in front (`agent-device appstate`). Back left edit mode. Entered again, a home press left it and opened no quick send.
+    - Seen once by chance: a write made with `run-as` while home was on screen (home rereads only on resume) made the next drag's drop refuse ("Home changed; try again"), as R1 intended.
+  - **Choices.**
+    - The drop under the finger is applied at the drop even if it hasn't waited 300 ms, as in Launcher3. The wait is only for the preview.
+    - A refused drop leaves the item where the working copy has it, and that is written if it differs from the start.
+    - The Remove and edit-mode bars are opaque, over the date header.
+    - Dock icons sit in equal cells instead of `SpaceEvenly`, so the space between them belongs to one of them.
+    - Messages: "Moved.", "Removed from home.", "Removed from the dock.", "Folder made.", "Added to <folder>.".
+  - **Not done:** the pickup haptic is the long press's own tick; the drop's haptic and motion stay Increment 7's.
+  - Reviewed with the increment.
 
 #### 4.4 Folders by hand. Status: todo
 - **Goal.** Folders are made, filled, emptied, ordered, renamed and given a cover on the phone.

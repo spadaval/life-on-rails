@@ -68,7 +68,10 @@ interface HomeActions {
      * Applies [change] to `layout.json`; a refusal shows as a toast. On success the Undo bar says
      * [done], or "Home changed." (launcher polish 4.2).
      */
-    fun edit(done: String?, change: (LayoutFile) -> LayoutFile)
+    fun edit(done: String?, after: () -> Unit = {}, change: (LayoutFile) -> LayoutFile)
+
+    /** Says why a drop was refused ("Can't: …"), as a refused edit does. */
+    fun refused(reason: String)
 
     /** Takes back the last edit ([HomeStore.undo]). */
     fun undo()
@@ -84,7 +87,7 @@ interface HomeActions {
 }
 
 /** What a screen of home needs to draw apps and their menus. */
-class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: List<HomeApp>) {
+class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: List<HomeApp>, val drag: DragState) {
     /** The main-profile apps in label order, as the edits resolve refs (launcher polish 4.1). */
     val installed: List<AppId> = apps.filter { it.mainProfile }.map { it.id }
 
@@ -112,6 +115,9 @@ class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: Lis
 fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At? = null, content: @Composable (onLongClick: () -> Unit) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
+    // Picking the app up closes its menu (launcher polish 4.3).
+    val held = home.drag.held
+    LaunchedEffect(held) { if (held != null) open = false }
     Box {
         content {
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -189,9 +195,10 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, clo
 
 /** The menu for a long press on empty home, at [at] within home's content (launcher polish 1.3). */
 @Composable
-fun HomeMenu(at: Offset, home: HomeContext, close: () -> Unit) {
+fun HomeMenu(at: Offset, home: HomeContext, onEdit: () -> Unit, close: () -> Unit) {
     Box(Modifier.offset { IntOffset(at.x.roundToInt(), at.y.roundToInt()) }) {
         DropdownMenu(true, close, containerColor = MenuPanel, shape = RoundedCornerShape(16.dp)) {
+            Item("Edit home") { close(); onEdit() }
             Item("Wallpaper") { close(); home.actions.wallpaper() }
             Item("Home settings") { close(); home.actions.settings() }
         }

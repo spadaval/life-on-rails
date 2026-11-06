@@ -4,6 +4,17 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -41,6 +52,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -108,13 +120,18 @@ class HomeUi {
     var homeMenu by mutableStateOf<Offset?>(null)
     /** The Undo bar after an edit (launcher polish 4.2). */
     val undo = UndoBarState()
+    /** What is held, and edit mode (launcher polish 4.3). */
+    val drag = DragState()
     /** The pager's page showing: 0 is the agent page, 1 is home, 2 on are the pages after it. */
     var page by mutableStateOf(1)
 
     /** Home with nothing open over it: a home press here opens quick send instead. */
-    val atRest: Boolean get() = !drawer && folder == null && homeMenu == null && page == 1
+    val atRest: Boolean get() = !drawer && folder == null && homeMenu == null && page == 1 && !drag.editing && drag.held == null
 
     fun homePressed() {
+        // A home press puts a held item back and leaves edit mode.
+        drag.held = null
+        drag.editing = false
         drawer = false
         folder = null
         homeMenu = null
@@ -163,8 +180,11 @@ private fun place(layout: Layout, apps: List<HomeApp>): PlacedHome {
 @Composable
 fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, reads: Int, stats: LaunchStats, ui: HomeUi, actions: HomeActions) {
     // While the file is broken, everything draws from the last good layout (launcher polish 3.1).
-    val file = layout.shown
-    val home = remember(actions, file, apps) { HomeContext(actions, file, apps) }
+    // While an item is held, home draws the drag's working copy; just after a drop, what it wrote (launcher polish 4.3).
+    val drag = ui.drag
+    val held = drag.held
+    val file = held?.work ?: drag.landing ?: layout.shown
+    val home = remember(actions, file, apps) { HomeContext(actions, file, apps, drag) }
     val placed = remember(apps, file) { file?.let { place(it.current, apps) } }
     val folder = ui.folder?.let { open ->
         placed?.pages?.getOrNull(open.spot.page)?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf { f -> f.at.spot == open.spot && f.folder.name == open.name } }
@@ -175,17 +195,48 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // A file changed from outside (an agent, adb) may hold another folder at the open one's place.
     LaunchedEffect(reads) { ui.folder = null }
     val pager = rememberPagerState(initialPage = 1) { 1 + pageCount }
+    // A target waits 300 ms under the finger before the working copy takes it (Kvaesitso's attemptMove).
+    LaunchedEffect(held, held?.pending) {
+        val t = held?.pending ?: return@LaunchedEffect
+        delay(300)
+        held.step(t)
+        held.pending = null
+    }
+    fun dropHeld(h: Held, t: Target?) {
+        drag.held = null
+        var final = h.work
+        var said = if (h.fromDrawer && h.spot == null) null else "Moved."
+        if (t != null) {
+            try {
+                final = h.work.drop(h.from, t, h.home.installed, strip = false, nameFor = h.home::nameFor).file
+                said = dropMessage(t, if (h.fromDrawer) null else h.spot, h.work)
+            } catch (e: LayoutError) {
+                actions.refused(e.message ?: "it can't go there")
+            }
+        }
+        final = final.withCurrent(final.current.stripEmptyPages())
+        if (final == h.original) return
+        drag.landing = final
+        actions.edit(said ?: "Added.", after = { drag.landing = null }) { now ->
+            if (now != h.original) throw LayoutError(HOME_CHANGED)
+            final
+        }
+    }
     LaunchedEffect(ui.homePresses) { if (ui.homePresses > 0) pager.animateScrollToPage(1) }
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { ui.page = it } }
-    BackHandler(enabled = ui.folder != null || ui.drawer || pager.currentPage != 1) {
+    BackHandler(enabled = ui.folder != null || ui.drawer || pager.currentPage != 1 || drag.editing) {
         when {
             ui.folder != null -> ui.folder = null
+            drag.editing -> drag.editing = false
             ui.drawer -> { ui.drawer = false; ui.query = "" }
             else -> ui.homePresses++
         }
     }
-    Box(Modifier.fillMaxSize()) {
-        HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
+    // The drag handler lives across recompositions, so it reads the latest of these.
+    val latestHome by rememberUpdatedState(home)
+    val latestDrop by rememberUpdatedState<(Held, Target?) -> Unit>(::dropHeld)
+    Box(Modifier.fillMaxSize().dragging(ui, { latestHome }, { h, t -> latestDrop(h, t) })) {
+        HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1, userScrollEnabled = held == null) { page ->
             if (page == 0) AgentPage() else HomePage(page - 1, placed, layout, appsLoad, ui, home)
         }
         PageDots(pager.currentPage, 1 + pageCount, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
@@ -197,6 +248,9 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, stats, ui, home)
         }
         folder?.let { FolderPanel(it, home, onClose = { ui.folder = null }) }
+        // Edit mode's bar, and Remove while something is held (launcher polish 4.3).
+        TopBar(ui, Modifier.align(Alignment.TopCenter).safeDrawingPadding())
+        held?.let { HeldItem(it) }
         // Above the drawer and folders, clear of the dock.
         UndoBar(ui.undo, actions::undo, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 112.dp))
     }
@@ -249,15 +303,21 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
                 // Until the first run is done (launcher polish 3.5); the default layout is drawn under it.
                 if (n == 0) SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
                 val body = homeBody(appsLoad, home.file, placed?.count ?: 0)
-                when (body) {
-                    HomeBody.NOTHING -> {}
-                    HomeBody.SKELETON -> Skeleton(home.file!!.current.allPages.getOrElse(n) { emptyList() }, columns)
-                    HomeBody.APPS_DIDNT_LOAD -> if (n == 0) HomeNote("Apps didn't load. Trying again.", null)
-                    HomeBody.EMPTY -> if (n == 0) HomeNote("Home is empty.", "Swipe up for your apps. Long-press one and choose Add to home.") { ui.drawer = true }
-                    HomeBody.GRID -> HomeGrid(placed!!.pages.getOrElse(n) { emptyList() }, columns, ui, home)
+                val drops = body == HomeBody.GRID || body == HomeBody.EMPTY
+                // The page's space, from its first row to the dock, takes a drop after its last item.
+                Box(
+                    Modifier.weight(1f).fillMaxWidth()
+                        .dropZone(home.drag, "page$n") { b -> if (drops) Zone.Area(Place.OnPage(n), b) else null },
+                ) {
+                    when (body) {
+                        HomeBody.NOTHING -> {}
+                        HomeBody.SKELETON -> Skeleton(home.file!!.current.allPages.getOrElse(n) { emptyList() }, columns)
+                        HomeBody.APPS_DIDNT_LOAD -> if (n == 0) HomeNote("Apps didn't load. Trying again.", null)
+                        HomeBody.EMPTY -> if (n == 0) HomeNote("Home is empty.", "Swipe up for your apps. Long-press one and choose Add to home.") { ui.drawer = true }
+                        HomeBody.GRID -> HomeGrid(placed!!.pages.getOrElse(n) { emptyList() }, columns, ui, home)
+                    }
                 }
-                Spacer(Modifier.weight(1f))
-                if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.dock.orEmpty(), home)
+                if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.dock.orEmpty(), home, n)
             }
         }
         if (wide) {
@@ -271,7 +331,7 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
                 body(Modifier.weight(1f))
             }
         }
-        ui.homeMenu?.let { HomeMenu(it, home) { ui.homeMenu = null } }
+        ui.homeMenu?.let { HomeMenu(it, home, onEdit = { ui.drag.editing = true }) { ui.homeMenu = null } }
     }
 }
 
@@ -373,11 +433,27 @@ private fun rememberToday(): LocalDate {
 /** Home's items in reading order, [columns] to a row: Launcher3's cells without coordinates. */
 @Composable
 private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeContext) {
+    val icon = rememberTileIcon()
     Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         items.chunked(columns).forEach { row ->
             Row(Modifier.fillMaxWidth()) {
                 row.forEach { item ->
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
+                    val spot = item.at.spot
+                    Box(
+                        Modifier.weight(1f)
+                            .dropZone(home.drag, spot) { b -> Zone.Item(spot, b, b.top + icon.top, icon.size) }
+                            .dragSource(home.drag, spot) { b ->
+                                Source(b, item.at, 0, (item as? Placed.App)?.app, (item as? Placed.InFolder)?.folder)
+                            }
+                            .alpha(if (home.drag.held?.spot == spot) 0f else 1f)
+                            // DESIGN.md's selection on the item a drop would go onto.
+                            .then(
+                                if (home.drag.held?.lit == Target.Onto(spot as Spot.Page)) {
+                                    Modifier.background(Color(0x14F08A2C), RoundedCornerShape(16.dp)).border(1.dp, Color(0x8CF08A2C), RoundedCornerShape(16.dp))
+                                } else Modifier,
+                            ),
+                        contentAlignment = Alignment.TopCenter,
+                    ) {
                         when (item) {
                             is Placed.App -> MenuTile(item.app, At(LaunchFrom.HOME), home, spot = item.at)
                             is Placed.InFolder -> FolderTile(item.folder) { ui.folder = OpenFolder(item.folder.at.spot as Spot.Page, item.folder.folder.name) }
@@ -391,25 +467,38 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeCo
 }
 
 @Composable
-private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext) {
-    if (apps.isEmpty()) return
+private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: Int) {
+    // An empty dock shows while something is held, so it can take it.
+    if (apps.isEmpty() && home.drag.held == null) return
+    val drag = home.drag
+    val iconPx = with(LocalDensity.current) { 48.dp.toPx() }
     Row(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 12.dp)
             .background(Color(0x10FFFFFF), RoundedCornerShape(22.dp))
             .border(1.dp, Line, RoundedCornerShape(22.dp))
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .dropZone(drag, "dock$page") { b -> Zone.Area(Place.Dock, b) }
+            .padding(vertical = 10.dp)
+            .height(48.dp),
     ) {
         val at = At(LaunchFrom.DOCK)
         apps.forEach { (app, spot) ->
-            WithAppMenu(app, at, home, spot) { menu ->
-                AppIcon(
-                    app, 48.dp,
-                    Modifier.semantics { contentDescription = app.label }
-                        .combinedClickable(onLongClickLabel = "Menu", onLongClick = menu) { home.actions.open(app, at) },
-                )
+            // Equal cells, so the space between icons belongs to one of them.
+            Box(
+                Modifier.weight(1f)
+                    .dropZone(drag, spot.spot) { b -> Zone.Item(spot.spot, b, b.top, iconPx) }
+                    .dragSource(drag, spot.spot) { b -> Source(b, spot, 0, app, null) }
+                    .alpha(if (drag.held?.spot == spot.spot) 0f else 1f),
+                contentAlignment = Alignment.Center,
+            ) {
+                WithAppMenu(app, at, home, spot) { menu ->
+                    AppIcon(
+                        app, 48.dp,
+                        Modifier.semantics { contentDescription = app.label }
+                            .combinedClickable(onLongClickLabel = "Menu", onLongClick = menu) { if (!drag.editing) home.actions.open(app, at) },
+                    )
+                }
             }
         }
     }
@@ -429,7 +518,8 @@ private fun PageDots(current: Int, count: Int, modifier: Modifier) {
 @Composable
 internal fun MenuTile(app: HomeApp, at: At, home: HomeContext, width: Dp = 76.dp, dot: Boolean = false, spot: From.At? = null, beforeOpen: () -> Unit = {}) {
     WithAppMenu(app, at, home, spot) { menu ->
-        AppTile(app, width, menu, dot) { beforeOpen(); home.actions.open(app, at) }
+        // In edit mode a tap opens nothing (launcher polish 4.3).
+        AppTile(app, width, menu, dot) { if (!home.drag.editing) { beforeOpen(); home.actions.open(app, at) } }
     }
 }
 
@@ -456,8 +546,16 @@ private fun FolderTile(folder: ResolvedFolder, onClick: () -> Unit) {
         Modifier.width(76.dp).clickable(onClick = onClick).padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // A cover app (launcher polish 4.1) is the folder's tile; otherwise its first four apps.
-        if (folder.cover != null) {
+        FolderIcon(folder)
+        Spacer(Modifier.height(5.dp))
+        Text(folder.folder.name, style = LabelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** A folder's icon: its cover app (launcher polish 4.1), else its first four apps. */
+@Composable
+private fun FolderIcon(folder: ResolvedFolder) {
+    if (folder.cover != null) {
             AppIcon(folder.cover, 52.dp)
         } else Column(
             Modifier
@@ -471,9 +569,6 @@ private fun FolderTile(folder: ResolvedFolder, onClick: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { pair.forEach { AppIcon(it, 18.dp) } }
             }
         }
-        Spacer(Modifier.height(5.dp))
-        Text(folder.folder.name, style = LabelStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
 }
 
 @Composable
@@ -515,3 +610,177 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
  * semantics, so the panel's apps stay separate nodes for TalkBack and agent-device.
  */
 internal fun Modifier.swallowTaps(): Modifier = pointerInput(Unit) { detectTapGestures {} }
+
+/** Where an app or folder tile's icon sits in its cell: 4 dp down, 52 dp across. */
+private class TileIcon(val top: Float, val size: Float)
+
+@Composable
+private fun rememberTileIcon(): TileIcon {
+    val density = LocalDensity.current
+    return remember(density) { with(density) { TileIcon(4.dp.toPx(), 52.dp.toPx()) } }
+}
+
+private fun Rect.toBounds() = Bounds(left, top, right, bottom)
+
+/** Reports where this is as a drop zone while it is laid out; null for none. */
+@Composable
+internal fun Modifier.dropZone(drag: DragState, key: Any, zone: (Bounds) -> Zone?): Modifier {
+    val k = "zone" to key
+    DisposableEffect(k) { onDispose { drag.zones.remove(k) } }
+    return onGloballyPositioned { c ->
+        val z = zone(c.boundsInRoot().toBounds())
+        if (z != null) drag.zones[k] = z else drag.zones.remove(k)
+    }
+}
+
+/** Reports where this is as something a long press and a move can pick up. */
+@Composable
+internal fun Modifier.dragSource(drag: DragState, key: Any, source: (Bounds) -> Source?): Modifier {
+    val k = "source" to key
+    DisposableEffect(k) { onDispose { drag.sources.remove(k) } }
+    return onGloballyPositioned { c ->
+        val s = source(c.boundsInRoot().toBounds())
+        if (s != null) drag.sources[k] = s else drag.sources.remove(k)
+    }
+}
+
+/**
+ * Follows a drag from the press that starts it to its drop (launcher polish 4.3), in the Initial
+ * pass so nothing under it (the pager, the drawer swipe, a list's scroll) sees the moves it takes.
+ * A press on a source that is held past the long press (its menu opens) and then moves 16 dp picks
+ * the source up; a lift or a move past the touch slop before the long press leaves the press to
+ * whatever is under it.
+ */
+private fun Modifier.dragging(ui: HomeUi, home: () -> HomeContext, drop: (Held, Target?) -> Unit): Modifier = pointerInput(Unit) {
+    val drag = ui.drag
+    val start = 16.dp.toPx()
+    val edge = 24.dp.toPx()
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val layer = when {
+            ui.drawer -> 2
+            ui.folder != null -> 1
+            else -> 0
+        }
+        val source = drag.sourceAt(down.position, layer) ?: return@awaitEachGesture
+        val file = home().file ?: return@awaitEachGesture
+        if (drag.held != null) return@awaitEachGesture
+        // Up to the long press: a lift or a move past the slop is a tap, a scroll or a swipe.
+        val early = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            var ended = false
+            while (!ended) {
+                val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id }
+                ended = c == null || !c.pressed || (c.position - down.position).getDistance() > viewConfiguration.touchSlop
+            }
+            true
+        }
+        if (early != null) return@awaitEachGesture
+        // The menu is open; 16 dp more picks the item up and closes it.
+        while (true) {
+            val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+            if (!c.pressed) return@awaitEachGesture
+            c.consume()
+            if ((c.position - down.position).getDistance() > start) {
+                val item = when (val f = source.from) {
+                    is From.At -> f.item
+                    is From.Drawer -> f.ref
+                }
+                drag.held = Held(file, source.from, item, source.app, source.folder, home()).also { it.finger = c.position }
+                if (source.layer == 2) ui.drawer = false
+                break
+            }
+        }
+        val held = drag.held ?: return@awaitEachGesture
+        var outside = 0L
+        while (true) {
+            val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id }
+            // A home press put it back.
+            if (drag.held !== held) return@awaitEachGesture
+            if (c == null) {
+                drag.held = null
+                return@awaitEachGesture
+            }
+            c.consume()
+            held.finger = c.position
+            val width = size.width.toFloat()
+            val zones = drag.zones.values.filter { !it.box.empty && it.box.centerX in 0f..width }
+            val t = targetAt(c.position.x, c.position.y, zones, held.isFolder, ui.folder?.spot)
+            if (!c.pressed) {
+                drop(held, t)
+                return@awaitEachGesture
+            }
+            if (t is Target.Onto || t == Target.Remove) {
+                held.pending = null
+                held.lit = t.takeIf { held.takes(it) }
+            } else {
+                held.lit = null
+                held.pending = t
+            }
+            // Out of an open folder's card for 400 ms closes it (Launcher3's ON_EXIT_CLOSE_DELAY).
+            val card = ui.folder?.let { open -> zones.firstOrNull { (it as? Zone.Area)?.place == Place.InFolder(open.spot) } }
+            if (card != null && !card.box.contains(c.position.x, c.position.y)) {
+                if (outside == 0L) outside = c.uptimeMillis else if (c.uptimeMillis - outside >= 400) ui.folder = null
+            } else outside = 0L
+            held.edge = when {
+                c.position.x < edge -> -1
+                c.position.x > width - edge -> 1
+                else -> 0
+            }
+        }
+    }
+}
+
+/** The held item, under the finger, above everything. */
+@Composable
+private fun HeldItem(held: Held) {
+    val density = LocalDensity.current
+    val half = with(density) { 26.dp.toPx() }
+    Box(Modifier.offset { IntOffset((held.finger.x - half).roundToInt(), (held.finger.y - half).roundToInt()) }) {
+        when {
+            held.app != null -> AppIcon(held.app, 52.dp)
+            held.folder != null -> FolderIcon(held.folder)
+        }
+    }
+}
+
+/** The top bars' backing: opaque, since they sit over the date header. */
+private val BarFill = Color(0xFF15181D)
+
+/** Edit mode's bar, or Remove while something is held. */
+@Composable
+private fun TopBar(ui: HomeUi, modifier: Modifier) {
+    val drag = ui.drag
+    val held = drag.held
+    if (held == null && !drag.editing) return
+    val shape = RoundedCornerShape(14.dp)
+    if (held != null) {
+        val lit = held.lit == Target.Remove
+        Box(
+            modifier.padding(12.dp).fillMaxWidth().height(56.dp)
+                .background(BarFill, shape)
+                .background(if (lit) Color(0x14F08A2C) else Color.Transparent, shape)
+                .border(1.dp, if (lit) Color(0x8CF08A2C) else Line, shape)
+                .dropZone(drag, "remove") { b -> Zone.Remove(b) },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("Remove", style = TextStyle(color = if (lit) Ink else Muted, fontSize = 15.sp))
+        }
+        return
+    }
+    Row(
+        modifier.padding(12.dp).fillMaxWidth().background(BarFill, shape).border(1.dp, Line, shape).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "Drag apps to move them. Drop one on another to make a folder.",
+            style = TextStyle(color = Ink, fontSize = 14.sp),
+            modifier = Modifier.weight(1f),
+        )
+        Box(
+            Modifier.padding(start = 8.dp).background(Amber, RoundedCornerShape(10.dp)).clickable { drag.editing = false }
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+        ) {
+            Text("Done", style = TextStyle(color = Color(0xFF1A0D02), fontSize = 15.sp))
+        }
+    }
+}
