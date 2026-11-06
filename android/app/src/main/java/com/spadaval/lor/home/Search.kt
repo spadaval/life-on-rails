@@ -96,7 +96,7 @@ object Match {
      * (2+ characters, one word); 4 the name contains it (3+); 5 its characters are in the name in
      * order, the first at a word start (2+); 6 a typo (4+): one edit, two from 8 characters.
      */
-    fun tier(q: Query, p: Prepared): Int? {
+    fun tier(q: Query, p: Prepared, typos: Boolean = true): Int? {
         val n = q.norm
         if (n.isEmpty()) return null
         if (p.norm.startsWith(n) || (q.compact.isNotEmpty() && p.compact.startsWith(q.compact))) return PREFIX
@@ -105,12 +105,15 @@ object Match {
         if (q.words.size == 1 && q.compact.length >= 2 && p.initials.startsWith(q.compact)) return INITIALS
         if (n.length >= 3 && p.norm.contains(n)) return CONTAINS
         if (q.compact.length >= 2 && inOrder(q.compact, p)) return IN_ORDER
-        if (q.compact.length >= 4 && typo(q.compact, p)) return TYPO
+        if (typos && isTypo(q, p)) return TYPO
         return null
     }
 
-    /** The best tier over [names], or null. */
-    fun best(q: Query, names: List<Prepared>): Int? = names.mapNotNull { tier(q, it) }.minOrNull()
+    /** The best tier over [names], or null; [typos] false leaves the typo tier out. */
+    fun best(q: Query, names: List<Prepared>, typos: Boolean = true): Int? = names.mapNotNull { tier(q, it, typos) }.minOrNull()
+
+    /** The typo tier alone: [q] (4+ characters) is one edit from [p], two from 8 characters. */
+    fun isTypo(q: Query, p: Prepared): Boolean = q.compact.length >= 4 && typo(q.compact, p)
 
     private fun wordsInOrder(qw: List<String>, words: List<String>): Boolean {
         var at = 0
@@ -138,27 +141,35 @@ object Match {
 
     private fun typo(c: String, p: Prepared): Boolean {
         val most = if (c.length >= 8) 2 else 1
-        return p.compactStarts.distinct().any { s -> prefixDistance(c, p.compact, s) <= most }
+        return p.compactStarts.distinct().any { s -> prefixDistance(c, p.compact, s, most) <= most }
     }
 
     /**
      * The optimal-string-alignment distance from [q] to the closest prefix of [t] (from [from])
-     * whose length is within one of [q]'s.
+     * whose length is within one of [q]'s, exact up to [most]; anything over [most] comes back as
+     * more than [most]. Only cells within [most] of the diagonal are filled (a cell further off
+     * costs more than [most]), in three rolling rows, so a search over many names stays cheap.
      */
-    internal fun prefixDistance(q: String, t: String, from: Int = 0): Int {
+    internal fun prefixDistance(q: String, t: String, from: Int = 0, most: Int = Int.MAX_VALUE / 2): Int {
         val m = minOf(t.length - from, q.length + 1)
         if (m < q.length - 1) return Int.MAX_VALUE
-        // d[i][j]: q's first i characters against t's first j (from [from]).
-        val d = Array(q.length + 1) { IntArray(m + 1) }
-        for (i in 0..q.length) d[i][0] = i
-        for (j in 0..m) d[0][j] = j
-        for (i in 1..q.length) for (j in 1..m) {
-            val cost = if (q[i - 1] == t[from + j - 1]) 0 else 1
-            var v = minOf(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost)
-            if (i > 1 && j > 1 && q[i - 1] == t[from + j - 2] && q[i - 2] == t[from + j - 1]) v = minOf(v, d[i - 2][j - 2] + 1)
-            d[i][j] = v
+        val far = most + 1
+        // d[i][j]: q's first i characters against t's first j (from [from]); rows i-2, i-1 and i.
+        var older = IntArray(m + 1) { far }
+        var prev = IntArray(m + 1) { if (it <= most) it else far }
+        var cur = IntArray(m + 1)
+        for (i in 1..q.length) {
+            cur.fill(far)
+            if (i <= most) cur[0] = i
+            for (j in maxOf(1, i - most)..minOf(m, i + most)) {
+                val cost = if (q[i - 1] == t[from + j - 1]) 0 else 1
+                var v = minOf(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
+                if (i > 1 && j > 1 && q[i - 1] == t[from + j - 2] && q[i - 2] == t[from + j - 1]) v = minOf(v, older[j - 2] + 1)
+                cur[j] = minOf(v, far)
+            }
+            val t0 = older; older = prev; prev = cur; cur = t0
         }
-        return (maxOf(0, q.length - 1)..m).minOf { d[q.length][it] }
+        return (maxOf(0, q.length - 1)..m).minOf { prev[it] }
     }
 
     /** A word break at [i]: after a space or symbol, a digit after a non-digit, a capital after a lower-case letter or digit. */
@@ -189,6 +200,9 @@ class Found<out T>(
     /** A contact's phone numbers' digits, matched by a query of 3 or more digits (5.6). */
     val digits: List<String> = emptyList(),
 )
+
+/** A phone number's digits, everything else dropped, as a contact's numbers are matched (5.6). */
+fun digitsOf(number: String): String = number.filter { it.isDigit() }
 
 /** A quick answer (5.4): [value] for [input]. It opens nothing. */
 data class Answer(val value: String, val input: String)
@@ -228,12 +242,16 @@ object Search {
         sources.forEachIndexed { i, e ->
             if (i % 8 == 0) check()
             if (q.norm.length < e.kind.minLength) return@forEachIndexed
-            val tier = Match.best(q, e.names)
+            val tier = Match.best(q, e.names, typos = false)
                 ?: if (digits != null && e.digits.any { it.contains(digits) }) Match.CONTAINS else null
             if (tier != null) found.add(Triple(tier, i, e))
         }
-        // A typo is a guess: shown only when nothing matched better, so "cafe" doesn't bring Camera.
-        if (found.any { it.first < Match.TYPO }) found.removeAll { it.first == Match.TYPO }
+        // A typo is a guess: looked for only when nothing matched better, so "cafe" doesn't bring
+        // Camera (and the costliest tier is skipped whenever something matched).
+        if (found.isEmpty()) sources.forEachIndexed { i, e ->
+            if (i % 8 == 0) check()
+            if (q.norm.length >= e.kind.minLength && e.names.any { Match.isTypo(q, it) }) found.add(Triple(Match.TYPO, i, e))
+        }
         val blocks = found.groupBy { it.third.kind }.map { (kind, list) ->
             val sorted = list.sortedWith(compareBy<Triple<Int, Int, Found<T>>> { it.first }.thenByDescending { weight(it.third) }.thenBy { it.second })
             Block(kind, sorted.take(kind.most).map { it.third }, sorted.first().first)

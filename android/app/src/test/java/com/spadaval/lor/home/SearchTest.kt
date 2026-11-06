@@ -136,8 +136,13 @@ class SearchTest {
     @Test
     fun aSearchChecksForCancellation() {
         var checks = 0
-        Search.run("x", entries(Kind.APPS, (1..20).map { "App $it" }), check = { checks++ })
+        val apps = entries(Kind.APPS, (1..20).map { "App $it" })
+        Search.run("app", apps, check = { checks++ })
         assertEquals(3, checks)
+        // Nothing matched, so a second pass looks for typos, checking as it goes.
+        checks = 0
+        Search.run("x", apps, check = { checks++ })
+        assertEquals(6, checks)
     }
 
     @Test
@@ -184,5 +189,38 @@ class SearchTest {
         // The cap: five at most.
         val many = entries(Kind.SHORTCUTS, (1..7).map { "S$it" })
         assertEquals(5, Search.run("chrome", sources).withShortcutsOfOneApp { many }.blocks[1].entries.size)
+    }
+
+    /** The full table, as 5.1 had it: the reference the banded [Match.prefixDistance] must agree with. */
+    private fun fullPrefixDistance(q: String, t: String, from: Int): Int {
+        val m = minOf(t.length - from, q.length + 1)
+        if (m < q.length - 1) return Int.MAX_VALUE
+        val d = Array(q.length + 1) { IntArray(m + 1) }
+        for (i in 0..q.length) d[i][0] = i
+        for (j in 0..m) d[0][j] = j
+        for (i in 1..q.length) for (j in 1..m) {
+            val cost = if (q[i - 1] == t[from + j - 1]) 0 else 1
+            var v = minOf(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost)
+            if (i > 1 && j > 1 && q[i - 1] == t[from + j - 2] && q[i - 2] == t[from + j - 1]) v = minOf(v, d[i - 2][j - 2] + 1)
+            d[i][j] = v
+        }
+        return (maxOf(0, q.length - 1)..m).minOf { d[q.length][it] }
+    }
+
+    @Test
+    fun theBandedTypoDistanceAgreesWithTheFullTable() {
+        val r = java.util.Random(5)
+        fun word(n: Int) = String(CharArray(n) { "abcde"[r.nextInt(5)] })
+        repeat(20000) {
+            val q = word(1 + r.nextInt(10))
+            val t = word(r.nextInt(14))
+            val from = if (t.isEmpty()) 0 else r.nextInt(t.length + 1)
+            val most = 1 + r.nextInt(2)
+            val full = fullPrefixDistance(q, t, from)
+            val banded = Match.prefixDistance(q, t, from, most)
+            assertEquals("$q in $t from $from, most $most", full <= most, banded <= most)
+            if (full <= most) assertEquals("$q in $t from $from", full, banded)
+            assertEquals(full, Match.prefixDistance(q, t, from))
+        }
     }
 }

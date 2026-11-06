@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -9,9 +10,11 @@ import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
+import android.database.ContentObserver
 import android.net.Uri
 import android.os.Process
 import android.os.UserHandle
+import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.provider.Telephony
 import android.util.Log
@@ -54,6 +57,9 @@ class HomeApp(val label: String, val info: LauncherActivityInfo) {
 class ShortcutHit(val info: ShortcutInfo, val conversation: Boolean) {
     val label: String get() = (info.shortLabel ?: info.longLabel)?.toString() ?: info.id
 }
+
+/** A contact search can find (launcher polish 5.6): its [numbers] as stored, the first shown. */
+class SearchContact(val id: Long, val lookupKey: String, val name: String, val numbers: List<String>)
 
 /**
  * What search finds besides apps, prepared off the main thread and held in memory (launcher
@@ -173,6 +179,18 @@ class HomeStore(private val context: Context) {
         }
     }
 
+    /** Set when the contacts change; the next [resume] reads them again (launcher polish 5.6). */
+    @Volatile private var contactsStale = true
+    /** Whether the last read of contacts had the permission. */
+    @Volatile private var contactsAllowed = false
+    /** The observer is registered; that needs the permission, so it waits for the first read with it. */
+    private var observingContacts = false
+    private val contactsObserver = object : ContentObserver(null) {
+        override fun onChange(selfChange: Boolean) {
+            contactsStale = true
+        }
+    }
+
     init {
         launcherApps.registerCallback(callback)
         val filter = IntentFilter().apply {
@@ -226,6 +244,58 @@ class HomeStore(private val context: Context) {
         resolveTargets()
         // Becoming the default home gives the shortcut permission, with no callback.
         onSources { if (launcherApps.hasShortcutHostPermission() != shortcutsAllowed) refreshShortcutsNow(null, null) }
+        // Contacts that changed while away, or a permission granted or taken back.
+        onSources { if (contactsStale || contactsGranted() != contactsAllowed) readContacts() }
+    }
+
+    private fun contactsGranted() =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Reads every contact's name and phone numbers into search's sources (launcher polish 5.6),
+     * or empties them without the permission. Kvaesitso queries contacts on each search; here
+     * they are held in memory, as the other sources are.
+     */
+    private fun readContacts() {
+        val start = System.nanoTime()
+        contactsStale = false
+        contactsAllowed = contactsGranted()
+        if (!contactsAllowed) {
+            if (_search.value.contacts.isNotEmpty()) _search.value = _search.value.copy(contacts = emptyList())
+            Log.i(SEARCH_TAG, "contacts: no permission")
+            return
+        }
+        val cr = context.contentResolver
+        if (!observingContacts) {
+            // Taking the permission back kills the process, so it is never unregistered.
+            cr.registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contactsObserver)
+            observingContacts = true
+        }
+        val numbers = HashMap<Long, MutableList<String>>()
+        cr.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            arrayOf(ContactsContract.CommonDataKinds.Phone.CONTACT_ID, ContactsContract.CommonDataKinds.Phone.NUMBER),
+            null, null, ContactsContract.CommonDataKinds.Phone.IS_SUPER_PRIMARY + " DESC",
+        )?.use { c ->
+            while (c.moveToNext()) {
+                val n = c.getString(1) ?: continue
+                numbers.getOrPut(c.getLong(0)) { mutableListOf() }.let { if (n !in it) it.add(n) }
+            }
+        }
+        val found = ArrayList<Found<Any>>()
+        cr.query(
+            ContactsContract.Contacts.CONTENT_URI,
+            arrayOf(ContactsContract.Contacts._ID, ContactsContract.Contacts.LOOKUP_KEY, ContactsContract.Contacts.DISPLAY_NAME_PRIMARY),
+            null, null, ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+        )?.use { c ->
+            while (c.moveToNext()) {
+                val name = c.getString(2)?.takeIf { it.isNotBlank() } ?: continue
+                val contact = SearchContact(c.getLong(0), c.getString(1) ?: "", name, numbers[c.getLong(0)].orEmpty())
+                found.add(Found(Kind.CONTACTS, "c:${contact.id}", listOf(Match.prepare(name)), contact, contact.numbers.map(::digitsOf)))
+            }
+        }
+        _search.value = _search.value.copy(contacts = found)
+        Log.i(SEARCH_TAG, "read ${found.size} contacts in ${(System.nanoTime() - start) / 1_000_000} ms")
     }
 
     /** Whether the last full read of shortcuts had the permission (only the default home has it). */

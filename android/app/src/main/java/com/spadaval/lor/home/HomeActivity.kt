@@ -228,6 +228,9 @@ class HomeActivity : ComponentActivity() {
             startFromSearch(Intent(page.action), query, "${page.title} can't be opened.")
         }
 
+        override fun openContact(contact: SearchContact, way: ContactWay, query: String) =
+            startFromSearch(contactIntent(contact, way), query, "${contact.name} can't be opened.")
+
         override fun clearSearches() = store.clearSearches()
 
         override fun elsewhere(way: Elsewhere, query: String) {

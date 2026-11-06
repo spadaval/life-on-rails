@@ -915,7 +915,7 @@ Agreed with Sumeet, 2026-11-05:
   - **Choices.** The chips sit between the field and the view switch, which stays. Clear is a chip in the muted colour without an edge. A recent search is recorded only when the launch went through (a failed start toasts and records nothing). "cal" also finds Languages (its alias "locale" contains it) and NFC ("contactless", in order); that is the matcher's tiers 4 and 5 on settings aliases, left as the rules say.
   - Reviewed with the increment.
 
-#### 5.6 Contacts. Status: todo (Sumeet granted `READ_CONTACTS`, 2026-11-06)
+#### 5.6 Contacts. Status: done (Sumeet granted `READ_CONTACTS`, 2026-11-06)
 - **Goal.** A contact is found by name or number, and called, texted or opened from the result.
   - **The permission.** `READ_CONTACTS` in the manifest. Home settings gets "Contacts in search": Allow, which asks Android at run time, or, once Android has stopped asking, opens LoR's App info. Search itself never asks.
   - **The index,** as the answers' table says: each contact's id, lookup key, display name and phone numbers (`ContactsContract.Contacts` and `CommonDataKinds.Phone`), in memory, rebuilt when stale.
@@ -925,6 +925,24 @@ Agreed with Sumeet, 2026-11-05:
   - **JVM tests:** a name by word start and by typo; a number by digits, only from 3 digits; contacts after apps of the same tier.
   - **On `T3_Phone_API35`,** contacts added with the Contacts app or `content insert`: Allow in Home settings shows the system's dialog and, granted, search finds "Alice" from "ali" and "alcie"; Call opens the dialer with her number; Message opens Messages to it; a tap opens her contact; "555" finds her by number; a contact renamed in the Contacts app is found by the new name after returning to home and waiting for the rebuild (a `LorSearch` line says it rebuilt). With the permission denied, Home settings says so and search shows no contacts and no prompt. With 1,000 contacts inserted, the `LorSearch` lines while typing a name are recorded and stay under 16 ms each.
   - `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed: `READ_CONTACTS` in the manifest; `SearchContact` and the contacts index in `HomeStore` (`readContacts`, on the sources' thread: every contact's id, lookup key, name and numbers, read on a resume that finds the index stale or the permission changed, which includes the first; a `ContentObserver`, registered at the first read with the permission, marks it stale; one `LorSearch` line per read); `digitsOf` in `Search.kt`; the contact row in `SearchRows.kt` (a still person, the name, the first number, and Call and Message as 48 dp buttons, each one node), `ContactWay` and `contactIntent` (`ACTION_VIEW` on the lookup URI, `ACTION_DIAL` with `tel:`, `ACTION_SENDTO` with `smsto:`), `HomeActions.openContact` through `startFromSearch`; and "Contacts in search" in Home settings' Search section (Allow asks Android; once Android has stopped asking, App info). `ContactsSearchTest` (4 cases); 175 tests pass on boat.
+  - **Search made cheaper for 1,000 contacts.** Typing a name of 1,000 near-identical contacts took up to 31 ms per search on the emulator once a digit was typed ("test person 9"): about 990 names fell through to the typo tier. Two changes, neither changing a result: the typo distance fills only the band of the table within the allowed edits, in three rolling rows (`SearchTest` checks it against the full table on 20,000 random pairs); and `Search.run` looks for typos only when nothing matched better, in a second pass, since such typos were already thrown away (`aSearchChecksForCancellation` now also counts that pass).
+  - **On `T3_Phone_API35`,** contacts Alice Smith (+1 (555) 123-4567) and Bob Jones added with `content insert`:
+    - before the permission: "ali" showed two settings pages and no contact, no prompt, and `LorSearch` said `contacts: no permission`. Home settings read "Off: search shows no contacts" with Allow;
+    - Allow showed Android's dialog; Don't allow left "Off: denied. Allow asks again" (screenshot); Allow again and Allow in the dialog removed the button, and Home settings' resume logged `read 2 contacts in 46 ms`;
+    - "ali" and "alcie" found Alice Smith with her number, Call and Message; "555" found her (under a Messages chat whose label has 555) (screenshot);
+    - Call opened the dialer with +1 555-123-4567; Message opened Messages to Alice Smith; a tap on the row opened her contact card (`QuickContactActivity`). `queue.db` held a launch for each with `from: search`, `query: ali` and the package (`com.google.android.dialer`, `com.google.android.apps.messaging`, `com.google.android.contacts`);
+    - renamed to Zelda Smith in the contacts provider while Contacts was in front, then home: `read 2 contacts` logged on the resume, "zel" found Zelda Smith, and "alice" found only Messages' chat;
+    - 1,000 contacts imported from a vCard through the Contacts app (1,014 read in 350 to 800 ms): typing "test person 99" letter by letter logged searches of 1,164 items. Warm, three runs, every search under 16 ms (the worst 11.7, 10.5 and 9.2 ms); the first run after an install, before the code is compiled, reached 19.5 ms.
+  - **Found and fixed on the way:** registering the `ContentObserver` before the permission is held throws on Android 15, which crashed home at start; it now waits for the first read with the permission. The crash loop made Android forget LoR as the "always" home app, which was chosen again in its dialog.
+  - **Not checked.** A contact with several numbers (the first is shown; Call and Message use it). At the end, the permission revoked with `pm revoke` and LoR force-stopped, home started with `contacts: no permission` and no crash; taking it back from App info while home runs wasn't tried.
+  - **Choices.**
+    - The index is rebuilt on a resume, not also on a drawer open: coming back from another app is always a resume, and a change while home is in front (a sync) waits for the next one.
+    - A contact with no name is left out. Numbers are listed with the primary first.
+    - Once a chat with a contact exists, Messages publishes a conversation shortcut with the same name, so the person shows twice, in Shortcuts and Contacts ("ali" after Message). T3 Launcher Increment 8's open question of merging a person shown twice covers this case too.
+    - A call in one tap (`CALL_PHONE`) stays unplanned, as the answers say; it is in Open questions.
+  - Reviewed with the increment.
 
 ### Increment 6: The look. Status: backlog
 

@@ -1,12 +1,17 @@
 package com.spadaval.lor.home
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
@@ -45,6 +50,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.spadaval.lor.LorApp
@@ -198,6 +206,7 @@ private fun HomeSettings(
                     }
                 }
             }
+            item { ContactsRow(open) }
         }
         item { HorizontalDivider(Modifier.padding(top = 12.dp)) }
         item {
@@ -228,6 +237,47 @@ private fun Note(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
     )
+}
+
+/**
+ * Contacts in search (launcher polish 5.6): Allow asks Android; once Android has stopped asking
+ * (denied for good), it opens LoR's App info instead. Search itself never asks.
+ */
+@Composable
+private fun ContactsRow(open: (Intent) -> Unit) {
+    val context = LocalContext.current
+    val activity = context as ComponentActivity
+    fun granted() = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+    var on by remember { mutableStateOf(granted()) }
+    // After a denial: whether Android would still ask (null before any answer this time).
+    var asksAgain by remember { mutableStateOf<Boolean?>(null) }
+    LifecycleResumeEffect(Unit) {
+        on = granted()
+        onPauseOrDispose {}
+    }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        on = ok
+        asksAgain = if (ok) null else ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_CONTACTS)
+    }
+    val about = when {
+        on -> "On: search finds contacts by name or number"
+        asksAgain == false -> "Off: Android won't ask again. Allow Contacts in App info, Permissions"
+        asksAgain == true -> "Off: denied. Allow asks again"
+        else -> "Off: search shows no contacts"
+    }
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Contacts in search", style = MaterialTheme.typography.bodyLarge)
+            Text(about, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (!on) TextButton(onClick = {
+            if (asksAgain == false) {
+                open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
+            } else {
+                ask.launch(Manifest.permission.READ_CONTACTS)
+            }
+        }) { Text(if (asksAgain == false) "App info" else "Allow") }
+    }
 }
 
 /** A setting that is on or off: the whole row toggles it, read as one switch. */
