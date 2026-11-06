@@ -46,6 +46,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -456,7 +461,7 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeCo
                     ) {
                         when (item) {
                             is Placed.App -> MenuTile(item.app, At(LaunchFrom.HOME), home, spot = item.at)
-                            is Placed.InFolder -> FolderTile(item.folder) { ui.folder = OpenFolder(item.folder.at.spot as Spot.Page, item.folder.folder.name) }
+                            is Placed.InFolder -> FolderTile(item.folder, home) { ui.folder = OpenFolder(item.folder.at.spot as Spot.Page, item.folder.folder.name) }
                         }
                     }
                 }
@@ -541,9 +546,20 @@ internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)?
 }
 
 @Composable
-private fun FolderTile(folder: ResolvedFolder, onClick: () -> Unit) {
+private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: () -> Unit) {
+    // A long press opens the folder's menu (launcher polish 4.4); moving on from it picks the folder up.
+    var menu by remember { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
+    val held = home.drag.held
+    LaunchedEffect(held) { if (held != null) menu = false }
+    if (menu) FolderMenu(folder, home) { menu = false }
     Column(
-        Modifier.width(76.dp).clickable(onClick = onClick).padding(vertical = 4.dp),
+        Modifier.width(76.dp)
+            .combinedClickable(onLongClickLabel = "Menu", onLongClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                menu = true
+            }, onClick = onClick)
+            .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         FolderIcon(folder)
@@ -577,12 +593,17 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
         Modifier.fillMaxSize().background(Color(0x99000000)).pointerInput(onClose) { detectTapGestures { onClose() } },
         contentAlignment = Alignment.Center,
     ) {
+        val drag = home.drag
+        val icon = rememberTileIcon()
+        val spot = folder.at.spot as Spot.Page
         Column(
             Modifier
                 .widthIn(max = 360.dp)
                 .padding(24.dp)
                 .background(Panel, RoundedCornerShape(24.dp))
                 .border(1.dp, Line, RoundedCornerShape(24.dp))
+                // The card takes a drop after the folder's last app (launcher polish 4.4).
+                .dropZone(drag, "card") { b -> Zone.Area(Place.InFolder(spot), b) }
                 .swallowTaps()
                 .padding(16.dp),
         ) {
@@ -593,9 +614,15 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
             Spacer(Modifier.height(14.dp))
             folder.apps.chunked(4).forEach { row ->
                 Row(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
-                    row.forEach { (app, spot) ->
-                        Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
-                            MenuTile(app, At(LaunchFrom.FOLDER, folder.folder.name), home, width = 72.dp, spot = spot, beforeOpen = onClose)
+                    row.forEach { (app, at) ->
+                        Box(
+                            Modifier.weight(1f)
+                                .dropZone(drag, at.spot) { b -> Zone.Item(at.spot, b, b.top + icon.top, icon.size) }
+                                .dragSource(drag, at.spot) { b -> Source(b, at, 1, app, null) }
+                                .alpha(if (drag.held?.spot == at.spot) 0f else 1f),
+                            contentAlignment = Alignment.TopCenter,
+                        ) {
+                            MenuTile(app, At(LaunchFrom.FOLDER, folder.folder.name), home, width = 72.dp, spot = at, beforeOpen = onClose)
                         }
                     }
                     repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -783,4 +810,49 @@ private fun TopBar(ui: HomeUi, modifier: Modifier) {
             Text("Done", style = TextStyle(color = Color(0xFF1A0D02), fontSize = 15.sp))
         }
     }
+}
+
+/** A folder's menu (launcher polish 4.4): Rename…, Cover app…, Remove from home. */
+@Composable
+private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, close: () -> Unit) {
+    var renaming by remember { mutableStateOf(false) }
+    var covering by remember { mutableStateOf(false) }
+    val at = folder.at
+    val name = folder.folder.name
+    when {
+        renaming -> {
+            var text by remember { mutableStateOf(name) }
+            AlertDialog(
+                onDismissRequest = close,
+                title = { Text("Rename folder") },
+                text = { OutlinedTextField(text, { text = it }, singleLine = true) },
+                confirmButton = {
+                    TextButton(onClick = { close(); if (text.trim() != name) home.actions.edit("$name is ${text.trim()} now.") { it.renameFolder(at, text) } }) { Text("Rename") }
+                },
+                dismissButton = { TextButton(onClick = close) { Text("Cancel") } },
+            )
+        }
+        covering -> DropdownMenu(true, close, containerColor = Color(0xFF1B1F25), shape = RoundedCornerShape(16.dp)) {
+            val cover = folder.folder.cover
+            folder.apps.forEach { (app, a) ->
+                val ref = a.item as AppRef
+                FolderMenuItem(if (ref == cover) "${app.label} ✓" else app.label) {
+                    close(); if (ref != cover) home.actions.edit("${app.label} is $name's cover.") { it.setCover(at, ref) }
+                }
+            }
+            FolderMenuItem(if (cover == null) "None (show four) ✓" else "None (show four)") {
+                close(); if (cover != null) home.actions.edit("$name shows four apps.") { it.setCover(at, null) }
+            }
+        }
+        else -> DropdownMenu(true, close, containerColor = Color(0xFF1B1F25), shape = RoundedCornerShape(16.dp)) {
+            FolderMenuItem("Rename…") { renaming = true }
+            FolderMenuItem("Cover app…") { covering = true }
+            FolderMenuItem("Remove from home") { close(); home.actions.edit("$name is off home.") { it.removeAt(at) } }
+        }
+    }
+}
+
+@Composable
+private fun FolderMenuItem(text: String, onClick: () -> Unit) {
+    DropdownMenuItem(text = { Text(text, style = TextStyle(color = Ink, fontSize = 15.sp)) }, onClick = onClick)
 }

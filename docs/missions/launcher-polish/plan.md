@@ -550,7 +550,7 @@ Agreed with Sumeet, 2026-11-05:
   - **Not done:** the pickup haptic is the long press's own tick; the drop's haptic and motion stay Increment 7's.
   - Reviewed with the increment.
 
-#### 4.4 Folders by hand. Status: todo
+#### 4.4 Folders by hand. Status: done
 - **Goal.** Folders are made, filled, emptied, ordered, renamed and given a cover on the phone.
   - **Onto.** Dropping an app `Onto` another app on a page makes a folder there, named as the answers say. Dropping `Onto` a folder's tile adds the app to the end of the folder.
   - **In an open folder,** its apps are dragged like home's: the panel's tiles report `InFolder` spots, a drop among them reorders, and `AtEnd(Folder)` is the panel's space after its last app.
@@ -571,6 +571,23 @@ Agreed with Sumeet, 2026-11-05:
   - after the rename, Undo brings the sum back.
 
   `HomeEditTest` covers the folder-name rule. `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed: the open folder's card and apps as drop zones and sources (layer 1), the folder tile's long press and `FolderMenu` (Rename…, Cover app…, Remove from home) in `HomeScreen.kt`. Making and filling folders, and the 400 ms close, were already in 4.1's `drop` and 4.3's handler.
+  - **On `T3_Phone_API35`,** read with a script that prints the file's home and dock:
+    - Calendar dropped on Maps's icon made `[Folder: maps calendar]`, `pinned`, named "Folder" (Travel and Work). In 4.3's first try, Calendar on Life on Rails, both Work, made "Work".
+    - Photos dropped on the folder's tile was last in it ("Added to Folder." over Undo).
+    - In the open folder, Maps dragged to the card's space after the apps went last: calendar, photos, maps.
+    - Calendar held outside the card for 0.8 s: the panel closed, and dropped on home's space it went to the end of home, out of the folder. The two apps left were dragged out the same way, and the folder went with the last.
+    - Google's long press opened Rename…, Cover app…, Remove from home. Rename to "Goog" wrote it, `pinned`, and Undo right after gave back the same sum.
+    - Cover app… listed the seven apps and "None (show four) ✓". Drive wrote `cover` and the tile showed Drive's icon labelled Goog. None removed it.
+    - The folder dragged to the left half of the first tile moved first.
+    - Dragged into the dock, nothing was written (the same sum).
+    - Remove from home took the folder and its apps off home.
+  - **Choices.**
+    - The folder's menu uses the app menu's dark `DropdownMenu`, and Rename uses Material's dialog in the system's look, like Home settings', until Increment 6.
+    - The cover list marks the current cover with ✓, as Move to section does.
+  - **Not seen:** the refusal toast for the folder dropped in the dock, since the screenshot was not taken. `HomeEditTest` covers its message.
+  - Reviewed with the increment.
 
 #### 4.5 Pages by dragging. Status: todo
 - **Goal.** Items move between home's pages, and a page is made by dropping on a new one.
