@@ -1249,7 +1249,7 @@ Agreed with Sumeet, 2026-11-05:
 - R1, fixed: the system bar icons stayed light over a light wallpaper. Home now sets them dark (`WindowInsetsControllerCompat`, status and navigation) while a home page shows with dark ink and no drawer or folder is open, and light otherwise. On `T3_Phone_API35` over a plain `#f2f2f2` wallpaper, the clock's pixels were `#616161` on home, and white on the drawer and on the agent page.
 - R2, fixed: three of 6.8's claims hadn't been made in the code. The edit-mode bar's edge, the drawer search field's unfocused border (now with the amber focus) and the recent-search chips now use `Edge`, so 6.8's notes are true.
 - R3, fixed: a look edit in Home settings wrote the look the screen had captured, so two quick taps lost the first. `LookRows` now passes a change applied to the look the file holds when written.
-- R4, fixed: a post queued on the listener's thread could put a dot back after the clear. Posts and ranking updates are now ignored while the listener is not connected.
+- R4, fixed in the second review's R1 (below): a post queued on the listener's thread could put a dot back after the clear. The first fix (a `connected` flag checked on the worker) still let a check pass just before the main thread's clear.
 - R5, fixed: `appfilter`'s parser and streams are closed (`use`).
 - R6, fixed: the plan review's dispositions now say R10 and R11 were the two questions put to Sumeet, answered on 2026-11-06.
 - R7, no action: "Reviewed with the increment" is this plan's convention, and this note records the review.
@@ -1264,11 +1264,21 @@ Agreed with Sumeet, 2026-11-05:
 
 199 tests pass on boat. The emulator's wallpaper was set back to the on-device default (`LorLook`: light text), and the test image was deleted.
 
+**Second review, 2026-11-06.** A fresh agent reviewed ba960c2: contract fail on one item, fitness pass with fixes. The coordinator decided each; what was done:
+- R1, fixed: the dots race was still open. A `DotBook` (no Android in it) now holds the notes and whether the listener is connected under one lock, so each write checks and changes in one step, and `disconnect` clears and drops every later write until the next `connect`. That covers posts, removals, the full read on connect and ranking updates. `DotsTest.aWriteAfterADisconnectChangesNothing` covers it.
+- R2, fixed: the bold of Increment 8's note from 6.8's critique.
+- R3, fixed: the labels and themed-icons switches set the opposite of what the screen showed rather than flipping the file's value, so two quick taps don't cancel each other while the bar says otherwise.
+- R4, deferred to Increment 7 (noted there).
+- R5, fixed: `DESIGN.md`'s wording ("These are the one exception").
+- 200 tests pass on boat. On `T3_Phone_API35`, home drew its apps and dock after the install, with no crash in `logcat -b crash`. The race itself is checked by the JVM test and by reading the code, not on the emulator.
+
 ### Increment 7: Motion and feel. Status: backlog
 
 **Goal.** The drawer follows the finger open and closed (replacing the 56 dp flip in `HomePage`). Apps open from their icon's bounds (`ActivityOptions.makeScaleUpAnimation` or a clip reveal). Folders open from their tile. Haptics on long press, pickup, drop, and the drawer threshold. Predictive back for the drawer, folders and menus. Configurable gestures: swipe down for notifications, double-tap to lock, a gesture for quick send.
 
 **Carried from Increment 4's plan.** Motion in a drag: items easing to their new places in the preview, and the dropped icon settling into its slot (4.3 moves them without animation).
+
+**From Increment 6's second review (2026-11-06).** Closing the drawer sets dark status-bar icons at once while its dark background still fades out (about 300 ms); key the bar's icons on the drawer's transition state, in a `SideEffect` rather than a `LaunchedEffect`. And `rememberWallpaperInk` starts light until its read on IO, so a light wallpaper shows light text for a frame at start.
 
 **Carried from Increment 1's review.** R5: an open app menu isn't closed by a home press (`HomeUi.homePressed` knows only the home menu); hold the open app menu in `HomeUi` and close it there, as Launcher3's `onNewIntent` closes every floating view.
 
@@ -1298,7 +1308,7 @@ Carried from T3 Launcher's reviews:
 
 **From Increment 6's review (2026-11-06).** `LookTest` checks `Palette`'s constants for each ink, not that `wallInk()` picks them; a test of `wallInk`'s colours needs Compose's `Density` on the JVM.
 
-**From 6.8's critique (2026-11-06). On the unfolded Fold: the Remove bar shown while something is held covers home's first row, so a drop meant for a row-1 icon removes the held app (Undo restores it); the left half holds only the date; the agent page's Send button floats mid-screen at the content column's edge.
+**From 6.8's critique (2026-11-06).** On the unfolded Fold: the Remove bar shown while something is held covers home's first row, so a drop meant for a row-1 icon removes the held app (Undo restores it); the left half holds only the date; the agent page's Send button floats mid-screen at the content column's edge.
 
 **Provisional Done when.** On `T3_Fold_API35`, a fold, an unfold, a dark-mode switch and a font-scale change each recreate home with its open drawer and scroll kept and with no app-list or icon reload (a debug log line per load, counted before and after), each carried item has a fix and a test or emulator check, and the inner-screen layout is screenshotted. **[real Fold]** The same on the device.
 

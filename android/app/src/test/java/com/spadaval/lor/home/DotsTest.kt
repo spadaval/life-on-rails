@@ -21,6 +21,25 @@ class DotsTest {
     }
 
     @Test
+    fun aWriteAfterADisconnectChangesNothing() {
+        val book = DotBook()
+        assertFalse(book.put(plain))
+        book.connect()
+        assertTrue(book.put(plain))
+        assertEquals(setOf("com.a#UserHandle{0}"), book.keys)
+        book.disconnect()
+        assertEquals(emptySet<String>(), book.keys)
+        // A post or a full read queued before the disconnect, run after it: dropped.
+        assertFalse(book.put(plain.copy(key = "late")))
+        assertFalse(book.replace(listOf(plain)))
+        assertFalse(book.remove("k"))
+        assertEquals(emptySet<String>(), book.keys)
+        book.connect()
+        assertTrue(book.replace(listOf(plain)))
+        assertEquals(setOf("com.a#UserHandle{0}"), book.keys)
+    }
+
+    @Test
     fun keyedByPackageAndUser() {
         val work = plain.copy(key = "w", user = "UserHandle{10}")
         val summary = plain.copy(key = "s", packageName = "com.b", groupSummary = true)

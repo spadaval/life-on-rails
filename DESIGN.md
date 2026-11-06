@@ -183,7 +183,7 @@ A near-monochrome blue-black instrument panel with warm grey type, lit by one am
 **The Never Red Rule.** Under target, behind, overdue and unstarted are shown dim (`mute` / `dim`), never coral. Coral is reserved for machinery that has failed.
 
 ### Over the wallpaper (the phone's home)
-The launcher on the phone draws some things straight on Sumeet's wallpaper: app and folder labels, the date header and its next-event line, the page dots, and the folder tile's preview fill. That text is the one exception, by Sumeet's decision (2026-11-06), to "dark only" and to the No-Glow rule, because the wallpaper is his and may be light:
+The launcher on the phone draws some things straight on Sumeet's wallpaper: app and folder labels, the date header and its next-event line, the page dots, and the folder tile's preview fill. These are the one exception, by Sumeet's decision (2026-11-06), to "dark only" and to the No-Glow rule, because the wallpaper is his and may be light:
 - **Light ink** (the default): Starlight text and Dust asides with a still text shadow (1dp down, 3dp blur, black at 60%). The shadow is for legibility over a photo, never for emphasis.
 - **Dark ink**, when Android says the wallpaper supports dark text (`WallpaperColors.HINT_SUPPORTS_DARK_TEXT`): Deep Space for text and asides alike, no shadow. The darkest wallpaper with that hint is about `#858585`, where Deep Space reads at about 5.3:1 and a grey aside wouldn't.
 - The hint describes the wallpaper as a whole, so a light patch on a dark wallpaper (or a dark one on a light wallpaper) is not guaranteed to read; the shadow carries light ink there.

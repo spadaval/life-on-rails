@@ -328,7 +328,7 @@ private fun LookRows(look: HomeLook, set: (String, (HomeLook) -> HomeLook) -> Un
             set("The drawer has $it columns on wide screens.") { l -> l.copy(grid = l.grid.copy(wide = l.grid.wide.copy(drawer = it))) }
         }
         Toggle("Labels on home", "Names under apps and folders on home; the drawer always has them", look.labels) {
-            set(if (look.labels) "Home has no labels." else "Home has labels.") { l -> l.copy(labels = !l.labels) }
+            set(if (look.labels) "Home has no labels." else "Home has labels.") { l -> l.copy(labels = !look.labels) }
         }
         Choices("Label size", "In sp", HomeLook.LABEL_SIZES.toList(), look.labelSize) {
             set("Labels are $it sp.") { l -> l.copy(labelSize = it) }
@@ -341,7 +341,7 @@ private fun LookRows(look: HomeLook, set: (String, (HomeLook) -> HomeLook) -> Un
         }
         IconPackRow(look.iconPack) { set(if (it == null) "Apps draw their own icons." else "Icons come from the pack.") { l -> l.copy(iconPack = it) } }
         Toggle("Themed icons", "Apps with a monochrome icon draw it in LoR's colours", look.themedIcons) {
-            set(if (look.themedIcons) "Themed icons are off." else "Themed icons are on.") { l -> l.copy(themedIcons = !l.themedIcons) }
+            set(if (look.themedIcons) "Themed icons are off." else "Themed icons are on.") { l -> l.copy(themedIcons = !look.themedIcons) }
         }
         Options("Icon shape", "For apps' own icons; a pack's keep theirs", HomeLook.IconShape.entries.map { it.title }, look.iconShape.ordinal) {
             set("Icons are ${HomeLook.IconShape.entries[it].title.lowercase()}.") { l -> l.copy(iconShape = HomeLook.IconShape.entries[it]) }

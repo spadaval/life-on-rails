@@ -47,33 +47,83 @@ fun dotKeys(notes: Collection<Note>): Set<String> = notes.filter(::counts).mapTo
 /** The key [Dots.withDots] holds for [app]. */
 val HomeApp.dotKey: String get() = "$packageName#${info.user}"
 
+/**
+ * The notifications that make dots, and whether the listener is connected, under one lock: each
+ * write checks the connection and changes the notes in one step, so a write queued before a
+ * disconnect can't put a dot back after it (Increment 6's second review, R1). No Android in it.
+ */
+class DotBook {
+    private val notes = HashMap<String, Note>()
+    private var connected = false
+
+    /** The keys with a dot now. */
+    @get:Synchronized
+    val keys: Set<String> get() = dotKeys(notes.values)
+
+    @get:Synchronized
+    val size: Int get() = notes.size
+
+    @Synchronized
+    fun connect() {
+        connected = true
+    }
+
+    /** Disconnected: no dots, and every later write is dropped until [connect]. */
+    @Synchronized
+    fun disconnect() {
+        connected = false
+        notes.clear()
+    }
+
+    /** Each returns whether it changed anything; a write while disconnected changes nothing. */
+    @Synchronized
+    fun replace(all: List<Note>): Boolean {
+        if (!connected) return false
+        notes.clear()
+        all.forEach { notes[it.key] = it }
+        return true
+    }
+
+    @Synchronized
+    fun put(n: Note): Boolean {
+        if (!connected) return false
+        notes[n.key] = n
+        return true
+    }
+
+    @Synchronized
+    fun remove(key: String): Boolean = connected && notes.remove(key) != null
+}
+
 /** The process's notifications that make dots, filled by [DotListener]. */
 object Dots {
-    private val notes = HashMap<String, Note>()
+    private val book = DotBook()
     private val _withDots = MutableStateFlow<Set<String>>(emptySet())
     val withDots: StateFlow<Set<String>> = _withDots
 
-    @Synchronized
+    internal fun connect() = book.connect()
+
+    internal fun disconnect() {
+        book.disconnect()
+        publish()
+    }
+
     internal fun replace(all: List<Note>) {
-        notes.clear()
-        all.forEach { notes[it.key] = it }
-        publish()
+        if (book.replace(all)) publish()
     }
 
-    @Synchronized
     internal fun put(n: Note) {
-        notes[n.key] = n
-        publish()
+        if (book.put(n)) publish()
+    }
+
+    internal fun remove(key: String) {
+        if (book.remove(key)) publish()
     }
 
     @Synchronized
-    internal fun remove(key: String) {
-        if (notes.remove(key) != null) publish()
-    }
-
     private fun publish() {
-        val now = dotKeys(notes.values)
-        if (now != _withDots.value) Log.i("LorDots", "${now.size} apps with dots from ${notes.size} notifications")
+        val now = book.keys
+        if (now != _withDots.value) Log.i("LorDots", "${now.size} apps with dots from ${book.size} notifications")
         _withDots.value = now
     }
 
@@ -107,7 +157,7 @@ class DotListener : NotificationListenerService() {
     }
 
     override fun onListenerConnected() {
-        connected = true
+        Dots.connect()
         scope.launch {
             val all = try { activeNotifications.orEmpty() } catch (e: SecurityException) { emptyArray() }
             val ranking = currentRanking
@@ -115,11 +165,8 @@ class DotListener : NotificationListenerService() {
         }
     }
 
-    /** Between connect and disconnect; a post queued on [scope] that runs after the clear must not put a dot back. */
-    @Volatile private var connected = false
-
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
-        scope.launch { if (connected) Dots.put(note(sbn, rankingMap)) }
+        scope.launch { Dots.put(note(sbn, rankingMap)) }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap?) {
@@ -128,7 +175,6 @@ class DotListener : NotificationListenerService() {
 
     override fun onNotificationRankingUpdate(rankingMap: RankingMap?) {
         scope.launch {
-            if (!connected) return@launch
             val all = try { activeNotifications.orEmpty() } catch (e: SecurityException) { emptyArray() }
             Dots.replace(all.map { note(it, rankingMap) })
         }
@@ -137,14 +183,12 @@ class DotListener : NotificationListenerService() {
     // Synchronously: access taken away unbinds and destroys the service at once, cancelling the scope
     // before a launched clear would run (seen on the emulator), which left the dots up.
     override fun onListenerDisconnected() {
-        connected = false
-        Dots.replace(emptyList())
+        Dots.disconnect()
     }
 
     override fun onDestroy() {
-        connected = false
         scope.cancel()
-        Dots.replace(emptyList())
+        Dots.disconnect()
         super.onDestroy()
     }
 }
