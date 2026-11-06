@@ -958,7 +958,7 @@ Agreed with Sumeet, 2026-11-05:
 - A second fresh agent reviewed 5ba5294: contract and fitness pass. Taken: a test for the typo pass's kind filter (`theAppTypoPassLeavesOtherKindsAlone`, seen failing with the filter removed), the "Sigal" note added to the open question on typo ranking, and R8 named here. 179 tests pass on boat.
 - 178 tests passed on boat after the first fixes. The emulator was left as found: test contacts and the vCard deleted, `READ_CONTACTS` revoked, `layout.json` and `launch-stats.json` back to their sums from before the checks.
 
-### Increment 6: The look. Status: active
+### Increment 6: The look. Status: done
 
 **Goal.** Labels and scrims follow the wallpaper (`WallpaperColors`), which ends the light-wallpaper contrast gap from 3.2's review. Icon packs (query both ADW's `org.adw.launcher.THEMES` and Nova's `com.novalauncher.THEME`, as Lawnchair does), themed monochrome icons (Android 13's `monochrome` layer), and icon shape and size. Grid columns per screen, labels on or off, label size. The date header gets styles, a tap that opens the calendar, and the next event under it (from `/device/home`'s `day.events`, which needs no calendar permission). Notification dots on apps and folders. Home, dock, folders, drawer and settings take their type and colour from `DESIGN.md`. All of it is set from Home settings.
 
@@ -1271,6 +1271,8 @@ Agreed with Sumeet, 2026-11-05:
 - R4, deferred to Increment 7 (noted there).
 - R5, fixed: `DESIGN.md`'s wording ("These are the one exception").
 - 200 tests pass on boat. On `T3_Phone_API35`, home drew its apps and dock after the install, with no crash in `logcat -b crash`. The race itself is checked by the JVM test and by reading the code, not on the emulator.
+
+**Closed, 2026-11-06.** A third fresh agent reviewed 470a6df (the dots lock, the toggles, the markdown): pass. Two notes, no action: the listener's `connected` is now one per process, so a stale write from an old instance during a re-grant could leave dots wrong until the next ranking update (pick up a connection generation if that is ever seen); and the race's test covers `DotBook`, while the listener's wiring through it is checked by reading. Increment 6 is done.
 
 ### Increment 7: Motion and feel. Status: backlog
 
