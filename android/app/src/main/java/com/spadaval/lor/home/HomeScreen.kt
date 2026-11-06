@@ -21,9 +21,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.Animatable
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -156,6 +165,10 @@ class HomeUi {
     /** Set by a home press that should jump rather than animate; each effect takes its own. */
     var snapDrawer = false
     var snapPager = false
+    var snapFolder = false
+
+    /** The open folder's tile icon, in root coordinates, when it was tapped (launcher polish 7.2). */
+    var folderFrom: Rect? = null
 
     /** The drawer's list is at its top, and where it is in root coordinates (its letter rail left out). */
     var drawerAtTop = true
@@ -189,6 +202,7 @@ class HomeUi {
         // A home press puts a held item back and leaves edit mode.
         snapDrawer = !animate
         snapPager = !animate
+        snapFolder = !animate && folder != null
         drag.held = null
         drag.editing = false
         drawer = false
@@ -265,7 +279,10 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     var heightPx by remember { mutableIntStateOf(0) }
     val barPx = WindowInsets.statusBars.getTop(LocalDensity.current)
     val drawerUnderBar by remember(heightPx, barPx) { derivedStateOf { (1f - ui.drawerShown) * heightPx < barPx } }
-    val darkBarIcons = ink.ink == Ink.DARK && pager.currentPage >= 1 && !drawerUnderBar && folder == null
+    // An open folder, opening or closing, holds the scrim (launcher polish 7.2).
+    var panel by remember { mutableStateOf<ResolvedFolder?>(null) }
+    SideEffect { if (folder != null) panel = folder }
+    val darkBarIcons = ink.ink == Ink.DARK && pager.currentPage >= 1 && !drawerUnderBar && folder == null && panel == null
     val view = androidx.compose.ui.platform.LocalView.current
     var barsDark by remember { mutableStateOf<Boolean?>(null) }
     SideEffect {
@@ -330,6 +347,33 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             final
         }
     }
+    // A folder opens from its tile and closes back into it, or fades where it is if its tile went away (7.2).
+    val folderShown = remember { Animatable(0f) }
+    val folderLayer = rememberGraphicsLayer()
+    var cardBounds by remember { mutableStateOf<Rect?>(null) }
+    var folderFading by remember { mutableStateOf(false) }
+    val folderOpen = folder != null
+    LaunchedEffect(folderOpen, ui.homePresses) {
+        if (folderOpen) {
+            folderFading = false
+            // The panel's first frame is its slowest (on the emulator, 140 ms); start the clock after it,
+            // or the motion would be over before it is seen. It is drawn at nothing until then.
+            if (folderShown.value == 0f) repeat(2) { withFrameNanos {} }
+            folderShown.animateTo(1f, Motion.move())
+            return@LaunchedEffect
+        }
+        val last = panel ?: return@LaunchedEffect
+        if (ui.snapFolder) {
+            ui.snapFolder = false
+            folderShown.snapTo(0f)
+        } else {
+            val spot = last.at.spot
+            val stays = placed?.pages?.getOrNull((spot as Spot.Page).page)?.any { (it as? Placed.InFolder)?.folder?.let { f -> f.at.spot == spot && f.folder.name == last.folder.name } == true } == true
+            folderFading = !stays
+            folderShown.animateTo(0f, if (stays) Motion.move() else Motion.quick())
+        }
+        panel = null
+    }
     LaunchedEffect(ui.homePresses) {
         if (ui.homePresses == 0) return@LaunchedEffect
         if (ui.snapPager) {
@@ -365,7 +409,26 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
                 Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, stats, search, ui, home)
             }
         }
-        folder?.let { FolderPanel(it, home, onClose = { ui.folder = null }) }
+        if (folder != null) {
+            FolderPanel(folder, home, onClose = { ui.folder = null }, { folderShown.value }, ui.folderFrom, folderLayer) { cardBounds = it }
+        } else if (panel != null) {
+            // Closing, it is a picture of itself: no drop zones, sources or taps, so a drag that left it
+            // can't drop into it and a tap reaches home.
+            Box(
+                Modifier.fillMaxSize().drawBehind {
+                    val p = folderShown.value
+                    drawRect(Scrim, alpha = p)
+                    val c = cardBounds ?: return@drawBehind
+                    val f = FolderMotion.at(p, c.toArray(), if (folderFading) null else ui.folderFrom?.toArray())
+                    translate(c.left + f.dx, c.top + f.dy) {
+                        scale(f.scale, f.scale, pivot = Offset(c.width / 2f, c.height / 2f)) {
+                            folderLayer.alpha = f.alpha
+                            drawLayer(folderLayer)
+                        }
+                    }
+                },
+            )
+        }
         // Edit mode's bar, and Remove while something is held (launcher polish 4.3).
         TopBar(ui, Modifier.align(Alignment.TopCenter).safeDrawingPadding())
         held?.let { HeldItem(it) }
@@ -548,7 +611,10 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeCo
                     ) {
                         when (item) {
                             is Placed.App -> MenuTile(item.app, At(LaunchFrom.HOME), home, spot = item.at, label = LocalHomeLook.current.labels)
-                            is Placed.InFolder -> FolderTile(item.folder, home) { ui.folder = OpenFolder(item.folder.at.spot as Spot.Page, item.folder.folder.name) }
+                            is Placed.InFolder -> FolderTile(item.folder, home) { from ->
+                                ui.folderFrom = from
+                                ui.folder = OpenFolder(item.folder.at.spot as Spot.Page, item.folder.folder.name)
+                            }
                         }
                     }
                 }
@@ -643,7 +709,9 @@ internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)?
 }
 
 @Composable
-private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: () -> Unit) {
+private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: (Rect?) -> Unit) {
+    // Where its icon is, so the folder opens from it (launcher polish 7.2).
+    val icon = remember { arrayOfNulls<Rect>(1) }
     // A long press opens the folder's menu (launcher polish 4.4); moving on from it picks the folder up.
     var menu by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
@@ -657,11 +725,11 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: () ->
             .combinedClickable(onLongClickLabel = "Menu", onLongClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 menu = true
-            }, onClick = onClick)
+            }, onClick = { onClick(icon[0]) })
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box {
+        Box(Modifier.onGloballyPositioned { icon[0] = it.boundsInRoot() }) {
             FolderIcon(folder)
             // A folder has a dot when an app in it has one (Launcher3's FolderIcon).
             val dots = LocalDots.current
@@ -693,9 +761,10 @@ private fun FolderIcon(folder: ResolvedFolder) {
 }
 
 @Composable
-private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -> Unit) {
+private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -> Unit, shown: () -> Float, from: Rect?, layer: GraphicsLayer, onCard: (Rect) -> Unit) {
+    var card by remember { mutableStateOf<Rect?>(null) }
     Box(
-        Modifier.fillMaxSize().background(Scrim).pointerInput(onClose) { detectTapGestures { onClose() } },
+        Modifier.fillMaxSize().drawBehind { drawRect(Scrim, alpha = shown()) }.pointerInput(onClose) { detectTapGestures { onClose() } },
         contentAlignment = Alignment.Center,
     ) {
         val drag = home.drag
@@ -705,6 +774,24 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
             Modifier
                 .widthIn(max = 360.dp)
                 .padding(24.dp)
+                // Its bounds as laid out (before the motion's transform), and drawn from its tile (7.2),
+                // recorded each frame so the close can draw it as a picture.
+                .onGloballyPositioned { c -> c.boundsInRoot().let { card = it; onCard(it) } }
+                .graphicsLayer {
+                    val c = card
+                    val f = if (c == null) FolderMotion.Frame(1f, 0f, 0f, shown()) else FolderMotion.at(shown(), c.toArray(), from?.toArray())
+                    scaleX = f.scale
+                    scaleY = f.scale
+                    translationX = f.dx
+                    translationY = f.dy
+                    alpha = f.alpha
+                }
+                .drawWithContent {
+                    layer.record { this@drawWithContent.drawContent() }
+                    // The close's picture fades the layer; drawn live, it is whole (the card's own layer fades it).
+                    layer.alpha = 1f
+                    drawLayer(layer)
+                }
                 .framedPanel(PanelFace.copy(alpha = 0.95f))
                 // The card takes a drop after the folder's last app (launcher polish 4.4).
                 .dropZone(drag, "card") { b -> Zone.Area(Place.InFolder(spot), b) }
@@ -753,6 +840,8 @@ private fun rememberTileIcon(): TileIcon {
 }
 
 private fun Rect.toBounds() = Bounds(left, top, right, bottom)
+
+private fun Rect.toArray() = floatArrayOf(left, top, right, bottom)
 
 /** Reports where this is as a drop zone while it is laid out; null for none. */
 @Composable

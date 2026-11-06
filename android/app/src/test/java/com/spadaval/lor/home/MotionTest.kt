@@ -30,4 +30,24 @@ class MotionTest {
         assertFalse(DrawerMotion.crossed(p, 0.4f, 0.5f))
         assertTrue(DrawerMotion.crossed(DrawerMotion.commitPoint(true, 1f), 0.8f, 0.6f))
     }
+
+    @Test
+    fun aFolderStartsOnItsTileAndEndsInPlace() {
+        val card = floatArrayOf(100f, 500f, 900f, 1300f)
+        val tile = floatArrayOf(40f, 300f, 200f, 460f)
+        val start = FolderMotion.at(0f, card, tile)
+        org.junit.Assert.assertEquals(0.2f, start.scale, 1e-4f)
+        // The card's centre (500, 900) is moved onto the tile's (120, 380).
+        org.junit.Assert.assertEquals(-380f, start.dx, 1e-3f)
+        org.junit.Assert.assertEquals(-520f, start.dy, 1e-3f)
+        org.junit.Assert.assertEquals(0f, start.alpha, 1e-4f)
+        val end = FolderMotion.at(1f, card, tile)
+        org.junit.Assert.assertEquals(1f, end.scale, 1e-4f)
+        org.junit.Assert.assertEquals(0f, end.dx, 1e-4f)
+        org.junit.Assert.assertEquals(1f, end.alpha, 1e-4f)
+        // Gone from home: a fade in place.
+        val fade = FolderMotion.at(0.5f, card, null)
+        org.junit.Assert.assertEquals(1f, fade.scale, 1e-4f)
+        org.junit.Assert.assertEquals(0.5f, fade.alpha, 1e-4f)
+    }
 }

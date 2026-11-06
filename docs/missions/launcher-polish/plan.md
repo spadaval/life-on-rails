@@ -1385,7 +1385,7 @@ Agreed with Sumeet, 2026-11-05:
     - to 40% and released slowly: it opened;
     - in the drawer, a pull from y 700 held at three points: the edge at 300, 600 and 1200 for 300, 600 and 1200 px of travel; released at half, it closed.
   - **A fling:** `input swipe` can't make one. It sends its lift well after its last move, so Compose's velocity tracker (which takes a pointer as stopped after 40 ms without a move) reads about 0, and a 300 px swipe in 80 ms let go at 12.5% closed. agent-device's `gesture fling up` from y 1800 let go at 13.5% at 1223 dp/s and opened.
-  - **Recordings:** a `screenrecord` of an open (to 40%, let go) and a close (a pull of 800 px, let go), read frame by frame: the edge went 2306, 2102, 1904, 1700, 1440 with the finger, then 1236, 1060, 225, 0 settling; and 304, 602, 800 with the finger, then 867, 1028, 1224, 1751, 1994, 2152, 2288, 2336 to closed. No frame went back.
+  - **Recordings:** a `screenrecord` of an open (to 40%, let go) and a close (a pull of 800 px, let go), read frame by frame: the edge went 2306, 2102, 1904, 1700, 1440 with the finger, then 225 and open; and 304, 602, 800 with the finger, then 867, 1028, 1224, 1751, 1994, 2152, 2288, 2336 to closed. No frame went back.
   - **The tick:** `dumpsys vibrator_manager` lists `performHapticFeedback(constant=23)` (`GESTURE_THRESHOLD_ACTIVATE`) from LoR for each crossing.
   - **The status bar,** over a plain `#f2f2f2` wallpaper (`LorLook`: dark text): with the drawer pulled down 40 px (its top under the bar) the clock's ink was light, and pulled down 400 px it was dark.
   - **The keyboard,** with `drawer.keyboard: true` written with `run-as`: a swipe to 20% and back left `mInputShown=false`; a full open, `true`.
@@ -1395,7 +1395,7 @@ Agreed with Sumeet, 2026-11-05:
   - **Not checked here:** "Remove animations" (7.8 checks every motion at once).
   - Reviewed with the increment.
 
-#### 7.2 Folders open from their tile. Status: todo
+#### 7.2 Folders open from their tile. Status: done
 - **Goal.** The folder panel grows out of the tile that was tapped and goes back into it.
   - **Where from.** The tile's icon bounds (in root coordinates) at the tap are kept with the open folder in `HomeUi`.
   - **Open:** over `MOVE` (Launcher3's 200 ms), the card scales from the tile's icon size to its own and moves from the tile's centre to its place (`graphicsLayer` scale and translation). Its alpha goes from 0 to 1 over the first `QUICK`, and the scrim fades in.
@@ -1408,6 +1408,7 @@ Agreed with Sumeet, 2026-11-05:
   - a tap on an app in the folder opens the app while the panel closes;
   - a folder emptied by Remove from folder on its last app fades out;
   - `assembleDebug testDebugUnitTest` passes on boat.
+- **2026-11-06.** Landed (`FolderMotion` in `Motion.kt`, `HomeScreen.kt`, `MotionTest`). Checked on `T3_Phone_API35` from recordings (the emulator records about 10 frames a second): the Google folder (second row) grows out of its tile, a tap outside shrinks it back into it, and it reopens from the tile; a first-row folder ("Solo") opens the same way; Clock dragged out and held outside the card closed the folder with that motion, and dropped on home it landed at the end of `home` (file read); a tap on Files opened Files while the panel closed; Remove from folder on Solo's only app faded the card where it was. Fixed on the way: a reopened folder was invisible (the close left the layer's alpha at 0), and the open ran before it could be seen, so its clock starts two frames late; one frame of about 100 ms remains mid-open on the emulator. `assembleDebug testDebugUnitTest` passes on boat (204 tests). The building agent's session ended before it could commit; the orchestrator rebuilt the working tree on boat (204 tests, 0 failures) and committed it. Reviewed with the increment.
 
 #### 7.3 Predictive back, and a home press that closes every floating view. Status: todo
 - **Goal.** Back shows where it is going before it is let go, for the drawer and a folder, and back and a home press close whatever floats over home.
