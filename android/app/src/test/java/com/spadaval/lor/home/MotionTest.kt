@@ -50,4 +50,18 @@ class MotionTest {
         org.junit.Assert.assertEquals(1f, fade.scale, 1e-4f)
         org.junit.Assert.assertEquals(0.5f, fade.alpha, 1e-4f)
     }
+
+    @Test
+    fun backScalesTheOpenCardAboutItsTile() {
+        val card = floatArrayOf(100f, 500f, 900f, 1300f)
+        val tile = floatArrayOf(40f, 300f, 200f, 460f)
+        val f = FolderMotion.at(1f, card, tile, back = 0.9f)
+        org.junit.Assert.assertEquals(0.9f, f.scale, 1e-4f)
+        // The centre (500, 900) moves a tenth of the way to the tile's (120, 380).
+        org.junit.Assert.assertEquals(-38f, f.dx, 1e-3f)
+        org.junit.Assert.assertEquals(-52f, f.dy, 1e-3f)
+        // Without back, nothing changes; at the tile, back keeps it there.
+        org.junit.Assert.assertEquals(0f, FolderMotion.at(1f, card, tile).dx, 1e-4f)
+        org.junit.Assert.assertEquals(-380f, FolderMotion.at(0f, card, tile, back = 0.9f).dx, 1e-3f)
+    }
 }

@@ -19,7 +19,10 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.Animatable
 import androidx.compose.ui.draw.drawBehind
@@ -171,6 +174,12 @@ class HomeUi {
     var folderFrom: Rect? = null
 
     /** The drawer's list is at its top, and where it is in root coordinates (its letter rail left out). */
+    /**
+     * How far a back gesture has gone, eased, from 0 to 1 (launcher polish 7.3): the drawer or the
+     * open folder is drawn scaled by `1 - 0.1 × back`.
+     */
+    var back by mutableFloatStateOf(0f)
+
     var drawerAtTop = true
     var drawerPullArea: Rect? = null
     /**
@@ -184,6 +193,11 @@ class HomeUi {
     var homeMenu by mutableStateOf<Offset?>(null)
     /** The home page that long press was on, so only that page draws the menu. */
     var homeMenuPage by mutableStateOf(0)
+    /**
+     * The open app or folder menu (with a folder's Rename dialog and Cover list), as the token of
+     * the tile it was opened from; at most one (launcher polish 7.3, Increment 1's R5).
+     */
+    var menu by mutableStateOf<Any?>(null)
     /** The Undo bar after an edit (launcher polish 4.2). */
     val undo = UndoBarState()
     /** What is held, and edit mode (launcher polish 4.3). */
@@ -192,7 +206,7 @@ class HomeUi {
     var page by mutableStateOf(1)
 
     /** Home with nothing open over it: a home press here opens quick send instead. */
-    val atRest: Boolean get() = !drawer && folder == null && homeMenu == null && page == 1 && !drag.editing && drag.held == null
+    val atRest: Boolean get() = !drawer && folder == null && homeMenu == null && menu == null && page == 1 && !drag.editing && drag.held == null
 
     /**
      * A home press ([animate] false when home wasn't on screen before it: then everything shuts
@@ -208,10 +222,21 @@ class HomeUi {
         drawer = false
         folder = null
         homeMenu = null
+        // Every floating view closes, as Launcher3's onNewIntent closes them (launcher polish 7.3).
+        menu = null
         query = ""
         homePresses++
     }
 }
+
+/** What a back gesture will close (launcher polish 7.3). */
+private enum class Back { FOLDER, EDIT, DRAWER, PAGE }
+
+/** How much smaller back draws the drawer or a folder at the gesture's end (Material's predictive back). */
+private const val BACK_SCALE = 0.1f
+
+/** The back gesture's progress eased as Android's `PathInterpolator(0, 0, 0, 1)`: quick at first, then slower. */
+private val BackEasing = CubicBezierEasing(0f, 0f, 0f, 1f)
 
 /** A folder with its installed apps, each with its place in the file; [cover] is its cover app if installed. */
 data class OpenFolder(val spot: Spot.Page, val name: String)
@@ -259,7 +284,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // What home draws straight on the wallpaper takes the wallpaper's ink (launcher polish 6.3).
     val ink = wallInk(rememberWallpaperInk())
     val file = held?.work ?: drag.landing ?: layout.shown
-    val home = remember(actions, file, apps) { HomeContext(actions, file, apps, drag) }
+    val home = remember(actions, file, apps) { HomeContext(actions, file, apps, ui) }
     val placed = remember(apps, file) { file?.let { place(it.current, apps) } }
     val folder = ui.folder?.let { open ->
         placed?.pages?.getOrNull(open.spot.page)?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf { f -> f.at.spot == open.spot && f.folder.name == open.name } }
@@ -382,14 +407,37 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         } else pager.animateScrollToPage(1)
     }
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { ui.page = it } }
-    BackHandler(enabled = ui.folder != null || ui.drawer || pager.currentPage != 1 || drag.editing) {
-        when {
-            ui.folder != null -> ui.folder = null
-            drag.editing -> drag.editing = false
-            ui.drawer -> { ui.drawer = false; ui.query = "" }
-            else -> ui.homePresses++
+    // Back closes what is open, in this order, and shows where it is going while the gesture lasts
+    // for the drawer and a folder (launcher polish 7.3): each scales toward 0.9 with the progress
+    // (Kvaesitso's `LauncherScaffold`, GPL-3.0, ideas only; Lawnchair's `onBackProgressed`, Apache-2.0).
+    // Before Android 14 only the commit arrives, and it is the whole behaviour.
+    val backScope = rememberCoroutineScope()
+    PredictiveBackHandler(enabled = ui.folder != null || ui.drawer || pager.currentPage != 1 || drag.editing) { events ->
+        val what = when {
+            ui.folder != null -> Back.FOLDER
+            drag.editing -> Back.EDIT
+            ui.drawer -> Back.DRAWER
+            else -> Back.PAGE
+        }
+        try {
+            events.collect { e -> if (what == Back.FOLDER || what == Back.DRAWER) ui.back = BackEasing.transform(e.progress) }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // A cancelled gesture returns it to full size.
+            val from = ui.back
+            backScope.launch { animate(from, 0f, animationSpec = Motion.quick()) { v, _ -> ui.back = v } }
+            throw e
+        }
+        // The commit: the close runs from where the gesture left it; the scale goes with it.
+        when (what) {
+            Back.FOLDER -> ui.folder = null
+            Back.EDIT -> drag.editing = false
+            Back.DRAWER -> { ui.drawer = false; ui.query = "" }
+            Back.PAGE -> ui.homePresses++
         }
     }
+    // Once what back scaled has gone, the next one starts whole.
+    val backDone by remember { derivedStateOf { ui.drawerShown == 0f && ui.folder == null } }
+    LaunchedEffect(backDone, panel) { if (backDone && panel == null) ui.back = 0f }
     // The drag handler lives across recompositions, so it reads the latest of these.
     val latestHome by rememberUpdatedState(home)
     val latestDrop by rememberUpdatedState<(Held, Target?) -> Unit>(::dropHeld)
@@ -405,12 +453,20 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         // The drawer, wherever the finger or its settle has it (launcher polish 7.1); home stays still under it.
         val drawerShows by remember { derivedStateOf { ui.drawerShown > 0f } }
         if (drawerShows) {
-            Box(Modifier.fillMaxSize().graphicsLayer { translationY = (1f - ui.drawerShown) * size.height }) {
+            Box(
+                Modifier.fillMaxSize().graphicsLayer {
+                    translationY = (1f - ui.drawerShown) * size.height
+                    // Predictive back (7.3): smaller about its centre as the gesture goes.
+                    val b = if (ui.folder == null && panel == null) 1f - BACK_SCALE * ui.back else 1f
+                    scaleX = b
+                    scaleY = b
+                },
+            ) {
                 Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, stats, search, ui, home)
             }
         }
         if (folder != null) {
-            FolderPanel(folder, home, onClose = { ui.folder = null }, { folderShown.value }, ui.folderFrom, folderLayer) { cardBounds = it }
+            FolderPanel(folder, home, onClose = { ui.folder = null }, { folderShown.value }, { 1f - BACK_SCALE * ui.back }, ui.folderFrom, folderLayer) { cardBounds = it }
         } else if (panel != null) {
             // Closing, it is a picture of itself: no drop zones, sources or taps, so a drag that left it
             // can't drop into it and a tap reaches home.
@@ -419,7 +475,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
                     val p = folderShown.value
                     drawRect(Scrim, alpha = p)
                     val c = cardBounds ?: return@drawBehind
-                    val f = FolderMotion.at(p, c.toArray(), if (folderFading) null else ui.folderFrom?.toArray())
+                    val f = FolderMotion.at(p, c.toArray(), if (folderFading) null else ui.folderFrom?.toArray(), 1f - BACK_SCALE * ui.back)
                     translate(c.left + f.dx, c.top + f.dy) {
                         scale(f.scale, f.scale, pivot = Offset(c.width / 2f, c.height / 2f)) {
                             folderLayer.alpha = f.alpha
@@ -713,7 +769,7 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: (Rect
     // Where its icon is, so the folder opens from it (launcher polish 7.2).
     val icon = remember { arrayOfNulls<Rect>(1) }
     // A long press opens the folder's menu (launcher polish 4.4); moving on from it picks the folder up.
-    var menu by remember { mutableStateOf(false) }
+    var menu by rememberFloatingMenu(home.ui)::open
     val haptics = LocalHapticFeedback.current
     val held = home.drag.held
     LaunchedEffect(held) { if (held != null) menu = false }
@@ -761,7 +817,7 @@ private fun FolderIcon(folder: ResolvedFolder) {
 }
 
 @Composable
-private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -> Unit, shown: () -> Float, from: Rect?, layer: GraphicsLayer, onCard: (Rect) -> Unit) {
+private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -> Unit, shown: () -> Float, back: () -> Float, from: Rect?, layer: GraphicsLayer, onCard: (Rect) -> Unit) {
     var card by remember { mutableStateOf<Rect?>(null) }
     Box(
         Modifier.fillMaxSize().drawBehind { drawRect(Scrim, alpha = shown()) }.pointerInput(onClose) { detectTapGestures { onClose() } },
@@ -779,7 +835,7 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
                 .onGloballyPositioned { c -> c.boundsInRoot().let { card = it; onCard(it) } }
                 .graphicsLayer {
                     val c = card
-                    val f = if (c == null) FolderMotion.Frame(1f, 0f, 0f, shown()) else FolderMotion.at(shown(), c.toArray(), from?.toArray())
+                    val f = if (c == null) FolderMotion.Frame(1f, 0f, 0f, shown()) else FolderMotion.at(shown(), c.toArray(), from?.toArray(), back())
                     scaleX = f.scale
                     scaleY = f.scale
                     translationX = f.dx

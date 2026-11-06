@@ -14,6 +14,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -104,7 +105,9 @@ interface HomeActions {
 }
 
 /** What a screen of home needs to draw apps and their menus. */
-class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: List<HomeApp>, val drag: DragState) {
+class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: List<HomeApp>, val ui: HomeUi) {
+    val drag: DragState get() = ui.drag
+
     /** The main-profile apps in label order, as the edits resolve refs (launcher polish 4.1). */
     val installed: List<AppId> = apps.filter { it.mainProfile }.map { it.id }
 
@@ -130,7 +133,7 @@ class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: Lis
  */
 @Composable
 fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At? = null, content: @Composable (onLongClick: () -> Unit) -> Unit) {
-    var open by remember { mutableStateOf(false) }
+    var open by rememberFloatingMenu(home.ui)::open
     val haptics = LocalHapticFeedback.current
     // Picking the app up closes its menu (launcher polish 4.3).
     val held = home.drag.held
@@ -144,6 +147,26 @@ fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At? = null, 
     }
 }
 
+
+/**
+ * A tile's menu, open while [HomeUi.menu] holds it, so a home press closes it with everything else
+ * that floats over home (launcher polish 7.3, Increment 1's R5) and home isn't at rest under it.
+ */
+class FloatingMenu(private val ui: HomeUi) {
+    var open: Boolean
+        get() = ui.menu === this
+        set(v) {
+            if (v) ui.menu = this else if (ui.menu === this) ui.menu = null
+        }
+}
+
+/** A [FloatingMenu] for this place in the composition; it closes when the tile leaves. */
+@Composable
+fun rememberFloatingMenu(ui: HomeUi): FloatingMenu {
+    val menu = remember(ui) { FloatingMenu(ui) }
+    DisposableEffect(menu) { onDispose { menu.open = false } }
+    return menu
+}
 
 @Composable
 private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, close: () -> Unit) {

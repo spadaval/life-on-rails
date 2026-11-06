@@ -40,14 +40,25 @@ object DrawerMotion {
 object FolderMotion {
     class Frame(val scale: Float, val dx: Float, val dy: Float, val alpha: Float)
 
-    /** The card's bounds and the tile's, as left, top, right, bottom; [tile] null to fade. */
-    fun at(shown: Float, card: FloatArray, tile: FloatArray?): Frame {
-        if (tile == null || card[2] <= card[0]) return Frame(1f, 0f, 0f, shown)
+    /**
+     * The card's bounds and the tile's, as left, top, right, bottom; [tile] null to fade. [back] is
+     * predictive back's scale (launcher polish 7.3), applied about the tile's centre (the card's
+     * own without a tile), so the card leans toward where it will close.
+     */
+    fun at(shown: Float, card: FloatArray, tile: FloatArray?, back: Float = 1f): Frame {
+        val cx = (card[0] + card[2]) / 2f
+        val cy = (card[1] + card[3]) / 2f
+        if (tile == null || card[2] <= card[0]) return Frame(back, 0f, 0f, shown)
         val s0 = (tile[2] - tile[0]) / (card[2] - card[0])
         val rest = 1f - shown
-        val dx = ((tile[0] + tile[2]) - (card[0] + card[2])) / 2f * rest
-        val dy = ((tile[1] + tile[3]) - (card[1] + card[3])) / 2f * rest
+        val px = (tile[0] + tile[2]) / 2f
+        val py = (tile[1] + tile[3]) / 2f
+        val dx = (px - cx) * rest
+        val dy = (py - cy) * rest
+        // Back's scale about the tile's centre moves the card's centre toward it.
+        val bx = px + back * (cx + dx - px) - cx
+        val by = py + back * (cy + dy - py) - cy
         // The card is fully drawn by a third of the way, so its contents don't swim in a fog.
-        return Frame(s0 + (1f - s0) * shown, dx, dy, (shown * 3f).coerceAtMost(1f))
+        return Frame((s0 + (1f - s0) * shown) * back, bx, by, (shown * 3f).coerceAtMost(1f))
     }
 }
