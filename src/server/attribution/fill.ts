@@ -219,7 +219,7 @@ async function insertProposal(tx: Tx, blockId: string, w: Derived): Promise<void
 }
 
 /** How far back to read evidence, so a block that started before the window is rebuilt the same way. */
-const LOOKBACK_MS = 6 * 3_600_000;
+export const LOOKBACK_MS = 6 * 3_600_000;
 
 /** Phone app sessions in [from, to) as blocks; see `wantedActivity`. */
 export async function syncActivityFill(tx: Tx, from: Date, to: Date): Promise<FillStats> {

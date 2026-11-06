@@ -9,6 +9,7 @@ import { createPage, readPage } from "../../src/server/memory/pages.js";
 import "../../src/server/memory/peopleSection.js";
 import { lastContacts, listPeople } from "../../src/server/people.js";
 import { recordObservation } from "../../src/server/observations.js";
+import { addDays, localTimeOnDay, localYmd } from "../../src/shared/localTime.js";
 import { dbDescribe } from "./helpers.js";
 
 /** A Google Contacts account whose contents tests change between syncs. */
@@ -203,7 +204,9 @@ dbDescribe("names, aliases, and merging", () => {
 
 dbDescribe("last in touch", () => {
   const H = 3600_000;
-  const daysAgo = (d: number) => new Date(Date.now() - d * 24 * H);
+  // Local days, not 24-hour steps: across a DST change those land on the wrong date for an hour a day.
+  const tz = "America/Los_Angeles";
+  const daysAgo = (d: number) => localTimeOnDay(tz, addDays(localYmd(tz, new Date()), -d), "12:00");
 
   async function mail(id: string, at: Date, payload: Record<string, unknown>) {
     await recordObservation(sql, { id: undefined, tStart: at, tEnd: at, device: "buildbot", source: "gmail", title: id, payload: { gmail_id: id, ...payload } });
@@ -240,10 +243,7 @@ dbDescribe("last in touch", () => {
 
   it("lists who is overdue and whose birthday is near, and says so in the digest", async () => {
     const g = contacts();
-    const soon = new Date(Date.now() + 3 * 24 * H);
-    const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", month: "2-digit", day: "2-digit" }).formatToParts(soon);
-    const month = Number(fmt.find((x) => x.type === "month")!.value);
-    const day = Number(fmt.find((x) => x.type === "day")!.value);
+    const [, month, day] = addDays(localYmd(tz, new Date()), 3).split("-").map(Number);
     g.put({ ...priya, birthdays: [{ date: { month, day, year: 1990 } }] });
     g.put(jo);
     g.put(acme);

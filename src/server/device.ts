@@ -15,7 +15,7 @@ import { ObservationEnvelope } from "../shared/observation.js";
 import { localYmd } from "../shared/localTime.js";
 import { normalizePhone } from "../shared/phone.js";
 import { fillWindow, pauseRunningBlock, resumeRunningBlock, startManualBlock, stopRunningBlock } from "./attribution/blocks.js";
-import { lockBlocks, syncFill } from "./attribution/fill.js";
+import { LOOKBACK_MS, lockBlocks, syncFill } from "./attribution/fill.js";
 import { env } from "./env.js";
 import { needsOwner } from "./intents.js";
 import { getToday } from "./today.js";
@@ -89,7 +89,9 @@ export async function ingest(body: unknown): Promise<IngestResult> {
     }
   });
   if (evidenceFrom <= evidenceTo) {
-    const { from, to } = fillWindow(new Date(), new Date(evidenceFrom), new Date(evidenceTo));
+    // New evidence can change a block that starts a little outside it (a stay is padded before its first fix; a
+    // late fix can split a stay). Re-sync as far either side as the fill reads evidence.
+    const { from, to } = fillWindow(new Date(), new Date(evidenceFrom - LOOKBACK_MS), new Date(evidenceTo + LOOKBACK_MS));
     await sql.begin(async (tx) => {
       await lockBlocks(tx);
       await syncFill(tx, from, to);
