@@ -32,6 +32,9 @@ import { explainScore, recomputeScores } from "../scoring/recompute.js";
 import { markMailHandled, pendingMail } from "../mail/wake.js";
 import { messageHistory, sendMessage } from "../channel/channel.js";
 import { whatsappChannel } from "../channel/client.js";
+import { listAccounts, listTxns, spend } from "../money/read.js";
+import { plaid } from "../money/plaid.js";
+import { syncMoney } from "../money/sync.js";
 import { addPlace, addRule, deleteRule, listApps, listPlaces, listRules } from "../places.js";
 import { getStatus } from "../status.js";
 import { getToday, renderToday } from "../today.js";
@@ -305,6 +308,12 @@ route("POST", /^\/places$/, async ({ body }) => {
   const d = AddPlace.parse(body);
   return addPlace(sql, { name: d.name, lat: d.lat, lon: d.lon, radiusM: d.radius_m, intentId: d.intent_id });
 });
+
+route("GET", /^\/money\/accounts$/, async () => listAccounts(sql));
+route("GET", /^\/money\/txns$/, async ({ query }) => listTxns(sql, query));
+route("GET", /^\/money\/spend$/, async ({ query }) => spend(sql, query));
+// Fetching from Plaid now, outside the schedule; it writes nothing of the agent's, so no thread.
+route("POST", /^\/money\/sync$/, async () => syncMoney(sql, plaid));
 
 route("GET", /^\/apps$/, async ({ query }) => listApps(sql, Number(query.get("days") ?? 14) || 14));
 

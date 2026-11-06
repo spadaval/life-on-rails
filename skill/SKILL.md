@@ -201,6 +201,24 @@ in LoR yet.
 Mail itself is not in LoR: LoR only knows that a message arrived. Read mail with the
 `google` skill (`gog`), and cite it as `mail:<gmail-id>`.
 
+## Money
+
+His US bank, card and brokerage logins are linked through Plaid and synced every few hours.
+Amounts are Plaid's sign: positive is money out, negative is money in (pay, refunds).
+
+```bash
+lor money --md                                 # accounts, balances, net worth; logins needing a re-link
+lor money spend --from 2026-10-01 --to 2026-10-31 --by category --md   # also --by detail|merchant|account
+lor money txns --search "uber" --from 2026-09-01 --md                  # also --category, --account <mask>
+lor money sync                                 # fetch now instead of waiting
+```
+
+`spend` leaves out transfers, card and loan payments, borrowing and income. A login with an
+error (`ITEM_LOGIN_REQUIRED`) needs him to sign in again at `/plaid/link` on the dashboard;
+tell him, don't retry. Indian accounts (HDFC) are not in Plaid; their texts are in
+`lor search --in obs`. Money is sensitive: don't send amounts or balances over WhatsApp
+unless he asks (see `messaging-rules`).
+
 ## Goals, tasks, and time
 
 ```bash

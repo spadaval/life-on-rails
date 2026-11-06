@@ -52,6 +52,12 @@ const Env = z.object({
   LOR_CHANNEL_DIR: z.string().default(path.join(homedir(), ".local/share/life-on-rails/channel")),
   LOR_T3_BIN: z.string().default(path.join(homedir(), ".local/bin/t3")),
   LOR_ASSISTANT_DIR: z.string().default(path.join(homedir(), "google/assistant")),
+  // Plaid, the money sensor: which environment, the team's keys (empty: off), where LoR keeps each login's access token (0600), and how often it syncs.
+  PLAID_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
+  PLAID_CLIENT_ID: z.string().default(""),
+  PLAID_SECRET: z.string().default(""),
+  PLAID_ITEMS_FILE: z.string().default(path.join(homedir(), ".config/life-on-rails/plaid-items.json")),
+  LOR_PLAID_POLL_S: z.coerce.number().int().min(300).default(10800),
   GOOGLE_ACCOUNT: z.string().default(""),
   GOOGLE_OAUTH_CLIENT: z.string().default(path.join(homedir(), ".config/life-on-rails/google-client.json")),
   GOOGLE_TOKEN_FILE: z.string().default(path.join(homedir(), ".config/life-on-rails/google-token.json")),

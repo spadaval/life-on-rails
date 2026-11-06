@@ -17,6 +17,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -510,4 +511,66 @@ export const wallPin = pgTable(
     createdAt: ts("created_at").notNull().defaultNow(),
   },
   (t) => [check("wall_pin_one_row", sql`${t.id}`)],
+);
+
+// ---- Money: what Plaid reports. Observations of the owner's accounts, never decisions ----
+
+// One login at one institution. The access token is not here: it is in
+// PLAID_ITEMS_FILE (0600), which LoR writes when the login is linked.
+export const moneyItem = pgTable("money_item", {
+  id: text("id").primaryKey(),
+  institutionId: text("institution_id"),
+  institution: text("institution").notNull(),
+  // Where /transactions/sync got to; null before the first sync.
+  cursor: text("cursor"),
+  // Plaid's error code from the last sync (ITEM_LOGIN_REQUIRED: re-link on /plaid/link); null when healthy.
+  error: text("error"),
+  linkedAt: ts("linked_at").notNull().defaultNow(),
+  syncedAt: ts("synced_at"),
+});
+
+export const moneyAccount = pgTable(
+  "money_account",
+  {
+    id: text("id").primaryKey(),
+    itemId: text("item_id").notNull().references(() => moneyItem.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    officialName: text("official_name"),
+    mask: text("mask"),
+    // depository, credit, loan, investment, other
+    type: text("type").notNull(),
+    subtype: text("subtype"),
+    current: numeric("current", { precision: 14, scale: 2 }),
+    available: numeric("available", { precision: 14, scale: 2 }),
+    creditLimit: numeric("credit_limit", { precision: 14, scale: 2 }),
+    currency: text("currency"),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("money_account_item_idx").on(t.itemId)],
+);
+
+// Plaid's sign: a positive amount is money out of the account, negative is money in.
+export const moneyTxn = pgTable(
+  "money_txn",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull().references(() => moneyAccount.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    authorizedDate: date("authorized_date"),
+    // When the institution gives a time; most give only a date.
+    at: ts("at"),
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    currency: text("currency"),
+    name: text("name").notNull(),
+    merchant: text("merchant"),
+    // Plaid's personal finance category: primary (FOOD_AND_DRINK) and detailed (FOOD_AND_DRINK_COFFEE).
+    category: text("category"),
+    categoryDetail: text("category_detail"),
+    pending: boolean("pending").notNull().default(false),
+    channel: text("channel"),
+    // Plaid's transaction as it came, for fields not given a column (location, counterparties, website).
+    payload: jsonb("payload").notNull().default({}),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("money_txn_date_idx").on(t.date), index("money_txn_account_date_idx").on(t.accountId, t.date)],
 );

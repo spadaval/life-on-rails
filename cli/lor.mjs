@@ -31,6 +31,12 @@ read
   lor places                              named places, and places the phone keeps visiting that have no name
   lor apps [--days N]                     which phone apps took the time, and what each is labelled as
   lor rules                               which app, calendar title, or place stands for which goal
+  lor money [accounts] [--md]             linked accounts, balances, net worth, and logins that need re-linking
+  lor money txns [--from <YYYY-MM-DD>] [--to <YYYY-MM-DD>] [--search "..."] [--category X] [--account <id|mask|name>] [--limit N] [--md]
+                                          transactions, newest first (default: the last 30 days); amounts > 0 are money out
+  lor money spend [--from <d>] [--to <d>] [--by category|detail|merchant|account] [--md]
+                                          spending less refunds, without transfers, card payments or income (default: this month)
+  lor money sync                          fetch from Plaid now instead of waiting for the next run
 
 write (free for the agent; every write needs --thread <your T3 thread id>)
   lor page create <slug> --title "..." [--entity <id> | --intent <id>] [--note "..."] < body.md
@@ -180,6 +186,17 @@ function plan(positionals, flags) {
       return { method: "GET", path: `/apps${q({ days: int(flags.days, "days") })}` };
     case "rules":
       return { method: "GET", path: "/rules" };
+    case "money":
+      if (b === "accounts" || b === undefined) return { method: "GET", path: "/money/accounts", md: true };
+      if (b === "txns")
+        return {
+          method: "GET",
+          path: `/money/txns${q({ from: flags.from, to: flags.to, q: flags.search, category: flags.category, account: flags.account, limit: int(flags.limit, "limit") })}`,
+          md: true,
+        };
+      if (b === "spend") return { method: "GET", path: `/money/spend${q({ from: flags.from, to: flags.to, by: flags.by })}`, md: true };
+      if (b === "sync") return { method: "POST", path: "/money/sync", body: {}, fetchOnly: true };
+      break;
     case "place":
       if (b === "add") {
         const at = need(flags.at, "--at <lat>,<lon>").split(",").map(Number);
@@ -429,7 +446,7 @@ async function main() {
     return positionals.length === 0 && !flags.help ? 2 : 0;
   }
   const call = plan(positionals, flags);
-  if (call.method !== "GET" && !call.body?.thread) {
+  if (call.method !== "GET" && !call.fetchOnly && !call.body?.thread) {
     throw new Usage("writes need --thread <your T3 thread id> (or LOR_THREAD / T3CODE_THREAD_ID)");
   }
   const config = loadConfig();

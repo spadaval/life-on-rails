@@ -7,10 +7,11 @@ const TOKEN_PATTERNS: RegExp[] = [
   /ya29\.[A-Za-z0-9._-]{10,}/g, // Google access token
   /1\/\/[A-Za-z0-9._-]{20,}/g, // Google refresh token
   /\/api\/hooks\/[^/\s"]+\/[^/\s"]+/g, // T3 webhook URL (the path carries the token)
+  /\b(access|public|link)-(sandbox|production)-[0-9a-f-]{20,}/g, // Plaid tokens
 ];
 
 function secretValues(): string[] {
-  return [env.LOR_AGENT_TOKEN].filter((v) => v.length >= 8);
+  return [env.LOR_AGENT_TOKEN, env.PLAID_SECRET].filter((v) => v.length >= 8);
 }
 
 /** Remove bearer tokens, Google tokens, and configured secrets from a string. */

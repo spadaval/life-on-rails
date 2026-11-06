@@ -14,6 +14,8 @@ import { googleMail } from "../google/mailClient.js";
 import { syncTasks } from "../google/tasksSync.js";
 import { wakeSnoozed } from "../intents.js";
 import { mailCheck } from "../mail/check.js";
+import { plaid, plaidConfigured } from "../money/plaid.js";
+import { syncMoney } from "../money/sync.js";
 import { recomputeScores, scheduleRecompute, setConfirmRateProvider } from "../scoring/recompute.js";
 import { trailingConfirmRate } from "../today.js";
 
@@ -95,6 +97,12 @@ export const JOBS: Job[] = [
     everyS: 300,
     shouldRun: whatsappPending,
     run: async () => importWhatsapp(sql),
+  },
+  {
+    name: "money_sync",
+    everyS: env.LOR_PLAID_POLL_S,
+    shouldRun: async () => plaidConfigured(),
+    run: async () => syncMoney(sql, plaid),
   },
   {
     name: "overnight_close",

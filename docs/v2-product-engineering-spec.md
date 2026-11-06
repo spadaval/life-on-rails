@@ -136,6 +136,11 @@ LOR_WAKE_MAX_S=900
 GOOGLE_ACCOUNT=sumeet.padavala@gmail.com
 GOOGLE_OAUTH_CLIENT=/home/supadava/.config/life-on-rails/google-client.json
 GOOGLE_TOKEN_FILE=/home/supadava/.config/life-on-rails/google-token.json
+PLAID_ENV=sandbox             # or production
+PLAID_CLIENT_ID=
+PLAID_SECRET=                 # the secret for PLAID_ENV
+PLAID_ITEMS_FILE=/home/supadava/.config/life-on-rails/plaid-items.json
+LOR_PLAID_POLL_S=10800
 ```
 
 The comments above are for this document: in the real file every comment is on its own line, because systemd does not strip trailing ones. postgres.js treats an empty host as TCP localhost, so `src/db/client.ts` forces the socket directory when the URL has none.
@@ -449,6 +454,16 @@ Every run uses the owner's one `gog` login.
 
 ---
 
+## Money
+
+LoR knows the owner's US accounts through **Plaid**, called directly with the team's keys (`PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV` in the env file). Plaid is a sensor: LoR records what it reports and never moves money. Indian accounts are not in Plaid; their bank texts are already observations.
+
+- **Linking.** `/plaid/link` on the owner-only listener opens Plaid Link. Each login at an institution is an Item; the public token is exchanged on the server, the access token goes into `PLAID_ITEMS_FILE` (0600) by item id, and the Item becomes a `money_item` row (institution, sync cursor, last error). A login whose error is `ITEM_LOGIN_REQUIRED` gets "Sign in again" there, which runs Link in update mode on the same Item. The trial plan allows a fixed number of Items ever created, so development uses Sandbox, and each real login is linked once.
+- **Sync.** `money_sync` (every `LOR_PLAID_POLL_S`, 3 h) calls `/transactions/sync` from each Item's cursor through all pages, restarting the pass if Plaid reports a change during paging, then applies accounts with their balances, added and modified transactions, and removals in one transaction with the new cursor. A pending charge that posts arrives as a removal plus an addition. Plaid's webhooks need a public endpoint, which LoR does not have, so it polls. A failing Item records its error code and the job reports it; the other Items still sync.
+- **Tables.** `money_item`, `money_account` (balances as Plaid last reported them), `money_txn` (Plaid's sign: positive is money out; its personal finance category as `category` and `category_detail`; the whole transaction in `payload`). These are not `observation` rows: Plaid changes and removes transactions, and money is read by account, date and category, not on the timeline.
+- **Reading.** `lor money` (accounts, balances, a net figure: cards and loans count against), `lor money txns`, `lor money spend` (outflows less refunds, without transfers, card and loan payments, borrowing or income), `lor money sync`.
+- **Not yet.** Investments and Liabilities (holdings, statement balances and due dates) wait on what the trial plan includes. Then: bills and balances in the brief, a Money screen, spending against goals.
+
 ## UI
 
 Desktop first, with a left rail; on a phone the rail becomes a top strip and the screens stack. Dark only. The look is "Elite: Mostly Harmless" (`docs/design/README.md`): a star atlas in Elite: Dangerous's menu language, turned down.
@@ -589,6 +604,7 @@ Built on 2026-10-14, in this order, each checked as described.
 
 | 16 | The persistent agent: the WhatsApp channel, `lor message`, history, flags over the channel, the brief on Today and the wall, the Ask box, nightly as a T3 thread with time inference and flag follow-up, the work queue; the phone's notifications and the evening confirm removed | Tests for receive, hand-off failure, recipient changes, what other runs sent, flags, history and the dashboard; a systemd unit ran `t3 thread start --wait`. |
 | 17 | The wall display redrawn: Today as the day arc inked by goal with one thing inside it (`lor wall pin` over the automatic choice), Goals as a ledger with each goal's next task, Tasks by when due; goal short titles; Next Screen from the firmware 1.8.18 menu | Pure tests for the choice of the one thing, screens, and each page; DB tests for the pin and short titles; frames rendered from live data and looked at |
+| 18 | Money: Plaid Link at `/plaid/link`, `money_sync` from each login's cursor, `lor money` accounts, transactions and spending | DB tests with a fake bank (paging, pending to posted, refunds, removals, a login needing re-link, a change during paging, the token kept out of tables); against Plaid's Sandbox on the test server, a linked bank synced two years (393 transactions, 7 accounts) and Link opened in Chrome. **Not yet linked to a real account.** |
 
 **Waiting on the owner**
 
