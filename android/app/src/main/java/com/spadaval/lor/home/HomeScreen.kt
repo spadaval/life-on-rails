@@ -97,13 +97,16 @@ internal val LabelStyle = TextStyle(color = Ink, fontSize = 12.sp, shadow = Shad
 /** What the activity can reset on a home press. */
 class HomeUi {
     var drawer by mutableStateOf(false)
-    /** The open folder's name. */
-    var folder by mutableStateOf<String?>(null)
+    /**
+     * The open folder: its place in the file (launcher polish 4.1: by place, since names may
+     * repeat) and its name, so an edit that moves another item into that place closes it.
+     */
+    var folder by mutableStateOf<OpenFolder?>(null)
     var query by mutableStateOf("")
     var homePresses by mutableStateOf(0)
     /** Where on home a long press on empty space opened the home menu. */
     var homeMenu by mutableStateOf<Offset?>(null)
-    /** The page showing: 0 is the agent page, 1 is home. */
+    /** The pager's page showing: 0 is the agent page, 1 is home, 2 on are the pages after it. */
     var page by mutableStateOf(1)
 
     /** Home with nothing open over it: a home press here opens quick send instead. */
@@ -118,38 +121,58 @@ class HomeUi {
     }
 }
 
-class ResolvedFolder(val folder: Folder, val apps: List<HomeApp>)
+/** A folder with its installed apps, each with its place in the file; [cover] is its cover app if installed. */
+data class OpenFolder(val spot: Spot.Page, val name: String)
 
-/** A layout item with its installed apps; refs to apps that aren't installed are left out. */
-private sealed interface Placed {
-    class App(val app: HomeApp) : Placed
-    class InFolder(val folder: ResolvedFolder) : Placed
+class ResolvedFolder(val folder: Folder, val at: From.At, val apps: List<Pair<HomeApp, From.At>>, val cover: HomeApp?)
+
+/** A layout item with its installed apps and its place in the file; refs to apps that aren't installed are left out. */
+internal sealed interface Placed {
+    val at: From.At
+    class App(val app: HomeApp, override val at: From.At) : Placed
+    class InFolder(val folder: ResolvedFolder) : Placed {
+        override val at get() = folder.at
+    }
+}
+
+/** Home's pages and dock as drawn: each item with the place it holds in the file. */
+internal class PlacedHome(val pages: List<List<Placed>>, val dock: List<Pair<HomeApp, From.At>>) {
+    val count: Int get() = pages.sumOf { it.size }
 }
 
 private fun resolve(ref: AppRef, apps: List<HomeApp>): HomeApp? =
     apps.firstOrNull { it.mainProfile && ref.matches(it.packageName, it.info.componentName.className) }
 
-private fun place(layout: Layout, apps: List<HomeApp>): Pair<List<Placed>, List<HomeApp>> {
-    val home = layout.home.mapNotNull { item ->
-        when (item) {
-            is AppRef -> resolve(item, apps)?.let(Placed::App)
-            is Folder -> item.apps.mapNotNull { resolve(it, apps) }.takeIf { it.isNotEmpty() }
-                ?.let { Placed.InFolder(ResolvedFolder(item, it)) }
+private fun place(layout: Layout, apps: List<HomeApp>): PlacedHome {
+    val pages = layout.allPages.mapIndexed { p, items ->
+        items.mapIndexedNotNull { i, item ->
+            val at = From.At(Spot.Page(p, i), item)
+            when (item) {
+                is AppRef -> resolve(item, apps)?.let { Placed.App(it, at) }
+                is Folder -> item.apps.mapIndexedNotNull { a, ref -> resolve(ref, apps)?.let { it to From.At(Spot.InFolder(p, i, a), ref) } }
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { Placed.InFolder(ResolvedFolder(item, at, it, item.cover?.let { c -> resolve(c, apps) })) }
+            }
         }
     }
-    return home to layout.dock.mapNotNull { resolve(it, apps) }
+    return PlacedHome(pages, layout.dock.mapIndexedNotNull { i, ref -> resolve(ref, apps)?.let { it to From.At(Spot.Dock(i), ref) } })
 }
 
 @Composable
-fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, stats: LaunchStats, ui: HomeUi, actions: HomeActions) {
+fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, reads: Int, stats: LaunchStats, ui: HomeUi, actions: HomeActions) {
     // While the file is broken, everything draws from the last good layout (launcher polish 3.1).
     val file = layout.shown
     val home = remember(actions, file, apps) { HomeContext(actions, file, apps) }
     val placed = remember(apps, file) { file?.let { place(it.current, apps) } }
-    val folder = ui.folder?.let { name -> placed?.first?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf { f -> f.folder.name == name } } }
+    val folder = ui.folder?.let { open ->
+        placed?.pages?.getOrNull(open.spot.page)?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf { f -> f.at.spot == open.spot && f.folder.name == open.name } }
+    }
     // An edit that empties the open folder removes it, so the panel closes.
     LaunchedEffect(ui.folder, folder, placed) { if (ui.folder != null && folder == null && placed != null) ui.folder = null }
-    val pager = rememberPagerState(initialPage = 1) { 2 }
+    val pageCount = file?.current?.allPages?.size ?: 1
+    // A file changed from outside (an agent, adb) may hold another folder at the open one's place.
+    LaunchedEffect(reads) { ui.folder = null }
+    val pager = rememberPagerState(initialPage = 1) { 1 + pageCount }
     LaunchedEffect(ui.homePresses) { if (ui.homePresses > 0) pager.animateScrollToPage(1) }
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { ui.page = it } }
     BackHandler(enabled = ui.folder != null || ui.drawer || pager.currentPage != 1) {
@@ -161,9 +184,9 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, sta
     }
     Box(Modifier.fillMaxSize()) {
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
-            if (page == 0) AgentPage() else HomePage(placed, layout, appsLoad, ui, home)
+            if (page == 0) AgentPage() else HomePage(page - 1, placed, layout, appsLoad, ui, home)
         }
-        PageDots(pager.currentPage, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
+        PageDots(pager.currentPage, 1 + pageCount, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
         AnimatedVisibility(
             ui.drawer,
             enter = slideInVertically { it / 3 } + fadeIn(),
@@ -176,7 +199,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, sta
 }
 
 @Composable
-private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutState, appsLoad: AppsLoad, ui: HomeUi, home: HomeContext) {
+private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad: AppsLoad, ui: HomeUi, home: HomeContext) {
     val threshold = with(LocalDensity.current) { 56.dp.toPx() }
     var dragged by remember { mutableStateOf(0f) }
     BoxWithConstraints(
@@ -205,11 +228,12 @@ private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutS
             },
         )
         val wide = maxWidth >= 600.dp
-        val header = @Composable { DateHeader(if (wide) 40 else 30) }
+        // Only home's first page has the date; the pages after it start where its grid starts.
+        val header = @Composable { if (n == 0) DateHeader(if (wide) 40 else 30) else Spacer(Modifier.height(if (wide) 0.dp else 104.dp)) }
         val body = @Composable { mod: Modifier ->
             Column(mod) {
                 val columns = if (wide) 5 else 4
-                if (layout is LayoutState.Broken) {
+                if (n == 0 && layout is LayoutState.Broken) {
                     BrokenBanner(
                         layout, appsLoad == AppsLoad.LOADED, TextStyle(color = Ink, fontSize = 13.sp),
                         Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp).fillMaxWidth()
@@ -219,17 +243,17 @@ private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutS
                     )
                 }
                 // Until the first run is done (launcher polish 3.5); the default layout is drawn under it.
-                SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
-                val body = homeBody(appsLoad, home.file, placed?.first?.size ?: 0)
+                if (n == 0) SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
+                val body = homeBody(appsLoad, home.file, placed?.count ?: 0)
                 when (body) {
                     HomeBody.NOTHING -> {}
-                    HomeBody.SKELETON -> Skeleton(home.file!!.current.home, columns)
-                    HomeBody.APPS_DIDNT_LOAD -> HomeNote("Apps didn't load. Trying again.", null)
-                    HomeBody.EMPTY -> HomeNote("Home is empty.", "Swipe up for your apps. Long-press one and choose Add to home.") { ui.drawer = true }
-                    HomeBody.GRID -> HomeGrid(placed!!.first, columns, ui, home)
+                    HomeBody.SKELETON -> Skeleton(home.file!!.current.allPages.getOrElse(n) { emptyList() }, columns)
+                    HomeBody.APPS_DIDNT_LOAD -> if (n == 0) HomeNote("Apps didn't load. Trying again.", null)
+                    HomeBody.EMPTY -> if (n == 0) HomeNote("Home is empty.", "Swipe up for your apps. Long-press one and choose Add to home.") { ui.drawer = true }
+                    HomeBody.GRID -> HomeGrid(placed!!.pages.getOrElse(n) { emptyList() }, columns, ui, home)
                 }
                 Spacer(Modifier.weight(1f))
-                if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.second.orEmpty(), home)
+                if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.dock.orEmpty(), home)
             }
         }
         if (wide) {
@@ -351,8 +375,8 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeCo
                 row.forEach { item ->
                     Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
                         when (item) {
-                            is Placed.App -> MenuTile(item.app, At(LaunchFrom.HOME), home)
-                            is Placed.InFolder -> FolderTile(item.folder) { ui.folder = item.folder.folder.name }
+                            is Placed.App -> MenuTile(item.app, At(LaunchFrom.HOME), home, spot = item.at)
+                            is Placed.InFolder -> FolderTile(item.folder) { ui.folder = OpenFolder(item.folder.at.spot as Spot.Page, item.folder.folder.name) }
                         }
                     }
                 }
@@ -363,7 +387,7 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeCo
 }
 
 @Composable
-private fun Dock(apps: List<HomeApp>, home: HomeContext) {
+private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext) {
     if (apps.isEmpty()) return
     Row(
         Modifier
@@ -375,8 +399,8 @@ private fun Dock(apps: List<HomeApp>, home: HomeContext) {
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         val at = At(LaunchFrom.DOCK)
-        apps.forEach { app ->
-            WithAppMenu(app, at, home) { menu ->
+        apps.forEach { (app, spot) ->
+            WithAppMenu(app, at, home, spot) { menu ->
                 AppIcon(
                     app, 48.dp,
                     Modifier.semantics { contentDescription = app.label }
@@ -388,9 +412,9 @@ private fun Dock(apps: List<HomeApp>, home: HomeContext) {
 }
 
 @Composable
-private fun PageDots(current: Int, modifier: Modifier) {
+private fun PageDots(current: Int, count: Int, modifier: Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        (0..1).forEach { page ->
+        (0 until count).forEach { page ->
             val color = if (page == current) Color(0xB0FFFFFF) else Color(0x30FFFFFF)
             Box(Modifier.size(6.dp).background(color, if (page == 0) RoundedCornerShape(2.dp) else CircleShape))
         }
@@ -399,8 +423,8 @@ private fun PageDots(current: Int, modifier: Modifier) {
 
 /** An app tile whose tap opens it from [at] and whose long press opens its menu. */
 @Composable
-internal fun MenuTile(app: HomeApp, at: At, home: HomeContext, width: Dp = 76.dp, dot: Boolean = false, beforeOpen: () -> Unit = {}) {
-    WithAppMenu(app, at, home) { menu ->
+internal fun MenuTile(app: HomeApp, at: At, home: HomeContext, width: Dp = 76.dp, dot: Boolean = false, spot: From.At? = null, beforeOpen: () -> Unit = {}) {
+    WithAppMenu(app, at, home, spot) { menu ->
         AppTile(app, width, menu, dot) { beforeOpen(); home.actions.open(app, at) }
     }
 }
@@ -428,7 +452,10 @@ private fun FolderTile(folder: ResolvedFolder, onClick: () -> Unit) {
         Modifier.width(76.dp).clickable(onClick = onClick).padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(
+        // A cover app (launcher polish 4.1) is the folder's tile; otherwise its first four apps.
+        if (folder.cover != null) {
+            AppIcon(folder.cover, 52.dp)
+        } else Column(
             Modifier
                 .size(52.dp)
                 .background(Color(0x18FFFFFF), RoundedCornerShape(15.dp))
@@ -436,7 +463,7 @@ private fun FolderTile(folder: ResolvedFolder, onClick: () -> Unit) {
                 .padding(6.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            folder.apps.take(4).chunked(2).forEach { pair ->
+            folder.apps.take(4).map { it.first }.chunked(2).forEach { pair ->
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { pair.forEach { AppIcon(it, 18.dp) } }
             }
         }
@@ -467,9 +494,9 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
             Spacer(Modifier.height(14.dp))
             folder.apps.chunked(4).forEach { row ->
                 Row(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
-                    row.forEach { app ->
+                    row.forEach { (app, spot) ->
                         Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
-                            MenuTile(app, At(LaunchFrom.FOLDER, folder.folder.name), home, width = 72.dp, beforeOpen = onClose)
+                            MenuTile(app, At(LaunchFrom.FOLDER, folder.folder.name), home, width = 72.dp, spot = spot, beforeOpen = onClose)
                         }
                     }
                     repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }

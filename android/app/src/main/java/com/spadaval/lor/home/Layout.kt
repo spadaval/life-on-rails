@@ -29,8 +29,11 @@ import java.time.format.DateTimeParseException
  *       "expires": "2026-11-18T00:00:00Z",          // optional; read, not acted on until Increment 10
  *       "home": ["com.whatsapp", "com.android.chrome/com.google.android.apps.chrome.Main",
  *                { "folder": "Dev", "apps": ["com.github.android"],
- *                  "reason": "...", "pinned": true }],   // reason and pinned optional (Increment 9)
- *       "dock": ["com.google.android.dialer"] }
+ *                  "reason": "...", "pinned": true,      // reason and pinned optional (Increment 9)
+ *                  "cover": "com.github.android" }],     // optional (launcher polish 4.1)
+ *       "dock": ["com.google.android.dialer"],
+ *       "pages": [{ "items": ["org.example"] }] }       // optional (launcher polish 4.1): pages after home
+
  *   ]
  * }
  * ```
@@ -63,6 +66,8 @@ data class LayoutFile(
         const val VERSION = 1
         const val MAX_HOME = 24
         const val MAX_DOCK = 5
+        /** Pages after home (launcher polish 4.1). */
+        const val MAX_PAGES = 4
 
         /**
          * Android's org.json writes every `/` as `\/`, which is valid JSON but makes a
@@ -159,7 +164,7 @@ data class LayoutFile(
 
         private fun parseLayout(at: String, v: Any): Layout {
             if (v !is JSONObject) throw LayoutError("$at: must be an object")
-            v.onlyKeys(at, "name", "expires", "home", "dock")
+            v.onlyKeys(at, "name", "expires", "home", "dock", "pages")
             val name = v.string(at, "name")
             val expires = if (v.has("expires")) {
                 val s = v.string(at, "expires")
@@ -173,21 +178,34 @@ data class LayoutFile(
             if (home.size > MAX_HOME) throw LayoutError("$at.home: at most $MAX_HOME items, got ${home.size}")
             val dock = if (v.has("dock")) v.array(at, "dock").mapIndexed { i, item -> parseRef("$at.dock[$i]", item) } else emptyList()
             if (dock.size > MAX_DOCK) throw LayoutError("$at.dock: at most $MAX_DOCK apps, got ${dock.size}")
-            return Layout(name, home, dock, expires)
+            val pages = if (v.has("pages")) v.array(at, "pages").mapIndexed { i, p -> parsePage("$at.pages[$i]", p) } else emptyList()
+            if (pages.size > MAX_PAGES) throw LayoutError("$at.pages: at most $MAX_PAGES pages after home, got ${pages.size}")
+            return Layout(name, home, dock, expires, pages)
+        }
+
+        private fun parsePage(at: String, v: Any): Page {
+            if (v !is JSONObject) throw LayoutError("$at: must be an object")
+            v.onlyKeys(at, "items")
+            val items = if (v.has("items")) v.array(at, "items").mapIndexed { i, item -> parseItem("$at.items[$i]", item) } else emptyList()
+            if (items.size > MAX_HOME) throw LayoutError("$at.items: at most $MAX_HOME items, got ${items.size}")
+            return Page(items)
         }
 
         private fun parseItem(at: String, v: Any): LayoutItem = when (v) {
             is String -> parseRef(at, v)
             is JSONObject -> {
                 if (!v.has("folder")) throw LayoutError("$at: an object here must be a folder (\"folder\": name)")
-                v.onlyKeys(at, "folder", "apps", "reason", "pinned")
+                v.onlyKeys(at, "folder", "apps", "reason", "pinned", "cover")
                 val apps = v.array(at, "apps").mapIndexed { i, a -> parseRef("$at.apps[$i]", a) }
                 if (apps.isEmpty()) throw LayoutError("$at.apps: a folder needs at least one app")
                 val reason = if (v.has("reason")) v.string(at, "reason") else null
                 val pinned = if (v.has("pinned")) {
                     v.opt("pinned") as? Boolean ?: throw LayoutError("$at.pinned: must be true or false")
                 } else false
-                Folder(v.string(at, "folder"), apps, reason, pinned)
+                val cover = if (v.has("cover")) parseRef("$at.cover", v.opt("cover")!!).also { c ->
+                    if (c !in apps) throw LayoutError("$at.cover: \"$c\" is not one of the folder's apps")
+                } else null
+                Folder(v.string(at, "folder"), apps, reason, pinned, cover)
             }
             else -> throw LayoutError("$at: must be an app (a package name) or a folder object")
         }
@@ -216,27 +234,64 @@ data class LayoutFile(
     }
 }
 
-/** One named layout. [expires] is kept for temporary layouts (Increment 10); nothing acts on it yet. */
-data class Layout(val name: String, val home: List<LayoutItem>, val dock: List<AppRef>, val expires: Instant? = null) {
+/**
+ * One named layout. [expires] is kept for temporary layouts (Increment 10); nothing acts on it yet.
+ * [home] is home's first page and [pages] the pages after it (launcher polish 4.1).
+ */
+data class Layout(
+    val name: String,
+    val home: List<LayoutItem>,
+    val dock: List<AppRef>,
+    val expires: Instant? = null,
+    val pages: List<Page> = emptyList(),
+) {
+    /** Every page's items: page 0 is [home], page n is `pages[n-1]`. */
+    val allPages: List<List<LayoutItem>> get() = listOf(home) + pages.map { it.items }
+
+    /** This layout with page [n]'s items replaced. */
+    fun withPage(n: Int, items: List<LayoutItem>): Layout =
+        if (n == 0) copy(home = items) else copy(pages = pages.mapIndexed { i, p -> if (i == n - 1) Page(items) else p })
+
+    /** Each page's items changed by [change]. */
+    fun mapPages(change: (List<LayoutItem>) -> List<LayoutItem>): Layout =
+        copy(home = change(home), pages = pages.map { Page(change(it.items)) })
+
+    /** Without the extra pages that hold nothing; home's first page stays, even empty. */
+    fun stripEmptyPages(): Layout = copy(pages = pages.filter { it.items.isNotEmpty() })
+
     fun toJson(): JSONObject = JSONObject().apply {
         put("name", name)
         if (expires != null) put("expires", expires.toString())
         put("home", JSONArray(home.map { it.toJsonValue() }))
         put("dock", JSONArray(dock.map { it.toString() }))
+        if (pages.isNotEmpty()) put("pages", JSONArray(pages.map { p -> JSONObject().put("items", JSONArray(p.items.map { it.toJsonValue() })) }))
     }
 }
+
+/** A page of home after the first (launcher polish 4.1): its items, written as `home` is. */
+data class Page(val items: List<LayoutItem>)
 
 sealed interface LayoutItem {
     fun toJsonValue(): Any
 }
 
-/** A folder. [reason] and [pinned] are for agent-sorted folders (Increment 9): a pinned one is Sumeet's. */
-data class Folder(val name: String, val apps: List<AppRef>, val reason: String? = null, val pinned: Boolean = false) : LayoutItem {
+/**
+ * A folder. [reason] and [pinned] are for agent-sorted folders (Increment 9): a pinned one is
+ * Sumeet's. [cover], one of [apps], is drawn as the folder's tile (launcher polish 4.1).
+ */
+data class Folder(
+    val name: String,
+    val apps: List<AppRef>,
+    val reason: String? = null,
+    val pinned: Boolean = false,
+    val cover: AppRef? = null,
+) : LayoutItem {
     override fun toJsonValue(): Any = JSONObject().apply {
         put("folder", name)
         put("apps", JSONArray(apps.map { it.toString() }))
         if (reason != null) put("reason", reason)
         if (pinned) put("pinned", true)
+        if (cover != null) put("cover", cover.toString())
     }
 }
 
@@ -311,104 +366,6 @@ data class DrawerSection(
 
 /** One launchable activity of a main-profile app, as the edits below match it against refs. */
 data class AppId(val packageName: String, val className: String)
-
-/** Where [LayoutFile.current] holds an app: on home itself, in the dock, in a folder. */
-data class Places(val home: Boolean, val dock: Boolean, val folder: String?)
-
-/*
- * Phone edits to the layout file (launcher polish 1.1). Each is a pure function from the parsed
- * file to the edited one, throwing a [LayoutError] whose message says why it refuses (a limit, a
- * duplicate, nothing to do). A ref names an app when [AppRef.matches] does, as home resolves it.
- * Edits act on the active layout, except hide, which acts on every layout. A folder an edit
- * touches becomes `pinned` (it is Sumeet's now); a folder an edit empties is removed.
- */
-
-fun LayoutFile.placesOf(app: AppId): Places {
-    val layout = current
-    return Places(
-        home = layout.home.any { it is AppRef && it.names(app) },
-        dock = layout.dock.any { it.names(app) },
-        folder = layout.home.filterIsInstance<Folder>().firstOrNull { f -> f.apps.any { it.names(app) } }?.name,
-    )
-}
-
-/** Adds [ref] (written for [app]) to the end of home. */
-fun LayoutFile.addToHome(app: AppId, ref: AppRef): LayoutFile {
-    val layout = current
-    val places = placesOf(app)
-    if (places.home) throw LayoutError("it's already on home")
-    places.folder?.let { throw LayoutError("it's already on home, in $it") }
-    if (layout.home.size >= LayoutFile.MAX_HOME) throw LayoutError("home is full (${LayoutFile.MAX_HOME} items)")
-    return withCurrent(layout.copy(home = layout.home + ref))
-}
-
-/** Adds [ref] (written for [app]) to the end of the dock. */
-fun LayoutFile.addToDock(app: AppId, ref: AppRef): LayoutFile {
-    val layout = current
-    if (placesOf(app).dock) throw LayoutError("it's already in the dock")
-    if (layout.dock.size >= LayoutFile.MAX_DOCK) throw LayoutError("the dock is full (${LayoutFile.MAX_DOCK} apps)")
-    return withCurrent(layout.copy(dock = layout.dock + ref))
-}
-
-fun LayoutFile.removeFromHome(app: AppId): LayoutFile {
-    val layout = current
-    if (!placesOf(app).home) throw LayoutError("it isn't on home")
-    return withCurrent(layout.copy(home = layout.home.filterNot { it is AppRef && it.names(app) }))
-}
-
-fun LayoutFile.removeFromDock(app: AppId): LayoutFile {
-    val layout = current
-    if (!placesOf(app).dock) throw LayoutError("it isn't in the dock")
-    return withCurrent(layout.copy(dock = layout.dock.filterNot { it.names(app) }))
-}
-
-/** Removes [app] from the first folder on home that holds it. */
-fun LayoutFile.removeFromFolder(app: AppId): LayoutFile {
-    val layout = current
-    val name = placesOf(app).folder ?: throw LayoutError("it isn't in a folder")
-    var done = false
-    val home = layout.home.mapNotNull { item ->
-        if (done || item !is Folder || item.name != name) return@mapNotNull item
-        done = true
-        item.without { it.names(app) }
-    }
-    return withCurrent(layout.copy(home = home))
-}
-
-/**
- * Hides every activity of [packageName]: adds it to `hidden` and removes, in every layout, each
- * ref to that package from home, the dock and folders.
- */
-fun LayoutFile.hide(packageName: String): LayoutFile {
-    if (hidden.any { it.packageName == packageName && it.className == null }) throw LayoutError("it's already hidden")
-    val gone = { ref: AppRef -> ref.packageName == packageName }
-    val layouts = layouts.map { layout ->
-        layout.copy(
-            home = layout.home.mapNotNull { item ->
-                when (item) {
-                    is AppRef -> item.takeUnless(gone)
-                    is Folder -> if (item.apps.any(gone)) item.without(gone) else item
-                }
-            },
-            dock = layout.dock.filterNot(gone),
-        )
-    }
-    return copy(layouts = layouts, hidden = hidden + AppRef(packageName))
-}
-
-/** Takes [packageName] out of `hidden`, nothing else: what hiding removed stays removed. */
-fun LayoutFile.unhide(packageName: String): LayoutFile {
-    if (hidden.none { it.packageName == packageName }) throw LayoutError("it isn't hidden")
-    return copy(hidden = hidden.filterNot { it.packageName == packageName })
-}
-
-private fun AppRef.names(app: AppId) = matches(app.packageName, app.className)
-
-private fun LayoutFile.withCurrent(layout: Layout) = copy(layouts = layouts.map { if (it.name == active) layout else it })
-
-/** This folder without the apps [gone] picks, pinned; null when that leaves it empty. */
-private fun Folder.without(gone: (AppRef) -> Boolean): Folder? =
-    apps.filterNot(gone).takeIf { it.isNotEmpty() }?.let { copy(apps = it, pinned = true) }
 
 /** The layout file on disk. No Android here, so the JVM tests can reach it. */
 class LayoutStore(val file: File) {

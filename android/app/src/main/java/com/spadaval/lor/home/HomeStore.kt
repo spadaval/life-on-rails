@@ -121,6 +121,9 @@ class HomeStore(private val context: Context) {
     val apps: StateFlow<List<HomeApp>> = _apps
     private val _layout = MutableStateFlow<LayoutState>(LayoutState.Loading)
     val layout: StateFlow<LayoutState> = _layout
+    private val _reads = MutableStateFlow(0)
+    /** Counts reads of the file (not the phone's own writes), so home can close what a change from outside may have moved. */
+    val reads: StateFlow<Int> = _reads
     private val _stats = MutableStateFlow(LaunchStats())
     val stats: StateFlow<LaunchStats> = _stats
     private val _changes = MutableSharedFlow<PackageChange>(extraBufferCapacity = 64)
@@ -243,6 +246,7 @@ class HomeStore(private val context: Context) {
             _layout.value = LayoutState.Loading
             return
         }
+        _reads.value++
         _layout.value = try {
             val wrote = !store.file.exists()
             val read = store.read(if (loaded) ::defaultLayout else null)

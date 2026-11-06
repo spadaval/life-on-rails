@@ -74,7 +74,7 @@ class LayoutEditTest {
         assertEquals("it's already in the dock", refused { file.addToDock(dialer, AppRef("com.google.android.dialer")) })
         var full = file
         repeat(LayoutFile.MAX_HOME - file.current.home.size) { full = full.addToHome(AppId("a.a$it", "a.a$it.M"), AppRef("a.a$it")) }
-        assertEquals("home is full (24 items)", refused { full.addToHome(AppId("z.z", "z.z.M"), AppRef("z.z")) })
+        assertEquals("a full home page sends it to a new page (4.1)", listOf(AppRef("z.z")), full.addToHome(AppId("z.z", "z.z.M"), AppRef("z.z")).current.pages[0].items)
         var dock = file
         repeat(LayoutFile.MAX_DOCK - 1) { dock = dock.addToDock(AppId("d.d$it", "d.d$it.M"), AppRef("d.d$it")) }
         assertEquals("the dock is full (5 apps)", refused { dock.addToDock(AppId("z.z", "z.z.M"), AppRef("z.z")) })

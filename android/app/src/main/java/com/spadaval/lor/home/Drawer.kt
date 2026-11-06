@@ -237,8 +237,13 @@ private fun Drawer.checkName(name: String, except: String? = null): String {
 fun Drawer.sectionOf(app: AppId, category: Category): String? =
     sort(listOf(app), { it }, { category }).firstOrNull { it.apps.isNotEmpty() }?.name
 
-/** Moves [app] (written as [ref]) to the section named [target]. */
-fun LayoutFile.moveToSection(app: AppId, ref: AppRef, category: Category, target: String): LayoutFile = withDrawer { d ->
+/**
+ * Moves [app] (written as [ref]) to the section named [target]. A section that listed [app]'s
+ * package by name, when [app] is one of several activities, lists the package's other [installed]
+ * activities instead (launcher polish 4.1), so they stay where they were. Those are the activities
+ * installed now: one the package adds later goes to its category.
+ */
+fun LayoutFile.moveToSection(app: AppId, ref: AppRef, category: Category, target: String, installed: List<AppId> = emptyList()): LayoutFile = withDrawer { d ->
     val full = d.holding(target)
     val to = full.indexOf(target).takeIf { it >= 0 } ?: throw LayoutError("there is no section called \"$target\"")
     if (d.sectionOf(app, category).equals(full.sections[to].name, ignoreCase = true)) {
@@ -250,7 +255,13 @@ fun LayoutFile.moveToSection(app: AppId, ref: AppRef, category: Category, target
     full.copy(sections = full.sections.mapIndexed { i, s ->
         when {
             i == to -> s.copy(apps = s.apps.filterNot(names) + ref, pinned = true)
-            s.apps.any(names) -> s.copy(apps = s.apps.filterNot(names), pinned = true)
+            s.apps.any(names) -> {
+                // Only an activity ref is moved while a package ref stays elsewhere: keep its siblings.
+                val others = if (ref.className != null && s.apps.any { it.packageName == app.packageName && it.className == null }) {
+                    installed.filter { it.packageName == app.packageName && it.className != app.className }.map { AppRef(it.packageName, it.className) }
+                } else emptyList()
+                s.copy(apps = s.apps.filterNot(names) + others, pinned = true)
+            }
             else -> s
         }
     })

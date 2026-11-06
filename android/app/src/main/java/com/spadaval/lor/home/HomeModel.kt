@@ -13,6 +13,7 @@ class HomeModel(private val store: HomeStore, scope: CoroutineScope, val icons: 
     val layout: StateFlow<LayoutState> get() = store.layout
     val stats: StateFlow<LaunchStats> get() = store.stats
     val appsLoad: StateFlow<AppsLoad> get() = store.appsLoad
+    val reads: StateFlow<Int> get() = store.reads
 
     init {
         scope.launch { store.changes.collect { icons.evict(it.packages, it.user) } }

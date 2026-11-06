@@ -76,6 +76,15 @@ interface HomeActions {
 
 /** What a screen of home needs to draw apps and their menus. */
 class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: List<HomeApp>) {
+    /** The main-profile apps in label order, as the edits resolve refs (launcher polish 4.1). */
+    val installed: List<AppId> = apps.filter { it.mainProfile }.map { it.id }
+
+    /** A new folder's name from the two apps' category. */
+    fun nameFor(a: AppRef, b: AppRef): String {
+        fun cat(r: AppRef) = r.resolve(installed)?.let { id -> apps.firstOrNull { it.mainProfile && it.id == id } }?.category
+        return folderName(cat(a), cat(b))
+    }
+
     /** How Add writes [app]: its package name when that is its one launchable activity. */
     fun refFor(app: HomeApp): AppRef =
         if (apps.count { it.mainProfile && it.packageName == app.packageName } == 1) AppRef(app.packageName)
@@ -91,7 +100,7 @@ class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: Lis
  * both actions for TalkBack and agent-device.
  */
 @Composable
-fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, content: @Composable (onLongClick: () -> Unit) -> Unit) {
+fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At? = null, content: @Composable (onLongClick: () -> Unit) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
     Box {
@@ -99,7 +108,7 @@ fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, content: @Composable (o
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             open = true
         }
-        if (open) AppMenu(app, at, home) { open = false }
+        if (open) AppMenu(app, at, home, spot) { open = false }
     }
 }
 
@@ -108,13 +117,14 @@ private val MenuPanel = Color(0xFF1B1F25)
 private val MenuLine = Color(0x1FFFFFFF)
 
 @Composable
-private fun AppMenu(app: HomeApp, at: At, home: HomeContext, close: () -> Unit) {
+private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, close: () -> Unit) {
     var shortcuts by remember(app) { mutableStateOf<List<MenuShortcut>>(emptyList()) }
     LaunchedEffect(app) { shortcuts = home.actions.shortcuts(app) }
     val actions = home.actions
     val file = home.file
     val main = app.mainProfile && file != null
-    val places = if (main) file!!.placesOf(app.id) else null
+    val installed = home.installed
+    val places = if (main) file!!.placesOf(app.id, installed) else null
     val removable = (app.info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
     // "Move to section" turns the menu into the list of sections (launcher polish 2.3).
     var picking by remember(app) { mutableStateOf(false) }
@@ -125,7 +135,7 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, close: () -> Unit) 
                 val here = s.name == current
                 Item(if (here) "${s.name} ✓" else s.name) {
                     close()
-                    if (!here) actions.edit("${app.label} is in ${s.name} now.") { it.moveToSection(app.id, home.refFor(app), app.category, s.name) }
+                    if (!here) actions.edit("${app.label} is in ${s.name} now.") { it.moveToSection(app.id, home.refFor(app), app.category, s.name, installed) }
                 }
             }
         }
@@ -142,13 +152,24 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, close: () -> Unit) 
         if (removable) Item("Uninstall") { close(); actions.uninstall(app) }
         if (places != null) {
             val ref = home.refFor(app)
-            if (places.folder != null) Item("Remove from folder") { close(); actions.edit(null) { it.removeFromFolder(app.id) } }
-            when {
-                places.home -> Item("Remove from home") { close(); actions.edit(null) { it.removeFromHome(app.id) } }
-                places.folder == null -> Item("Add to home") { close(); actions.edit(null) { it.addToHome(app.id, ref) } }
+            // Opened from a tile, the tile's own place is edited (and checked); otherwise by what the refs draw as.
+            val here = spot?.spot
+            if (places.folder != null) Item("Remove from folder") {
+                close()
+                actions.edit("${app.label} is out of ${places.folder}.") { if (here is Spot.InFolder) it.removeAt(spot) else it.removeFromFolder(app.id, installed) }
             }
-            if (places.dock) Item("Remove from dock") { close(); actions.edit(null) { it.removeFromDock(app.id) } }
-            else Item("Add to dock") { close(); actions.edit(null) { it.addToDock(app.id, ref) } }
+            when {
+                places.home -> Item("Remove from home") {
+                    close()
+                    actions.edit("${app.label} is off home.") { if (here is Spot.Page) it.removeAt(spot) else it.removeFromHome(app.id, installed) }
+                }
+                places.folder == null -> Item("Add to home") { close(); actions.edit("${app.label} is on home.") { it.addToHome(app.id, ref, installed) } }
+            }
+            if (places.dock) Item("Remove from dock") {
+                close()
+                actions.edit("${app.label} is out of the dock.") { if (here is Spot.Dock) it.removeAt(spot) else it.removeFromDock(app.id, installed) }
+            }
+            else Item("Add to dock") { close(); actions.edit("${app.label} is in the dock.") { it.addToDock(app.id, ref, installed) } }
             Item("Move to section…") { picking = true }
             Item("Hide") {
                 close(); actions.edit("${app.label} is hidden. Home settings brings it back.") { it.hide(app.packageName) }

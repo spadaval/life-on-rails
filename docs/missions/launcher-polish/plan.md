@@ -369,6 +369,9 @@ Agreed with Sumeet, 2026-11-05:
 - *A new folder's name* is the title of the two apps' category when they share one (Media, Tools…), else "Folder". Names may repeat (R4), so no number is added.
 - *Accessibility.* Every drag edit except order and pages also has a menu way: Add and Remove, Rename, Cover app, Move to section. Order has no way but dragging; Launcher3's accessibility "Move" actions wait until that is felt.
 - *A spike before 4.1* settles the two things that could reshape the controller: (1) whether an app menu (`DropdownMenu`, a popup window) opened mid-press cancels that press's later moves for a handler on home's root; (2) whether a drag survives the drawer leaving the screen mid-gesture. If (1) cancels, the app menu is drawn in home's own window instead of a popup; if (2) fails, the drawer stays composed (invisible) until the drag ends. The results are recorded here.
+  - **Results, 2026-11-06.** A throwaway build logged every pointer event on `HomeScreen`'s root in the Initial pass. Driven with `input motionevent` on `T3_Phone_API35`:
+    - (1) A press on Maps on home, held until its menu opened, then moved down 260 px: every move and the release reached the root, still pressed, with the menu open. The popup doesn't cancel the press, so the app menu stays a `DropdownMenu`.
+    - (2) In the drawer, a long press on Photos whose handler also closed the drawer, then moved 690 px: the drawer closed and every move and the release still reached the root. The drawer can leave the screen mid-drag.
 - *Checking a drag on the emulator.* A drag that pauses (the long press, the 300 ms hover, the edge wait) is driven with `adb shell input motionevent DOWN|MOVE|UP x y` and pauses between them (API 30+). A plain tap or long press still goes through agent-device. `run-as com.spadaval.lor sha256sum files/layout.json` before an edit and after its Undo shows the bytes are back.
 
 **Plan review, 2026-11-06.** A fresh agent reviewed the plan (7b11b8c): contract pass, fitness fail on two design gaps, both fixed. Dispositions:
@@ -382,7 +385,7 @@ Agreed with Sumeet, 2026-11-05:
 - R8, recorded as a choice (4.1, the section carry).
 - R9, taken: the R3 test covers Add to home for B (4.1).
 
-#### 4.1 Pages, covers, and edits by place. Status: todo
+#### 4.1 Pages, covers, and edits by place. Status: done
 - **Goal.** The schema and the pure edits that every later issue draws and drags with, and home drawing pages and covers. No dragging yet.
   - **Schema.** `pages` and `cover` are parsed into `Layout` and `Folder` and written back, with the rules under [Schema additions](#schema-additions). `Layout.kt`'s header comment shows both.
   - **Places.** `Spot`, a place in the active layout as the file holds it:
@@ -438,6 +441,21 @@ Agreed with Sumeet, 2026-11-05:
     - R3 on the emulator if a package there has two launcher activities (`cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER`); otherwise recorded as covered by the JVM test only.
   - The spec's launcher section says home has pages.
   - `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed: `home/HomeEdit.kt` (`Spot`, `From`, `Target`, `Place`, `resolve` and `names`, `placesOf`, `itemAt`, the menu's edits, `removeAt`, `drop`, `renameFolder`, `setCover`, `folderName`; the edits moved here from `Layout.kt`), `pages`, `Page` and `cover` in `Layout.kt`, `moveToSection`'s `installed`, and in `HomeScreen.kt` the pages, page dots, cover tiles, and the open folder held as `OpenFolder` (its place and name). `HomeEditTest` (11 cases) passes on boat with the rest (138).
+  - **On `T3_Phone_API35`,** with a file written with `run-as`:
+    - home's Google folder had `cover: com.google.android.deskclock`, and two extra pages: Photos and two folders named "Google", then YouTube alone.
+    - Home showed the Clock icon as the Google folder's tile, labelled Google, and four page dots. A tap on the tile opened the folder.
+    - On the last page, Remove from home on YouTube wrote the file without that page, and the pager settled on the page before.
+    - On page 2, the second "Google" folder (Lexica, Drive) was opened, and Remove from folder on Lexica changed only that folder (now Drive, `pinned`).
+    - A home press from page 3 returned to home.
+    - R3: the emulator's Google app has two launcher activities, Google (`.SearchActivity`) and Voice Search (`.VoiceSearchActivity`), and home's Google folder lists the package, which draws as Google. Voice Search's menu in the drawer offered Add to home and no Remove from folder (before, it said Remove from folder). Add to home wrote `com.google.android.googlequicksearchbox/com.google.android.googlequicksearchbox.VoiceSearchActivity` at the end of home, beside the package ref in the folder.
+  - **Choices.**
+    - The menu's edits now say what they did ("Maps is off home."), as toasts until 4.2 makes them the Undo bar.
+    - Pages after home have no date header: their grid starts 104 dp down, near where home's starts. The dock is drawn on every page, so it slides with them; Increment 8 owns the Fold's layout.
+    - The open folder also closes when the file is read again from outside (`HomeStore.reads`), and when the folder at its place no longer has its name.
+    - `hide` and the removes strip every empty extra page, including one an agent wrote.
+  - Reviewed with the increment.
 
 #### 4.2 Undo for every edit. Status: todo
 - **Goal.** Each edit can be taken back for a few seconds, and taking it back restores `layout.json` byte for byte.
