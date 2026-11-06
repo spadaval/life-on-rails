@@ -1,16 +1,14 @@
 package com.spadaval.lor.home
 
-import android.app.WallpaperColors
 import android.app.WallpaperManager
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -18,10 +16,14 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.spadaval.lor.LorApp
 import com.spadaval.lor.ui.Bg
 import com.spadaval.lor.ui.Txt
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 /*
  * Over the wallpaper (launcher polish 6.3). Text home draws straight on the wallpaper (labels,
@@ -66,30 +68,43 @@ fun wallInk(ink: Ink): WallInk {
     }
 }
 
-/** The system wallpaper's ink, followed while home is composed. */
+/**
+ * The system wallpaper's ink for the process (launcher polish 7.7), held by [HomeStore] and
+ * followed by a listener for the process's life, so an activity made again (a theme change) has
+ * the right ink in its first frame. The first read is off the main thread, started when the store
+ * is made: `getWallpaperColors` is a binder call for colours the system keeps, but on the first
+ * read after a boot the system extracts them during the call (34 ms on the emulator, over a
+ * frame), so a cold start may draw one frame in light ink before it lands. The `LorLook` line
+ * logs how long the read took.
+ */
+class WallpaperInk(context: Context, scope: CoroutineScope) {
+    private val _ink = MutableStateFlow(Ink.LIGHT)
+    val ink: StateFlow<Ink> = _ink
+
+    init {
+        val manager = WallpaperManager.getInstance(context)
+        manager.addOnColorsChangedListener({ colors, which ->
+            if (which and WallpaperManager.FLAG_SYSTEM != 0) {
+                val now = inkFor(colors?.colorHints)
+                if (now != _ink.value) Log.i("LorLook", "wallpaper hints: ${now.words}")
+                _ink.value = now
+            }
+        }, Handler(Looper.getMainLooper()))
+        scope.launch(Dispatchers.IO) {
+            val started = SystemClock.elapsedRealtimeNanos()
+            val first = inkFor(manager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM)?.colorHints)
+            val ms = (SystemClock.elapsedRealtimeNanos() - started) / 1_000_000.0
+            Log.i("LorLook", "wallpaper hints: ${first.words} (read in ${"%.1f".format(ms)} ms)")
+            _ink.value = first
+        }
+    }
+
+    private val Ink.words: String get() = if (this == Ink.DARK) "dark text" else "light text"
+}
+
+/** The system wallpaper's ink, right from the first composition (launcher polish 7.7). */
 @Composable
 fun rememberWallpaperInk(): Ink {
-    val context = LocalContext.current
-    var ink by remember { mutableStateOf(Ink.LIGHT) }
-    DisposableEffect(context) {
-        val manager = WallpaperManager.getInstance(context)
-        fun take(colors: WallpaperColors?) {
-            val now = inkFor(colors?.colorHints)
-            if (now != ink) Log.i("LorLook", "wallpaper hints: ${if (now == Ink.DARK) "dark text" else "light text"}")
-            ink = now
-        }
-        val listener = WallpaperManager.OnColorsChangedListener { colors, which ->
-            if (which and WallpaperManager.FLAG_SYSTEM != 0) take(colors)
-        }
-        manager.addOnColorsChangedListener(listener, Handler(Looper.getMainLooper()))
-        onDispose { manager.removeOnColorsChangedListener(listener) }
-    }
-    // The first read off the main thread: getWallpaperColors may compute them.
-    androidx.compose.runtime.LaunchedEffect(context) {
-        val colors = withContext(Dispatchers.IO) { WallpaperManager.getInstance(context).getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }
-        val now = inkFor(colors?.colorHints)
-        Log.i("LorLook", "wallpaper hints: ${if (now == Ink.DARK) "dark text" else "light text"}")
-        ink = now
-    }
-    return ink
+    val store = (LocalContext.current.applicationContext as LorApp).home
+    return store.ink.ink.collectAsState().value
 }

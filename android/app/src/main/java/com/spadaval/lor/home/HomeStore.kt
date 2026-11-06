@@ -191,6 +191,9 @@ class HomeStore(private val context: Context) {
         }
     }
 
+    /** The wallpaper's ink, read from when the store is made and followed (launcher polish 7.7). */
+    val ink = WallpaperInk(context, scope)
+
     /** The icon pack the look names, parsed once for the process (launcher polish 6.5). */
     val packs = IconPackHolder(context, scope)
 

@@ -1528,7 +1528,7 @@ Agreed with Sumeet, 2026-11-05:
   - **The swipe down for notifications is held** (Sumeet's panels direction, 2026-11-06: home becomes a grid of panels, where a vertical swipe mid-screen moves between rows, so the top edge keeps the system shade). It was built and checked first (the reflection call reached `expandNotificationsPanel` with logcat's `unsupported,test-api, reflection, allowed` and opened the shade; it didn't fire on the agent page, with a folder open or in edit mode), then taken out before this increment closed: no `notifications()` action, no downward gesture on home, no `EXPAND_STATUS_BAR` in the manifest or the spec. A swipe that starts downward on home does nothing, as before 7.6. What the shade gesture becomes is for the panels increments.
   - Reviewed with the increment.
 
-#### 7.7 The wallpaper's ink from the first frame. Status: todo
+#### 7.7 The wallpaper's ink from the first frame. Status: done
 - **Goal.** Home over a light wallpaper draws dark ink in its first frame, on a cold start and when the activity is recreated (from Increment 6's second review).
   - **Held for the process.** The ink moves from each composition to the process: `WallpaperInk` in `home/Wallpaper.kt`, held by `HomeStore`. It reads `getWallpaperColors(FLAG_SYSTEM)` once when made, on the main thread, as Launcher3's `WallpaperColorHints` does in its constructor, and follows `OnColorsChangedListener` for the life of the process. `rememberWallpaperInk` reads its `StateFlow`, so the first composition has the right ink.
   - **Why the main thread.** A read on IO can't land before a cold start's first frame. The system keeps the colours it has extracted, so the call is usually a binder read, paid once per process and never on a home press. But when it has none (the first read after a boot), `WallpaperManagerService` extracts them during the call, which is why today's read is on IO. The `LorLook` line logs how long the read took.
@@ -1538,6 +1538,15 @@ Agreed with Sumeet, 2026-11-05:
   - a recreation (`cmd uimode night yes`, then `no`) shows no light frame;
   - setting the dark wallpaper still turns the ink light without a restart (6.3's check);
   - `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed: `WallpaperInk` in `home/Wallpaper.kt`, held by `HomeStore` for the process (`HomeStore.ink`): it adds its `OnColorsChangedListener` when the store is made and keeps it for the process's life, and `rememberWallpaperInk` collects its `StateFlow`. 206 tests pass on boat.
+  - **The first read stays on IO, as the coordinator decided in advance.** Logged read times: 34.2 ms on the first home start after `adb -s emulator-5554 reboot`, and 197.7 ms after the emulator's own cold restart (both over 16 ms); on later cold starts (force-stop, then a home press) 61.6, 3.3, 3.6, 3.8 and 12.5 ms. So the read is started on IO when the store is made, not on the main thread, and a cold start may draw a frame of light ink before it lands. The store is made when `HomeActivity` first asks for it (in `onCreate`), so the read starts before the first composition rather than from it, as `rememberWallpaperInk`'s old read did, and often lands before the first frame.
+  - **On `T3_Phone_API35`** over the light `#f2f2f2` wallpaper:
+    - **Cold start:** from Settings, `am force-stop com.spadaval.lor`, then a home press, recorded (`screenrecord`, about 10 frames a second here) and read frame by frame: home's first frame (still the icons' slots, before the icons loaded) already had the date and labels in dark ink, as did every frame after; the read that time took 61.6 ms. At 10 frames a second a single 16 ms frame could fall between two recorded ones, so "no frame of wrong ink" holds for the recorded frames only.
+    - **Recreation:** `cmd uimode night yes`, then `no` 2.5 s later: the event log has `HomeActivity` destroyed and created twice in one process, and in each of the 26 recorded frames the date's darkest pixels are 5 to 9 (dark ink); no light frame. In the second recreation the icons showed as their dark slots for two frames before loading (the icons, not the ink; seen, not changed).
+    - **A switch of wallpaper:** a plain `#101010` PNG set with Photos' Set wallpaper (6.3's way): `LorLook` logged `light text` and home redrew in light ink with no new activity (same pid, no `wm_on_create_called`); the light one set back: `dark text`, the same way.
+  - **Not checked:** the frame-exact first frame after a reboot (the read time after a reboot is recorded above; a reboot wasn't repeated for a recording).
+  - Reviewed with the increment.
 
 #### 7.8 The feel, measured. Status: todo
 - **Goal.** The increment shown as a whole, and shown not to cost home its speed (strategy: "A feature that costs home-press or drawer-open latency is cut or deferred").
