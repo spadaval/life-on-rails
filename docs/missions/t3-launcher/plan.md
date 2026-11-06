@@ -313,7 +313,7 @@ Each check is run with the LoR home, and with One UI Home where a comparison hel
   - On the inner screen the split pairs T3 with the last app used, not with home: home can't be in a split on stock Android 15. Whether One UI does better is **[real Fold]**. If it doesn't, the agent page could live in its own activity that can take a split.
   - The page dots are centred on the whole inner screen while the page keeps to the left (as in 3.2).
   - Nothing shows the block's own label for a timer started from the tile; it still says "Uncategorized".
-- **Deferred from the review of 3.2's fixes and 3.3** (2026-11-05; F3 and F6 were fixed in Increment 4; F2 and F4 moved to Launcher polish Increment 8):
+- **Deferred from the review of 3.2's fixes and 3.3** (2026-11-05; F3 and F6 were fixed in Increment 4; moved to Launcher polish: F2 to its 1.1, F4 to its Increment 8):
   - F2: if `loadAll()` fails on the first run, `_apps` stays empty and only a profile broadcast reloads it; one app update then puts a single app in `_apps`, and the next resume writes a one-app default layout that sticks (`HomeModel.kt`). Reload the app list on resume while it's empty.
   - F4: card actions run in the page's `rememberCoroutineScope`, so a dark-mode, font-scale or density change recreates the activity, cancels a respond that has already gone out, and re-enables the card. Belongs with the deferred process-scoped model.
   - F5: `LayoutTest`'s deep-nesting case hits the JVM org.json's depth-512 `JSONException`, not the `StackOverflowError` catch. A real test parses about 400 levels on a thread with a 64 KB stack.
@@ -461,7 +461,7 @@ Sending launches a T3 thread in the first of: the project named in the prompt, t
 
 **2026-11-05.** [Launcher polish](../launcher-polish/plan.md) Increment 2 sorts the drawer into sections on the phone and adds the schema field for them. This increment has an agent refine those sections and write their reasons.
 
-**Goal.** An agent refines the drawer's sections (Launcher polish Increment 2's field), each with a one-line reason ("Splitwise is in Money: you open it right after paying"), by writing the layout file. Sections Sumeet edits by hand are pinned, by Increment 2's rule, and the agent leaves them alone. Usage data comes from LoR, which already has app sessions and attribution rules.
+**Goal.** An agent refines the drawer's sections (Launcher polish Increment 2's field), each with a one-line reason ("Splitwise is in Money: you open it right after paying"), by writing the layout file. Sections Sumeet edits by hand are pinned, by Launcher polish Increment 2's rule, and the agent leaves them alone. Usage data comes from LoR, which already has app sessions and attribution rules.
 
 **Done when.** On the emulator, an agent run proposes sections as a layout change (Increment 7), each section shows its reason, and after a hand edit to one section, the next agent run leaves that section unchanged.
 

@@ -18,7 +18,7 @@ LoR's Android app (`android/`, package `com.spadaval.lor`) is Sumeet's default h
 - **A prompt can be sent from anywhere.** A quick-send sheet opens from home, from a Quick Settings tile, and from the side key as the default assistant, with the screen attached.
 - **Running turns show as Live Updates.**
 - **The LoR sensor records how each app was launched.**
-- **An agent refines the drawer's sections into smart folders,** each with its reason (Launcher polish sorts them on the phone first), and leaves folders he arranged by hand alone.
+- **An agent refines the drawer's sections into smart folders,** each with its reason (Launcher polish sorts them on the phone first), and leaves sections he edited by hand alone.
 - **Search finds LoR people and T3 threads** beside the apps, shortcuts and conversations that [Launcher polish](../launcher-polish/strategy.md) search finds.
 - **Layouts are named and switchable,** and an agent can propose a temporary one with an expiry (a trip, an on-call week) that removes itself.
 

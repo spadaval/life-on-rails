@@ -26,7 +26,7 @@ Agreed with Sumeet, 2026-11-05:
 - **Search.** Shortcuts and conversations (`LauncherApps.getShortcuts`) move here, to Increment 5. LoR people and T3 threads in search stay in T3 Launcher Increment 8.
 - **Smart folders.** This mission sorts the drawer on the phone (Increment 2) and adds the schema field for drawer sections. T3 Launcher Increment 9 has an agent refine those sections and write their reasons.
 - **Hand edits.** This mission writes phone edits to `layout.json` (P1), which answers T3 Launcher Increment 7's open question of whether hand edits reach the file: they do. Whether the repo receives them is Increment 7's.
-- **Deferred review items.** From T3 Launcher's reviews: the light-wallpaper contrast (3.2) moves to Increment 6 here, and the rest listed under Increment 8 here move there. The process-scoped model is what fixes F4, and R3 to R5 are robustness of the sheet home opens, so they sit with it. F5 and F7, test gaps in T3 Launcher's own code, stay there, as does 3.3's carried item about the agent page taking a split pane in its own activity, which waits on the real Fold.
+- **Deferred review items.** From T3 Launcher's reviews: the light-wallpaper contrast (3.2) moves to Increment 6 here, and the rest listed under Increment 8 here move there. F2 is in the app-list code that 1.1 moves into `HomeStore`, so 1.1 fixes it. F4 and R3 to R5 are robustness of the agent page and the sheet that home opens, so they sit with the other robustness items in Increment 8. F5 and F7, test gaps in T3 Launcher's own code, stay there, as does 3.3's carried item about the agent page taking a split pane in its own activity, which waits on the real Fold.
 
 ## Increments
 
@@ -37,26 +37,26 @@ Agreed with Sumeet, 2026-11-05:
 **Done when.** On `T3_Phone_API35`: a long press on an app on home, in the dock, in a folder and in the drawer opens its menu; App info and Uninstall open the system's screens for that app; a hidden app leaves home, the dock, the drawer and search, and comes back to the drawer from Home settings; Add to home and Add to dock put the app there and the file shows it; the shortcuts listed for an app with shortcuts (Clock, Chrome) open the right screen. JVM tests cover each edit to `LayoutFile` and that a round trip keeps every field.
 
 #### 1.1 `HomeStore` and phone edits to `layout.json`. Status: todo
-- **Goal.** The store and write path of P1. `HomeStore` in `home/`, created once by `LorApp`, takes over from `HomeModel` the app list, the layout file, its stamp and the serial dispatcher; `HomeModel` keeps only what is per activity (the icon cache) and reads the store's flows. `HomeStore.edit(change: (LayoutFile) -> LayoutFile): Result<Unit>` rereads, applies, serialises, parses again, writes `layout.json.tmp`, renames it over `layout.json`, and records the stamp. Pure functions in `Layout.kt` for the first edits:
+- **Goal.** The store and write path of P1. `HomeStore` in `home/`, created once by `LorApp`, takes over from `HomeModel` the app list, the layout file, its stamp and the serial dispatcher; `HomeModel` keeps only what is per activity (the icon cache) and reads the store's flows. The file steps sit in a piece with no `Context`, `LayoutStore(file: File)` in `Layout.kt`, so the JVM tests can reach them: `LayoutStore.edit(change: (LayoutFile) -> LayoutFile): Result<Long>` rereads, applies, serialises, parses again, writes `layout.json.tmp`, renames it over `layout.json`, and returns the new modified time. `suspend fun HomeStore.edit(change)` runs it on the serial dispatcher and records that time as the stamp. `HomeStore` logs one line (`LorHome`) for each file read and each write. While the app list is empty, `HomeStore` reloads it on the next resume, and it writes no default layout from a list it hasn't fully loaded (F2 from T3 Launcher 3.3). Pure functions in `Layout.kt` for the first edits:
   - add an app to the end of the current layout's home; add to the dock;
   - remove an app from home, from the dock, or from the folder that holds it. A folder left empty is removed (the parser rejects `apps: []`). A folder an edit touches gets `pinned: true`;
-  - hide: add the app to `hidden` and remove it from home, the dock and folders in every layout; unhide: take it out of `hidden`, nothing else.
+  - hide: add the app's package name to `hidden`, and remove from home, the dock and folders in every layout every ref that resolves to an activity of that package; unhide: take it out of `hidden`, nothing else.
   Each refuses with a message instead of passing a limit (24 home items, 5 dock apps) or adding a duplicate.
 - **Scope.** Main-profile apps only: the schema can't name a work-profile app (`resolve` in `HomeScreen.kt` matches only `Process.myUserHandle()`), so nothing in this increment edits one. Write `hidden` into [Schema additions](#schema-additions) and point `Layout.kt`'s comment at this plan as well as 3.2.
-- **Done when.** `LayoutTest` covers each edit and refusal, an emptied folder going away, `pinned` set on a touched folder, a round trip that keeps `expires`, `reason` and `pinned`, and `hidden`'s parsing errors. A test against a temporary directory shows `edit` leaves the old file in place when the result fails to validate, and replaces it when it passes. `assembleDebug testDebugUnitTest` passes on boat and home still draws on the emulator.
+- **Done when.** `LayoutTest` covers each edit and refusal, an emptied folder going away, `pinned` set on a touched folder, a round trip that keeps `expires`, `reason` and `pinned`, and `hidden`'s parsing errors. A test of `LayoutStore` against a temporary directory shows `edit` leaves the old file in place when the result fails to validate, and replaces it when it passes. A test covers F2: an empty app list writes no default. `assembleDebug testDebugUnitTest` passes on boat and home still draws on the emulator.
 
 #### 1.2 The app menu. Status: todo, after 1.1
 - **Goal.** A long press on any app (home, dock, folder, drawer, search result) opens a small menu by the icon, with a haptic tick. Read Lawnchair's `PopupContainerWithArrow`, `SystemShortcut` and `ShortcutRequest`, and Kvaesitso's app context menu, first.
   - **Shortcuts first,** when `LauncherApps.hasShortcutHostPermission()` is true (only the default home has it; otherwise the section is left out). Query `FLAG_MATCH_DYNAMIC | FLAG_MATCH_MANIFEST` for the activity, as Launcher3's `ShortcutRequest.PUBLISHED` does. Order manifest shortcuts before dynamic ones, then by `rank`; show at most 5. Launch with `startShortcut`, catching its failures (a locked profile, a shortcut that's gone) the way `startActivitySafely` does, with a toast.
-  - **Then** App info (`LauncherApps.startAppDetailsActivity`), Uninstall (`Intent.ACTION_DELETE` with `package:` data; add `REQUEST_DELETE_PACKAGES`, an install-time permission; left out for system apps that can't be uninstalled), Hide, and Add to home / Add to dock, or Remove from home / Remove from dock / Remove from folder where it already is. For a work-profile app only shortcuts, App info and Uninstall show.
+  - **Then** App info (`LauncherApps.startAppDetailsActivity`), Uninstall (`Intent.ACTION_DELETE` with `package:` data and `Intent.EXTRA_USER` set to the app's profile, as Launcher3's uninstall does; add `REQUEST_DELETE_PACKAGES`, an install-time permission; left out for system apps that can't be uninstalled), Hide, and Add to home / Add to dock, or Remove from home / Remove from dock / Remove from folder where it already is. For a work-profile app only shortcuts, App info and Uninstall show.
   - A tap anywhere else or back closes it.
   - Use `combinedClickable`, not a separate long-press modifier, so TalkBack and agent-device still see one node with both actions (the lesson from T3 Launcher 2.2's debug screen).
 - **Launch records.** A shortcut launch is recorded by the launch sensor with `from` set to where the menu was opened and a new `shortcut` field holding the shortcut id. `LaunchesTest` covers the field, and the spec's sensor table (`docs/v2-product-engineering-spec.md`, Launches) lists it (AGENTS.md: a change that crosses the spec changes the spec).
-- **Done when.** The increment's checks for the menu pass on the emulator. After Add to home, home shows the app, `run-as` shows it in the file, and the file's modified time equals the store's stamp (home didn't reread its own write).
+- **Done when.** The increment's checks for the menu pass on the emulator. After Add to home, home shows the app, `run-as` shows it in the file, and `logcat` shows `HomeStore`'s write line and no read line when home next resumes (home didn't reread its own write).
 
 #### 1.3 The home menu and Home settings. Status: todo, after 1.1
 - **Goal.** A long press on empty home opens a menu: Wallpaper (`Intent.ACTION_SET_WALLPAPER`), Home settings, and, once Increment 4 exists, Edit home. Home settings is its own activity in home's task (`home/HomeSettingsActivity`), reading and writing through `HomeStore`, so back returns to home. It starts with: Hidden apps (each with its icon, label and Unhide), Default home app (`Settings.ACTION_HOME_SETTINGS`), and LoR app settings (the existing tabs). Later increments add their settings to this screen, not to the LoR tabs. The drawer ends with a quiet "Hidden apps (n)" row that opens the same list.
-- **Done when.** The increment's checks for hiding pass on the emulator: hide from the drawer, the app is gone from the drawer and from search for its name, unhide from Home settings, it's back. The screen keeps its state across a rotation.
+- **Done when.** The increment's checks for hiding pass on the emulator: hide from the drawer, the app is gone from the drawer and from search for its name, unhide from Home settings, it's back. The screen keeps its state across a rotation. The spec's launcher line (`docs/v2-product-engineering-spec.md`, "The drawer and search list every launchable app") says hidden apps are left out.
 
 ### Increment 2: An organised drawer. Status: backlog
 
@@ -114,7 +114,7 @@ Agreed with Sumeet, 2026-11-05:
 
 **Goal.** The drawer follows the finger open and closed (replacing the 56 dp flip in `HomePage`). Apps open from their icon's bounds (`ActivityOptions.makeScaleUpAnimation` or a clip reveal). Folders open from their tile. Haptics on long press, pickup, drop, and the drawer threshold. Predictive back for the drawer, folders and menus. Configurable gestures: swipe down for notifications, double-tap to lock, a gesture for quick send.
 
-**Provisional Done when.** Each motion recorded on the emulator; no animation loops; home-press latency is no worse than before: with another app in front, `am start -W -a android.intent.action.MAIN -c android.intent.category.HOME` ten times on the build before and after, comparing the median `TotalTime` (with home already in front it reports nothing).
+**Provisional Done when.** Each motion recorded on the emulator; no animation loops; home-press latency is no worse than before (the median within 10%): with another app in front, `am start -W -a android.intent.action.MAIN -c android.intent.category.HOME` ten times on the build before and after, comparing the median `TotalTime` (with home already in front it reports nothing).
 
 **Unknowns.** Double-tap to lock needs an accessibility service or device admin, and swipe down for notifications needs either the hidden `StatusBarManager.expandNotificationsPanel` (by reflection, with `EXPAND_STATUS_BAR`) or an accessibility service. An accessibility service comes back to Sumeet.
 
@@ -123,8 +123,8 @@ Agreed with Sumeet, 2026-11-05:
 **Goal.** The inner screen gets a layout made for its width: the agent page and home side by side, page dots that line up with the content, the hinge and cutout insets handled. The cover and inner screens can have their own grids. Landscape and large fonts don't overflow. A fold, unfold, theme or font change keeps everything without reloading the app list or icons.
 
 Carried from T3 Launcher's reviews:
-- a process-scoped model and icon cache (3.2), which also fixes F4, card actions cancelled by a recreated activity (3.3);
-- F2, a one-app default layout that can stick after a failed first load (3.3);
+- a process-scoped icon cache (3.2; the model moved into `HomeStore` in 1.1);
+- F4, card actions cancelled by a recreated activity (3.3): run them in a process scope (`LorApp`'s, or `HomeStore`'s), as quick send's send already does;
 - the icon-cache race, a stale icon after a package change (3.2);
 - normalised search labels cached (3.2);
 - R3, a duplicate thread when a slow launch is retried; R4, quick-send text lost after a failed send once the sheet is gone; R5, the thumbnail decoded at full size on the main thread (4).
@@ -143,7 +143,7 @@ Carried from T3 Launcher's reviews:
 
 Optional fields this mission adds to `layout.json` schema version 1, each written here by the issue that adds it. Version 1's rules hold: unknown fields are errors, and an addition never changes an existing field's meaning.
 
-- (1.1) Top-level `hidden`: a list of apps, written as in `home`. A package name hides every activity of that package, as `AppRef.matches` matches. A hidden app is left out of the drawer and search in every layout. One placed on home, the dock or in a folder by the file is still shown there; Hide from the menu removes it from those places too.
+- (1.1) Top-level `hidden`: a list of apps, written as in `home`; the phone writes package names. A package name hides every activity of that package, as `AppRef.matches` matches. It applies to main-profile apps only; a work-profile copy of the package stays. A hidden app is left out of the drawer and search in every layout. One placed on home, the dock or in a folder by the file is still shown there; Hide from the menu removes it from those places too.
 
 ## Open questions for Sumeet
 
