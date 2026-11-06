@@ -90,6 +90,8 @@ internal val Line = Color(0x14FFFFFF)
 private val Panel = Color(0xF215181D)
 internal val Sheet = Color(0xFF0B0D10)
 internal val Amber = Color(0xFFF08A2C)
+/** The backing of a state drawn on home (the broken banner, a home note, the set-up card), so it reads on any wallpaper. */
+internal val StateFill = Color(0xDD15181D)
 internal val LabelStyle = TextStyle(color = Ink, fontSize = 12.sp, shadow = Shadow(Color(0x99000000), Offset(0f, 1f), 3f))
 
 /** What the activity can reset on a home press. */
@@ -208,7 +210,13 @@ private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutS
             Column(mod) {
                 val columns = if (wide) 5 else 4
                 if (layout is LayoutState.Broken) {
-                    BrokenBanner(layout, appsLoad == AppsLoad.LOADED, LabelStyle.copy(color = Ink, fontSize = 13.sp), Modifier.padding(horizontal = 20.dp), home.actions::restore)
+                    BrokenBanner(
+                        layout, appsLoad == AppsLoad.LOADED, TextStyle(color = Ink, fontSize = 13.sp),
+                        Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp).fillMaxWidth()
+                            .background(StateFill, RoundedCornerShape(14.dp)).border(1.dp, Line, RoundedCornerShape(14.dp))
+                            .padding(horizontal = 14.dp),
+                        home.actions::restore,
+                    )
                 }
                 // Until the first run is done (launcher polish 3.5); the default layout is drawn under it.
                 SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
@@ -280,17 +288,20 @@ private fun DockSkeleton(count: Int) {
     }
 }
 
-/** A line or two in home's grid area, over the wallpaper; [onClick], if any, makes it a button. */
+/** A line or two in home's grid area, on a card over the wallpaper; [onClick], if any, makes it a button. */
 @Composable
 private fun HomeNote(title: String, detail: String?, onClick: (() -> Unit)? = null) {
     Column(
         Modifier
             .padding(horizontal = 12.dp)
+            .fillMaxWidth()
+            .background(StateFill, RoundedCornerShape(14.dp))
+            .border(1.dp, Line, RoundedCornerShape(14.dp))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Text(title, style = LabelStyle.copy(fontSize = 16.sp))
-        detail?.let { Text(it, style = LabelStyle.copy(color = Ink.copy(alpha = 0.75f), fontSize = 14.sp), modifier = Modifier.padding(top = 4.dp)) }
+        Text(title, style = TextStyle(color = Ink, fontSize = 16.sp))
+        detail?.let { Text(it, style = TextStyle(color = Muted, fontSize = 14.sp), modifier = Modifier.padding(top = 4.dp)) }
     }
 }
 

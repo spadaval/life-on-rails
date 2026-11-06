@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /*
@@ -34,22 +36,24 @@ internal val Coral = Color(0xFFE2806F)
 
 /** The banner's line for [state]. */
 internal fun brokenLine(state: LayoutState.Broken): String =
-    if (state.lastGood != null) "layout.json has an error. Showing the last good layout." else "layout.json has an error."
+    if (state.lastGood != null) "layout.json has an error. Showing the last good layout." else "layout.json has an error. Tap to put it right."
 
 /**
- * The banner: a coral status dot and one line in [style]; a tap opens [BrokenLayoutDialog].
+ * The banner: a coral status dot, one line in [style], and "Details", at least 48 dp tall; a tap
+ * opens [BrokenLayoutDialog].
  * [appsLoaded] says whether the default layout can be made, for a file with no last good layout.
  */
 @Composable
 internal fun BrokenBanner(state: LayoutState.Broken, appsLoaded: Boolean, style: TextStyle, modifier: Modifier = Modifier, restore: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Row(
-        modifier.clickable(onClickLabel = "Show the error") { open = true }.padding(vertical = 8.dp),
+        modifier.clickable(onClickLabel = "Show the error") { open = true }.heightIn(min = 48.dp).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Spacer(Modifier.size(6.dp).background(Coral, CircleShape))
         Spacer(Modifier.width(8.dp))
-        Text(brokenLine(state), style = style)
+        Text(brokenLine(state), style = style, modifier = Modifier.weight(1f))
+        Text("Details", style = style.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.padding(start = 12.dp))
     }
     if (open) BrokenLayoutDialog(state, appsLoaded, { open = false; restore() }) { open = false }
 }

@@ -42,8 +42,8 @@ class AgentStatesTest {
 
     @Test
     fun nextIsTheEventUnderWayThenTheNextTodayThenNone() {
-        assertEquals("Dentist until 10:30.", AgentStates.next(listOf(dentist, dinner), now, zone))
-        assertEquals("Next: Dinner at 18:00.", AgentStates.next(listOf(dinner, tomorrow), now, zone))
+        assertEquals("In Dentist until 10:30.", AgentStates.next(listOf(dentist, dinner), now, zone))
+        assertEquals("Free until 18:00.", AgentStates.next(listOf(dinner, tomorrow), now, zone))
         assertEquals("Nothing else on the calendar today.", AgentStates.next(listOf(tomorrow), now, zone))
         assertEquals("Nothing else on the calendar today.", AgentStates.next(emptyList(), now, zone))
     }

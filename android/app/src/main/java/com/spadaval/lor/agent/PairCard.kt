@@ -79,18 +79,19 @@ fun PairActions(connection: T3Connection, primary: Boolean = true) {
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pill(if (pairing) "Pairing…" else "Scan code", primary = primary, enabled = !pairing) {
+            // While the link's field is open, Pair is the one primary action.
+            Pill(if (pairing) "Pairing…" else "Scan code", primary = primary && !pasting, enabled = !pairing) {
                 failure = null
-                PairScan.scan(context, { found, _ -> pair(found) }, { failure = it })
+                PairScan.scan(context, { found, _ -> pair(found) }, { failure = "$it Paste a link instead." })
             }
             Pill(if (pasting) "Hide" else "Paste a link", enabled = !pairing) { pasting = !pasting }
         }
         if (pasting) {
             Field(link, "Pairing link") { link = it; failure = null }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                Pill("Pair", enabled = link.isNotBlank() && !pairing) { pair(link) }
+                Pill("Pair", primary = primary, enabled = link.isNotBlank() && !pairing) { pair(link) }
             }
         }
-        failure?.let { Text(it, style = Small.copy(color = Red)) }
+        failure?.let { Failed(it) }
     }
 }

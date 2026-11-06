@@ -23,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -47,7 +46,7 @@ import kotlinx.coroutines.withContext
  * Home's set-up card (launcher polish 3.5). Not a wizard: as Kvaesitso shows each missing piece
  * where it is needed (`MissingPermissionBanner`), the card lists the three things a fresh install
  * needs, each checked live, with the one action that does it. It stays until all three hold at
- * once or Done is tapped, and then never shows again (`Prefs.setupDone`).
+ * once or Skip set-up is tapped, and then never shows again (`Prefs.setupDone`).
  */
 
 /** Where the read of LoR stands. */
@@ -121,14 +120,14 @@ internal fun SetupCard(modifier: Modifier = Modifier) {
     Column(
         modifier
             .fillMaxWidth()
-            .background(Card, RoundedCornerShape(14.dp))
+            .background(StateFill, RoundedCornerShape(14.dp))
             .border(1.dp, Line, RoundedCornerShape(14.dp))
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Set up this phone", style = TextStyle(color = Ink, fontSize = 15.sp), modifier = Modifier.weight(1f))
-            Pill("Done") {
+            Pill("Skip set-up") {
                 prefs.setupDone = true
                 shown = false
             }
@@ -154,7 +153,6 @@ internal fun SetupCard(modifier: Modifier = Modifier) {
     }
 }
 
-private val Card = Color(0xDD15181D)
 
 private enum class Mark { DONE, TODO, FAILED }
 
@@ -171,7 +169,7 @@ private fun Step(mark: Mark, title: String, detail: String? = null, actions: @Co
     }
 }
 
-/** A tick for a step that's done, an open ring for one to do, a coral ring for LoR not answering. */
+/** A tick for a step that's done, an open ring for one to do, a coral dot for LoR not answering. */
 @Composable
 private fun StepMark(mark: Mark) {
     Canvas(Modifier.padding(top = 2.dp).size(16.dp)) {
@@ -183,7 +181,8 @@ private fun StepMark(mark: Mark) {
                 drawLine(Muted, Offset(0.42f * w, 0.76f * w), Offset(0.84f * w, 0.26f * w), line.width, StrokeCap.Round)
             }
             Mark.TODO -> drawCircle(Dim, radius = 0.4f * w, style = line)
-            Mark.FAILED -> drawCircle(Coral, radius = 0.4f * w, style = line)
+            // Machinery that failed: the coral dot every failed state uses.
+            Mark.FAILED -> drawCircle(Coral, radius = 3.dp.toPx())
         }
     }
 }

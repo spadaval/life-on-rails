@@ -27,13 +27,17 @@ object AgentStates {
 
     private val Clock = DateTimeFormatter.ofPattern("H:mm")
 
-    /** What's next today, for the all-clear: the event under way, else the next one today, else none. */
+    /**
+     * The all-clear's second line: what Today's list above it doesn't say. The event under way and
+     * when it ends (the list shows start times only), else how long he is free (the next event is
+     * already listed, so it isn't named again), else that nothing else is on today.
+     */
     fun next(events: List<DeviceHome.Event>, now: Instant, zone: ZoneId): String {
         val today = now.atZone(zone).toLocalDate()
         events.firstOrNull { !it.start.isAfter(now) && it.end.isAfter(now) }
-            ?.let { return "${it.title} until ${it.end.atZone(zone).format(Clock)}." }
+            ?.let { return "In ${it.title} until ${it.end.atZone(zone).format(Clock)}." }
         events.filter { it.start.isAfter(now) && it.start.atZone(zone).toLocalDate() == today }.minByOrNull { it.start }
-            ?.let { return "Next: ${it.title} at ${it.start.atZone(zone).format(Clock)}." }
+            ?.let { return "Free until ${it.start.atZone(zone).format(Clock)}." }
         return "Nothing else on the calendar today."
     }
 }

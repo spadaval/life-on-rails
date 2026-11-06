@@ -212,13 +212,90 @@ Agreed with Sumeet, 2026-11-05:
 
 - **2026-11-06.** Landed: the strip and `MainActivity.open(context, tab)` in `MainActivity.kt` (with `isHome` and `rememberAskForHome`, the role request both screens use), `home/Setup.kt` (the card, and `Setup.paired` and `Setup.left`, pure), `Prefs.setupDone`, and `PairActions` split out of `agent/PairCard.kt` so the card and the agent page share one pairing path. `SetupTest` (2) passes on boat with the rest (127). On `T3_Phone_API35`, against the test server and the scratch T3 server: T3 forgotten in the debug screen; LoR force-stopped; `setup_done` deleted from `shared_prefs/lor.xml` (`server_url` kept at `http://10.0.2.2:3857`) and `files/layout.json`, `layout.json.broken` and `layout.good.json` deleted; the Pixel Launcher made home with `cmd package set-home-activity`. The LoR icon then showed "Use LoR as your home screen" with Set as home over the tabs; Set as home opened the system's "Set Life on Rails as your default home app?"; choosing LoR made it the role holder (`cmd role get-role-holders`) and took the phone to LoR's home, on the default layout under the card: "LoR is your home app." done, T3 with Scan code and Paste a link, "Reaches LoR at 10.0.2.2:3857." done. The LoR icon then showed no strip. A pairing link pasted into the card paired, the card went, `setup_done` was true, and after a force-stop and a home press it didn't come back. Second run (same reset, T3 left paired, the test server stopped): the LoR row read "Can't reach 10.0.2.2:3857. LoR didn't answer. Is Tailscale on?" with a coral ring, Check again and Change address; Change address opened the LoR app on its Settings tab; with the server started again, Check again (without leaving home) marked it done and, all three holding, the card went. Done, tapped with LoR down, set `setup_done` and removed the card. With the Pixel Launcher made home again and LoR's home started directly (as "Just once" would), the card showed "Home app", "LoR isn't the default home yet." and Make LoR home, which opened the same system dialog and, once chosen, ended the card. The spec's launcher section says how the app becomes home and what the first run shows. Choices: only the first step not done has a primary (filled) button, so the card never shows two (R10, carried to 3.6, is handled here); the role and LoR are checked again on each resume as well as on Check again, since Change address and the system's settings are left and come back to; an install that already holds the role and is paired waits for the read of LoR before drawing the card, so a set-up phone updated to this build doesn't see it flash up and go; Done is a plain outlined button in the card's title row; the strip uses the LoR app's Material look, where the tonal Set as home button sits on a container of nearly its colour (for 3.6). Not checked: a real scan (as 3.3: the emulator's code scanner module never downloads), and the role dialog on One UI **[real Fold]**. Reviewed with the increment.
 
-#### 3.6 The set of states, critiqued. Status: todo, after 3.1 to 3.5
+#### 3.6 The set of states, critiqued. Status: done
 - **Goal.** Every state above has been seen together and judged as a set, not one at a time.
   - Gather the screenshots each issue kept (`T3_Phone_API35`), plus the broken-file banner, empty home and the set-up card on `T3_Fold_API35` unfolded, where home's wide layout puts them in another column.
   - Run the impeccable skill's `critique` (`.claude/skills/impeccable/reference/critique.md`, with `android.md` as the platform reference) on the set: Assessment A and B as separate sub-agents, A from the screenshots and the Compose files, B reporting the detector as unavailable for Compose. Its closing questions go to the orchestrator, who answers what the strategy lets it answer and lists the rest under Open questions for Sumeet.
   - Bring to the critique, from the plan's review: R6, the all-clear's "Next:" line repeats an event the Today block already lists; R10, the set-up card can show two amber primary buttons at once (Make LoR home and Scan code), against `DESIGN.md`'s one primary action per screen.
   - Handle each finding: fix it, or record why not (out of scope for this increment, belongs to Increment 6's look, or wrong), under this issue.
 - **Done when.** The critique's report and each finding's handling are recorded under this issue; the fixes are built on boat and their states screenshotted again on the emulator; the increment's review, by a fresh agent, has the screenshots.
+
+- **2026-11-06.** Landed. **The set:** 26 screenshots, the ones 3.1 to 3.5 kept on `T3_Phone_API35` plus the set-up card (LoR down), the broken banner and empty home on `T3_Fold_API35` unfolded (`36-fold-*`).
+  **The critique** (`.claude/skills/impeccable/reference/critique.md`, `android.md`): Assessment A and B ran as two separate sub-agents that didn't see each other's output.
+  - **Assessment B.** `impeccable detect --json android/app/src/main/java/com/spadaval/lor` printed `[]` and exited 0, because it scans markup and found none, so the deterministic scan is unavailable for Compose. The browser overlay was skipped (no web target). In their place B measured contrast from the colour constants and from screenshot pixels, touch targets from the source, small type, looping motion and duplicated colour roles.
+  - **Assessment A.** It scored the set 28/40 on Nielsen's heuristics ("Good"). Weakest: consistency 2, recognition 2. Its verdict on specificity: the words are LoR's (each state claims only what the phone can see, and coral never means "nothing to show"), but the look could be any minimal launcher, which is the agreed deferral to Increment 6.
+    - Its main finding was within the set: three visual languages and several forms of "machinery failed".
+    - Strengths it named: honest claims, recovery that keeps the last good data on screen, one action per state.
+  - The snapshot was not persisted to `.impeccable/critique/`; this note is the record.
+
+  **Findings and what was done:**
+  - **A P1-a / B, fixed.** The broken banner and home's notes (empty home, "Apps didn't load") were light text straight on the wallpaper. B measured 1.1 to 2.4:1 on the light part of the emulator's wallpaper. The banner also didn't look tappable.
+    - All three states on home now sit on one card backing, `StateFill` (`0xDD15181D`), the set-up card's, in `HomeScreen.kt`. Their text is Ink and Muted on it.
+    - The banner has a "Details" label and is at least 48 dp tall.
+    - With no last good layout it reads "layout.json has an error. Tap to put it right."
+  - **A P1-b, fixed in part.** "Machinery failed" now has one form, a coral dot and the reason in the muted colour (`Failed` in `AgentPage.kt`):
+    - T3's "disconnected; trying again" line now has it (it had none);
+    - the pairing card's failure line uses it (it was coral text);
+    - the set-up card's failed step uses it (it was a coral ring).
+
+    Not changed: a refused edit is still a toast ("Can't: …"), as every refused edit in the launcher is. Moving those to a snackbar belongs with Increment 6's look.
+  - **A P2-a, fixed.** Needs you no longer shows "0" while a source can't be seen; it shows a count only when both sources were read, or when something is listed. With T3 retrying, T3's line now says its approvals aren't here, and the second line saying so is gone (the repeat 3.3 noted).
+  - **R6, fixed.** The all-clear's second line no longer names the next event, which Today's list above already shows. It says what the list doesn't:
+    - "In <title> until H:mm." when an event is under way;
+    - "Free until H:mm." when the next event is later;
+    - "Nothing else on the calendar today." when none is left.
+
+    `AgentStatesTest` covers each. Not seen on screen: the scratch T3 server holds five requests, so no all-clear shows with it.
+  - **A P2-b / B, fixed.** Pills were about 25 dp tall. `Pill` now reserves a 48 dp touch target (`minimumInteractiveComponentSize`) and keeps its look, so rows with pills (the agent page's cards, the set-up card) are a little taller.
+
+    Not changed, carried to Increment 6: the queue card's 32 dp app tile and the 31 dp running row, outside these states.
+  - **A P2-c, fixed.** Quick send opened while T3 isn't paired:
+    - it no longer says "Reading T3's projects…";
+    - it points to the pairing card ("Pair it on the agent page, left of home.") instead of LoR's Settings.
+
+    The drawer row reads "Ask the agent about "<query>"".
+  - **R10, handled in 3.5 and finished here.** The set-up card already gave a primary button only to the first step not done. Now, while the link field is open, Pair is the primary and Scan code isn't.
+    - The agent page's filled quick-send button beside the pairing card's Scan code stays. It is the page's standing action, a FAB in Material's terms, not a second choice within the card.
+    - The card's "Done" (which hid it for good with steps left) is now "Skip set-up". The spec says so.
+  - **A, fixed.** A failed scan now ends "Paste a link instead."
+  - **B, fixed.** Greyed Today was drawn at 45% alpha (Muted text at 2.1:1). It is now at 60%, still clearly stale.
+  - **Carried to Increment 6 (the look):**
+    - the date header over a light wallpaper (1.05 to 2.3:1);
+    - app labels on light wallpaper;
+    - Dim text (2.3 to 3.5:1) and the sub-12 sp agent-page type;
+    - the pill outline's 1.8:1 edge;
+    - the light stock Material of the broken-file dialog, Home settings and the LoR app's strip (whose tonal button sits on a container of nearly its colour), in a dark-only product;
+    - the colour roles that disagree between files (Amber `0xFFF08A2C` on home and `0xFFE3A857` on the agent page and quick send; Ink, Muted, Dim and Line declared in four files);
+    - the raw-px label shadow.
+
+    Increment 6 already owns the wallpaper contrast and `DESIGN.md`'s colours and type.
+  - **Carried to Increment 8 (the Fold):** on the unfolded Fold the left column holds only the date while the states crowd the top of the grid column. Where states sit on the wide layout is that increment's.
+  - **No action:**
+    - "Showing what it said at 0:46" stays `H:mm`, as LoR's 24-hour times elsewhere.
+    - The pairing field shows the link in clear: it is his phone, and masking it would hide a typo. The kept screenshot that held a scratch server's token was deleted.
+    - No "Go" hint on the first no-results row: Increment 5 reworks search.
+    - The cold-start frame's labels over slots were recorded and chosen in 3.2.
+    - A bare token in the link field is refused as before; the debug screen takes tokens.
+
+  **Checked after the fixes,** built on boat (127 tests pass) and screenshotted again on `T3_Phone_API35` (`scratchpad/inc3/shots2`):
+  - the banner on its card with Details over the light wallpaper, and the no-copy line;
+  - empty home on its card (a tap still opened the drawer);
+  - "Ask the agent about "zzqx"";
+  - the set-up card with Skip set-up, the coral dot on LoR down, and, with the link field open, Pair as the only filled button and "Can't pair: The link has no token." with the dot;
+  - with both servers down, the agent page with both dot lines, no Needs you count and no second T3 line;
+  - LoR down with the greyed Today at 60%;
+  - quick send unpaired, with only "T3 isn't paired. Pair it on the agent page, left of home.";
+  - the agent page pairing again from its card, which also set `setup_done` as all three steps then held;
+  - the live page's cards with the taller pills and the count of 5.
+
+  Not re-shot on the Fold (one emulator at a time on a host short of memory); the changes there are the same composables.
+
+  **Questions the critique raised, for the orchestrator:**
+  - Should a broken `layout.json`, usually an agent's edit once agent edits land, be handed back to the agent rather than shown to Sumeet? For example, "Ask the agent to fix it" in the dialog, or a silent restore with a one-line notice.
+  - Is the set-up card worth keeping, given that the agent page's pairing card and the LoR app's strip already cover two of its steps?
+  - Should "Needs you" carry a number at all?
+
+  Reviewed with the increment.
 
 ### Increment 4: Edit mode. Status: backlog, after 1
 

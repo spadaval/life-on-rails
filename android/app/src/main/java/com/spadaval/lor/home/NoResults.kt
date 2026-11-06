@@ -48,7 +48,7 @@ internal fun elsewhere(pm: PackageManager, query: String): List<Elsewhere> {
     return listOfNotNull(
         Elsewhere(Elsewhere.Kind.WEB, "Search the web for \"$q\"", web).takeIf { takes(pm, web) },
         storeName(pm, store)?.let { Elsewhere(Elsewhere.Kind.STORE, "Search $it for \"$q\"", store) },
-        Elsewhere(Elsewhere.Kind.AGENT, "Ask the agent", null),
+        Elsewhere(Elsewhere.Kind.AGENT, "Ask the agent about \"$q\"", null),
     )
 }
 

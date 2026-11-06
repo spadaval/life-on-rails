@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -126,14 +127,6 @@ fun AgentPage() {
                     running.forEach { RunningRow(it) { model.openThread(it.id, LaunchFrom.AGENT_CARD) } }
                 }
                 val needs = model.lor?.needsYou.orEmpty()
-                Header("Needs you", (cards.size + needs.size).toString())
-                cards.forEach { T3QueueCard(it, model, live) }
-                needs.forEach { need ->
-                    QueueCard(
-                        tile = "LoR", tileColor = LorTile, tileLabel = "Open in LoR", onTile = { model.openLor(taskPath(need.id), LaunchFrom.AGENT_ICON) },
-                        kind = "LoR", kindColor = Green, where = "flagged", title = need.title, detail = need.note,
-                    ) { Pill("Open", primary = true) { model.openLor(taskPath(need.id), LaunchFrom.AGENT_CARD) } }
-                }
                 val lorSource = when {
                     model.lorError != null -> AgentStates.Source.UNSEEN
                     model.lor != null && model.lorRead -> AgentStates.Source.SEEN
@@ -144,7 +137,21 @@ fun AgentPage() {
                     status == T3Connection.Status.Connecting || status == T3Connection.Status.Stopped -> AgentStates.Source.READING
                     else -> AgentStates.Source.UNSEEN
                 }
-                AgentStates.notes(lorSource, t3Source, cards.size, needs.size).forEach { note ->
+                // A count only when it is the whole count: with a source unseen, "0" would claim what the page can't know.
+                val count = cards.size + needs.size
+                val whole = lorSource == AgentStates.Source.SEEN && t3Source == AgentStates.Source.SEEN
+                Header("Needs you", if (whole || count > 0) count.toString() else null)
+                cards.forEach { T3QueueCard(it, model, live) }
+                needs.forEach { need ->
+                    QueueCard(
+                        tile = "LoR", tileColor = LorTile, tileLabel = "Open in LoR", onTile = { model.openLor(taskPath(need.id), LaunchFrom.AGENT_ICON) },
+                        kind = "LoR", kindColor = Green, where = "flagged", title = need.title, detail = need.note,
+                    ) { Pill("Open", primary = true) { model.openLor(taskPath(need.id), LaunchFrom.AGENT_CARD) } }
+                }
+                AgentStates.notes(lorSource, t3Source, cards.size, needs.size)
+                    // T3State's line above already says T3 is disconnected and its approvals with it.
+                    .filterNot { it == AgentStates.Note.T3_UNSEEN && status is T3Connection.Status.Retrying }
+                    .forEach { note ->
                     when (note) {
                         AgentStates.Note.ALL_CLEAR -> {
                             val lor = model.lor!!
@@ -200,7 +207,7 @@ private fun Today(model: AgentModel) {
         return
     }
     // Greyed while it isn't fresh: LoR can't be reached, or no read has ended since the page opened.
-    Column(Modifier.alpha(if (error != null || !model.lorRead) 0.45f else 1f)) { TodayBody(lor, zone) }
+    Column(Modifier.alpha(if (error != null || !model.lorRead) 0.6f else 1f)) { TodayBody(lor, zone) }
     if (error != null) Unreachable("$error Showing what it said at ${lor.now.atZone(zone).format(Clock)}.", model)
 }
 
@@ -292,11 +299,21 @@ private fun DayArc(lor: DeviceHome) {
 private fun T3State(status: T3Connection.Status, loaded: Boolean) {
     val text = when (status) {
         T3Connection.Status.NotPaired, is T3Connection.Status.Rejected -> null
-        is T3Connection.Status.Retrying -> "T3 is disconnected; trying again. Actions are off until it's back."
+        is T3Connection.Status.Retrying -> "T3 is disconnected; trying again. Its approvals aren't here and actions are off until it's back."
         T3Connection.Status.Live -> null
         T3Connection.Status.Connecting, T3Connection.Status.Stopped -> if (loaded) null else "Connecting to T3…"
     } ?: return
-    Text(text, style = Small, modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 14.dp))
+    if (status is T3Connection.Status.Retrying) Failed(text, Modifier.padding(start = 18.dp, end = 18.dp, top = 14.dp))
+    else Text(text, style = Small, modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 14.dp))
+}
+
+/** Machinery that failed, the same everywhere (launcher polish 3.6): a coral dot and the reason in the muted colour. */
+@Composable
+internal fun Failed(text: String, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(6.dp).background(Red, CircleShape))
+        Text(text, style = Small, modifier = Modifier.padding(start = 8.dp))
+    }
 }
 
 @Composable
@@ -458,7 +475,8 @@ internal fun Pill(text: String, primary: Boolean = false, enabled: Boolean = tru
             fontSize = 12.sp,
             fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Normal,
         ),
-        modifier = base.clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 11.dp, vertical = 6.dp),
+        // The pill stays small; the space around it makes the touch target 48 dp, as Material's buttons do.
+        modifier = Modifier.minimumInteractiveComponentSize().then(base).clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 11.dp, vertical = 6.dp),
     )
 }
 

@@ -169,7 +169,9 @@ private fun Sheet(connection: T3Connection, from: QuickSend.From, initial: Strin
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
+            // Unpaired, there are no projects to read; the connection line says what to do.
+            val paired = status !is T3Connection.Status.NotPaired && status !is T3Connection.Status.Rejected
+            if (paired) Text(
                 when {
                     !shell.loaded -> "Reading T3's projects…"
                     target == null -> "No project named \"${Destination.INBOX}\" on this T3 server. Pick one."
@@ -204,8 +206,8 @@ private fun imageName(appLabel: String?): String =
 
 private fun connectionLine(status: T3Connection.Status): String? = when (status) {
     T3Connection.Status.Live -> null
-    T3Connection.Status.NotPaired -> "T3 isn't paired. Pair it in LoR's Settings, under T3 Code."
-    is T3Connection.Status.Rejected -> "T3 refused this phone. Pair again in LoR's Settings."
+    T3Connection.Status.NotPaired -> "T3 isn't paired. Pair it on the agent page, left of home."
+    is T3Connection.Status.Rejected -> "T3 refused this phone. Pair again on the agent page, left of home."
     is T3Connection.Status.Retrying -> "T3 is disconnected; trying again. Send is off until it's back."
     T3Connection.Status.Connecting, T3Connection.Status.Stopped -> "Connecting to T3…"
 }
