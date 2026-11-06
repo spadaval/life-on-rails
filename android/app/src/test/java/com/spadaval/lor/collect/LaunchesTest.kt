@@ -83,6 +83,21 @@ class LaunchesTest {
     }
 
     @Test
+    fun aShortcutLaunchCarriesTheShortcutIdAndWhereTheMenuWasOpened() {
+        val app = Launch(LaunchFrom.DOCK, "com.google.android.deskclock", "com.android.deskclock.DeskClock", "Clock")
+        val withShortcut = app.copy(shortcut = "launch_timer")
+        val p = Launches.observation("pixel-9a", at, withShortcut).getJSONObject("payload")
+        assertEquals("dock", p.getString("from"))
+        assertEquals("launch_timer", p.getString("shortcut"))
+        assertFalse(Launches.observation("pixel-9a", at, app).getJSONObject("payload").has("shortcut"))
+        // A shortcut and its app opened at the same moment are two launches.
+        assertNotEquals(
+            Launches.observation("pixel-9a", at, app).getString("id"),
+            Launches.observation("pixel-9a", at, withShortcut).getString("id"),
+        )
+    }
+
+    @Test
     fun everySourceHasItsWireName() {
         assertEquals(
             listOf("home", "dock", "folder", "drawer", "search", "agent_card", "agent_icon"),

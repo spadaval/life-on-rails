@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Process
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -14,8 +13,9 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -104,7 +104,8 @@ private val LabelStyle = TextStyle(color = Ink, fontSize = 12.sp, shadow = Shado
 /** What the activity can reset on a home press. */
 class HomeUi {
     var drawer by mutableStateOf(false)
-    var folder by mutableStateOf<ResolvedFolder?>(null)
+    /** The open folder's name. */
+    var folder by mutableStateOf<String?>(null)
     var query by mutableStateOf("")
     var homePresses by mutableStateOf(0)
     /** The page showing: 0 is the agent page, 1 is home. */
@@ -121,11 +122,6 @@ class HomeUi {
     }
 }
 
-/** Opens [app] and records where on the launcher it was opened from ([com.spadaval.lor.collect.Launches]). */
-fun interface LaunchApp {
-    fun open(app: HomeApp, from: LaunchFrom, folder: String?, query: String?)
-}
-
 class ResolvedFolder(val folder: Folder, val apps: List<HomeApp>)
 
 /** A layout item with its installed apps; refs to apps that aren't installed are left out. */
@@ -134,10 +130,8 @@ private sealed interface Placed {
     class InFolder(val folder: ResolvedFolder) : Placed
 }
 
-private fun resolve(ref: AppRef, apps: List<HomeApp>): HomeApp? {
-    val me = Process.myUserHandle()
-    return apps.firstOrNull { it.user == me && ref.matches(it.packageName, it.info.componentName.className) }
-}
+private fun resolve(ref: AppRef, apps: List<HomeApp>): HomeApp? =
+    apps.firstOrNull { it.mainProfile && ref.matches(it.packageName, it.info.componentName.className) }
 
 private fun place(layout: Layout, apps: List<HomeApp>): Pair<List<Placed>, List<HomeApp>> {
     val home = layout.home.mapNotNull { item ->
@@ -151,7 +145,13 @@ private fun place(layout: Layout, apps: List<HomeApp>): Pair<List<Placed>, List<
 }
 
 @Composable
-fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: LaunchApp) {
+fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, actions: HomeActions) {
+    val file = (layout as? LayoutState.Ready)?.file
+    val home = remember(actions, file, apps) { HomeContext(actions, file, apps) }
+    val placed = remember(apps, file) { file?.let { place(it.current, apps) } }
+    val folder = ui.folder?.let { name -> placed?.first?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf { f -> f.folder.name == name } } }
+    // An edit that empties the open folder removes it, so the panel closes.
+    LaunchedEffect(ui.folder, folder, placed) { if (ui.folder != null && folder == null && placed != null) ui.folder = null }
     val pager = rememberPagerState(initialPage = 1) { 2 }
     LaunchedEffect(ui.homePresses) { if (ui.homePresses > 0) pager.animateScrollToPage(1) }
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { ui.page = it } }
@@ -164,7 +164,7 @@ fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: Lau
     }
     Box(Modifier.fillMaxSize()) {
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
-            if (page == 0) AgentPage() else HomePage(apps, layout, ui, launch)
+            if (page == 0) AgentPage() else HomePage(placed, layout, ui, home)
         }
         PageDots(pager.currentPage, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
         AnimatedVisibility(
@@ -172,16 +172,15 @@ fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: Lau
             enter = slideInVertically { it / 3 } + fadeIn(),
             exit = slideOutVertically { it / 3 } + fadeOut(),
         ) {
-            Drawer(apps, ui, launch)
+            Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, ui, home)
         }
-        ui.folder?.let { FolderPanel(it, launch, onClose = { ui.folder = null }) }
+        folder?.let { FolderPanel(it, home, onClose = { ui.folder = null }) }
     }
 }
 
 @Composable
-private fun HomePage(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launch: LaunchApp) {
+private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutState, ui: HomeUi, home: HomeContext) {
     val threshold = with(LocalDensity.current) { 56.dp.toPx() }
-    val placed = remember(apps, layout) { (layout as? LayoutState.Ready)?.let { place(it.file.current, apps) } }
     var dragged by remember { mutableStateOf(0f) }
     BoxWithConstraints(
         Modifier
@@ -208,10 +207,10 @@ private fun HomePage(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, launc
                         style = TextStyle(color = Muted, fontSize = 13.sp),
                         modifier = Modifier.padding(horizontal = 20.dp),
                     )
-                    is LayoutState.Ready -> HomeGrid(placed!!.first, if (wide) 5 else 4, ui, launch)
+                    is LayoutState.Ready -> HomeGrid(placed!!.first, if (wide) 5 else 4, ui, home)
                 }
                 Spacer(Modifier.weight(1f))
-                Dock(placed?.second.orEmpty(), launch)
+                Dock(placed?.second.orEmpty(), home)
             }
         }
         if (wide) {
@@ -267,15 +266,15 @@ private fun rememberToday(): LocalDate {
 
 /** Home's items in reading order, [columns] to a row: Launcher3's cells without coordinates. */
 @Composable
-private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, launch: LaunchApp) {
+private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeContext) {
     Column(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         items.chunked(columns).forEach { row ->
             Row(Modifier.fillMaxWidth()) {
                 row.forEach { item ->
                     Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
                         when (item) {
-                            is Placed.App -> AppTile(item.app) { launch.open(item.app, LaunchFrom.HOME, null, null) }
-                            is Placed.InFolder -> FolderTile(item.folder) { ui.folder = item.folder }
+                            is Placed.App -> MenuTile(item.app, At(LaunchFrom.HOME), home)
+                            is Placed.InFolder -> FolderTile(item.folder) { ui.folder = item.folder.folder.name }
                         }
                     }
                 }
@@ -286,7 +285,7 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, launch: Laun
 }
 
 @Composable
-private fun Dock(apps: List<HomeApp>, launch: LaunchApp) {
+private fun Dock(apps: List<HomeApp>, home: HomeContext) {
     if (apps.isEmpty()) return
     Row(
         Modifier
@@ -297,7 +296,16 @@ private fun Dock(apps: List<HomeApp>, launch: LaunchApp) {
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        apps.forEach { app -> AppIcon(app, 48.dp, Modifier.semantics { contentDescription = app.label }.clickable { launch.open(app, LaunchFrom.DOCK, null, null) }) }
+        val at = At(LaunchFrom.DOCK)
+        apps.forEach { app ->
+            WithAppMenu(app, at, home) { menu ->
+                AppIcon(
+                    app, 48.dp,
+                    Modifier.semantics { contentDescription = app.label }
+                        .combinedClickable(onLongClickLabel = "Menu", onLongClick = menu) { home.actions.open(app, at) },
+                )
+            }
+        }
     }
 }
 
@@ -311,10 +319,19 @@ private fun PageDots(current: Int, modifier: Modifier) {
     }
 }
 
+/** An app tile whose tap opens it from [at] and whose long press opens its menu. */
 @Composable
-private fun AppTile(app: HomeApp, width: Dp = 76.dp, onClick: () -> Unit) {
+private fun MenuTile(app: HomeApp, at: At, home: HomeContext, width: Dp = 76.dp, beforeOpen: () -> Unit = {}) {
+    WithAppMenu(app, at, home) { menu ->
+        AppTile(app, width, menu) { beforeOpen(); home.actions.open(app, at) }
+    }
+}
+
+@Composable
+private fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     Column(
-        Modifier.width(width).clickable(onClick = onClick).padding(vertical = 4.dp),
+        Modifier.width(width).combinedClickable(onLongClickLabel = onLongClick?.let { "Menu" }, onLongClick = onLongClick, onClick = onClick)
+            .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         AppIcon(app, 52.dp)
@@ -347,10 +364,9 @@ private fun FolderTile(folder: ResolvedFolder, onClick: () -> Unit) {
 }
 
 @Composable
-private fun FolderPanel(folder: ResolvedFolder, launch: LaunchApp, onClose: () -> Unit) {
-    val none = remember { MutableInteractionSource() }
+private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -> Unit) {
     Box(
-        Modifier.fillMaxSize().background(Color(0x99000000)).clickable(none, indication = null, onClick = onClose),
+        Modifier.fillMaxSize().background(Color(0x99000000)).pointerInput(onClose) { detectTapGestures { onClose() } },
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -359,7 +375,7 @@ private fun FolderPanel(folder: ResolvedFolder, launch: LaunchApp, onClose: () -
                 .padding(24.dp)
                 .background(Panel, RoundedCornerShape(24.dp))
                 .border(1.dp, Line, RoundedCornerShape(24.dp))
-                .clickable(none, indication = null) {}
+                .swallowTaps()
                 .padding(16.dp),
         ) {
             Text(folder.folder.name, style = TextStyle(color = Ink, fontSize = 18.sp), modifier = Modifier.padding(start = 6.dp))
@@ -371,7 +387,7 @@ private fun FolderPanel(folder: ResolvedFolder, launch: LaunchApp, onClose: () -
                 Row(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
                     row.forEach { app ->
                         Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
-                            AppTile(app, width = 72.dp) { onClose(); launch.open(app, LaunchFrom.FOLDER, folder.folder.name, null) }
+                            MenuTile(app, At(LaunchFrom.FOLDER, folder.folder.name), home, width = 72.dp, beforeOpen = onClose)
                         }
                     }
                     repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -382,9 +398,9 @@ private fun FolderPanel(folder: ResolvedFolder, launch: LaunchApp, onClose: () -
 }
 
 @Composable
-private fun Drawer(apps: List<HomeApp>, ui: HomeUi, launch: LaunchApp) {
+private fun Drawer(apps: List<HomeApp>, ui: HomeUi, home: HomeContext) {
     // Something typed makes it a search, recorded with the text as typed.
-    fun open(app: HomeApp) = if (ui.query.isBlank()) launch.open(app, LaunchFrom.DRAWER, null, null) else launch.open(app, LaunchFrom.SEARCH, null, ui.query)
+    val at = if (ui.query.isBlank()) At(LaunchFrom.DRAWER) else At(LaunchFrom.SEARCH, query = ui.query)
     val results = remember(apps, ui.query) { AppSearch.search(ui.query, apps) { it.label } }
     val closeAt = with(LocalDensity.current) { 120.dp.toPx() }
     // A pull down past the top of the list closes the drawer.
@@ -401,7 +417,7 @@ private fun Drawer(apps: List<HomeApp>, ui: HomeUi, launch: LaunchApp) {
         }
     }
     Column(
-        Modifier.fillMaxSize().background(Sheet).clickable(remember { MutableInteractionSource() }, indication = null) {}
+        Modifier.fillMaxSize().background(Sheet).swallowTaps()
             .safeDrawingPadding().padding(top = 12.dp),
     ) {
         OutlinedTextField(
@@ -416,7 +432,7 @@ private fun Drawer(apps: List<HomeApp>, ui: HomeUi, launch: LaunchApp) {
                 focusedBorderColor = Muted, unfocusedBorderColor = Line,
             ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { results.firstOrNull()?.let(::open) }),
+            keyboardActions = KeyboardActions(onGo = { results.firstOrNull()?.let { home.actions.open(it, at) } }),
         )
         if (results.isEmpty() && ui.query.isNotBlank()) {
             Text("No app called \"${ui.query.trim()}\".", style = TextStyle(color = Muted, fontSize = 14.sp), modifier = Modifier.padding(24.dp))
@@ -428,8 +444,14 @@ private fun Drawer(apps: List<HomeApp>, ui: HomeUi, launch: LaunchApp) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(results, key = { it.key }) { app ->
-                Box(contentAlignment = Alignment.TopCenter) { AppTile(app) { open(app) } }
+                Box(contentAlignment = Alignment.TopCenter) { MenuTile(app, at, home) }
             }
         }
     }
 }
+
+/**
+ * Keeps taps from reaching what is under a panel. Unlike an empty `clickable`, it adds no
+ * semantics, so the panel's apps stay separate nodes for TalkBack and agent-device.
+ */
+private fun Modifier.swallowTaps(): Modifier = pointerInput(Unit) { detectTapGestures {} }

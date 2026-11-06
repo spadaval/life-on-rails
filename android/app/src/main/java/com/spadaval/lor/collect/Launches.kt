@@ -41,6 +41,8 @@ data class Launch(
     val thread: String? = null,
     /** The link an agent card opened (a T3 thread link, a LoR dashboard page). */
     val url: String? = null,
+    /** The app shortcut's id, when one was opened from the app's long-press menu. */
+    val shortcut: String? = null,
 )
 
 /**
@@ -60,8 +62,9 @@ object Launches {
         launch.folder?.let { payload.put("folder", it) }
         launch.query?.let { payload.put("query", it) }
         launch.thread?.let { payload.put("thread", it) }
+        launch.shortcut?.let { payload.put("shortcut", it) }
         return Obs.envelope(
-            id = Obs.id("launch", device, at, launch.pkg ?: "", launch.activity ?: launch.url ?: ""),
+            id = Obs.id(*listOfNotNull<Any>("launch", device, at, launch.pkg ?: "", launch.activity ?: launch.url ?: "", launch.shortcut).toTypedArray()),
             device = device,
             start = at,
             end = at,

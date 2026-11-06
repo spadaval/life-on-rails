@@ -2,6 +2,8 @@ package com.spadaval.lor.home
 
 import android.content.Intent
 import android.content.pm.LauncherApps
+import android.content.pm.ShortcutInfo
+import android.net.Uri
 import android.graphics.Color
 import android.os.Bundle
 import android.widget.Toast
@@ -12,14 +14,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.spadaval.lor.LorApp
 import com.spadaval.lor.collect.Launch
-import com.spadaval.lor.collect.LaunchFrom
 import com.spadaval.lor.collect.Launches
 import com.spadaval.lor.quicksend.QuickSend
 import com.spadaval.lor.ui.LorTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * LoR's home app (T3 Launcher): the agent page, home from the layout file, and the drawer
@@ -51,7 +57,7 @@ class HomeActivity : ComponentActivity() {
             val layout by model.layout.collectAsStateWithLifecycle()
             LorTheme {
                 CompositionLocalProvider(LocalIcons provides icons) {
-                    HomeScreen(apps, layout, ui, ::launch)
+                    HomeScreen(apps, layout, ui, actions)
                 }
             }
         }
@@ -70,16 +76,92 @@ class HomeActivity : ComponentActivity() {
         model.resume()
     }
 
-    private fun launch(app: HomeApp, from: LaunchFrom, folder: String?, query: String?) {
-        try {
-            launcherApps.startMainActivity(app.info.componentName, app.user, null, null)
-            Launches.record(
-                this,
-                Launch(from, app.packageName, app.info.componentName.className, app.label, folder = folder, query = query),
-            )
-        } catch (e: RuntimeException) {
-            // ActivityNotFoundException, SecurityException, or a profile that was turned off.
-            Toast.makeText(this, "${app.label} can't be opened.", Toast.LENGTH_SHORT).show()
+    private val actions = object : HomeActions {
+        override fun open(app: HomeApp, at: At) {
+            try {
+                launcherApps.startMainActivity(app.info.componentName, app.user, null, null)
+                record(app, at, shortcut = null)
+            } catch (e: RuntimeException) {
+                // ActivityNotFoundException, SecurityException, or a profile that was turned off.
+                toast("${app.label} can't be opened.")
+            }
+        }
+
+        override suspend fun shortcuts(app: HomeApp): List<MenuShortcut> = withContext(Dispatchers.IO) {
+            try {
+                // Only the default home may read other apps' shortcuts.
+                if (!launcherApps.hasShortcutHostPermission()) return@withContext emptyList()
+                val query = LauncherApps.ShortcutQuery()
+                    .setPackage(app.packageName)
+                    .setActivity(app.info.componentName)
+                    .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST)
+                val density = resources.displayMetrics.densityDpi
+                val size = (22 * resources.displayMetrics.density).toInt()
+                launcherApps.getShortcuts(query, app.user).orEmpty()
+                    .filter { it.isEnabled }
+                    .sortedWith(compareBy({ !it.isDeclaredInManifest }, { it.rank }))
+                    .take(5)
+                    .map { s ->
+                        val icon = try {
+                            launcherApps.getShortcutIconDrawable(s, density)?.toBitmap(size, size)?.asImageBitmap()
+                        } catch (e: RuntimeException) {
+                            null
+                        }
+                        MenuShortcut(s, icon)
+                    }
+            } catch (e: RuntimeException) {
+                // A locked profile (IllegalStateException) or no longer the default home (SecurityException).
+                emptyList()
+            }
+        }
+
+        override fun openShortcut(app: HomeApp, shortcut: ShortcutInfo, at: At) {
+            try {
+                launcherApps.startShortcut(shortcut, null, null)
+                record(app, at, shortcut.id)
+            } catch (e: RuntimeException) {
+                // As open: the shortcut went away, its profile is locked, or home lost the permission.
+                toast("${shortcut.shortLabel ?: app.label} can't be opened.")
+            }
+        }
+
+        override fun appInfo(app: HomeApp) {
+            try {
+                launcherApps.startAppDetailsActivity(app.info.componentName, app.user, null, null)
+            } catch (e: RuntimeException) {
+                toast("${app.label}'s info can't be opened.")
+            }
+        }
+
+        override fun uninstall(app: HomeApp) {
+            // As Launcher3's uninstall: the package, and the profile it is installed in.
+            val intent = Intent(Intent.ACTION_DELETE, Uri.fromParts("package", app.packageName, null))
+                .putExtra(Intent.EXTRA_USER, app.user)
+            try {
+                startActivity(intent)
+            } catch (e: RuntimeException) {
+                toast("${app.label} can't be uninstalled from here.")
+            }
+        }
+
+        override fun edit(done: String?, change: (LayoutFile) -> LayoutFile) {
+            lifecycleScope.launch {
+                model.edit(change)
+                    .onSuccess { if (done != null) toast(done) }
+                    .onFailure { toast("Can't: ${it.message ?: "the layout couldn't be changed"}.") }
+            }
         }
     }
+
+    private fun record(app: HomeApp, at: At, shortcut: String?) {
+        Launches.record(
+            this,
+            Launch(
+                at.from, app.packageName, app.info.componentName.className, app.label,
+                folder = at.folder, query = at.query, shortcut = shortcut,
+            ),
+        )
+    }
+
+    private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
 }
