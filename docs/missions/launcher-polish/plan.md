@@ -309,11 +309,11 @@ Agreed with Sumeet, 2026-11-05:
 - A second fresh agent reviewed the fixes: pass. Its two points are taken: the spec and code comment now say what Needs you's count does (a number once both sources are read, or whenever something is listed), and the LoR app keeps one list of its tabs.
 - Its open question (an event past midnight reads "until 0:30") and the critique's three (should a broken file go to the agent; is the set-up card worth keeping; should Needs you show a count) are for Sumeet, listed under "Open questions for Sumeet".
 
-### Increment 4: Edit mode. Status: backlog, after 1
+### Increment 4: Edit mode. Status: active
 
 **Goal.** Edit home from the home menu or by dragging an app out of its long-press menu: drag to reorder, drop on an app to make a folder, drag in and out of the dock and folders, drag onto Remove. Folders can be renamed, reordered, and given a cover app. A folder whose last app leaves goes away. Home can have several pages (a schema addition: `home` becomes one page, `pages` holds more). Every edit shows "Undo" for a few seconds.
 
-**Provisional Done when.** Each gesture is driven on the emulator and the file is read after each; undo restores the file byte for byte. A JVM test covers the edits.
+**Provisional Done when** (superseded by the Done-when of 4.1 to 4.6, 2026-11-06). Each gesture is driven on the emulator and the file is read after each; undo restores the file byte for byte. A JVM test covers the edits.
 
 **Carried from Increment 1's review.**
 - R3: a package-name ref on home is drawn as the package's first activity, but the edits treat it as naming every activity of the package, so for a package with two launcher activities the second's menu says Remove from home and removes the first. Work out an app's places from the refs as home resolved them.
@@ -321,6 +321,209 @@ Agreed with Sumeet, 2026-11-05:
 - R4: folders are found by name (the open folder, Remove from folder), and names may repeat within a layout. Track the open folder and edit folders by position, or make the parser refuse a repeated name.
 
 **Unknowns.** How Kvaesitso and Neo Launcher do drag and drop in Compose. Read both before choosing; this is the mission's biggest piece. Whether pages are a schema addition or a version bump (comes back to Sumeet if it is a bump).
+
+**Answers, 2026-11-06 (orchestrator, from reading the code and the launchers below; the plan to be reviewed by a fresh agent before work starts).**
+- *Read for D1.*
+  - **Kvaesitso** (GPL-3.0) has no home grid or folders. Its one drag and drop is `ui/component/dragndrop/DragAndDropGrid.kt`, used by the favourites editor (`launcher/sheets/EditFavoritesSheet.kt`):
+    - `detectDragGesturesAfterLongPress` sits on the whole grid, not on each item.
+    - The item under the finger is found by hit-testing the grid's laid-out item bounds (`layoutInfo.visibleItemsInfo`) against the dragged item's centre.
+    - The dragged item is drawn at its offset with `absoluteOffset` and `zIndex(1f)`, and a move happens after the item has hovered 300 ms over another (`attemptMove`).
+    - On release it eases from where it was let go back to its slot, and dragging near an edge scrolls the grid.
+    - The favourites editor also drops an item *onto* something (a tag row) by hit-testing in `onDrag` and acting in `onDragEnd`.
+    - Its widget column (`launcher/widgets/WidgetColumn.kt`) removes a widget at once and offers Undo in a snackbar that puts it back.
+  - **Neo Launcher** (GPL-3.0) is Launcher3 underneath (Views: `dragndrop/DragController.java`, `CellLayout`, the cell reorder algorithm); its Compose is in settings (`compose/components/ReorderableList.kt`). It has nothing Compose for home, so Launcher3 was read in **Lawnchair** (Apache-2.0, branch 15-dev):
+    - `DragController` and `DragLayer`: one controller owns a drag from whatever started it to whatever takes it.
+    - `PopupContainerWithArrow.createPreDragCondition`: a long press opens the menu, and the drag starts once the finger moves more than `deep_shortcuts_start_drag_threshold` (16 dp), closing the menu.
+    - `Workspace`: a drop near an icon's centre makes a folder (`getFolderCreationRadius`, about the icon's visible radius), elsewhere it reorders after `REORDER_TIMEOUT` (650 ms); an extra empty page is added while dragging (`addExtraEmptyScreenOnDrag`) and empty pages are stripped after (`stripEmptyScreens`).
+    - `Folder`: dragging out closes the folder after `ON_EXIT_CLOSE_DELAY` (400 ms).
+    - `DeleteDropTarget` ("Remove"): the drop removes, and `DropTargetHandler` shows an Undo snackbar.
+  - **Borrowed:** one drag owned by home, not by the item (Launcher3's controller); hit-testing laid-out bounds against the dragged centre, the 300 ms hover before a reorder and the drawn offset (Kvaesitso); the 16 dp pre-drag out of the menu, the folder radius, the drag-out delay, Remove at the top, the extra page while dragging and its removal after (Launcher3).
+  - **Not borrowed:** Launcher3's cells and reorder algorithm (home is list order, 3.2); its undo, which covers only deletes (here every edit, below); its replacing a one-app folder with the app (here a folder goes when empty, as 1.1's edits already do); `FolderNameProvider`'s suggestions (here the apps' shared category).
+  - **Not used:** Compose's `dragAndDropSource` and `dragAndDropTarget`, which are Android's cross-app drag (`View.startDragAndDrop`, a system drag shadow, no hover-to-reorder); and list reorder libraries such as Reorderable (Apache-2.0), which reorder one lazy list. Home's drags cross home, the dock, folders, pages and the drawer, so one controller over them is simpler than stitching one per list.
+- *The shape of a drag.*
+  - One drag at a time lives in `HomeUi`: what is held, where it came from, and where the finger is. A pointer handler on `HomeScreen`'s root follows it in the Initial pass and consumes its moves, so the pager and the drawer swipe don't see them. The source only starts it, so a source that leaves the screen (the drawer closing, a folder panel closing) doesn't end it.
+  - Each tile, folder slot, the dock, each page's grid, the open folder's card and Remove report their bounds in root coordinates (`onGloballyPositioned`).
+  - A pure function (no Compose or Android types) turns the finger's position and those bounds into a target. A pure edit (4.1) turns the source and the target into the edited `LayoutFile`.
+  - While the drag is over a target, home draws that edit's result as a preview. Nothing is written until the drop, which is one `HomeStore.edit`, so one write and one Undo.
+  - In the preview, items take their new places without animation. The motion (items easing to their places, the icon settling on drop) and the drop haptic are Increment 7's (it already holds pickup and drop haptics).
+- *Pages are an optional addition, not a version bump.* A layout gains an optional `pages`, the pages after the first, and `home` stays what it has always been: the items of home's first page, in reading order, at most 24. A file without `pages` means exactly what it meant before, and no existing field changes meaning. Page objects (`{ "items": [...] }`) rather than bare lists leave room for Increment 9 to put something per page. See [Schema additions](#schema-additions).
+- *Undo is a copy of the file's text from before the edit.*
+  - `LayoutStore.edit` already reads the file first; it keeps that text. Undo writes it back unchanged (`writeAtomically`), only if the file still holds exactly the text the edit wrote; otherwise it refuses and leaves the file alone (an agent or adb wrote since).
+  - This restores every byte, a hand-formatted file included, which re-serialising an inverse edit couldn't. It is also one mechanism for every edit (drag, menu, Home settings) with nothing to write per edit.
+  - One level: the last edit. It is kept in memory until the next edit or an undo, with no redo, and isn't kept across a restart.
+  - Restoring a broken file (3.1) isn't undoable: it already keeps the broken text as `layout.json.broken`.
+  - The drawer's view switch writes the file but shows no Undo: it is a view, not a change to home.
+- *R3, folded into 4.1.* The edits' idea of where an app is changes to how home draws it. A ref names the app it resolves to, the first main-profile activity in label order that matches it, as `resolve` in `HomeScreen.kt` does now. That needs the installed apps, so the edits that ask take them as a list of `AppId` in label order. A menu opened from a tile also knows that tile's place in the file and edits that place.
+- *R4, folded into 4.1: by position.* Folders are found by their place in the file, and the open folder is held as that place. The parser doesn't refuse a repeated name: a file that parses today would stop parsing, which the schema's rules don't allow. Dragging needs places anyway. An edit that removes the open folder closes it, as now, and so does a reread of a file changed from outside.
+- *The section carry, folded into 4.1.* Moving one activity of a package that another section lists by package name replaces that package ref with refs to the package's other installed activities (`package/activity`), so they stay where they were.
+- *Edit mode is small.* Long press opens the menu and moving 16 dp starts a drag, everywhere and in both modes. "Edit home" in the home menu (promised in 1.3) adds only:
+  - a bar at the top with a line of help and Done;
+  - taps that don't open apps (a folder still opens).
+
+  Back, Done or a home press leave it. Remove shows only while something is held, as in Launcher3.
+- *A folder's cover app* is one of its apps, drawn as the folder's tile in place of the four-app preview, with the folder's name under it. A tap still opens the folder. Nova's "tap opens the cover, swipe opens the folder" is left out because a vertical swipe on home opens the drawer.
+- *A new folder's name* is the title of the two apps' category when they share one (Media, Tools…), else "Folder". Names may repeat (R4), so no number is added.
+- *Accessibility.* Every drag edit except order and pages also has a menu way: Add and Remove, Rename, Cover app, Move to section. Order has no way but dragging; Launcher3's accessibility "Move" actions wait until that is felt.
+- *Checking a drag on the emulator.* A drag that pauses (the long press, the 300 ms hover, the edge wait) is driven with `adb shell input motionevent DOWN|MOVE|UP x y` and pauses between them (API 30+). A plain tap or long press still goes through agent-device. `run-as com.spadaval.lor sha256sum files/layout.json` before an edit and after its Undo shows the bytes are back.
+
+#### 4.1 Pages, covers, and edits by place. Status: todo
+- **Goal.** The schema and the pure edits that every later issue draws and drags with, and home drawing pages and covers. No dragging yet.
+  - **Schema.** `pages` and `cover` are parsed into `Layout` and `Folder` and written back, with the rules under [Schema additions](#schema-additions). `Layout.kt`'s header comment shows both.
+  - **Places.** `Spot`, a place in the active layout as the file holds it:
+    - `Page(page, index)`, where page 0 is `home` and page n is `pages[n-1]`;
+    - `Dock(index)`;
+    - `InFolder(page, index, app)`, the folder at `Page(page, index)` and the app's place in it.
+
+    Indices are the file's, not the drawn order: home skips a ref that isn't installed when drawing but keeps its place, so `place` in `HomeScreen.kt` keeps each drawn item's `Spot`.
+
+    `AppRef.resolve(installed: List<AppId>)` gives the activity a ref draws as. `placesOf(app, installed)` returns the spots whose refs resolve to `app`, on every page (R3).
+  - **The menu's edits** take a `Spot` when the menu was opened from a tile: Remove from home, Remove from dock, Remove from folder. From the drawer or search they use `placesOf`.
+  - **Add to home** goes to the end of the first page with room, else to a new page while there are fewer than 4 extra pages, else it refuses ("home is full").
+  - **Hide** clears the package from every page of every layout and drops a `cover` it names.
+  - **The drop edit**, `LayoutFile.drop(from, to, installed)`. `from` is a `Spot`, or `FromDrawer(app, ref)`. `to` is one of:
+    - `Before(spot)`;
+    - `AtEnd(Page(n) | Dock | Folder(page, index) | NewPage)`;
+    - `Onto(Page(page, index))`;
+    - `Remove`.
+
+    It moves the item: out of its place, then into the target. Its rules:
+    - Onto an app on a page makes a folder of the two in the target's place. Onto a folder appends to it.
+    - A folder goes only to pages: into the dock or onto anything it is refused ("folders don't go in the dock", "folders don't nest").
+    - An app may be on home once (any page, folders included) and in the dock once. A move from the drawer or the dock onto home refuses one already there, and a move into the dock refuses one already there.
+    - The limits refuse: 24 a page, 5 in the dock, 4 extra pages.
+    - `Remove` takes the item out (a folder with its apps). From the drawer it is no edit.
+    - Dropping an item where it is returns the file unchanged, and nothing is written.
+    - A folder the move empties is removed, and an extra page it empties is removed (page 0 stays, even empty).
+    - A folder the move touches becomes `pinned`, and one that loses its cover app loses `cover`.
+  - **Folder edits:** `renameFolder(spot, name)` (not blank), `setCover(spot, ref?)` (one of its refs, or none), `removeAt(spot)`. Each pins the folder.
+  - **The section carry:** `moveToSection` takes the installed apps and replaces a package ref that named the moved activity with refs to the package's other installed activities.
+  - **Drawing.** Home's pager holds the agent page, home, then one page per entry of `pages`, each drawn as home is (the date header only on home). The page dots show them all. A home press returns to home from any page. A launch from any page is `from: home`, so the Launches row in the spec is unchanged.
+
+    A folder with a `cover` that is installed draws that app's icon (52 dp) as its tile. The open folder (`HomeUi.folder`) is a `Spot`; Remove from folder edits that folder; a reread from outside closes it.
+- **Done when.**
+  - **JVM tests** (`LayoutTest`, `LayoutEditTest`, and a new `HomeEditTest` for `drop` and the folder edits) cover:
+    - parsing, refusals and round trip for `pages` and `cover`: more than 4 pages, a page over 24 items, an unknown field in a page, a cover that isn't one of the folder's apps, and a file with neither field writing neither back;
+    - R3: package `p` with activities `p/.A` ("Alpha") and `p/.B` ("Beta"), and home holding `p`. `placesOf(B)` is empty, `placesOf(A)` is `Page(0, i)`, and Remove from home for B refuses;
+    - R4: two folders named "Google". `removeAt(InFolder(0, second, 0))` changes only the second;
+    - the section carry: a section listing `p`, one of p's two activities moved to another section; the first section then lists the other activity;
+    - each `drop` rule above, and each refusal;
+    - an emptied folder and an emptied extra page going, page 0 staying;
+    - `cover` dropped when its app leaves or is hidden;
+    - Add to home landing on page 2 when home is full, a new page, then the refusal.
+  - **On `T3_Phone_API35`,** with a file written with `run-as`: `pages` with two extra pages and a folder with a `cover`.
+    - The pager shows agent page, home and two more, with four dots. The folder's tile is its cover app's icon, and a tap opens the folder.
+    - A home press on the last page returns to home.
+    - Remove from home on the only app of the last page takes it out of the file and the page goes.
+    - With two folders named "Google", opening the second and choosing Remove from folder changes the second in the file.
+    - R3 on the emulator if a package there has two launcher activities (`cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER`); otherwise recorded as covered by the JVM test only.
+  - The spec's launcher section says home has pages.
+  - `assembleDebug testDebugUnitTest` passes on boat.
+
+#### 4.2 Undo for every edit. Status: todo
+- **Goal.** Each edit can be taken back for a few seconds, and taking it back restores `layout.json` byte for byte.
+  - `LayoutStore.edit` returns, beside the edited file and its stamp, the text it read and the text it wrote.
+  - `LayoutStore.undo(before, wrote)` refuses ("layout.json changed since; nothing was undone") unless the file holds exactly `wrote`. Otherwise it writes `before` with `writeAtomically`, refreshes `layout.good.json`, and returns the new read.
+  - `HomeStore` keeps the last edit's pair in memory, replaced by the next edit and cleared by an undo. `HomeStore.undo()` runs on the serial dispatcher, records the stamp, and logs `undid the last edit` (`LorHome`).
+  - **Home.** A snackbar at the bottom of `HomeScreen`, above the drawer and the dock, replaces the edit's success toast. It shows the edit's message ("Gmail is off home.", "Folder made.") or "Home changed." when an edit has none, and an "Undo" action (`DESIGN.md`'s underlined undo in the ink colour) for 4 s (`SnackbarDuration.Short`).
+    - It takes every edit through `HomeActions.edit`, except the drawer's view switch.
+    - A refusal stays a toast (3.6: moving refusals belongs with Increment 6).
+  - **Home settings.** Its edits (Unhide, the section edits) show the same bar there.
+- **Done when.**
+  - **JVM tests** (`LayoutStoreTest`):
+    - a hand-formatted file (four-space indents, keys out of order, an escaped `\/`, no final newline) edited and then undone is byte-equal to the original;
+    - an undo after another write to the file refuses and leaves that write;
+    - a second undo refuses;
+    - `layout.good.json` holds the restored text.
+  - **On `T3_Phone_API35`,** with the `sha256sum` of `files/layout.json` taken before each edit:
+    - Remove from home on an app, then Undo: the same sum, the app back on home, and `undid the last edit` in `logcat`;
+    - Hide from the drawer, then Undo: the app is back in the drawer and the sum matches;
+    - in Home settings, Unhide, then Undo: it is hidden again and the sum matches;
+    - an edit, then a write with `run-as` before Undo: the refusal toast, and the file holds the `run-as` text.
+  - `assembleDebug testDebugUnitTest` passes on boat.
+
+#### 4.3 Drag on home and the dock, Remove, and edit mode. Status: todo
+- **Goal.** An app on home or in the dock can be picked up from its menu and moved anywhere on the page, in or out of the dock, or onto Remove. "Edit home" exists.
+  - **Pick up.** The app's long press opens its menu as now. Once the finger has moved 16 dp from where it pressed, the menu closes and the drag starts, in `HomeUi`, from the tile's `Spot`. The tile keeps one `combinedClickable` node for TalkBack and agent-device; the drag's handler sits beside it and adds no semantics.
+
+    First step: check that opening `DropdownMenu` (a popup window) mid-press doesn't cancel the press's later moves. If it does, the app menu is drawn in home's own window (a box over home at the tile) instead of a popup, and that is recorded here.
+  - **Follow.** The held icon (52 dp, no label) is drawn under the finger above everything. Its slot is empty in the preview. The pager doesn't scroll and the drawer swipe doesn't open while something is held.
+  - **Targets.** `targetAt(point, bounds)` in a new `home/Drag.kt` uses plain Kotlin types only, so the JVM tests reach it:
+    - within 0.55 of the icon's size from the icon centre of an app or folder on a page: `Onto`, unless a folder is held (folders only reorder). Making and filling folders is checked in 4.4;
+    - else over a tile: `Before` that item, or `Before` the next one in its row for the tile's right half;
+    - over a page's grid or the dock past their last item: `AtEnd`;
+    - over Remove: `Remove`;
+    - anywhere else: nothing, and a drop there puts the item back.
+
+    A `Before`/`AtEnd` target shows in the preview after the finger has stayed over it 300 ms (Kvaesitso). `Onto` and `Remove` show at once, the target taking `DESIGN.md`'s selection (an 8% amber fill, a 1 dp amber edge at 55%).
+  - **Drop.** A drop runs `drop` through `HomeActions.edit`. A refusal shows its toast and nothing is written. A drop where the item started writes nothing.
+  - **Remove** is a bar across the top of home while something is held: "Remove", in the muted colour on `StateFill`. It isn't coral, which is for failures.
+  - **Edit mode.** The home menu gains "Edit home", which shows a bar at the top: "Drag apps to move them. Drop one on another to make a folder." and Done (the screen's one amber primary). In edit mode a tap on an app opens nothing. Done, back or a home press leave it.
+  - **A home press** also drops nothing: it ends a drag with the item back. `HomeUi.atRest` is false in edit mode and during a drag, so that press doesn't open quick send.
+  - **The spec's** long-press line says a held app can be dragged, and what edit mode is.
+- **Done when.**
+  - **JVM tests** (`DragTest`) cover `targetAt`: `Onto` inside the radius and `Before` outside it on one tile, a tile's right half, `AtEnd` after a page's last item and in an empty dock, `Remove`, and nothing between the dock and the grid.
+  - **On `T3_Phone_API35`,** each driven with `input motionevent` and the sum taken before each:
+    - a long press on a home app opens its menu; moving 30 dp closes it, and the icon follows;
+    - dropped after a pause between two other home apps, the file's `home` has the new order, with one `wrote layout.json`;
+    - a home app is dragged into the dock, and a dock app onto home;
+    - with five apps in the dock, a sixth dropped there is refused with a toast and the sum is unchanged;
+    - an app dropped on Remove leaves the file; then Undo, and the sum matches (and Undo after one of the moves too);
+    - a drag across home that doesn't stop at the edge leaves the pager on home.
+  - **Edit home:** the bar shows, a tap on an app leaves the foreground app as LoR (`agent-device appstate`), and back leaves edit mode. Entered again, a home press leaves it and doesn't open quick send.
+  - Screenshots of edit mode and of a drag over Remove are kept for the review.
+  - `assembleDebug testDebugUnitTest` passes on boat.
+
+#### 4.4 Folders by hand. Status: todo
+- **Goal.** Folders are made, filled, emptied, ordered, renamed and given a cover on the phone.
+  - **Onto.** Dropping an app `Onto` another app on a page makes a folder there, named as the answers say. Dropping `Onto` a folder's tile adds the app to the end of the folder.
+  - **In an open folder,** its apps are dragged like home's: the panel's tiles report `InFolder` spots, a drop among them reorders, and `AtEnd(Folder)` is the panel's space after its last app.
+  - **Out of a folder.** When the finger has been outside the panel's card for 400 ms (Launcher3's `ON_EXIT_CLOSE_DELAY`), the panel closes and the drag goes on over home, from the same `InFolder` spot. The folder goes when its last app leaves.
+  - **A folder's tile** gets a long press with a menu, and moving 16 dp drags the folder (to another place on a page, or onto Remove). The menu holds:
+    - "Rename…", the name dialog Home settings uses for sections;
+    - "Cover app…", the folder's apps and "None (show four)";
+    - "Remove from home", which removes the folder and its apps from home.
+- **Done when.** On `T3_Phone_API35`, each change read from the file:
+  - an app dropped onto another makes a folder holding both, `pinned`, named by the rule (two apps of one category, then two of different ones);
+  - a third app dropped onto the folder's tile is last in it;
+  - in the open folder, the first app dragged to the end changes the order;
+  - an app dragged out onto home leaves the folder and is on home; the last app dragged out takes the folder away;
+  - Rename… writes the name;
+  - Cover app… writes `cover` and the tile shows that app; None removes it;
+  - the folder dragged to another place on home moves there; dragged into the dock, it is refused with a toast;
+  - Remove from home on the folder removes it;
+  - after the rename, Undo brings the sum back.
+
+  `HomeEditTest` covers the folder-name rule. `assembleDebug testDebugUnitTest` passes on boat.
+
+#### 4.5 Pages by dragging. Status: todo
+- **Goal.** Items move between home's pages, and a page is made by dropping on a new one.
+  - **The edge.** While something is held, a finger within 24 dp of the screen's right or left edge for 500 ms turns the pager one page that way. It never turns to the agent page.
+  - **A new page.** While something is held, and there are fewer than 4 extra pages, an empty page follows the last. A drop there is `AtEnd(NewPage)`. When the drag ends without a drop there, the empty page goes.
+  - An extra page that a move empties goes (4.1's rule), and the pager settles on a page that exists.
+- **Done when.** On `T3_Phone_API35`, with `input motionevent`:
+  - an app held at the right edge of home for a second turns to the next page, and is dropped there;
+  - held at the right edge of the last page, it reaches the empty page; dropped there, `pages` gains a page holding it;
+  - dragged back to home, that page leaves the file and the pager;
+  - held at the left edge of home, the pager stays on home;
+  - with 4 extra pages, no empty page follows the last.
+
+  Undo after the new page brings the sum back. `assembleDebug testDebugUnitTest` passes on boat.
+
+#### 4.6 From the drawer to home, and empty home's words. Status: todo
+- **Goal.** An app is dragged from the drawer onto home, as on any launcher, and empty home says so.
+  - **From the drawer.** A main-profile app's tile in the drawer (sections, A–Z, Most used, search results) starts a drag the same way: long press, menu, 16 dp. The drawer closes, the drag goes on over home as `FromDrawer`, and the drop rules of 4.1 apply.
+
+    Before building it, check that the drag survives the drawer leaving the screen mid-gesture (the root handler keeps the pointer). A work-profile app opens only its menu (refs can't name it, 1.1).
+  - **Empty home** (3.2): "Home is empty." and "Swipe up for your apps, then drag one here, or long-press it and choose Add to home." Its grid area is a target (`AtEnd(Page(0))`) and the tap still opens the drawer.
+- **Done when.** On `T3_Phone_API35`:
+  - a drawer app dragged onto home is in the file where it was dropped;
+  - one dropped onto a home app makes a folder;
+  - one dropped in the dock is in the dock;
+  - an app already on home, dropped on home, is refused with a toast and the sum is unchanged;
+  - a work-profile app (the managed profile from 2.2), long-pressed and moved, keeps its menu and starts no drag;
+  - with `home: []`, the new words show, and a drawer app dropped on them puts it on home.
+
+  The spec's launcher section says apps are dragged from the drawer. `assembleDebug testDebugUnitTest` passes on boat.
 
 ### Increment 5: Search that finds more. Status: backlog
 
@@ -346,6 +549,8 @@ Agreed with Sumeet, 2026-11-05:
 ### Increment 7: Motion and feel. Status: backlog
 
 **Goal.** The drawer follows the finger open and closed (replacing the 56 dp flip in `HomePage`). Apps open from their icon's bounds (`ActivityOptions.makeScaleUpAnimation` or a clip reveal). Folders open from their tile. Haptics on long press, pickup, drop, and the drawer threshold. Predictive back for the drawer, folders and menus. Configurable gestures: swipe down for notifications, double-tap to lock, a gesture for quick send.
+
+**Carried from Increment 4's plan.** Motion in a drag: items easing to their new places in the preview, and the dropped icon settling into its slot (4.3 moves them without animation).
 
 **Carried from Increment 1's review.** R5: an open app menu isn't closed by a home press (`HomeUi.homePressed` knows only the home menu); hold the open app menu in `HomeUi` and close it there, as Launcher3's `onNewIntent` closes every floating view.
 
@@ -391,6 +596,14 @@ Optional fields this mission adds to `layout.json` schema version 1, each writte
   - Recent, Frequent, New and Work profile are drawn by the drawer and aren't sections in the file.
 
 - (Increment 3) No field. `layout.good.json`, the last file that parsed (3.1), is a cache beside `layout.json`, not part of the schema, and `layout.json.broken` is the text a restore set aside. The set-up card's `setup_done` is in the app's `Prefs`.
+
+- (4.1) In a layout, `pages`, optional: the pages of home after the first, `[{ "items": [item, …] }, …]`, at most 4.
+  - `items` is written as `home` is (apps and folders), at most 24, and may be absent or empty. Home's pages are `home`, then `pages` in order.
+  - `home` keeps its meaning: the items of home's first page. A file without `pages` means what it did before.
+  - What the rules say of home holds on every page: `hidden` and Hide, a folder's `pinned`, the edits' "an app is on home once".
+  - The phone removes an extra page an edit empties; the parser accepts an empty one.
+- (4.1) In a folder, `cover`, optional: one of the folder's `apps`, written as it is there. Any other value is an error. Its tile draws that app's icon instead of the four-app preview, and a tap still opens the folder. While that app isn't installed, the preview shows. An edit that takes the app out of the folder (a move, Remove, Hide) drops `cover`.
+- (4.2) No field. Undo's copy of the text before the last edit is in memory only.
 
 ## Open questions for Sumeet
 
