@@ -3,4 +3,5 @@
     <string name="tile_label">Timer</string>
     <string name="ask_tile_label">Ask</string>
     <string name="assistant_label">LoR quick send</string>
+    <string name="home_settings_label">Home settings</string>
 </resources>

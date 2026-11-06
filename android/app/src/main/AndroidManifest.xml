@@ -85,6 +85,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Home settings (launcher polish 1.3): opened from home, so it starts in home's task and
+             back returns to home. -->
+        <activity
+            android:name=".home.HomeSettingsActivity"
+            android:exported="false"
+            android:label="@string/home_settings_label" />
+
         <!-- The same explanation on Android 14 and later. -->
         <activity-alias
             android:name="ViewPermissionUsageActivity"

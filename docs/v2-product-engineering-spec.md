@@ -490,8 +490,9 @@ There is no chat screen: the conversation is the channel and a T3 thread.
 
 **The launcher.** The app's `HomeActivity` is a home app the owner sets as default.
 
-- **Home** is the page to the right of the agent page: a grid of apps and folders plus a dock, drawn from a layout file (`layout.json` in the app's files, JSON schema v1, `home/Layout.kt`). The file holds named layouts; nothing writes it but the app yet (agent edits are a later increment). Home re-reads it on resume when its modified time has changed, and shows a broken file as broken instead of guessing. Without a file, home writes a default layout.
-- **The drawer and search** list every launchable app from `LauncherApps`, work profile included.
+- **Home** is the page to the right of the agent page: a grid of apps and folders plus a dock, drawn from a layout file (`layout.json` in the app's files, JSON schema v1, `home/Layout.kt`). The file holds named layouts; the app writes it for the owner's edits from the phone (a temporary file renamed over it), and agent edits are a later mission. Home re-reads it on resume when its modified time has changed, and shows a broken file as broken instead of guessing. Without a file, home writes a default layout.
+- **The drawer and search** list every launchable app from `LauncherApps`, work profile included, except the apps the layout file's `hidden` list names; Home settings lists those and unhides them.
+- **A long press** on an app opens its menu (its shortcuts, App info, Uninstall, add to or remove from home, the dock or its folder, Hide); on empty home it opens the home menu (Wallpaper, Home settings). Each change is written to `layout.json`.
 - **The agent page** is the left-most page. It shows:
   - Today's arc, the one thing and Next, from `GET /device/home?device=` (read-only: the one thing as the wall picks it, the brief's first line, Needs you, oldest first, and the day for its arc: wake window, time left, the running timer, the next five timed events not yet over);
   - the turns running on T3;

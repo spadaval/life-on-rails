@@ -144,6 +144,16 @@ class HomeActivity : ComponentActivity() {
             }
         }
 
+        override fun settings() = HomeSettingsActivity.open(this@HomeActivity)
+
+        override fun wallpaper() {
+            try {
+                startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Wallpaper"))
+            } catch (e: RuntimeException) {
+                toast("The wallpaper picker can't be opened.")
+            }
+        }
+
         override fun edit(done: String?, change: (LayoutFile) -> LayoutFile) {
             lifecycleScope.launch {
                 model.edit(change)

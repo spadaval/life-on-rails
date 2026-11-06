@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -56,12 +57,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -108,15 +111,18 @@ class HomeUi {
     var folder by mutableStateOf<String?>(null)
     var query by mutableStateOf("")
     var homePresses by mutableStateOf(0)
+    /** Where on home a long press on empty space opened the home menu. */
+    var homeMenu by mutableStateOf<Offset?>(null)
     /** The page showing: 0 is the agent page, 1 is home. */
     var page by mutableStateOf(1)
 
     /** Home with nothing open over it: a home press here opens quick send instead. */
-    val atRest: Boolean get() = !drawer && folder == null && page == 1
+    val atRest: Boolean get() = !drawer && folder == null && homeMenu == null && page == 1
 
     fun homePressed() {
         drawer = false
         folder = null
+        homeMenu = null
         query = ""
         homePresses++
     }
@@ -172,7 +178,7 @@ fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, ui: HomeUi, actions: Ho
             enter = slideInVertically { it / 3 } + fadeIn(),
             exit = slideOutVertically { it / 3 } + fadeOut(),
         ) {
-            Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, ui, home)
+            Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, file?.hidden?.size ?: 0, ui, home)
         }
         folder?.let { FolderPanel(it, home, onClose = { ui.folder = null }) }
     }
@@ -196,6 +202,17 @@ private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutS
             }
             .safeDrawingPadding(),
     ) {
+        // Under everything: a long press that no app or folder took, on empty home, opens the home
+        // menu. Overlapping siblings get a touch only when the ones drawn above it don't.
+        val haptics = LocalHapticFeedback.current
+        Box(
+            Modifier.matchParentSize().pointerInput(Unit) {
+                detectTapGestures(onLongPress = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    ui.homeMenu = it
+                })
+            },
+        )
         val wide = maxWidth >= 600.dp
         val header = @Composable { DateHeader(if (wide) 40 else 30) }
         val body = @Composable { mod: Modifier ->
@@ -224,6 +241,7 @@ private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutS
                 body(Modifier.weight(1f))
             }
         }
+        ui.homeMenu?.let { HomeMenu(it, home) { ui.homeMenu = null } }
     }
 }
 
@@ -398,7 +416,7 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
 }
 
 @Composable
-private fun Drawer(apps: List<HomeApp>, ui: HomeUi, home: HomeContext) {
+private fun Drawer(apps: List<HomeApp>, hidden: Int, ui: HomeUi, home: HomeContext) {
     // Something typed makes it a search, recorded with the text as typed.
     val at = if (ui.query.isBlank()) At(LaunchFrom.DRAWER) else At(LaunchFrom.SEARCH, query = ui.query)
     val results = remember(apps, ui.query) { AppSearch.search(ui.query, apps) { it.label } }
@@ -445,6 +463,15 @@ private fun Drawer(apps: List<HomeApp>, ui: HomeUi, home: HomeContext) {
         ) {
             items(results, key = { it.key }) { app ->
                 Box(contentAlignment = Alignment.TopCenter) { MenuTile(app, at, home) }
+            }
+            if (hidden > 0 && ui.query.isBlank()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        "Hidden apps ($hidden)",
+                        style = TextStyle(color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center),
+                        modifier = Modifier.fillMaxWidth().clickable { home.actions.settings() }.padding(vertical = 20.dp),
+                    )
+                }
             }
         }
     }

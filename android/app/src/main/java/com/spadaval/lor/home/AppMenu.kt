@@ -4,6 +4,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.ShortcutInfo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -17,14 +18,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spadaval.lor.collect.LaunchFrom
+import kotlin.math.roundToInt
 
 /*
  * The long-press menu on an app (launcher polish 1.2).
@@ -53,6 +57,12 @@ interface HomeActions {
     fun openShortcut(app: HomeApp, shortcut: ShortcutInfo, at: At)
     fun appInfo(app: HomeApp)
     fun uninstall(app: HomeApp)
+
+    /** Home settings ([HomeSettingsActivity]). */
+    fun settings()
+
+    /** The system's wallpaper picker. */
+    fun wallpaper()
 
     /** Applies [change] to `layout.json`; a refusal shows as a toast. [done] is said on success. */
     fun edit(done: String?, change: (LayoutFile) -> LayoutFile)
@@ -121,6 +131,17 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, close: () -> Unit) 
             Item("Hide") {
                 close(); actions.edit("${app.label} is hidden. Home settings brings it back.") { it.hide(app.packageName) }
             }
+        }
+    }
+}
+
+/** The menu for a long press on empty home, at [at] within home's content (launcher polish 1.3). */
+@Composable
+fun HomeMenu(at: Offset, home: HomeContext, close: () -> Unit) {
+    Box(Modifier.offset { IntOffset(at.x.roundToInt(), at.y.roundToInt()) }) {
+        DropdownMenu(true, close, containerColor = MenuPanel, shape = RoundedCornerShape(16.dp)) {
+            Item("Wallpaper") { close(); home.actions.wallpaper() }
+            Item("Home settings") { close(); home.actions.settings() }
         }
     }
 }
