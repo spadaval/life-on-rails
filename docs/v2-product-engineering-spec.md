@@ -499,6 +499,8 @@ There is no chat screen: the conversation is the channel and a T3 thread.
   - the queue: T3 approvals, questions and failures first, then LoR's Needs you;
   - a quick-send button that starts a T3 thread in the `assistant` project.
 
+  When T3 isn't paired (or refused this phone) the page shows a pairing card that scans T3's QR code or takes a pasted pairing link. When LoR can't be reached it says why in plain words and shows the last reply greyed, with its time and a Retry. "All clear" shows only when both LoR and T3 were read and nothing needs the owner; Needs you shows no count while a source is unseen.
+
   Each card has its main action: approve or deny, open the question's choices, open the T3 app at the thread, or open the dashboard. A card's icon also opens its thread or the dashboard. At 600 dp wide or more T3 opens in a split pane, but stock Android won't put home in a split, so the other half is the last app used (whether One UI does better is still to check on the Fold).
 - **T3.** The app pairs with T3 Code like T3's mobile app does (a pairing link or token, `t3/Pairing.kt`) and keeps the session in its own storage. Over the WebSocket (`t3/T3Connection.kt`) it subscribes to the shell for threads and pending requests, answers approvals and questions, and launches threads. It never changes T3; deep thread work opens the T3 app by deep link.
 

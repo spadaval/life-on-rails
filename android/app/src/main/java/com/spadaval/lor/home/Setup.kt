@@ -82,6 +82,8 @@ internal fun SetupCard(modifier: Modifier = Modifier) {
     var home by remember { mutableStateOf(isHome(context)) }
     var lor by remember { mutableStateOf<LorReach>(LorReach.Checking) }
     var checks by remember { mutableIntStateOf(0) }
+    // Whether a read of LoR has ended yet: only the first is waited for before drawing.
+    var checked by remember { mutableStateOf(false) }
     val address = prefs.serverUrl
     // The role and LoR are read again on each resume: the role may have changed in Settings, the
     // address in the LoR app's Settings tab (Change address).
@@ -103,6 +105,7 @@ internal fun SetupCard(modifier: Modifier = Modifier) {
         } catch (e: Exception) {
             LorReach.Failed(LorClient.describe(e))
         }
+        checked = true
     }
     val left = Setup.left(home, Setup.paired(status), lor)
     LaunchedEffect(left.isEmpty()) {
@@ -112,9 +115,10 @@ internal fun SetupCard(modifier: Modifier = Modifier) {
         }
     }
     val ask = rememberAskForHome { home = isHome(context) }
-    // An install that already has the role and T3 (an update to a set-up phone) waits for the read
-    // of LoR before drawing, so the card doesn't flash up and go when that read succeeds.
-    if (home && Setup.paired(status) && lor == LorReach.Checking) return
+    // An install that already has the role and T3 (an update to a set-up phone) waits for the first
+    // read of LoR before drawing, so the card doesn't flash up and go when that read succeeds. Later
+    // checks (Check again, a resume) keep the card drawn, showing the step's own "Checking".
+    if (home && Setup.paired(status) && !checked) return
     val where = Uri.parse(address).authority ?: address
 
     Column(

@@ -45,7 +45,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val start = intent.getIntExtra(EXTRA_TAB, 0)
+        // Exported, so any app can pass any number: keep it to a tab that exists.
+        val start = intent.getIntExtra(EXTRA_TAB, 0).coerceIn(0, TABS - 1)
         setContent {
             LorTheme {
                 var tab by rememberSaveable { mutableIntStateOf(start) }
@@ -77,6 +78,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val EXTRA_TAB = "tab"
+        private const val TABS = 4
         const val SETTINGS = 2
 
         /** The LoR app in its own task, on [tab] (the Settings tab for home's set-up card). */

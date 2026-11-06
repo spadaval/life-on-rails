@@ -26,6 +26,7 @@ Agreed with Sumeet, 2026-11-05:
 - **T3 Launcher is closed** (2026-11-05). Its Increments 7 to 10, which the items below name, moved out to a later mission; their text is under "Handed on" in [its plan](../t3-launcher/plan.md#handed-on-2026-11-05), with the list of real-Fold checks.
 - **Search.** Shortcuts and conversations (`LauncherApps.getShortcuts`) move here, to Increment 5. LoR people and T3 threads in search stay in T3 Launcher Increment 8.
 - **Smart folders.** This mission sorts the drawer on the phone (Increment 2) and adds the schema field for drawer sections. T3 Launcher Increment 9 has an agent refine those sections and write their reasons.
+- **A broken file and agent edits** (from Increment 3's review). The broken-file dialog's "Use the last good layout" doesn't recheck that `layout.json` is still broken, so a file an agent fixed while the dialog was open would be set aside (kept as `layout.json.broken`). Recheck when agent edits land.
 - **The drawer's view.** Switching the drawer's view writes `drawer.view` to the file (P1), so once T3 Launcher Increment 7 syncs the file, each switch is a change there (from Increment 2's plan review).
 - **Hand edits.** This mission writes phone edits to `layout.json` (P1), which answers T3 Launcher Increment 7's open question of whether hand edits reach the file: they do. Whether the repo receives them is Increment 7's.
 - **Deferred review items.** From T3 Launcher's reviews: the light-wallpaper contrast (3.2) moves to Increment 6 here, and the rest listed under Increment 8 here move there. F2 is in the app-list code that 1.1 moves into `HomeStore`, so 1.1 fixes it. F4 and R3 to R5 are robustness of the agent page and the sheet that home opens, so they sit with the other robustness items in Increment 8. F5 and F7, test gaps in T3 Launcher's own code, stay there, as does 3.3's carried item about the agent page taking a split pane in its own activity, which waits on the real Fold.
@@ -297,6 +298,16 @@ Agreed with Sumeet, 2026-11-05:
 
   Reviewed with the increment.
 
+**Review, 2026-11-06.** A fresh agent reviewed 34bb3d9..cc5c048: contract and fitness pass. Findings and what was done:
+- R1, fixed: the set-up card hid itself during every check of LoR, not just the first, so Check again made it vanish and come back. It now waits only for the first read.
+- R2, fixed: the LoR app (exported) took any `tab` number and crashed on one past its tabs; it is kept to a tab that exists (checked: `am start … --ei tab 7` opens the app).
+- R4, fixed: failing to write `layout.good.json` (a cache) no longer fails the read or edit it follows.
+- R6, fixed: the spec's agent page section now describes the pairing card, LoR unreachable, the all-clear's gate and the hidden count.
+- R3, carried to the cross-links below (agent edits): restore doesn't check the file is still broken.
+- R5, carried to Increment 5: the no-results rows ask the package manager on each keystroke.
+- R7, no action: a pasted link that `URI()` rejects can echo its own fragment on screen, never in a log.
+- Its open question (an event past midnight reads "until 0:30") and the critique's three (should a broken file go to the agent; is the set-up card worth keeping; should Needs you show a count) are for Sumeet, listed under "Open questions for Sumeet".
+
 ### Increment 4: Edit mode. Status: backlog, after 1
 
 **Goal.** Edit home from the home menu or by dragging an app out of its long-press menu: drag to reorder, drop on an app to make a folder, drag in and out of the dock and folders, drag onto Remove. Folders can be renamed, reordered, and given a cover app. A folder whose last app leaves goes away. Home can have several pages (a schema addition: `home` becomes one page, `pages` holds more). Every edit shows "Undo" for a few seconds.
@@ -315,6 +326,8 @@ Agreed with Sumeet, 2026-11-05:
 **Goal.** Fuzzy matching for typos and initials ("yt" finds YouTube); apps' shortcuts and conversation shortcuts (from T3 Launcher Increment 8); contacts, with call and message actions; settings pages ("wifi", "bluetooth"); a calculator and unit answers; recent searches and apps when the field is empty; and an option to open the drawer with the keyboard up.
 
 **Provisional Done when.** On the emulator, a dynamic shortcut from a test app and a conversation shortcut from a messaging app appear and open the right screen, a contact can be called, and "wfi" finds Wi-Fi settings. A JVM test covers ranking across the kinds.
+
+**Carried from Increment 3's review.** R5: with no match, the drawer's no-results rows ask the package manager which apps take web and store searches on every keystroke, on the main thread; work that out once per drawer open.
 
 **Unknowns.**
 - How Kvaesitso indexes shortcuts and ranks mixed results.
@@ -380,4 +393,10 @@ Optional fields this mission adds to `layout.json` schema version 1, each writte
 
 ## Open questions for Sumeet
 
-None yet. Permissions he must grant (contacts, notification access, an accessibility service) are asked for when their increment starts.
+Permissions he must grant (contacts, notification access, an accessibility service) are asked for when their increment starts.
+
+From Increment 3 (2026-11-06), none blocking:
+- Once agents edit `layout.json`, should a broken file go back to the agent (an "Ask the agent to fix it" button, or a quiet restore with a one-line notice) rather than a parser error on home?
+- Is home's set-up card worth keeping, given that the agent page's pairing card and the LoR app's "make home" strip cover two of its three steps?
+- Should the agent page's Needs you show a number at all?
+- An event running past midnight reads "until 0:30" in the all-clear line; is that fine?

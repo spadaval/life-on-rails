@@ -482,10 +482,17 @@ class LayoutStore(val file: File) {
         return file.lastModified()
     }
 
-    /** Copies [text] to [good] unless it already holds it, so most reads write nothing. */
+    /**
+     * Copies [text] to [good] unless it already holds it, so most reads write nothing. The copy is
+     * a cache: failing to write it (a full disk) must not fail the read or edit it follows.
+     */
     private fun keepGood(text: String) {
-        if (good.exists() && good.readText() == text) return
-        writeAtomically(good, text)
+        try {
+            if (good.exists() && good.readText() == text) return
+            writeAtomically(good, text)
+        } catch (e: IOException) {
+            // Kept as it was; the next read or write tries again.
+        }
     }
 }
 
