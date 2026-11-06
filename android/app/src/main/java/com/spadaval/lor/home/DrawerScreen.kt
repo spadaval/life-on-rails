@@ -85,6 +85,8 @@ private sealed interface Entry {
 
     class Header(val title: String, val reason: String?, override val key: String) : Entry
     class Tile(val app: HomeApp, val dot: Boolean, override val key: String, val go: Boolean = false) : Entry
+    /** A search result drawn as a row: a shortcut, a settings page, a contact (launcher polish 5.2 on). */
+    class Row(val value: Any, override val key: String, val go: Boolean) : Entry
     class HiddenApps(val count: Int) : Entry {
         override val key = "hidden-apps"
     }
@@ -142,6 +144,7 @@ private fun searchEntries(results: Results<Any>, goKey: String?): Built {
         block.entries.forEach { e ->
             when (val v = e.value) {
                 is HomeApp -> out.add(Entry.Tile(v, false, "q:${e.key}", go = e.key == goKey))
+                else -> out.add(Entry.Row(v, "q:${e.key}", e.key == goKey))
             }
         }
     }
@@ -161,9 +164,21 @@ internal fun letterOf(label: String): String {
  */
 internal fun searchAll(query: String, apps: List<HomeApp>, sources: SearchSources, stats: LaunchStats, check: () -> Unit = {}): Results<Any> {
     val start = System.nanoTime()
+    // A shortcut shows only when its app is in the drawer's list (launcher polish 5.2), so a hidden app's don't.
+    val owners = apps.map { Owner(it.packageName, it.id.className, it.user.toString()) to it }
+    val shortcuts = sources.shortcuts.mapNotNull { f ->
+        val hit = f.value as ShortcutHit
+        val i = hit.info
+        ownerOf(owners, i.`package`, i.activity?.className, i.userHandle.toString())?.let { Found<Any>(f.kind, f.key, f.names, SearchShortcut(hit, it)) }
+    }
     val entries: List<Found<Any>> = apps.map { Found(Kind.APPS, it.key, listOf(it.searchName), it) } +
-        sources.shortcuts + sources.settings + sources.contacts
+        shortcuts + sources.settings + sources.contacts
     val results = Search.run(query, entries, { e -> if (e.kind == Kind.APPS) stats.entries[e.key]?.weight ?: 0.0 else 0.0 }, check = check)
+        .withShortcutsOfOneApp({ (it.value as HomeApp).packageName }) { one ->
+            // The app's menu's shortcuts: its own activity's, manifest first, then by rank (1.2); not its cached chats.
+            shortcuts.filter { (it.value as SearchShortcut).owner === one.value && !(it.value as SearchShortcut).hit.info.isCached }
+                .sortedWith(compareBy({ !(it.value as SearchShortcut).hit.info.isDeclaredInManifest }, { (it.value as SearchShortcut).hit.info.rank }))
+        }
     Log.d(HomeStore.SEARCH_TAG, "searched ${entries.size} items in ${"%.2f".format((System.nanoTime() - start) / 1e6)} ms")
     return results
 }
@@ -189,10 +204,8 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
     var focused by remember { mutableStateOf(false) }
     fun go() {
         val r = if (current) results else searchAll(ui.query, apps, sources, stats)
-        when (val v = r.go?.value) {
-            is HomeApp -> home.actions.open(v, at)
-            else -> if (r.nothing) elsewhere(sources.targets, ui.query).firstOrNull()?.let { home.actions.elsewhere(it, ui.query) }
-        }
+        val first = r.go
+        if (first != null) openFound(first.value, at, home) else elsewhere(sources.targets, ui.query).firstOrNull()?.let { home.actions.elsewhere(it, ui.query) }
     }
     val saved = home.file?.drawer?.view ?: DrawerView.SECTIONS
     // Shown at once; the file catches up when the write lands.
@@ -266,6 +279,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
                             if (e.go) Box(Modifier.matchParentSize().background(Amber.copy(alpha = 0.08f), RoundedCornerShape(12.dp)).border(1.dp, Amber.copy(alpha = 0.55f), RoundedCornerShape(12.dp)))
                             MenuTile(e.app, at, home, dot = e.dot)
                         }
+                        is Entry.Row -> ResultRow(e.value, e.go, at, home)
                         is Entry.HiddenApps -> Text(
                             "Hidden apps (${e.count})",
                             style = TextStyle(color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center),

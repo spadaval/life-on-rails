@@ -818,7 +818,7 @@ Agreed with Sumeet, 2026-11-05:
     - `Found` is the result type (not `Entry`, which the drawer's grid already uses in the package).
   - Reviewed with the increment.
 
-#### 5.2 Shortcuts and conversations in search. Status: todo
+#### 5.2 Shortcuts and conversations in search. Status: done
 - **Goal.** Typing a shortcut's or a chat's name finds it, and a tap opens it.
   - **The index.** In `HomeStore`, on the sources' dispatcher, when `hasShortcutHostPermission()`: `getShortcuts` with `FLAG_MATCH_DYNAMIC | FLAG_MATCH_MANIFEST | FLAG_MATCH_CACHED` for each profile in `launcherApps.profiles` (a locked profile's `IllegalStateException` leaves it out), enabled shortcuts only, each with its labels prepared. Refreshed as the answers' table says; `HomeStore`'s `LauncherApps.Callback` gains `onShortcutsChanged`. Not the default home: the list is empty.
   - **In search.** A shortcut shows when its app is in the drawer's list (so a hidden app's shortcuts don't), its owner being the activity it names or else the package's first. Rows, at most 5: the shortcut's icon (loaded when drawn, on IO, as the menu does; the app's icon until then), its short label, and under it the app's name; a conversation reads "<chat> · <app>". When the apps block holds exactly one app, its shortcuts (the menu's five) show in the Shortcuts block too, matched or not (Lawnchair).
@@ -836,6 +836,22 @@ Agreed with Sumeet, 2026-11-05:
     - with the Pixel Launcher made home and LoR's home started directly (as 3.5 did), search shows no shortcuts and no error;
     - with apps, shortcuts and settings loaded, the `LorSearch` lines while typing "timer" are each under 16 ms, and `dumpsys gfxinfo` shows no janky frames while typing.
   - `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed: `ShortcutHit` and the shortcut index in `HomeStore` (`refreshShortcuts`, on the sources' thread: all of them after each app-list load and profile change, one package on `onShortcutsChanged` and its package callbacks, and all again on a resume that finds the permission changed; one `LorSearch` line per read), `isConversation`, `Owner`, `ownerOf` and `withShortcutsOfOneApp` in `Search.kt`, `home/SearchRows.kt` (`SearchShortcut`, `openFound`, `ResultRow`), and `HomeActions.shortcutIcon` (a small cache in `HomeActivity`). `SearchTest` gains three cases; 158 tests pass on boat.
+  - **On `T3_Phone_API35`,** with LoR as home:
+    - the first read found 58 shortcuts in 42 ms;
+    - "timer" showed one row, New timer under Clock; a tap opened Clock, and `queue.db` held a launch with `from: search`, `query: timer`, `shortcut: Timer_Create`;
+    - "chro" showed Chrome (main and work profile) and, under Shortcuts, New tab and Incognito Tab with their icons (screenshot); Incognito Tab opened Chrome;
+    - a conversation: `adb emu sms send 5551234 …` made Messages publish dynamic shortcuts for its chats, labelled by number (`dumpsys shortcut`: `555-1234` and `(415) 555-0100`, flags `0x6289 [DynIc-fIc-aStrLiv]`, long-lived, no category in the dump). `LorSearch` logged a read of Messages' shortcuts at once. "555" found both as "Chat · Messages", and a tap opened the 555-1234 chat. A second text from 5559876 logged another read (same process), and "9876" found that chat;
+    - so the dynamic shortcut seen is Messages' chats (and Chrome's New tab);
+    - Clock hidden from its menu: "timer" then found no shortcut and offered the no-results rows. The file was put back from the copy taken before the checks (same `sha256sum`);
+    - typing "timer" logged searches of 120 items in 1.6 to 6.1 ms each. `gfxinfo` had 13 of 20 frames janky (median 30 ms), the same slow emulator as in 5.1 **[real Fold]**.
+  - **Not seen: the not-default-home case.** With the Pixel Launcher made home (`cmd role` showed it), LoR's home started directly still read and opened Clock's shortcut: this emulator image kept the shortcut permission for LoR. The empty list and the caught `SecurityException` are covered by reading the code only.
+  - **Choices.**
+    - One app's shortcuts show when the apps block holds one package: the same app in the main and work profiles counts once, or "chro" would never show Chrome's.
+    - A conversation's row reads "<chat>" with "Chat · <app>" under it; a shortcut's, the app's name. Messages' chats showed as chats although the dump printed no category, so `LauncherApps` gave the category or the cached flag. The long-lived flag isn't public API (`ShortcutInfo.isLongLived` is hidden), so it isn't used.
+    - A work-profile shortcut was not seen: the work Clock's New timer didn't show, probably because the profile wasn't running. A locked profile is left out by design.
+  - Reviewed with the increment.
 
 #### 5.3 Settings pages. Status: todo
 - **Goal.** "wifi", "wfi" or "bluetooth" opens that page of Android's settings.

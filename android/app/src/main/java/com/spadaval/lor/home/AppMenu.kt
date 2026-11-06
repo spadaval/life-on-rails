@@ -55,6 +55,9 @@ interface HomeActions {
     /** The app's shortcuts for its menu; empty unless LoR is the default home. */
     suspend fun shortcuts(app: HomeApp): List<MenuShortcut>
     fun openShortcut(app: HomeApp, shortcut: ShortcutInfo, at: At)
+
+    /** A shortcut's icon for a search row, drawn off the main thread and cached; null when it has none. */
+    suspend fun shortcutIcon(shortcut: ShortcutInfo): ImageBitmap?
     fun appInfo(app: HomeApp)
     fun uninstall(app: HomeApp)
 

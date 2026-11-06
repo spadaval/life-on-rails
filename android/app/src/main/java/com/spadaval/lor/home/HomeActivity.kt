@@ -14,6 +14,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -100,6 +101,9 @@ class HomeActivity : ComponentActivity() {
         model.resume()
     }
 
+    /** Search rows' shortcut icons (launcher polish 5.2). */
+    private val shortcutIcons = android.util.LruCache<String, ImageBitmap>(100)
+
     private val actions = object : HomeActions {
         override fun open(app: HomeApp, at: At) {
             try {
@@ -136,6 +140,20 @@ class HomeActivity : ComponentActivity() {
             } catch (e: RuntimeException) {
                 // A locked profile (IllegalStateException) or no longer the default home (SecurityException).
                 emptyList()
+            }
+        }
+
+        override suspend fun shortcutIcon(shortcut: ShortcutInfo): ImageBitmap? {
+            val key = "${shortcut.`package`}/${shortcut.id}#${shortcut.userHandle}"
+            shortcutIcons.get(key)?.let { return it }
+            return withContext(Dispatchers.IO) {
+                try {
+                    val size = (36 * resources.displayMetrics.density).toInt()
+                    launcherApps.getShortcutIconDrawable(shortcut, resources.displayMetrics.densityDpi)?.toBitmap(size, size)?.asImageBitmap()
+                        ?.also { shortcutIcons.put(key, it) }
+                } catch (e: RuntimeException) {
+                    null
+                }
             }
         }
 

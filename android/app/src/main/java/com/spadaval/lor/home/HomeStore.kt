@@ -8,6 +8,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
+import android.content.pm.ShortcutInfo
 import android.net.Uri
 import android.os.Process
 import android.os.UserHandle
@@ -47,6 +48,11 @@ class HomeApp(val label: String, val info: LauncherActivityInfo) {
 
     /** The label prepared for search once (launcher polish 5.1), on the first search that needs it. */
     val searchName: Prepared by lazy { Match.prepare(label) }
+}
+
+/** A shortcut search can find (launcher polish 5.2): [conversation] for a messaging app's chat. */
+class ShortcutHit(val info: ShortcutInfo, val conversation: Boolean) {
+    val label: String get() = (info.shortLabel ?: info.longLabel)?.toString() ?: info.id
 }
 
 /**
@@ -156,11 +162,14 @@ class HomeStore(private val context: Context) {
             changed(packageNames.toList(), user)
         override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) =
             changed(packageNames.toList(), user)
+        override fun onShortcutsChanged(packageName: String, shortcuts: MutableList<ShortcutInfo>, user: UserHandle) =
+            refreshShortcuts(packageName, user)
     }
 
     private val profiles = object : BroadcastReceiver() {
         override fun onReceive(c: Context, intent: Intent) {
             serially { loadApps() }
+            refreshShortcuts()
         }
     }
 
@@ -201,6 +210,44 @@ class HomeStore(private val context: Context) {
         }
         // A new default browser or store fires no package callback.
         resolveTargets()
+        // Becoming the default home gives the shortcut permission, with no callback.
+        onSources { if (launcherApps.hasShortcutHostPermission() != shortcutsAllowed) refreshShortcutsNow(null, null) }
+    }
+
+    /** Whether the last full read of shortcuts had the permission (only the default home has it). */
+    @Volatile private var shortcutsAllowed = false
+
+    /** Reads the shortcuts of [pkg] in [user] again, or every shortcut when [pkg] is null (launcher polish 5.2). */
+    private fun refreshShortcuts(pkg: String? = null, user: UserHandle? = null) = onSources { refreshShortcutsNow(pkg, user) }
+
+    private fun refreshShortcutsNow(pkg: String?, user: UserHandle?) {
+        val start = System.nanoTime()
+        val allowed = launcherApps.hasShortcutHostPermission()
+        if (pkg == null) shortcutsAllowed = allowed
+        val users = if (user != null) listOf(user) else launcherApps.profiles
+        val fresh = if (!allowed) emptyList() else users.flatMap { u ->
+            val query = LauncherApps.ShortcutQuery().setQueryFlags(
+                LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or
+                    LauncherApps.ShortcutQuery.FLAG_MATCH_CACHED,
+            )
+            if (pkg != null) query.setPackage(pkg)
+            try {
+                launcherApps.getShortcuts(query, u).orEmpty()
+            } catch (e: RuntimeException) {
+                // A locked profile (IllegalStateException), or no longer the default home (SecurityException).
+                emptyList()
+            }
+        }.filter { it.isEnabled }.map { info ->
+            val hit = ShortcutHit(info, isConversation(info.categories, info.isCached))
+            val names = listOfNotNull(info.shortLabel, info.longLabel).map { Match.prepare(it.toString()) }
+            Found<Any>(Kind.SHORTCUTS, "s:${info.`package`}/${info.id}#${info.userHandle}", names, hit)
+        }
+        val kept = if (pkg == null) emptyList() else _search.value.shortcuts.filterNot {
+            val i = (it.value as ShortcutHit).info
+            i.`package` == pkg && (user == null || i.userHandle == user)
+        }
+        _search.value = _search.value.copy(shortcuts = kept + fresh)
+        Log.i(SEARCH_TAG, "read ${fresh.size} shortcuts${pkg?.let { " of $it" } ?: ""} in ${(System.nanoTime() - start) / 1_000_000} ms (${_search.value.shortcuts.size} in all)")
     }
 
     /** Works out who takes a search elsewhere (launcher polish 5.1, R5), logging only a change. */
@@ -284,6 +331,7 @@ class HomeStore(private val context: Context) {
         val fresh = packages.flatMap { pkg -> activities(pkg, user) }
         _apps.value = (_apps.value.filterNot { it.packageName in packages && it.user == user } + fresh).sortedWith(byLabel)
         resolveTargets()
+        packages.forEach { refreshShortcuts(it, user) }
     }
 
     /** Serialised on [serial]; a failure is logged rather than taking home down. */
@@ -307,6 +355,7 @@ class HomeStore(private val context: Context) {
         // A layout that was waiting on the app list for its default can be made now.
         if (loaded && !store.file.exists()) readLayout()
         resolveTargets()
+        refreshShortcuts()
     }
 
     private fun activities(pkg: String?, user: UserHandle): List<HomeApp> =

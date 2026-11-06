@@ -147,4 +147,42 @@ class SearchTest {
         assertEquals(listOf(Elsewhere.Kind.WEB, Elsewhere.Kind.STORE, Elsewhere.Kind.AGENT), all.map { it.kind })
         assertEquals("Search F-Droid for \"zzqx\"", all[1].text)
     }
+
+    @Test
+    fun aConversationIsCachedOrInTheCategory() {
+        assertTrue(isConversation(setOf(CONVERSATION), cached = false))
+        assertTrue(isConversation(null, cached = true))
+        assertTrue(!isConversation(setOf("android.shortcut.other"), cached = false))
+        assertTrue(!isConversation(null, cached = false))
+    }
+
+    @Test
+    fun aShortcutBelongsToAnAppTheDrawerLists() {
+        val owners = listOf(Owner("p", "p.A", "0") to "Alpha", Owner("p", "p.B", "0") to "Beta", Owner("p", "p.A", "10") to "Work Alpha")
+        assertEquals("Beta", ownerOf(owners, "p", "p.B", "0"))
+        assertEquals("Alpha", ownerOf(owners, "p", null, "0"))
+        assertEquals("Alpha", ownerOf(owners, "p", "p.Gone", "0"))
+        assertEquals("Work Alpha", ownerOf(owners, "p", "p.A", "10"))
+        // A hidden app is not in the drawer's list, nor is one that isn't installed.
+        assertNull(ownerOf(owners, "hidden", null, "0"))
+    }
+
+    @Test
+    fun oneAppBringsItsShortcuts() {
+        val sources = entries(Kind.APPS, listOf("Chrome", "Clock")) + entries(Kind.SHORTCUTS, listOf("Chromecast setup"))
+        val its = entries(Kind.SHORTCUTS, listOf("New tab", "Incognito tab"))
+        // "chro" narrows to Chrome: its shortcuts lead, then the matched one.
+        val r = Search.run("chro", sources).withShortcutsOfOneApp { if (it.value == "Chrome") its else emptyList() }
+        assertEquals(listOf(Kind.APPS, Kind.SHORTCUTS), r.blocks.map { it.kind })
+        assertEquals(listOf("New tab", "Incognito tab", "Chromecast setup"), r.blocks[1].entries.map { it.value })
+        // One app in two profiles counts once.
+        val twice = entries(Kind.APPS, listOf("Chrome", "Chrome ")) + entries(Kind.SHORTCUTS, listOf("Chromecast setup"))
+        assertEquals(3, Search.run("chro", twice).withShortcutsOfOneApp({ (it.value as String).trim() }) { if ((it.value as String).trim() == "Chrome") its else emptyList() }.blocks[1].entries.size)
+        // Two apps: nothing added.
+        val two = Search.run("c", sources).withShortcutsOfOneApp { its }
+        assertEquals(listOf(Kind.APPS), two.blocks.map { it.kind })
+        // The cap: five at most.
+        val many = entries(Kind.SHORTCUTS, (1..7).map { "S$it" })
+        assertEquals(5, Search.run("chrome", sources).withShortcutsOfOneApp { many }.blocks[1].entries.size)
+    }
 }

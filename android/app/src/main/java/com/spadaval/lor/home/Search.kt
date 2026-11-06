@@ -241,3 +241,41 @@ object Search {
         return Results(query, answer(query), blocks)
     }
 }
+
+/*
+ * Shortcuts and conversations (launcher polish 5.2). Kvaesitso (GPL-3.0,
+ * `data/appshortcuts/.../AppShortcutRepository.kt`) keeps every shortcut in memory, queried again on
+ * `onShortcutsChanged` and package changes; Lawnchair (Apache-2.0, `ShortcutSearchProvider.kt`)
+ * shows an app's shortcuts when search narrows to that one app.
+ */
+
+/** A messaging app's chat: a shortcut in the conversation category, or one it cached. */
+fun isConversation(categories: Set<String>?, cached: Boolean): Boolean =
+    cached || categories?.contains(CONVERSATION) == true
+
+/** `ShortcutInfo.SHORTCUT_CATEGORY_CONVERSATION`. */
+const val CONVERSATION = "android.shortcut.conversation"
+
+/** An app a shortcut can belong to: its package, activity class and profile. */
+data class Owner(val pkg: String, val cls: String, val user: String)
+
+/** The app [owners] lists for a shortcut of [pkg] in [user]: the [activity] it names, else the package's first. Null when the drawer doesn't list it (hidden, or not installed). */
+fun <A> ownerOf(owners: List<Pair<Owner, A>>, pkg: String, activity: String?, user: String): A? {
+    val mine = owners.filter { it.first.pkg == pkg && it.first.user == user }
+    return (mine.firstOrNull { it.first.cls == activity } ?: mine.firstOrNull())?.second
+}
+
+/**
+ * When the apps block holds one app ([sameApp] counts its copies in other profiles once), the
+ * first's shortcuts ([itsShortcuts], its menu's) lead the shortcuts block, matched or not, then
+ * the matched ones, without repeats, to the kind's limit.
+ */
+fun <T> Results<T>.withShortcutsOfOneApp(sameApp: (Found<T>) -> Any = { it.key }, itsShortcuts: (Found<T>) -> List<Found<T>>): Results<T> {
+    val apps = blocks.firstOrNull { it.kind == Kind.APPS }?.takeIf { b -> b.entries.distinctBy(sameApp).size == 1 } ?: return this
+    val extra = itsShortcuts(apps.entries[0])
+    if (extra.isEmpty()) return this
+    val old = blocks.firstOrNull { it.kind == Kind.SHORTCUTS }
+    val entries = (extra + old?.entries.orEmpty()).distinctBy { it.key }.take(Kind.SHORTCUTS.most)
+    val block = Block(Kind.SHORTCUTS, entries, minOf(old?.best ?: apps.best, apps.best))
+    return Results(query, answer, (blocks.filter { it.kind != Kind.SHORTCUTS } + block).sortedWith(compareBy({ it.best }, { it.kind.ordinal })))
+}
