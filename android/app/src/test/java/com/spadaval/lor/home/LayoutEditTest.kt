@@ -209,6 +209,8 @@ class LayoutEditTest {
         assertEquals("\"a\\\\b\"", LayoutFile.unescapeSlashes("\"a\\\\b\""))
         val f = LayoutFile("a", listOf(Layout("a", listOf(AppRef("com.x", "com.x.Main"), Folder("a\\/b", listOf(AppRef("a.b")))), emptyList())))
         assertTrue(f.toJson().contains("\"com.x/com.x.Main\""))
+        // The JVM's org.json escapes "</" as "<\/", so this fails if toJson stops unescaping.
+        assertTrue(f.copy(layouts = listOf(Layout("a", listOf(Folder("a</b", listOf(AppRef("a.b")))), emptyList()))).toJson().contains("\"a</b\""))
         assertEquals(f, LayoutFile.parse(f.toJson()))
     }
 }

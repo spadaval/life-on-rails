@@ -31,7 +31,7 @@ Agreed with Sumeet, 2026-11-05:
 
 ## Increments
 
-### Increment 1: The long press, and the basics every launcher has. Status: active
+### Increment 1: The long press, and the basics every launcher has. Status: done
 
 **Goal.** A long press does something everywhere. An app gets its menu, empty home gets the home menu, and hidden apps and a Home settings screen exist. The launcher stops needing adb for the everyday changes.
 
@@ -71,6 +71,7 @@ Agreed with Sumeet, 2026-11-05:
 - R7, no action: "Hidden apps (n)" counts every `hidden` entry, as Home settings lists them.
 - Its open question: "LoR app settings" now opens the LoR app in its own task.
 - Checks it found missing, run on the emulator: Add to dock on Maps from home; Hide on Camera in the dock (took it out of the dock, into `hidden`); a sideways swipe to the agent page still works under the new long-press layer.
+- A second fresh agent reviewed the fixes (4b5e962): pass. Its one gap, that no JVM test failed if `toJson` stopped unescaping, is closed by a test on the JVM's `<\/`.
 
 ### Increment 2: An organised drawer. Status: backlog
 
