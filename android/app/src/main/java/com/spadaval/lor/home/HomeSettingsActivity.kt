@@ -135,7 +135,7 @@ private fun HomeSettings(apps: List<HomeApp>, layout: LayoutState, unhide: (AppR
         }
         item {
             val context = LocalContext.current
-            Link("LoR app settings", "Timer, sensors, server and T3") { open(Intent(context, MainActivity::class.java)) }
+            Link("LoR app settings", "Timer, sensors, server and T3") { open(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         }
     }
 }

@@ -45,7 +45,7 @@ Agreed with Sumeet, 2026-11-05:
   Each refuses with a message instead of passing a limit (24 home items, 5 dock apps) or adding a duplicate.
 - **Scope.** Main-profile apps only: the schema can't name a work-profile app (`resolve` in `HomeScreen.kt` matches only `Process.myUserHandle()`), so nothing in this increment edits one. Write `hidden` into [Schema additions](#schema-additions) and point `Layout.kt`'s comment at this plan as well as 3.2.
 - **Done when.** `LayoutTest` covers each edit and refusal, an emptied folder going away, `pinned` set on a touched folder, a round trip that keeps `expires`, `reason` and `pinned`, and `hidden`'s parsing errors. A test of `LayoutStore` against a temporary directory shows `edit` leaves the old file in place when the result fails to validate, and replaces it when it passes. A test covers F2: an empty app list writes no default. `assembleDebug testDebugUnitTest` passes on boat and home still draws on the emulator.
-- **2026-11-05.** Landed. Choices: `LayoutStore.edit` returns `Result<LayoutStore.Read>` (the edited file and its modified time) rather than `Result<Long>`, so the store shows the edit without rereading the file. The edits take an `AppId` (package and activity) and match refs with `AppRef.matches`, as home resolves them; Add writes the package name when it has one launchable activity, otherwise `package/activity`. `HomeStore` is made lazily by `LorApp.home`, so a sync worker's process doesn't load the app list. `LayoutEditTest` holds the tests. Reviewed with the increment.
+- **2026-11-05.** Landed. Choices: `LayoutStore.edit` returns `Result<LayoutStore.Read>` (the edited file and its modified time) rather than `Result<Long>`, so the store shows the edit without rereading the file. The edits take an `AppId` (package and activity) and match refs with `AppRef.matches`, so a package-name ref stands for every activity of its package (home draws it as the first; see R3 under Increment 4); Add writes the package name when it has one launchable activity, otherwise `package/activity`. `HomeStore` is made lazily by `LorApp.home`, so a sync worker's process doesn't load the app list. `LayoutEditTest` holds the tests. Reviewed with the increment.
 
 #### 1.2 The app menu. Status: done
 - **Goal.** A long press on any app (home, dock, folder, drawer, search result) opens a small menu by the icon, with a haptic tick. Read Lawnchair's `PopupContainerWithArrow`, `SystemShortcut` and `ShortcutRequest`, and Kvaesitso's app context menu, first.
@@ -61,6 +61,16 @@ Agreed with Sumeet, 2026-11-05:
 - **Goal.** A long press on empty home opens a menu: Wallpaper (`Intent.ACTION_SET_WALLPAPER`), Home settings, and, once Increment 4 exists, Edit home. Home settings is its own activity in home's task (`home/HomeSettingsActivity`), reading and writing through `HomeStore`, so back returns to home. It starts with: Hidden apps (each with its icon, label and Unhide), Default home app (`Settings.ACTION_HOME_SETTINGS`), and LoR app settings (the existing tabs). Later increments add their settings to this screen, not to the LoR tabs. The drawer ends with a quiet "Hidden apps (n)" row that opens the same list.
 - **Done when.** The increment's checks for hiding pass on the emulator: hide from the drawer, the app is gone from the drawer and from search for its name, unhide from Home settings, it's back. The screen keeps its state across a rotation. The spec's launcher line (`docs/v2-product-engineering-spec.md`, "The drawer and search list every launchable app") says hidden apps are left out.
 - **2026-11-05.** Landed. On `T3_Phone_API35`: a long press on empty home opened Wallpaper and Home settings; Wallpaper opened the system's chooser; Home settings listed the hidden YouTube with its icon and kept it through a turn to landscape; Unhide wrote the file (no `hidden` left), back returned to home, and search found YouTube again; the drawer's "Hidden apps (1)" row opened the same screen. Choices: the long press on empty home is a layer under home's content, so a press on an app or folder never reaches it; Home settings uses the LoR tabs' Material look (light or dark with the system) until Increment 6 brings `DESIGN.md` to it; it lists a hidden ref whose app isn't installed by its name in the file. The spec's launcher section says hidden apps are left out and describes the long press. Reviewed with the increment.
+
+**Review, 2026-11-05.** A fresh agent reviewed 140d349, 49c66c1 and b0dbd9f: contract and fitness pass. Findings and what was done:
+- R1, fixed: a repeated `hidden` entry (`com.y/.Main` beside `com.y/com.y.Main`) crashed Home settings's list. `parse` now refuses it (`hidden: "…" is listed twice`).
+- R2, fixed: the temporary file is synced before the rename.
+- R6, fixed: Android's org.json wrote `package\/activity`; `toJson` now writes plain slashes (seen on the emulator before and after). Rewriting an `expires` offset as UTC stays (the same instant).
+- R3 and R4, deferred to Increment 4 (below).
+- R5, deferred to Increment 7 (below).
+- R7, no action: "Hidden apps (n)" counts every `hidden` entry, as Home settings lists them.
+- Its open question: "LoR app settings" now opens the LoR app in its own task.
+- Checks it found missing, run on the emulator: Add to dock on Maps from home; Hide on Camera in the dock (took it out of the dock, into `hidden`); a sideways swipe to the agent page still works under the new long-press layer.
 
 ### Increment 2: An organised drawer. Status: backlog
 
@@ -93,6 +103,10 @@ Agreed with Sumeet, 2026-11-05:
 
 **Provisional Done when.** Each gesture is driven on the emulator and the file is read after each; undo restores the file byte for byte. A JVM test covers the edits.
 
+**Carried from Increment 1's review.**
+- R3: a package-name ref on home is drawn as the package's first activity, but the edits treat it as naming every activity of the package, so for a package with two launcher activities the second's menu says Remove from home and removes the first. Work out an app's places from the refs as home resolved them.
+- R4: folders are found by name (the open folder, Remove from folder), and names may repeat within a layout. Track the open folder and edit folders by position, or make the parser refuse a repeated name.
+
 **Unknowns.** How Kvaesitso and Neo Launcher do drag and drop in Compose. Read both before choosing; this is the mission's biggest piece. Whether pages are a schema addition or a version bump (comes back to Sumeet if it is a bump).
 
 ### Increment 5: Search that finds more. Status: backlog
@@ -117,6 +131,8 @@ Agreed with Sumeet, 2026-11-05:
 ### Increment 7: Motion and feel. Status: backlog
 
 **Goal.** The drawer follows the finger open and closed (replacing the 56 dp flip in `HomePage`). Apps open from their icon's bounds (`ActivityOptions.makeScaleUpAnimation` or a clip reveal). Folders open from their tile. Haptics on long press, pickup, drop, and the drawer threshold. Predictive back for the drawer, folders and menus. Configurable gestures: swipe down for notifications, double-tap to lock, a gesture for quick send.
+
+**Carried from Increment 1's review.** R5: an open app menu isn't closed by a home press (`HomeUi.homePressed` knows only the home menu); hold the open app menu in `HomeUi` and close it there, as Launcher3's `onNewIntent` closes every floating view.
 
 **Provisional Done when.** Each motion recorded on the emulator; no animation loops; home-press latency is no worse than before (the median within 10%): with another app in front, `am start -W -a android.intent.action.MAIN -c android.intent.category.HOME` ten times on the build before and after, comparing the median `TotalTime` (with home already in front it reports nothing).
 

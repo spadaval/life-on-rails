@@ -141,6 +141,8 @@ class LayoutEditTest {
         assertEquals("hidden: must be a list", error("\"com.x\""))
         assertEquals("hidden[1]: \"X\" is not a package name or package/activity", error("""["com.x", "X"]"""))
         assertEquals("hidden[0]: \"3\" is not a package name or package/activity", error("[3]"))
+        assertEquals("hidden: \"com.x\" is listed twice", error("""["com.x", "com.x"]"""))
+        assertEquals("hidden: \"com.y/com.y.Main\" is listed twice", error("""["com.y/.Main", "com.y/com.y.Main"]"""))
     }
 
     @Test
@@ -196,5 +198,17 @@ class LayoutEditTest {
         val made = store.read { file }
         assertEquals(file, made.layout)
         assertEquals(file, LayoutFile.parse(store.file.readText()))
+    }
+
+    @Test
+    fun slashesAreWrittenPlain() {
+        // Android's org.json escapes every slash; the JVM's doesn't, so the unescape is tested directly.
+        assertEquals("\"com.x/com.x.Main\"", LayoutFile.unescapeSlashes("\"com.x\\/com.x.Main\""))
+        // An escaped backslash before a slash stays a backslash.
+        assertEquals("\"a\\\\/b\"", LayoutFile.unescapeSlashes("\"a\\\\\\/b\""))
+        assertEquals("\"a\\\\b\"", LayoutFile.unescapeSlashes("\"a\\\\b\""))
+        val f = LayoutFile("a", listOf(Layout("a", listOf(AppRef("com.x", "com.x.Main"), Folder("a\\/b", listOf(AppRef("a.b")))), emptyList())))
+        assertTrue(f.toJson().contains("\"com.x/com.x.Main\""))
+        assertEquals(f, LayoutFile.parse(f.toJson()))
     }
 }

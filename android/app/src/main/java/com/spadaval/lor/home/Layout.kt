@@ -5,6 +5,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -38,12 +39,14 @@ import java.time.format.DateTimeParseException
 data class LayoutFile(val active: String, val layouts: List<Layout>, val hidden: List<AppRef> = emptyList()) {
     val current: Layout get() = layouts.first { it.name == active }
 
-    fun toJson(): String = JSONObject()
-        .put("version", VERSION)
-        .put("active", active)
-        .apply { if (hidden.isNotEmpty()) put("hidden", JSONArray(hidden.map { it.toString() })) }
-        .put("layouts", JSONArray(layouts.map { it.toJson() }))
-        .toString(2)
+    fun toJson(): String = unescapeSlashes(
+        JSONObject()
+            .put("version", VERSION)
+            .put("active", active)
+            .apply { if (hidden.isNotEmpty()) put("hidden", JSONArray(hidden.map { it.toString() })) }
+            .put("layouts", JSONArray(layouts.map { it.toJson() }))
+            .toString(2),
+    )
 
     /** Whether [app] is hidden: a `hidden` ref matches it. Main-profile apps only; callers check the profile. */
     fun isHidden(app: AppId): Boolean = hidden.any { it.matches(app.packageName, app.className) }
@@ -52,6 +55,15 @@ data class LayoutFile(val active: String, val layouts: List<Layout>, val hidden:
         const val VERSION = 1
         const val MAX_HOME = 24
         const val MAX_DOCK = 5
+
+        /**
+         * Android's org.json writes every `/` as `\/`, which is valid JSON but makes a
+         * `package/activity` ref hard to read and grep in a file people and agents edit. This
+         * undoes it where the backslash isn't itself escaped.
+         */
+        fun unescapeSlashes(json: String): String = ESCAPED_SLASH.replace(json) { it.groupValues[1] + "/" }
+
+        private val ESCAPED_SLASH = Regex("""(?<!\\)((?:\\\\)*)\\/""")
 
         /** The largest file home reads; a real layout is a few KB. */
         const val MAX_BYTES = 256 * 1024L
@@ -87,6 +99,9 @@ data class LayoutFile(val active: String, val layouts: List<Layout>, val hidden:
             val active = root.string("", "active")
             if (layouts.none { it.name == active }) throw LayoutError("active: no layout is named \"$active\"")
             val hidden = if (root.has("hidden")) root.array("", "hidden").mapIndexed { i, v -> parseRef("hidden[$i]", v) } else emptyList()
+            hidden.groupBy { it }.filterValues { it.size > 1 }.keys.firstOrNull()?.let {
+                throw LayoutError("hidden: \"$it\" is listed twice")
+            }
             return LayoutFile(active, layouts, hidden)
         }
 
@@ -340,7 +355,12 @@ class LayoutStore(val file: File) {
         val back = LayoutFile.parse(text)
         if (back != layout) throw LayoutError("the edited layout doesn't read back the same")
         val tmp = File(file.path + ".tmp")
-        tmp.writeText(text)
+        // Synced before the rename, so a crash or power loss leaves the old file or the new one,
+        // never a partly written one (f2fs, Samsung's /data, can otherwise rename unwritten data).
+        FileOutputStream(tmp).use { out ->
+            out.write(text.toByteArray())
+            out.fd.sync()
+        }
         if (!tmp.renameTo(file)) throw IOException("can't replace ${file.path}")
         return file.lastModified()
     }
