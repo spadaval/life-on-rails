@@ -107,9 +107,6 @@ interface HomeActions {
     /** Puts a broken `layout.json` right ([HomeStore.restore]); the outcome shows as a toast. */
     fun restore()
 
-    /** Opens the notification shade (launcher polish 7.6: swipe down on home). */
-    fun notifications()
-
     /** Opens quick send, as a home press on home does (launcher polish 7.6: double tap on empty home). */
     fun quickSend()
 }

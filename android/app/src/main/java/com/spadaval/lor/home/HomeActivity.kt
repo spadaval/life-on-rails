@@ -231,19 +231,6 @@ class HomeActivity : ComponentActivity() {
 
         override fun refused(reason: String) = say("Can't: $reason.")
 
-        // StatusBarManager.expandNotificationsPanel is hidden, so it is reached by reflection, as
-        // Lawnchair's OpenNotificationsHandler (Apache-2.0) does; EXPAND_STATUS_BAR is install-time.
-        override fun notifications() {
-            try {
-                val bar = getSystemService("statusbar")
-                bar.javaClass.getMethod("expandNotificationsPanel").invoke(bar)
-            } catch (e: Exception) {
-                // The method gone, or refused (a SecurityException inside the reflection's).
-                android.util.Log.w("LorHome", "expandNotificationsPanel failed", e)
-                ui.undo.say("Can't: the notification shade won't open from here.", failed = true)
-            }
-        }
-
         override fun quickSend() = QuickSend.open(this@HomeActivity, QuickSend.From.HOME)
 
         override fun undo() {

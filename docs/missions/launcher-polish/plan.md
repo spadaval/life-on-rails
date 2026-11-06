@@ -1508,7 +1508,7 @@ Agreed with Sumeet, 2026-11-05:
   - **Not checked:** the haptics as felt (**[real Fold]**); the emulator logs them but has no motor.
   - Reviewed with the increment.
 
-#### 7.6 Swipe down for the notifications, double tap for quick send. Status: done
+#### 7.6 Swipe down for the notifications, double tap for quick send. Status: done (the swipe down held, 2026-11-06)
 - **Goal.** Sumeet's two gestures, on home's pages only, while nothing is open over home and nothing is held.
   - **Swipe down** past 56 dp (the threshold the drawer's flip used) opens the notification shade once per gesture. It fires only for a gesture whose first movement past the touch slop is downward, while `drawerShown` is 0, and not in edit mode. `HomeActions.notifications()` calls `StatusBarManager.expandNotificationsPanel()` by reflection on `getSystemService("statusbar")`, as Lawnchair's `OpenNotificationsHandler` (Apache-2.0, named in the file). If the call fails (the method gone or refused), the bar says "Can't: the notification shade won't open from here.", with the coral dot as a failure. The manifest gains `EXPAND_STATUS_BAR`, with a comment that it is a normal, install-time permission.
   - **Double tap** on empty home opens quick send (`QuickSend.open(…, From.HOME)`), as a home press on home does. It is the long-press layer under home's items, so a tap on an app or folder is never delayed or taken. Not in edit mode.
@@ -1521,13 +1521,11 @@ Agreed with Sumeet, 2026-11-05:
   - **The drawer:** a swipe up still opens it (7.1).
 
   The shade on One UI is **[real Fold]**. `assembleDebug testDebugUnitTest` passes on boat.
-- **2026-11-06.** Landed: `HomeActions.notifications()` and `quickSend()`, implemented in `HomeActivity` (the reflection call, naming Lawnchair's `OpenNotificationsHandler`, and its refusal in the bar with the coral dot); `HomePage`'s gesture takes a swipe that starts downward, with the drawer at 0 and no folder, menu, home menu or edit mode, and calls the shade once it passes 56 dp; the layer under home's items gains `onDoubleTap`; `EXPAND_STATUS_BAR` in the manifest with its comment; the spec's launcher section has the gestures. 206 tests pass on boat. Checked on `T3_Phone_API35`:
-  - **Swipe down** (`input swipe` 1200 to 1700 on home): the shade opened (screenshot; `mCurrentFocus` the `NotificationShade` window). Logcat: `Accessing hidden method Landroid/app/StatusBarManager;->expandNotificationsPanel()V (unsupported,test-api, reflection, allowed)`, so no denial; the package dump lists `EXPAND_STATUS_BAR: granted=true` from the install.
-  - **Not** on the agent page (screenshot of it first), with the Google folder open, or in edit mode: the focus stayed `HomeActivity`. With the folder open the swipe closed the folder, as a tap outside does; that is the scrim's tap handling, unchanged.
+- **2026-11-06.** Landed: the double tap. `HomeActions.quickSend()`, implemented in `HomeActivity`; the layer under home's items gains `onDoubleTap`, not in edit mode; the spec's launcher section has the gestures. 206 tests pass on boat. Checked on `T3_Phone_API35`:
   - **Double tap** on empty home (two `input tap`s 120 ms apart in one shell) started `QuickSendActivity`. agent-device's `press --double-tap` didn't (its taps come further apart than Android's double-tap timeout), so the shell's pair was used.
   - **One tap on Gmail** opened Gmail; the double tap lives only in the layer under the tiles, and the tiles' own clickable has no double click, so their taps aren't held back. In edit mode a double tap opened nothing.
   - **The drawer:** a swipe up still opened it.
-  - **Not checked:** the refusal path (the call works on this image; read in the code), and the shade on One UI (**[real Fold]**).
+  - **The swipe down for notifications is held** (Sumeet's panels direction, 2026-11-06: home becomes a grid of panels, where a vertical swipe mid-screen moves between rows, so the top edge keeps the system shade). It was built and checked first (the reflection call reached `expandNotificationsPanel` with logcat's `unsupported,test-api, reflection, allowed` and opened the shade; it didn't fire on the agent page, with a folder open or in edit mode), then taken out before this increment closed: no `notifications()` action, no downward gesture on home, no `EXPAND_STATUS_BAR` in the manifest or the spec. A swipe that starts downward on home does nothing, as before 7.6. What the shade gesture becomes is for the panels increments.
   - Reviewed with the increment.
 
 #### 7.7 The wallpaper's ink from the first frame. Status: todo
