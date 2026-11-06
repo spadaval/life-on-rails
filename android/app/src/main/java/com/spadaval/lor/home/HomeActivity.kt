@@ -14,6 +14,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.spadaval.lor.LorApp
 import com.spadaval.lor.collect.Launch
 import com.spadaval.lor.collect.LaunchFrom
 import com.spadaval.lor.collect.Launches
@@ -22,8 +23,8 @@ import com.spadaval.lor.ui.LorTheme
 
 /**
  * LoR's home app (T3 Launcher): the agent page, home from the layout file, and the drawer
- * ([HomeScreen]); the app list and layout file live in [HomeModel]. A home press while already
- * on home, with nothing open, opens quick send.
+ * ([HomeScreen]); the app list and layout file live in [HomeStore], seen through [HomeModel]. A
+ * home press while already on home, with nothing open, opens quick send.
  *
  * Launching follows Launcher3 / Lawnchair (`startActivitySafely`, Apache-2.0):
  * `LauncherApps.startMainActivity`, catching the failures of an app that went away before the
@@ -40,8 +41,7 @@ class HomeActivity : ComponentActivity() {
         enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
         launcherApps = getSystemService(LauncherApps::class.java)
         val icons = Icons((56 * resources.displayMetrics.density).toInt())
-        model = HomeModel(applicationContext, lifecycleScope, icons)
-        model.start()
+        model = HomeModel((application as LorApp).home, lifecycleScope, icons)
         // Back on home goes nowhere; HomeScreen's handlers close what is open first.
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}
@@ -67,12 +67,7 @@ class HomeActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        model.refreshLayout()
-    }
-
-    override fun onDestroy() {
-        model.stop()
-        super.onDestroy()
+        model.resume()
     }
 
     private fun launch(app: HomeApp, from: LaunchFrom, folder: String?, query: String?) {

@@ -31,13 +31,13 @@ Agreed with Sumeet, 2026-11-05:
 
 ## Increments
 
-### Increment 1: The long press, and the basics every launcher has. Status: todo
+### Increment 1: The long press, and the basics every launcher has. Status: active
 
 **Goal.** A long press does something everywhere. An app gets its menu, empty home gets the home menu, and hidden apps and a Home settings screen exist. The launcher stops needing adb for the everyday changes.
 
 **Done when.** On `T3_Phone_API35`: a long press on an app on home, in the dock, in a folder and in the drawer opens its menu; App info and Uninstall open the system's screens for that app; a hidden app leaves home, the dock, the drawer and search, and comes back to the drawer from Home settings; Add to home and Add to dock put the app there and the file shows it; the shortcuts listed for an app with shortcuts (Clock, Chrome) open the right screen. JVM tests cover each edit to `LayoutFile` and that a round trip keeps every field.
 
-#### 1.1 `HomeStore` and phone edits to `layout.json`. Status: todo
+#### 1.1 `HomeStore` and phone edits to `layout.json`. Status: done
 - **Goal.** The store and write path of P1. `HomeStore` in `home/`, created once by `LorApp`, takes over from `HomeModel` the app list, the layout file, its stamp and the serial dispatcher; `HomeModel` keeps only what is per activity (the icon cache) and reads the store's flows. The file steps sit in a piece with no `Context`, `LayoutStore(file: File)` in `Layout.kt`, so the JVM tests can reach them: `LayoutStore.edit(change: (LayoutFile) -> LayoutFile): Result<Long>` rereads, applies, serialises, parses again, writes `layout.json.tmp`, renames it over `layout.json`, and returns the new modified time. `suspend fun HomeStore.edit(change)` runs it on the serial dispatcher and records that time as the stamp. `HomeStore` logs one line (`LorHome`) for each file read and each write. While the app list is empty, `HomeStore` reloads it on the next resume, and it writes no default layout from a list it hasn't fully loaded (F2 from T3 Launcher 3.3). Pure functions in `Layout.kt` for the first edits:
   - add an app to the end of the current layout's home; add to the dock;
   - remove an app from home, from the dock, or from the folder that holds it. A folder left empty is removed (the parser rejects `apps: []`). A folder an edit touches gets `pinned: true`;
@@ -45,6 +45,7 @@ Agreed with Sumeet, 2026-11-05:
   Each refuses with a message instead of passing a limit (24 home items, 5 dock apps) or adding a duplicate.
 - **Scope.** Main-profile apps only: the schema can't name a work-profile app (`resolve` in `HomeScreen.kt` matches only `Process.myUserHandle()`), so nothing in this increment edits one. Write `hidden` into [Schema additions](#schema-additions) and point `Layout.kt`'s comment at this plan as well as 3.2.
 - **Done when.** `LayoutTest` covers each edit and refusal, an emptied folder going away, `pinned` set on a touched folder, a round trip that keeps `expires`, `reason` and `pinned`, and `hidden`'s parsing errors. A test of `LayoutStore` against a temporary directory shows `edit` leaves the old file in place when the result fails to validate, and replaces it when it passes. A test covers F2: an empty app list writes no default. `assembleDebug testDebugUnitTest` passes on boat and home still draws on the emulator.
+- **2026-11-05.** Landed. Choices: `LayoutStore.edit` returns `Result<LayoutStore.Read>` (the edited file and its modified time) rather than `Result<Long>`, so the store shows the edit without rereading the file. The edits take an `AppId` (package and activity) and match refs with `AppRef.matches`, as home resolves them; Add writes the package name when it has one launchable activity, otherwise `package/activity`. `HomeStore` is made lazily by `LorApp.home`, so a sync worker's process doesn't load the app list. `LayoutEditTest` holds the tests. Reviewed with the increment.
 
 #### 1.2 The app menu. Status: todo, after 1.1
 - **Goal.** A long press on any app (home, dock, folder, drawer, search result) opens a small menu by the icon, with a haptic tick. Read Lawnchair's `PopupContainerWithArrow`, `SystemShortcut` and `ShortcutRequest`, and Kvaesitso's app context menu, first.
