@@ -536,28 +536,43 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
         Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                // A swipe up brings the drawer with the finger (launcher polish 7.1).
+                // A swipe up brings the drawer with the finger (launcher polish 7.1); a swipe down
+                // past 56 dp opens the notification shade, once a gesture (7.6).
+                val shade = 56.dp.toPx()
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     if (ui.drawer || ui.drag.held != null) return@awaitEachGesture
                     val tracker = VelocityTracker()
                     val first = awaitVerticalSlop(down, tracker, PointerEventPass.Main) ?: return@awaitEachGesture
-                    // Only a swipe that starts upward is the drawer's.
-                    if (first.position.y > down.position.y) return@awaitEachGesture
+                    if (first.position.y > down.position.y) {
+                        // Downward: the shade's, with nothing open over home and the drawer all the way shut.
+                        if (ui.drawerShown > 0f || ui.drag.editing || ui.folder != null || ui.menu != null || ui.homeMenu != null) return@awaitEachGesture
+                        var c: PointerInputChange = first
+                        while (c.pressed && c.position.y - down.position.y <= shade) {
+                            c = awaitPointerEvent(PointerEventPass.Main).changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+                        }
+                        if (c.pressed) home.actions.notifications()
+                        return@awaitEachGesture
+                    }
                     followDrawer(down, first, DrawerFinger(ui, haptics, size.height.toFloat(), density, fromOpen = false), tracker, PointerEventPass.Main)
                 }
             }
             .safeDrawingPadding(),
     ) {
         // Under everything: a long press that no app or folder took, on empty home, opens the home
-        // menu. Overlapping siblings get a touch only when the ones drawn above it don't.
+        // menu, and a double tap opens quick send (launcher polish 7.6), not in edit mode.
+        // Overlapping siblings get a touch only when the ones drawn above it don't, so a tap on an
+        // app is never delayed or taken.
         Box(
             Modifier.matchParentSize().pointerInput(Unit) {
-                detectTapGestures(onLongPress = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    ui.homeMenu = it
-                    ui.homeMenuPage = n
-                })
+                detectTapGestures(
+                    onDoubleTap = { if (!ui.drag.editing) home.actions.quickSend() },
+                    onLongPress = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        ui.homeMenu = it
+                        ui.homeMenuPage = n
+                    },
+                )
             },
         )
         val wide = maxWidth >= 600.dp

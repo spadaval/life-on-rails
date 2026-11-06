@@ -33,6 +33,8 @@
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Uninstall from an app's long-press menu on home (install-time, as Launcher3's). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Swipe down on home opens the notification shade (launcher polish 7.6): a normal, install-time permission. -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
 
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
