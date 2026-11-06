@@ -50,8 +50,17 @@ class HomeApp(val label: String, val info: LauncherActivityInfo) {
 sealed interface LayoutState {
     data object Loading : LayoutState
     data class Ready(val file: LayoutFile) : LayoutState
-    data class Broken(val message: String) : LayoutState
+    /** The file can't be used; home shows [lastGood], the last file that parsed, if there is one (launcher polish 3.1). */
+    data class Broken(val message: String, val lastGood: LayoutFile?) : LayoutState
 }
+
+/** The layout home draws: the file, or while it is broken, the last good one. */
+val LayoutState.shown: LayoutFile?
+    get() = when (this) {
+        is LayoutState.Ready -> file
+        is LayoutState.Broken -> lastGood
+        LayoutState.Loading -> null
+    }
 
 /** A package whose activities changed, so its icons are stale. */
 data class PackageChange(val packages: List<String>, val user: UserHandle)
@@ -79,6 +88,9 @@ class HomeStore(private val context: Context) {
 
     /** The app list loaded in full at least once; until then no default layout is written. */
     private var loaded = false
+    private val _appsLoaded = MutableStateFlow(false)
+    /** Whether the app list has loaded in full; home shows its skeleton until it has. */
+    val appsLoaded: StateFlow<Boolean> = _appsLoaded
 
     private val _apps = MutableStateFlow<List<HomeApp>>(emptyList())
     val apps: StateFlow<List<HomeApp>> = _apps
@@ -151,6 +163,21 @@ class HomeStore(private val context: Context) {
         }.onFailure { Log.i(TAG, "layout edit refused: ${it.message}") }
     }
 
+    /**
+     * Puts a broken file right ([LayoutStore.restore]): the last good layout, else the default
+     * once the app list has loaded. Fails with the reason.
+     */
+    suspend fun restore(): Result<LayoutFile> = withContext(serial) {
+        runCatching {
+            val fallback = store.readGood()
+                ?: if (loaded) defaultLayout() else throw LayoutError("the app list hasn't loaded, so there is no default layout yet")
+            stamp = store.restore(fallback)
+            _layout.value = LayoutState.Ready(fallback)
+            Log.i(TAG, "restored layout.json (the broken file is layout.json.broken)")
+            fallback
+        }.onFailure { Log.i(TAG, "layout restore failed: ${it.message}") }
+    }
+
     private fun changed(packages: List<String>, user: UserHandle) = serially {
         _changes.tryEmit(PackageChange(packages, user))
         val fresh = packages.flatMap { pkg -> activities(pkg, user) }
@@ -173,6 +200,7 @@ class HomeStore(private val context: Context) {
         _apps.value = all
         // An empty list means the load didn't really happen (a phone always has apps): try again on resume.
         loaded = all.isNotEmpty()
+        _appsLoaded.value = loaded
         // A layout that was waiting on the app list for its default can be made now.
         if (loaded && _layout.value is LayoutState.Broken && !store.file.exists()) readLayout()
     }
@@ -190,12 +218,12 @@ class HomeStore(private val context: Context) {
             LayoutState.Ready(read.layout)
         } catch (e: LayoutError) {
             stamp = store.file.lastModified()
-            LayoutState.Broken(e.message ?: "invalid")
+            LayoutState.Broken(e.message ?: "invalid", store.readGood())
         } catch (e: IOException) {
-            LayoutState.Broken("can't read ${store.file.path}: ${e.message}")
+            LayoutState.Broken("can't read ${store.file.path}: ${e.message}", store.readGood())
         } catch (e: Exception) {
             Log.w(TAG, "layout read failed", e)
-            LayoutState.Broken("can't be read: ${e.message ?: e.javaClass.simpleName}")
+            LayoutState.Broken("can't be read: ${e.message ?: e.javaClass.simpleName}", store.readGood())
         }
     }
 

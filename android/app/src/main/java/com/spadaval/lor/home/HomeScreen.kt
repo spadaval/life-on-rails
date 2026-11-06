@@ -139,8 +139,9 @@ private fun place(layout: Layout, apps: List<HomeApp>): Pair<List<Placed>, List<
 }
 
 @Composable
-fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, stats: LaunchStats, ui: HomeUi, actions: HomeActions) {
-    val file = (layout as? LayoutState.Ready)?.file
+fun HomeScreen(apps: List<HomeApp>, appsLoaded: Boolean, layout: LayoutState, stats: LaunchStats, ui: HomeUi, actions: HomeActions) {
+    // While the file is broken, everything draws from the last good layout (launcher polish 3.1).
+    val file = layout.shown
     val home = remember(actions, file, apps) { HomeContext(actions, file, apps) }
     val placed = remember(apps, file) { file?.let { place(it.current, apps) } }
     val folder = ui.folder?.let { name -> placed?.first?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf { f -> f.folder.name == name } } }
@@ -158,7 +159,7 @@ fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, stats: LaunchStats, ui:
     }
     Box(Modifier.fillMaxSize()) {
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
-            if (page == 0) AgentPage() else HomePage(placed, layout, ui, home)
+            if (page == 0) AgentPage() else HomePage(placed, layout, appsLoaded, ui, home)
         }
         PageDots(pager.currentPage, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
         AnimatedVisibility(
@@ -173,7 +174,7 @@ fun HomeScreen(apps: List<HomeApp>, layout: LayoutState, stats: LaunchStats, ui:
 }
 
 @Composable
-private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutState, ui: HomeUi, home: HomeContext) {
+private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutState, appsLoaded: Boolean, ui: HomeUi, home: HomeContext) {
     val threshold = with(LocalDensity.current) { 56.dp.toPx() }
     var dragged by remember { mutableStateOf(0f) }
     BoxWithConstraints(
@@ -207,11 +208,10 @@ private fun HomePage(placed: Pair<List<Placed>, List<HomeApp>>?, layout: LayoutS
             Column(mod) {
                 when (layout) {
                     LayoutState.Loading -> {}
-                    is LayoutState.Broken -> Text(
-                        "layout.json can't be used: ${layout.message}",
-                        style = TextStyle(color = Muted, fontSize = 13.sp),
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                    )
+                    is LayoutState.Broken -> {
+                        BrokenBanner(layout, appsLoaded, LabelStyle.copy(color = Ink, fontSize = 13.sp), Modifier.padding(horizontal = 20.dp), home.actions::restore)
+                        if (placed != null) HomeGrid(placed.first, if (wide) 5 else 4, ui, home)
+                    }
                     is LayoutState.Ready -> HomeGrid(placed!!.first, if (wide) 5 else 4, ui, home)
                 }
                 Spacer(Modifier.weight(1f))

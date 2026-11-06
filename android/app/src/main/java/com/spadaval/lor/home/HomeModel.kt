@@ -12,6 +12,7 @@ class HomeModel(private val store: HomeStore, scope: CoroutineScope, val icons: 
     val apps: StateFlow<List<HomeApp>> get() = store.apps
     val layout: StateFlow<LayoutState> get() = store.layout
     val stats: StateFlow<LaunchStats> get() = store.stats
+    val appsLoaded: StateFlow<Boolean> get() = store.appsLoaded
 
     init {
         scope.launch { store.changes.collect { icons.evict(it.packages, it.user) } }
@@ -20,4 +21,6 @@ class HomeModel(private val store: HomeStore, scope: CoroutineScope, val icons: 
     fun resume() = store.resume()
 
     suspend fun edit(change: (LayoutFile) -> LayoutFile): Result<LayoutFile> = store.edit(change)
+
+    suspend fun restore(): Result<LayoutFile> = store.restore()
 }

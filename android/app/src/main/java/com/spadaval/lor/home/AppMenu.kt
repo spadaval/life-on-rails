@@ -66,6 +66,9 @@ interface HomeActions {
 
     /** Applies [change] to `layout.json`; a refusal shows as a toast. [done] is said on success. */
     fun edit(done: String?, change: (LayoutFile) -> LayoutFile)
+
+    /** Puts a broken `layout.json` right ([HomeStore.restore]); the outcome shows as a toast. */
+    fun restore()
 }
 
 /** What a screen of home needs to draw apps and their menus. */

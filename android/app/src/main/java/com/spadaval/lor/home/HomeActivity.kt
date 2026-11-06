@@ -56,9 +56,10 @@ class HomeActivity : ComponentActivity() {
             val apps by model.apps.collectAsStateWithLifecycle()
             val layout by model.layout.collectAsStateWithLifecycle()
             val stats by model.stats.collectAsStateWithLifecycle()
+            val appsLoaded by model.appsLoaded.collectAsStateWithLifecycle()
             LorTheme {
                 CompositionLocalProvider(LocalIcons provides icons) {
-                    HomeScreen(apps, layout, stats, ui, actions)
+                    HomeScreen(apps, appsLoaded, layout, stats, ui, actions)
                 }
             }
         }
@@ -160,6 +161,14 @@ class HomeActivity : ComponentActivity() {
                 model.edit(change)
                     .onSuccess { if (done != null) toast(done) }
                     .onFailure { toast("Can't: ${it.message ?: "the layout couldn't be changed"}.") }
+            }
+        }
+
+        override fun restore() {
+            lifecycleScope.launch {
+                model.restore()
+                    .onSuccess { toast("layout.json is put right. The broken one is layout.json.broken.") }
+                    .onFailure { toast("Can't: ${it.message ?: "the layout couldn't be put right"}.") }
             }
         }
     }

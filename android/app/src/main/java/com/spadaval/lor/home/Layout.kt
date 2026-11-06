@@ -416,6 +416,15 @@ class LayoutStore(val file: File) {
     data class Read(val layout: LayoutFile, val stamp: Long)
 
     /**
+     * The text of the last file that parsed (launcher polish 3.1), so a file that is broken when
+     * the process starts still has a layout to show beside its error. A cache, not part of the schema.
+     */
+    val good = File(file.parentFile, "layout.good.json")
+
+    /** Where [restore] sets a broken file aside, for whoever wrote it to read. */
+    val broken = File(file.parentFile, "layout.json.broken")
+
+    /**
      * Reads and parses the file. When it doesn't exist, writes [default] first; with no default
      * (the app list hasn't loaded), throws instead, so no layout is made from a partial list.
      */
@@ -426,7 +435,19 @@ class LayoutStore(val file: File) {
         }
         val stamp = file.lastModified()
         if (file.length() > LayoutFile.MAX_BYTES) throw LayoutError("the file is over ${LayoutFile.MAX_BYTES / 1024} KB")
-        return Read(LayoutFile.parse(file.readText()), stamp)
+        val text = file.readText()
+        val layout = LayoutFile.parse(text)
+        keepGood(text)
+        return Read(layout, stamp)
+    }
+
+    /** The last file that parsed, or null when there is none or it doesn't parse either. */
+    fun readGood(): LayoutFile? = try {
+        if (good.exists()) LayoutFile.parse(good.readText()) else null
+    } catch (e: LayoutError) {
+        null
+    } catch (e: IOException) {
+        null
     }
 
     /**
@@ -440,6 +461,15 @@ class LayoutStore(val file: File) {
     }
 
     /**
+     * Puts a broken file right: renames it to [broken] (replacing an older one), then writes
+     * [fallback] in its place. Returns the new modified time.
+     */
+    fun restore(fallback: LayoutFile): Long {
+        if (file.exists() && !file.renameTo(broken)) throw IOException("can't set ${file.path} aside")
+        return write(fallback)
+    }
+
+    /**
      * Serialises [layout], checks it parses back to itself, writes a temporary file and renames it
      * over the file. Returns the new modified time.
      */
@@ -448,7 +478,14 @@ class LayoutStore(val file: File) {
         val back = LayoutFile.parse(text)
         if (back != layout) throw LayoutError("the edited layout doesn't read back the same")
         writeAtomically(file, text)
+        keepGood(text)
         return file.lastModified()
+    }
+
+    /** Copies [text] to [good] unless it already holds it, so most reads write nothing. */
+    private fun keepGood(text: String) {
+        if (good.exists() && good.readText() == text) return
+        writeAtomically(good, text)
     }
 }
 

@@ -64,10 +64,11 @@ class HomeSettingsActivity : ComponentActivity() {
         setContent {
             val apps by store.apps.collectAsStateWithLifecycle()
             val layout by store.layout.collectAsStateWithLifecycle()
+            val appsLoaded by store.appsLoaded.collectAsStateWithLifecycle()
             LorTheme {
                 CompositionLocalProvider(LocalIcons provides icons) {
                     Surface(Modifier.fillMaxSize()) {
-                        HomeSettings(apps, layout, ::edit, ::open)
+                        HomeSettings(apps, layout, appsLoaded, ::edit, ::restore, ::open)
                     }
                 }
             }
@@ -84,6 +85,14 @@ class HomeSettingsActivity : ComponentActivity() {
         lifecycleScope.launch {
             (application as LorApp).home.edit(change)
                 .onSuccess { if (done != null) toast(done) }
+                .onFailure { toast("Can't: ${it.message}.") }
+        }
+    }
+
+    private fun restore() {
+        lifecycleScope.launch {
+            (application as LorApp).home.restore()
+                .onSuccess { toast("layout.json is put right. The broken one is layout.json.broken.") }
                 .onFailure { toast("Can't: ${it.message}.") }
         }
     }
@@ -109,7 +118,14 @@ private class Hidden(val ref: AppRef, val app: HomeApp?) {
 }
 
 @Composable
-private fun HomeSettings(apps: List<HomeApp>, layout: LayoutState, edit: (String?, (LayoutFile) -> LayoutFile) -> Unit, open: (Intent) -> Unit) {
+private fun HomeSettings(
+    apps: List<HomeApp>,
+    layout: LayoutState,
+    appsLoaded: Boolean,
+    edit: (String?, (LayoutFile) -> LayoutFile) -> Unit,
+    restore: () -> Unit,
+    open: (Intent) -> Unit,
+) {
     val file = (layout as? LayoutState.Ready)?.file
     val hidden = remember(apps, file) {
         file?.hidden.orEmpty().map { ref ->
@@ -120,11 +136,14 @@ private fun HomeSettings(apps: List<HomeApp>, layout: LayoutState, edit: (String
         item {
             Text("Home settings", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(20.dp, 24.dp, 20.dp, 8.dp))
         }
-        item { Section("Hidden apps") }
+        // A broken file: its banner and the restore in place of the sections, whose edits would fail (launcher polish 3.1).
+        if (layout is LayoutState.Broken) item {
+            BrokenBanner(layout, appsLoaded, MaterialTheme.typography.bodyMedium, Modifier.padding(horizontal = 20.dp), restore)
+        }
+        if (layout !is LayoutState.Broken) item { Section("Hidden apps") }
         when {
-            file == null -> item {
-                Note(if (layout is LayoutState.Broken) "layout.json can't be used: ${layout.message}" else "Loading…")
-            }
+            layout is LayoutState.Broken -> {}
+            file == null -> item { Note("Loading…") }
             hidden.isEmpty() -> item { Note("None. Hide an app from its long-press menu.") }
             else -> items(hidden, key = { it.ref.toString() }) { h ->
                 Row(
