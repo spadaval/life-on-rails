@@ -40,7 +40,7 @@ Worth shipping on its own: the long-press menu, hidden apps and the organised dr
 
 In: home, the dock, folders, the drawer, search, the agent page's empty and error states, the first run, the launcher's own settings, icons, theming, motion, widget hosting, Fold layouts, and the robustness items deferred from T3 Launcher's reviews.
 
-Out, staying in T3 Launcher: Live Updates (Increment 6), the agent-edited layout repo and its approval flow (7), LoR people and T3 threads in search (8), agent-sorted folders with reasons (9), named and temporary layouts (10).
+Out: Live Updates (T3 Launcher Increment 6). Also out, moved from T3 Launcher to a later mission of their own when it closed (2026-11-05, its plan's "Handed on"): the agent-edited layout repo and its approval flow (its Increment 7), LoR people and T3 threads in search (8), agent-sorted folders with reasons (9), named and temporary layouts (10). Checks only the real Fold can answer go to a later quality mission, listed there too.
 
 Out entirely: generative widgets, app groups in split view, and the phone as an agent output (later missions, as T3 Launcher says); root; replacing Recents or gesture navigation; LoR server changes beyond new read endpoints.
 

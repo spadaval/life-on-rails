@@ -1,6 +1,6 @@
 ---
-status: draft
-last_changed: "2026-11-05: Sumeet moved apps' shortcut and conversation search, and the on-phone drawer sorting, to the Launcher polish mission"
+status: closed
+last_changed: "2026-11-05: Sumeet closed the mission after Increment 6; the agent-edited layout work (Increments 7 to 10) and the real-Fold checks moved out to later missions (plan.md, Handed on)"
 ---
 
 # Why
@@ -14,13 +14,17 @@ Sources: T3 threads "Agent-first Android launcher vision" (201b0ae4, 2026-11-02)
 LoR's Android app (`android/`, package `com.spadaval.lor`) is Sumeet's default home app on the Fold, and he uses it every day:
 
 - **The left-most page is the agent page.** It shows the queue (T3 approvals, questions and failures; LoR Needs you and the next action), running turns, Today, and a quick-send button.
-- **Home is drawn from a JSON file in a git repo.** Agents edit that file, the launcher shows each change for approval, and a revert undoes it. Making it a good launcher in its own right is the [Launcher polish](../launcher-polish/strategy.md) mission.
+- **Home is drawn from a local JSON layout file.** Making it a good launcher in its own right is the [Launcher polish](../launcher-polish/strategy.md) mission.
 - **A prompt can be sent from anywhere.** A quick-send sheet opens from home, from a Quick Settings tile, and from the side key as the default assistant, with the screen attached.
 - **Running turns show as Live Updates.**
 - **The LoR sensor records how each app was launched.**
-- **An agent refines the drawer's sections into smart folders,** each with its reason (Launcher polish sorts them on the phone first), and leaves sections he edited by hand alone.
-- **Search finds LoR people and T3 threads** beside the apps, shortcuts and conversations that [Launcher polish](../launcher-polish/strategy.md) search finds.
-- **Layouts are named and switchable,** and an agent can propose a temporary one with an expiry (a trip, an on-call week) that removes itself.
+
+Moved out on 2026-11-05 (Sumeet), each to be planned as its own mission; their increments are under "Handed on" in [plan.md](plan.md#handed-on-2026-11-05):
+- The layout file in a git repo that agents edit, each change shown for approval and undone by a revert (Increment 7).
+- Search that finds LoR people and T3 threads (8).
+- An agent refining the drawer's sections into smart folders with reasons (9).
+- Named, switchable and temporary layouts (10).
+- Every check that needs the real Fold, including whether he keeps it as his daily home, for a later quality mission.
 
 A partial outcome worth shipping: the agent page and quick send in a home app he keeps as default, even before the agent-edited layout exists.
 
@@ -36,7 +40,7 @@ A partial outcome worth shipping: the agent page and quick send in a home app he
 
 # Scope
 
-In: the home app on the Fold's cover and inner screens. That covers the agent page, home from a layout file, the app drawer and search, quick send (sheet, tile, home button, assistant role), Live Updates, the launch-source sensor, the agent-edited layout repo, agent-refined smart folders, LoR people and T3 threads in search, named and temporary layouts, and the LoR server endpoints the app reads.
+In: the home app on the Fold's cover and inner screens. That covers the agent page, home from a layout file, the app drawer and search, quick send (sheet, tile, home button, assistant role), Live Updates, the launch-source sensor, and the LoR server endpoints the app reads. Checked on the emulator; the real-Fold checks moved out (2026-11-05).
 
 Out:
 - The ordinary launcher polish: phone editing, drawer sorting, app and shortcut search, theming, motion, widget hosting. That is the [Launcher polish](../launcher-polish/strategy.md) mission (2026-11-05).
@@ -64,7 +68,7 @@ These come back to Sumeet:
 
 # Risks and Unknowns
 
-- **One UI may not treat a third-party home well.** The risks are rough gesture handoff, being reset to One UI Home, battery killing, and odd handling of the two screens. Small, judged by Sumeet on 2026-11-05: Samsung has supported gesture navigation in third-party launchers since One UI 2.5 (2020), and many people run them on Samsung phones and folds. The known cost is a plainer swipe-home animation. Increment 1.2 confirms this on the device. It does not gate other work.
+- **One UI may not treat a third-party home well.** The risks are rough gesture handoff, being reset to One UI Home, battery killing, and odd handling of the two screens. Small, judged by Sumeet on 2026-11-05: Samsung has supported gesture navigation in third-party launchers since One UI 2.5 (2020), and many people run them on Samsung phones and folds. The known cost is a plainer swipe-home animation. The real-Fold checks that would confirm it moved to a later quality mission (2026-11-05).
 - **The T3 protocol may change upstream** (`orchestrationV2`). A Kotlin check against a real T3 server catches it.
 - **Holding a live T3 connection in the background on One UI** is unproven. The launcher is expected to be killed less often than other apps, with Unrestricted battery. Increment 1 checks only that the process survives. Increment 6 checks the connection itself.
-- **The Fold arrives on 2026-11-05, but work stays on the emulator until Sumeet says otherwise.** Every device check marked "real Fold" waits for him.
+- **Everything was checked on the emulator only.** The Fold arrived on 2026-11-05; every check marked "real Fold" moved to a later quality mission.
