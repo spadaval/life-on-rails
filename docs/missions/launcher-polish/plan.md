@@ -1274,21 +1274,222 @@ Agreed with Sumeet, 2026-11-05:
 
 **Closed, 2026-11-06.** A third fresh agent reviewed 470a6df (the dots lock, the toggles, the markdown): pass. Two notes, no action: the listener's `connected` is now one per process, so a stale write from an old instance during a re-grant could leave dots wrong until the next ranking update (pick up a connection generation if that is ever seen); and the race's test covers `DotBook`, while the listener's wiring through it is checked by reading. Increment 6 is done.
 
-### Increment 7: Motion and feel. Status: backlog
+### Increment 7: Motion and feel. Status: active
 
-**Goal.** The drawer follows the finger open and closed (replacing the 56 dp flip in `HomePage`). Apps open from their icon's bounds (`ActivityOptions.makeScaleUpAnimation` or a clip reveal). Folders open from their tile. Haptics on long press, pickup, drop, and the drawer threshold. Predictive back for the drawer, folders and menus. Configurable gestures: swipe down for notifications, double-tap to lock, a gesture for quick send.
+**Goal** (revised 2026-11-06 with Sumeet's answer below). The drawer follows the finger open and closed (replacing the 56 dp flip in `HomePage`). Apps open from their icon's bounds. Folders open from their tile. Haptics on long press, pickup, drop, and the drawer threshold. Predictive back for the drawer, folders and menus. Two gestures on home: swipe down for notifications, and a gesture for quick send. Motion inside a drag, carried from Increment 4.
 
-**Carried from Increment 4's plan.** Motion in a drag: items easing to their new places in the preview, and the dropped icon settling into its slot (4.3 moves them without animation).
+**Carried from Increment 4's plan.** Motion in a drag: items easing to their new places in the preview, and the dropped icon settling into its slot (4.3 moves them without animation). The drop haptic (4.3: "the pickup haptic is the long press's own tick; the drop's haptic and motion stay Increment 7's"). *7.5.*
 
-**From Increment 6's second review (2026-11-06).** Closing the drawer sets dark status-bar icons at once while its dark background still fades out (about 300 ms); key the bar's icons on the drawer's transition state, in a `SideEffect` rather than a `LaunchedEffect`. And `rememberWallpaperInk` starts light until its read on IO, so a light wallpaper shows light text for a frame at start.
+**From Increment 6's second review (2026-11-06).** Closing the drawer sets dark status-bar icons at once while its dark background still fades out (about 300 ms); key the bar's icons on the drawer's transition state, in a `SideEffect` rather than a `LaunchedEffect`. *7.1* (and the folder's in 7.2). And `rememberWallpaperInk` starts light until its read on IO, so a light wallpaper shows light text for a frame at start. *7.7.*
 
-**Carried from Increment 1's review.** R5: an open app menu isn't closed by a home press (`HomeUi.homePressed` knows only the home menu); hold the open app menu in `HomeUi` and close it there, as Launcher3's `onNewIntent` closes every floating view.
+**Carried from Increment 1's review.** R5: an open app menu isn't closed by a home press (`HomeUi.homePressed` knows only the home menu); hold the open app menu in `HomeUi` and close it there, as Launcher3's `onNewIntent` closes every floating view. *7.3.*
 
-**Provisional Done when.** Each motion recorded on the emulator; no animation loops; home-press latency is no worse than before (the median within 10%): with another app in front, `am start -W -a android.intent.action.MAIN -c android.intent.category.HOME` ten times on the build before and after, comparing the median `TotalTime` (with home already in front it reports nothing).
+**Provisional Done when** (superseded by the Done-when of 7.1 to 7.8, 2026-11-06; the latency check is 7.8's). Each motion recorded on the emulator; no animation loops; home-press latency is no worse than before (the median within 10%): with another app in front, `am start -W -a android.intent.action.MAIN -c android.intent.category.HOME` ten times on the build before and after, comparing the median `TotalTime` (with home already in front it reports nothing).
 
 **Unknowns.** Double-tap to lock needs an accessibility service or device admin, and swipe down for notifications needs either the hidden `StatusBarManager.expandNotificationsPanel` (by reflection, with `EXPAND_STATUS_BAR`) or an accessibility service. An accessibility service comes back to Sumeet.
 
-**2026-11-06 (Sumeet).** Of the configurable gestures, swipe down for notifications only, through the hidden `StatusBarManager.expandNotificationsPanel` (`EXPAND_STATUS_BAR` is install-time, so nothing to grant). No double-tap to lock and no accessibility service.
+**2026-11-06 (Sumeet).** Of the configurable gestures, swipe down for notifications only, through the hidden `StatusBarManager.expandNotificationsPanel` (`EXPAND_STATUS_BAR` is install-time, so nothing to grant). No double-tap to lock and no accessibility service. Plus a gesture for quick send.
+
+**Answers, 2026-11-06 (planner, from reading the code, Lawnchair and Kvaesitso; the plan to be reviewed by a fresh agent before work starts).**
+- *Read for D1.*
+  - **Lawnchair** (Apache-2.0, `15-dev`):
+    - `allapps/AllAppsTransitionController.java`: All apps is one progress from 0 to 1 over a shift range, set by the finger while it drags and animated by a state transition after; `onBackProgressed` scales All apps down with the back gesture's progress (decelerated by `Interpolators.BACK_GESTURE`), and a cancel springs it back.
+    - `views/ActivityContext.java`, `getActivityLaunchOptions`: an app opens with `ActivityOptions.makeClipRevealAnimation` from the icon's bounds within the tapped view, and the display id set.
+    - `folder/FolderAnimationManager.java`: a folder opens from its icon, scaling its content from the preview's size, over `config_materialFolderExpandDuration` (200 ms) with the standard interpolator, and closes the same way back.
+    - `gestures/handlers/OpenNotificationsHandler.kt`: swipe down calls `StatusBarManager.expandNotificationsPanel()` by reflection on `getSystemService("statusbar")`, catching the reflection's failures; `gestures/VerticalSwipeTouchController.kt` fires it once per gesture.
+  - **Kvaesitso** (GPL-3.0, `main`; ideas only):
+    - `ui/launcher/scaffold/LauncherScaffold.kt`: every page moves with the finger from an `Animatable` offset, settles with a spring from the release velocity, and gives `HapticFeedbackType.GestureThresholdActivate` each time the drag crosses the point a release would commit. Predictive back is one `PredictiveBackHandler` whose progress (through `PathInterpolator(0, 0, 0, 1)`) moves the open page back; a commit runs the close, a cancel returns over 100 ms.
+    - `ui/launcher/search/common/SearchableItemVM.kt`, `launch`: `ActivityOptionsCompat.makeScaleUpAnimation(decorView, bounds…)` from the item's bounds in the window.
+    - `core/base/.../GestureNavContract.kt`, used by `LauncherActivity`: Launcher3's handshake by which the recents provider asks a third-party home where the closing app's icon is.
+    - Its notification gesture goes through its own accessibility service (`globalactions`), which Sumeet ruled out.
+  - **Neo Launcher** is Launcher3 underneath (Increment 4's reading), so Lawnchair stands for it here; it wasn't read again.
+  - **Borrowed:** one drawer position that the finger sets and a spring finishes, with a tick at the commit point (Lawnchair's progress, Kvaesitso's threshold haptic); predictive back as a scale-down that a commit finishes and a cancel undoes (both); the launch from the icon's bounds (Kvaesitso's scale-up, from Launcher3's own fallback); the folder opening from its icon in about 200 ms (Launcher3); the reflection call for the shade, once per gesture (Lawnchair).
+  - **Not borrowed:** Launcher3's remote launch and close animations (a system permission, below); `GestureNavContract` (below); Kvaesitso's gesture settings and its accessibility service; Launcher3's workspace fade and scale behind All apps (home stays still under the drawer).
+- *How the drawer follows the finger.* One position, `drawerShown` from 0 (closed) to 1 (open), held as an `Animatable` in `HomeUi`, drawn as the drawer's offset. A finger sets it 1:1 with its travel (the drawer's top edge moves as far as the finger has); on release, a pure rule picks open or closed from where it is and how fast it was going, and a no-bounce spring from that velocity takes it there. `HomeUi.drawer` stays the drawer's target (open or not), so its readers (back, `atRest`, the drag's layer, a pickup closing the drawer) keep their meaning; code that opens or closes it animates the same position. No library: Compose's `Animatable` and `VelocityTracker`. Compose's `AnchoredDraggableState` was considered and not used, since the drag reaches the drawer from two places (home's swipe and the list's overscroll), which a modifier on one node doesn't cover.
+- *Predictive back, with this app's SDKs* (`minSdk` 31, `targetSdk` 36, `compileSdk` 37, `activity-compose` 1.13.0).
+  - **The opt-in.** On Android 16 and later an app targeting 36 is on the predictive back path by default, so the Fold's build already is. Android 13 to 15 (the API 35 emulators) need `android:enableOnBackInvokedCallback="true"`, set once on `<application>` so every screen is on the same path. It also gives Home settings, the LoR app and quick send the system's own back animations (to the previous activity, and to home on Android 15 and later) with no code. Home's catch-all callback (back on home goes nowhere) stays, so nothing plays a back-to-home animation over home itself.
+  - **In Compose:** `PredictiveBackHandler` from activity-compose, as Kvaesitso. Its flow of `BackEventCompat` carries progress on Android 14 (API 34) and later; on Android 13 only the commit arrives, and on Android 12 (API 31 and 32) back comes through `OnBackPressedDispatcher` as a commit. So every handler's commit path is the whole behaviour there, and the progress drawing is a layer on top. (If 1.13 has deprecated it in favour of `androidx.navigationevent`'s handler, use that one: the shape is the same.)
+  - **What gets progress:** the drawer and a folder, each scaled from 1 toward 0.9 (Material's predictive back scale) as the gesture goes. A commit finishes their close from there, and a cancel returns them to 1.
+  - **What doesn't get progress:** edit mode, and the agent page and later pages, which commit as now. The app, folder and home menus also close only on the commit. They are Material `DropdownMenu`s in popup windows, whose back callback has no progress; drawing them in home's own window to get one costs more than a menu's short fade is worth. Dialogs are the same. Each still closes on back through Compose's own callback, which 7.3 checks after the opt-in, since the opt-in changes how back reaches a popup.
+- *What a third-party home can animate when it launches an app.* Launcher3's launch and close (the window flying out of the icon and back into it) is a remote transition (`ActivityOptions.makeRemoteAnimation`, `RemoteTransition`). That needs `CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS`, a signature and privileged permission, which only a system launcher holds; Lawnchair holds it only when installed as the system's recents provider.
+  - What any app may pass is `makeClipRevealAnimation` (Launcher3's fallback above) or `makeScaleUpAnimation` (Kvaesitso). The system's transitions play both for an ordinary launch: shell transitions from Android 13 still load the scale-up and clip-reveal types. This is to be seen on the emulator in 7.4, not assumed.
+  - **Chosen: scale up from the icon's bounds.** The window grows out of the icon, which is what the Outcome's "launch animations from the icon" asks; the clip reveal instead uncovers a full-size window through a growing hole.
+  - **Closing back into the icon** is the recents provider's to animate. A third-party home takes part only through `GestureNavContract`, which Pixel's launcher sends and One UI Home may not, so it is left out until it is felt; on the Fold it would be **[real Fold]** to find out.
+- *The gestures (Sumeet's answer).*
+  - **Swipe down** on home opens the shade through the hidden call, by reflection, as Lawnchair does. `EXPAND_STATUS_BAR`'s protection level is normal: Android grants it at install, so Sumeet grants nothing. It is still a new line in the manifest, and the plan names it here so the review sees it. Whether Android 15 lets an app targeting 36 reach the method is checked on the emulator (logcat's hidden-API line), and on One UI **[real Fold]**.
+  - **Double tap on empty home opens quick send.** Every other gesture on home already has a job: swipe up is the drawer, sideways the pages and the agent page, long press the menus, swipe down the shade, and a home press on home already opens quick send. Double tap is the free one now that it doesn't lock the screen.
+  - **Not configurable.** The Goal said "configurable gestures". With double tap to lock gone, each gesture has one job, and a setting that picks one of one is mechanism without a need (AGENTS.md). If Sumeet wants them switchable, it is a later optional field in `look`. Listed for him.
+- *Motion rules.* `DESIGN.md` says nothing about motion beyond a 150 ms colour change on focus and the No-Glow rule. 7.1 adds a short "Motion" part, so later screens follow the same rules:
+  - motion is one-shot and follows the finger;
+  - durations come from the impeccable skill's table (`reference/animate.md`): 150 ms for feedback and fades, about 220 ms for a thing taking its new place, and a no-bounce spring from the finger's velocity for whatever a finger let go of;
+  - nothing loops or pulses;
+  - Android's "Remove animations" is honoured. Compose reads the system's animator duration scale as its `MotionDurationScale`, so at 0 every Compose motion here ends at once, and the system's own launch and back animations follow the transition scale. Nothing is added for it; 7.8 checks it.
+- *Motion only where the finger caused it.* Tiles ease to new places only while something is held or settling. A reread of the file, an Undo, a look change, a page change and a cold start move things at once, so home never animates on its own (calm). A home press follows Launcher3, which closes its floating views with animation only when it is `alreadyOnHome` (`closeAllOpenViews(…, animate)`): a press that isn't (home without window focus, or brought to the front from another app) shuts the drawer and a folder at once and jumps the pager to home, and a press with home in front and focused animates, as now. Nothing new runs on a home press's path but that choice.
+- *Nothing here needs Sumeet beyond what he answered.* No permission he grants (`EXPAND_STATUS_BAR` is install-time), no `layout.json` field (see [Schema additions](#schema-additions)), no Outcome change (the Outcome's "haptics, a drawer that follows the finger, and launch animations from the icon" are all here). The gestures' wording and their not being configurable are listed under Open questions, not blocking.
+
+#### 7.1 The drawer follows the finger. Status: todo
+- **Goal.** The drawer moves with the finger from home and back down, settles from where it is let go, and ticks at the point where a release would commit.
+  - **Motion rules.** `ui/Look.kt` gains `Motion`:
+    - `QUICK`: 150 ms, for fades and feedback (`DESIGN.md`'s colour transition);
+    - `MOVE`: 220 ms with `FastOutSlowInEasing`, for a thing taking its new place;
+    - `settle(velocity)`: a spring with `dampingRatio = 1f` (no bounce) and `Spring.StiffnessMediumLow`, started from the finger's velocity.
+
+    Every motion in the launcher uses them. `DESIGN.md` gains "Motion" after Shapes, saying what the answers' motion rules say.
+  - **One drawer position.** `HomeUi.drawerShown`, an `Animatable` from 0 to 1, beside `drawer`, which stays the target. The drawer is drawn while `drawerShown > 0`, offset down by `(1 − drawerShown)` of its height. This replaces `AnimatedVisibility`'s slide and fade; home under it stays still.
+    - Code that sets `drawer` animates the position to it with `settle(0)`: the empty-home note, a pickup from the drawer, back, a home press with home in front.
+    - A home press that isn't `alreadyOnHome` (the answers) snaps it (`snapTo`) and the pager (`scrollToPage(1)`, not `animateScrollToPage`); `HomeUi.homePressed` takes whether to animate.
+  - **From home.** `HomePage`'s vertical drag, replacing the 56 dp flip, moves the drawer 1:1 with the finger's upward travel (`drawerShown = travel / height`), back down too within the same gesture. On release, a pure `drawerSettles(fromOpen, shown, velocityDpS): Boolean` in a new `home/Motion.kt` chooses:
+    - a fling faster than 800 dp/s decides by its direction;
+    - otherwise the drawer ends open if it has travelled more than 30% of its height from where the gesture started.
+
+    `settle(velocity)` takes it there, and `drawer` takes the result.
+  - **Back down from the drawer.** At the top of the list, the pull that closes the drawer after 120 dp today (`pullToClose`) moves it down 1:1 instead.
+    - Pulling back up within the same gesture raises the drawer before the list scrolls (`onPreScroll`).
+    - While the drawer is partly shown, the fling goes to it (`onPreFling`) and is settled by the same rule.
+  - **The threshold tick.** While a finger moves the drawer, each crossing of the 30% point gives `HapticFeedbackType.GestureThresholdActivate` (Kvaesitso's threshold haptic).
+  - **The keyboard** (5.5's `drawer.keyboard`) is asked for when the drawer settles open, not when it starts to show, so a swipe that goes back down leaves no keyboard up.
+  - **The status bar's icons** (from Increment 6's second review) are dark only while no part of the drawer is under the status bar (its top edge below the bar's bottom inset) and no folder is shown. This is decided in a `SideEffect` from a `derivedStateOf`, so the icons change in the frame the drawer crosses the bar and the position isn't read on every frame.
+- **Done when.**
+  - **JVM test** (`MotionTest`): `drawerSettles` for a slow release either side of 30%, from closed and from open; a short fast flick up opens; a fast flick down from 80% shown closes.
+  - **On `T3_Phone_API35`,** driven with `input motionevent`:
+    - a press on home moved up 40% of the screen and held: a screenshot shows the drawer's top edge risen by the finger's travel (within 8 dp);
+    - moved back down to 10% and released: it closes;
+    - again to 40% and released slowly: it opens;
+    - a short fast `input swipe` (150 px in 60 ms) opens it;
+    - in the drawer, a pull down at the list's top held halfway: a screenshot shows it half shown; released, it closes.
+  - **Recordings and logs:**
+    - a `screenrecord` of an open and a close by the finger, read frame by frame, shows the drawer with the finger and settling without a jump;
+    - `dumpsys vibrator_manager` lists a vibration for a threshold crossing. If the emulator image has no vibrator, that is recorded and the call is checked by reading.
+  - **The status bar,** on the light wallpaper (`#f2f2f2`, as 6.3): a recording of a close by the finger shows the icons turn dark only once the drawer's top has passed below the bar.
+  - **The keyboard,** with `drawer.keyboard: true`: a swipe up to 20% and back down leaves no keyboard (`dumpsys input_method`'s `mInputShown`), and a full open shows it.
+  - **A home press** from Settings, with the drawer left open: the first frame of home in a recording shows no drawer.
+  - **`assembleDebug testDebugUnitTest`** passes on boat.
+
+#### 7.2 Folders open from their tile. Status: todo
+- **Goal.** The folder panel grows out of the tile that was tapped and goes back into it.
+  - **Where from.** The tile's icon bounds (in root coordinates) at the tap are kept with the open folder in `HomeUi`.
+  - **Open:** over `MOVE` (Launcher3's 200 ms), the card scales from the tile's icon size to its own and moves from the tile's centre to its place (`graphicsLayer` scale and translation). Its alpha goes from 0 to 1 over the first `QUICK`, and the scrim fades in.
+  - **Close:** the same in reverse, to the bounds kept at the open, for a tap outside, back, a launch from it, and 4.4's 400 ms outside the card during a drag. A close because the folder went away (emptied by an edit, or a reread of a file changed from outside) fades where it is over `QUICK`. A home press that isn't `alreadyOnHome` removes it at once (7.1's rule).
+  - **While it closes,** the panel is a picture of itself: drawn without its drop zones, drag sources or tap handling. So a drag that left it can't drop into it, and a tap during the close reaches home.
+  - **The status bar's icons** are light from the open's first frame until the close ends (in 7.1's `SideEffect`).
+- **Done when.** On `T3_Phone_API35`:
+  - recordings, read frame by frame, show the panel starting at the tile and ending in place for a folder on home's first row and one on its second, and a close by a tap outside ending at the tile;
+  - an app dragged out of the open folder (held 0.8 s outside the card, as 4.4) closes it with that motion, and dropped on home's space lands there (the file read, as 4.4);
+  - a tap on an app in the folder opens the app while the panel closes;
+  - a folder emptied by Remove from folder on its last app fades out;
+  - `assembleDebug testDebugUnitTest` passes on boat.
+
+#### 7.3 Predictive back, and a home press that closes every floating view. Status: todo
+- **Goal.** Back shows where it is going before it is let go, for the drawer and a folder, and back and a home press close whatever floats over home.
+  - **The opt-in.** `android:enableOnBackInvokedCallback="true"` on `<application>` (the answers).
+  - **One handler.** `HomeScreen`'s `BackHandler` becomes one `PredictiveBackHandler`, enabled under today's condition. When a gesture starts, it picks what back will close, in today's order: a folder, then edit mode, then the drawer, then a page other than home. Then it follows the progress:
+    - **drawer:** the progress, through `PathInterpolator(0, 0, 0, 1)` (Kvaesitso), scales the drawer from 1 to 0.9 about its centre. A commit closes it with `settle` from where it is; a cancel returns it to 1 over `QUICK`.
+    - **folder:** the card scales from 1 to 0.9 about the tile's centre. A commit runs 7.2's close; a cancel returns it to 1.
+    - **edit mode and pages:** nothing is drawn until the commit, which leaves edit mode or turns the pager to home, as now.
+  - **Menus and dialogs** close on back through Compose's own popup and dialog callbacks, with no progress (the answers).
+  - **R5: every floating view in `HomeUi`.** The app menu, the folder menu, and the folder's Rename dialog and Cover list are held in `HomeUi` instead of in each tile: at most one, keyed by where it was opened (`WithAppMenu` and `FolderTile` read and set it through `HomeContext`). `homePressed` closes it as it closes the home menu, as Launcher3's `onNewIntent` closes every floating view, and `atRest` is false while one is open. So a home press with a menu open closes the menu and doesn't open quick send. A pickup still closes the menu (4.3).
+- **Done when.** On `T3_Phone_API35`:
+  - **Gesture navigation on** (`cmd overlay enable com.android.internal.systemui.navbar.gestural`), with the drawer open, an edge swipe from x = 0 driven with `input motionevent`:
+    - held mid-way: a screenshot shows the drawer scaled down;
+    - moved back to the edge and lifted: the drawer is open at full size;
+    - again, and lifted mid-way: the drawer closes.
+
+    The same with a folder: smaller, then back into its tile.
+
+    If injected edge swipes don't drive the system's back gesture on the emulator, that is recorded, the commit is checked with `input keyevent KEYCODE_BACK`, and the progress drawing is **[real Fold]**.
+  - **Three-button navigation:** back closes the drawer, a folder and edit mode, and returns from the agent page and a later page, as before.
+  - **Menus and dialogs:** back with an app menu open in the drawer closes the menu and leaves the drawer open. The same for the folder menu and the Rename dialog.
+  - **Other screens:** from Home settings, back returns to home (a screenshot mid-gesture shows the system's animation).
+  - **R5:** with an app menu open on home, `am start -a android.intent.action.MAIN -c android.intent.category.HOME` (a home press) closes it. The foreground stays LoR's home (`agent-device appstate`), and no `QuickSendActivity` is started (`dumpsys activity activities`). The same with a folder's menu.
+  - `assembleDebug testDebugUnitTest` passes on boat.
+
+#### 7.4 Apps open from their icon. Status: todo
+- **Goal.** An app opened from home, the dock, a folder, the drawer or search grows out of its icon; a shortcut grows out of its app's icon.
+  - **Bounds.** `HomeActions.open` and `openShortcut` take the icon's bounds in the window (`android.graphics.Rect`, null when no icon is on screen).
+    - Each place that draws an app's icon and opens it reports the icon's bounds (`onGloballyPositioned { boundsInWindow() }` into a holder read at the tap): home and folder tiles, the dock, drawer tiles, and search's app and shortcut rows.
+    - A shortcut from an app's menu uses the bounds of the icon the menu was opened from.
+    - Go uses its result's icon when that row is laid out.
+  - **The launch.** `ActivityOptions.makeScaleUpAnimation(window.decorView, x, y, width, height).toBundle()` from those bounds, passed to `startMainActivity` and `startShortcut`, with the same rect in screen coordinates as their source bounds (as Launcher3 passes `sourceBounds`). With no bounds, nothing is passed, as now. Settings pages, contacts, the web and store rows and the calendar open as now. `HomeActivity`'s launch code names its sources (Kvaesitso's `SearchableItemVM.launch`, ideas only; Launcher3's `getActivityLaunchOptions`, Apache-2.0).
+- **Done when.** On `T3_Phone_API35`, `screenrecord`s read frame by frame:
+  - Gmail from home, Chrome from the dock, an app from a folder, from the drawer and from a search, and Clock's New timer from its menu: each window starts at its icon's place and size;
+  - a settings page from search opens as before;
+  - with `transition_animation_scale` 0, launches open at once.
+
+  If the emulator plays the system's default open instead (no frame shows the window at the icon), the issue stops and reports with the recording. Clip reveal is the next thing to try, a choice for the coordinator.
+
+  Launches are recorded as before (`queue.db` for one launch from home and one shortcut). How it looks on One UI is **[real Fold]**. `assembleDebug testDebugUnitTest` passes on boat.
+
+#### 7.5 Motion in a drag, and its haptics. Status: todo
+- **Goal.** While something is held, the items it moves ease to their new places; when it is let go, it settles where it went; pickup and drop each have a tick (carried from Increment 4).
+  - **Keyed tiles.** `HomeGrid` becomes one `Layout` that places keyed tiles in rows: a `Row` per row can't carry a tile's state from one row to the next. A pure `itemKeys(items)` in `home/Motion.kt` keys each item by what it is (an app's ref; a folder's name and its first app), with an occurrence number for a repeat, so two folders with one name don't collide (names may repeat, R4 of Increment 1). The dock's row and the folder panel's grid are keyed the same way.
+  - **Easing to new places.** `Modifier.animatePlacement(enabled)`, the `onPlaced` and `Animatable<IntOffset>` pattern. When a keyed tile's place in its parent changes, it is drawn at the old place and eases to the new over `MOVE`.
+    - Enabled only while something is held or settling (the answers: motion only where the finger caused it).
+    - The offset comes after the drop-zone and drag-source modifiers in the chain, so zones and sources report the slot and not where the tile is drawn mid-ease. `targetAt` hit-tests where things are going, and a target doesn't slide out from under the finger.
+  - **Settling.** After the drop, the held icon stays as `DragState.settling` (what it is, where it was let go, where it goes). It eases there over `MOVE`, then goes. The slot it goes to stays hidden until it arrives, and a new pickup ends a settle at once. Where it goes:
+    - **a move or an add:** into the item's slot in what home now draws, its bounds read from `drag.sources` a frame after the landing layout;
+    - **onto an app or folder** (a folder made or filled): to that tile's icon, fading over the last `QUICK`;
+    - **onto Remove:** it fades where it is over `QUICK`;
+    - **put back** (no target, a refusal, "Home changed"): to its slot in what home then draws, which is where it came from or where a step had moved it (4.3: a refused drop keeps the working copy), as Kvaesitso's drop eases back.
+  - **Haptics.**
+    - Pickup, at the 16 dp move: `GestureThresholdActivate`. The long press before it already ticks `LongPress`.
+    - A drop that lands or is put back: `GestureEnd`.
+    - A refusal, in `dropHeld` or from the write: `Reject`.
+- **Done when.**
+  - **JVM test:** `itemKeys` gives unique keys for two folders with one name, and the same keys for the same items in another order.
+  - **On `T3_Phone_API35`,** recordings read frame by frame:
+    - Calendar held left of the fourth tile for 300 ms: the tiles it displaces ease over several frames;
+    - dropped: the icon moves from the finger into its slot;
+    - dropped on Remove: it fades;
+    - dropped onto an app: it goes into that tile as the folder is made;
+    - a sixth app dropped straight on a full dock (no step taken) eases back to where it came from.
+  - **Haptics:** `dumpsys vibrator_manager` lists the pickup, drop and refusal vibrations (or, with no vibrator on the image, recorded and checked by reading).
+  - **No motion on its own:** Undo after a move puts the tiles back without easing.
+  - **4.3's checks still pass:** a reorder and a drop on Remove, then Undo, each with the file's sum.
+  - `assembleDebug testDebugUnitTest` passes on boat.
+
+#### 7.6 Swipe down for the notifications, double tap for quick send. Status: todo
+- **Goal.** Sumeet's two gestures, on home's pages only, while nothing is open over home and nothing is held.
+  - **Swipe down** past 56 dp (the threshold the drawer's flip used) opens the notification shade once per gesture. `HomeActions.notifications()` calls `StatusBarManager.expandNotificationsPanel()` by reflection on `getSystemService("statusbar")`, as Lawnchair's `OpenNotificationsHandler` (Apache-2.0, named in the file). If the call fails (the method gone or refused), the bar says "Can't: the notification shade won't open from here.", with the coral dot as a failure. The manifest gains `EXPAND_STATUS_BAR`, with a comment that it is a normal, install-time permission.
+  - **Double tap** on empty home opens quick send (`QuickSend.open(…, From.HOME)`), as a home press on home does. It is the long-press layer under home's items, so a tap on an app or folder is never delayed or taken. Not in edit mode.
+  - **The spec's** launcher section says what both gestures do.
+- **Done when.** On `T3_Phone_API35`:
+  - **Swipe down:** an `input swipe` down on home opens the shade (screenshot), and logcat holds no hidden-API denial for `expandNotificationsPanel`;
+  - it doesn't on the agent page, or with a folder open;
+  - **Double tap:** a double tap on an empty part of home opens quick send (`QuickSendActivity` on top in `dumpsys activity activities`);
+  - one tap on an app still opens the app at once; in edit mode a double tap opens nothing;
+  - **The drawer:** a swipe up still opens it (7.1).
+
+  The shade on One UI is **[real Fold]**. `assembleDebug testDebugUnitTest` passes on boat.
+
+#### 7.7 The wallpaper's ink from the first frame. Status: todo
+- **Goal.** Home over a light wallpaper draws dark ink in its first frame, on a cold start and when the activity is recreated (from Increment 6's second review).
+  - **Held for the process.** The ink moves from each composition to the process: `WallpaperInk` in `home/Wallpaper.kt`, held by `HomeStore`. It reads `getWallpaperColors(FLAG_SYSTEM)` once when made, on the main thread, as Launcher3's `WallpaperColorHints` does in its constructor, and follows `OnColorsChangedListener` for the life of the process. `rememberWallpaperInk` reads its `StateFlow`, so the first composition has the right ink.
+  - **Why the main thread.** A read on IO can't land before a cold start's first frame. The system keeps the colours it worked out when the wallpaper was set, so the call is a binder read, paid once per process and never on a home press. The `LorLook` line logs how long the read took.
+- **Done when.** On `T3_Phone_API35` over the light wallpaper (`#f2f2f2`, as 6.3):
+  - `am force-stop com.spadaval.lor`, then a home press: a `screenrecord` read frame by frame has no frame of light labels or a light date;
+  - the logged read time is recorded. If it is over 16 ms, that is a finding for the review, weighed against the frame of wrong ink;
+  - a recreation (`cmd uimode night yes`, then `no`) shows no light frame;
+  - setting the dark wallpaper still turns the ink light without a restart (6.3's check);
+  - `assembleDebug testDebugUnitTest` passes on boat.
+
+#### 7.8 The feel, measured. Status: todo
+- **Goal.** The increment shown as a whole, and shown not to cost home its speed (strategy: "A feature that costs home-press or drawer-open latency is cut or deferred").
+  - **Home-press latency.** Two builds in one emulator session on `T3_Phone_API35`: the last commit before Increment 7's code, and the build after 7.7. For each, ten `am start -W -a android.intent.action.MAIN -c android.intent.category.HOME` with Settings in front. After 7.7, the median `TotalTime` is within 10% of before.
+  - **Drawer frames.** On both builds, `dumpsys gfxinfo com.spadaval.lor reset`, then ten opens and closes by `input swipe`, then the janky-frame share and the 90th-percentile frame time.
+    - Both are recorded. The before build flips without motion, so the numbers show what following the finger costs.
+    - A 90th percentile over 16 ms on the after build is a finding for the review.
+  - **No loops.** `grep` finds no `rememberInfiniteTransition`, `infiniteRepeatable` or `RepeatMode` in `android/app/src/main/java`.
+  - **Remove animations.** With `animator_duration_scale`, `transition_animation_scale` and `window_animation_scale` all 0 (what Android's "Remove animations" sets), each of these ends at once and none stops part-way:
+    - the drawer by the finger and by a tap on empty home's note;
+    - a folder open and close;
+    - a drag's settle;
+    - a launch.
+
+    The scales are set back to 1 after.
+  - **The Fold.** On `T3_Fold_API35` unfolded (one emulator at a time), recordings of the drawer by the finger, a folder opening from a tile in the right-hand column, and a launch from an icon.
+  - Recordings kept for the review in `~/.cache/lor-launcher-builds/inc7`, deleted after it.
+  - **For the real Fold,** listed for when Sumeet says: the haptics as felt, the launch animation and the shade gesture on One UI, and predictive back's progress.
+- **Done when.** The numbers and what each recording showed are recorded under this issue; the increment's review, by a fresh agent, has the recordings.
 
 ### Increment 8: The Fold, and holding state. Status: backlog
 
@@ -1359,6 +1560,7 @@ Optional fields this mission adds to `layout.json` schema version 1, each writte
   - `iconShape` (6.5): `"system"` (the device's adaptive-icon mask), `"square"` or `"circle"`, for adaptive icons; pack icons keep their own. Default `"system"`.
   - `header` (6.7): `"date"`, `"clock"` or `"none"`. Default `"date"`.
   - Not in `look`: which ink is drawn over the wallpaper (it follows the wallpaper's colour hints) and notification dots (Android's notification access is the switch).
+- (Increment 7) No field. The drawer's position, the open menu and the wallpaper's ink are in memory only; the gestures aren't settings.
 
 ## Open questions for Sumeet
 
@@ -1374,6 +1576,11 @@ From Increment 5 (2026-11-06):
 - When a query equals a settings page's title or alias ("wifi") and an app matches it as well (WiFi Analyzer), both are tier 0 and the app's block comes first. Should the settings page win then?
 - (From Increment 5's review.) A typo of an app now shows beside a loose match of another kind, but blocks stay ordered by tier, so the loose match comes first and is Go's target: with a contact Christina Ramey, "chrame" shows her (letters in order), then Chrome (one edit), and Go opens her contact. Should an app one edit away outrank a letters-in-order match of another kind? Related, since that fix: an apps block holding only a typo now shows beside other kinds, and when it holds one app, that app brings up to five of its shortcuts ("Sigal" shows Signal and five Signal chats); Go is unaffected.
 - Calling a contact opens the dialer with the number (`ACTION_DIAL`, no permission). A call in one tap needs `CALL_PHONE`, a second runtime permission; not planned unless he wants it.
+
+From Increment 7's plan (2026-11-06), none blocking:
+- Quick send's gesture is a double tap on empty home (swipe up, sideways, long press and swipe down are taken, and a home press on home already opens it). Is that the one you want?
+- The gestures aren't configurable: with double tap to lock gone, each has one job. Want a setting anyway (a later optional field in `look`)?
+- An app opens out of its icon, but closing it back into the icon is the recents provider's to draw. A third-party home takes part only through Launcher3's `GestureNavContract`, which Pixel's launcher sends and One UI Home may not. Left out unless you miss it on the Fold.
 
 From Increment 6's critique (2026-11-06), none blocking:
 - On a wallpaper that is dark overall with light patches (the emulator's default), home's date and top labels are light text over a pale band, legible only by their shadow. Android's per-region wallpaper colours aren't public API. Should the header and first row get a dark backing there, or stay as now?
