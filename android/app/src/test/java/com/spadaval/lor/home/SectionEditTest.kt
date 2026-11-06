@@ -122,4 +122,35 @@ class SectionEditTest {
         assertEquals("a section needs a name", refused { base.newSection("") })
         roundTrips(f)
     }
+
+    @Test
+    fun anAutomaticNameNeverRepeatsAFileName() {
+        // On the phone alone: a section called "Work (2)", then Work gives up its category.
+        val f = base.newSection("Work (2)").setSectionCategory("Work", null)
+        val names = f.names().map { it.lowercase() }
+        assertEquals(names.size, names.toSet().size)
+        assertTrue("Work (3)" in f.names())
+        roundTrips(f)
+        // And every later edit still reads back.
+        roundTrips(f.renameSection("Media", "Watch"))
+    }
+
+    @Test
+    fun movingWithAPackageRefDropsEveryRefOfThePackage() {
+        // A section lists an activity an update removed; the package now has one activity.
+        val stale = base.copy(drawer = Drawer(sections = listOf(DrawerSection("Daily", apps = listOf(AppRef("com.android.chrome", "com.android.chrome.Old"))))))
+        val f = stale.moveToSection(chrome, chromeRef, Category.TOOLS, "Work")
+        assertEquals(emptyList<AppRef>(), f.section("Daily").apps)
+        assertEquals(listOf(chromeRef), f.section("Work").apps)
+        roundTrips(f)
+    }
+
+    @Test
+    fun editsToAFileSectionWriteOnlyIt() {
+        val daily = base.copy(drawer = Drawer(sections = listOf(DrawerSection("Daily"))))
+        assertEquals(1, daily.renameSection("Daily", "Every day").drawer.sections.size)
+        assertEquals(1, daily.setSectionHidden("Daily", true).drawer.sections.size)
+        assertEquals(1, daily.moveToSection(chrome, chromeRef, Category.TOOLS, "Daily").drawer.sections.size)
+        assertEquals(1, daily.setSectionCategory("Daily", Category.TOOLS).drawer.sections.size)
+    }
 }

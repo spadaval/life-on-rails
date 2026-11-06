@@ -39,7 +39,11 @@ class HomeApp(val label: String, val info: LauncherActivityInfo) {
         val a = info.applicationInfo
         categoryOf(packageName, a.category, a.flags and ApplicationInfo.FLAG_SYSTEM != 0)
     }
-    val firstInstalled: Long get() = info.firstInstallTime
+    /**
+     * When the package was first installed, read once (each read asks the package manager). It
+     * is the main profile's: `LauncherActivityInfo.getFirstInstallTime` ignores the profile.
+     */
+    val firstInstalled: Long = info.firstInstallTime
 }
 
 /** What home shows from the layout file: the parsed file, or why it can't be used. */

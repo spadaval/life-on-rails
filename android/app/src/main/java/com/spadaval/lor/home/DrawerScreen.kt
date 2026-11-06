@@ -90,7 +90,7 @@ private fun build(view: DrawerView, apps: List<HomeApp>, file: LayoutFile?, stat
     val byKey = apps.associateBy { it.key }
     val launched = stats.entries
     // New, and not opened from the launcher since it was installed.
-    fun dot(app: HomeApp) = now - app.firstInstalled < NEW_FOR_MS && (launched[app.key]?.last ?: 0) < app.firstInstalled
+    fun dot(app: HomeApp) = app.mainProfile && now - app.firstInstalled < NEW_FOR_MS && (launched[app.key]?.last ?: 0) < app.firstInstalled
     val out = mutableListOf<Entry>()
     fun header(title: String, reason: String? = null) = out.add(Entry.Header(title, reason, "h${out.size}:$title"))
     fun tiles(prefix: String, list: List<HomeApp>) = list.forEach { out.add(Entry.Tile(it, dot(it), "$prefix:${it.key}")) }
@@ -101,7 +101,8 @@ private fun build(view: DrawerView, apps: List<HomeApp>, file: LayoutFile?, stat
             if (recent.isNotEmpty()) { header("Recent"); tiles("recent", recent) }
             val frequent = stats.frequent().mapNotNull(byKey::get).take(columns)
             if (frequent.isNotEmpty()) { header("Frequent"); tiles("frequent", frequent) }
-            val new = apps.filter { now - it.firstInstalled < NEW_FOR_MS }.sortedByDescending { it.firstInstalled }
+            // Main-profile apps only: a work-profile app's install time can't be read (see HomeApp.firstInstalled).
+            val new = apps.filter { it.mainProfile && now - it.firstInstalled < NEW_FOR_MS }.sortedByDescending { it.firstInstalled }
             if (new.isNotEmpty()) { header("New"); tiles("new", new) }
             val drawer = file?.drawer ?: Drawer()
             drawer.sort(apps.filter { it.mainProfile }, { it.id }, { it.category })

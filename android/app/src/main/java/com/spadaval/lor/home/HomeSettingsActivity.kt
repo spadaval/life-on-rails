@@ -141,8 +141,10 @@ private fun HomeSettings(apps: List<HomeApp>, layout: LayoutState, edit: (String
         if (file != null) {
             item { Section("Drawer sections") }
             val all = file.drawer.allSections()
-            items(all, key = { "section:" + it.name }) { s ->
-                SectionRow(file, s, first = s === all.first(), last = s === all.last(), edit)
+            // Keyed by place: names are unique, but a crash here would lock the edits away.
+            items(all.size, key = { "section:$it" }) { i ->
+                val s = all[i]
+                SectionRow(file, s, first = i == 0, last = i == all.lastIndex, edit)
             }
             item {
                 var naming by remember { mutableStateOf(false) }
