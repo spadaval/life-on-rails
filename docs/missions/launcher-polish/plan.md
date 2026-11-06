@@ -698,7 +698,7 @@ Agreed with Sumeet, 2026-11-05:
 
 - A third fresh agent reviewed 0c49e8b: pass. Its doc point (the pickup times were measured at send) is corrected above; its point about the folder's tile keeping a stale `from` after a pin, and the test that doesn't drive `Held.step`, are carried to Increment 8 (a). Increment 4 is done.
 
-### Increment 5: Search that finds more. Status: active
+### Increment 5: Search that finds more. Status: done
 
 **Goal.** Fuzzy matching for typos and initials ("yt" finds YouTube); apps' shortcuts and conversation shortcuts (from T3 Launcher Increment 8); contacts, with call and message actions; settings pages ("wifi", "bluetooth"); a calculator and unit answers; recent searches and apps when the field is empty; and an option to open the drawer with the keyboard up.
 
@@ -953,9 +953,10 @@ Agreed with Sumeet, 2026-11-05:
 - R5, fixed: `SettingsPagesTest.everyTitleAndAliasGoesToItsRow` checks that every title and alias of every row, Night Light and LoR's two included, makes that row Go's target.
 - R6, fixed: `readContacts` marked the index fresh before reading, so a failed read was never tried again. The flag is still cleared first (so a change during the read marks it stale again), and a failure sets it back, so the next resume retries.
 - R7, fixed: "Contacts in search" sat inside Home settings' `file != null`; the Search heading and the row now show whatever the file's state, and only the keyboard switch needs the file.
-- R8, no action. R9, no action: recorded under 5.4.
+- R8, no action: settings pages are resolved again on every resume (about 30 `resolveActivity` calls, off the main thread). R9, no action: recorded under 5.4.
 - Its question, whether an app typo should rank against weak in-order matches of other kinds across blocks: left as planned, and added to Open questions.
-- 178 tests pass on boat. The emulator was left as found: test contacts and the vCard deleted, `READ_CONTACTS` revoked, `layout.json` and `launch-stats.json` back to their sums from before the checks.
+- A second fresh agent reviewed 5ba5294: contract and fitness pass. Taken: a test for the typo pass's kind filter (`theAppTypoPassLeavesOtherKindsAlone`, seen failing with the filter removed), the "Sigal" note added to the open question on typo ranking, and R8 named here. 179 tests pass on boat.
+- 178 tests passed on boat after the first fixes. The emulator was left as found: test contacts and the vCard deleted, `READ_CONTACTS` revoked, `layout.json` and `launch-stats.json` back to their sums from before the checks.
 
 ### Increment 6: The look. Status: backlog
 
@@ -1047,5 +1048,5 @@ From Increment 3 (2026-11-06), none blocking:
 
 From Increment 5 (2026-11-06):
 - When a query equals a settings page's title or alias ("wifi") and an app matches it as well (WiFi Analyzer), both are tier 0 and the app's block comes first. Should the settings page win then?
-- (From Increment 5's review.) A typo of an app now shows beside a loose match of another kind, but blocks stay ordered by tier, so the loose match comes first and is Go's target: with a contact Christina Ramey, "chrame" shows her (letters in order), then Chrome (one edit), and Go opens her contact. Should an app one edit away outrank a letters-in-order match of another kind?
+- (From Increment 5's review.) A typo of an app now shows beside a loose match of another kind, but blocks stay ordered by tier, so the loose match comes first and is Go's target: with a contact Christina Ramey, "chrame" shows her (letters in order), then Chrome (one edit), and Go opens her contact. Should an app one edit away outrank a letters-in-order match of another kind? Related, since that fix: an apps block holding only a typo now shows beside other kinds, and when it holds one app, that app brings up to five of its shortcuts ("Sigal" shows Signal and five Signal chats); Go is unaffected.
 - Calling a contact opens the dialer with the number (`ACTION_DIAL`, no permission). A call in one tap needs `CALL_PHONE`, a second runtime permission; not planned unless he wants it.

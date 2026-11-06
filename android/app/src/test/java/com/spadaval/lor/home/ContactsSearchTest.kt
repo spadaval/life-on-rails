@@ -69,4 +69,13 @@ class ContactsSearchTest {
         val alchemie = Found(Kind.APPS, "c", listOf(Match.prepare("Alchemie")), "Alchemie")
         assertEquals(listOf("Alchemie"), found("alcie", listOf(contacts[0], alchemie)))
     }
+
+    @Test
+    fun theAppTypoPassLeavesOtherKindsAlone() {
+        // "alcie" matches the shortcut in order (a-l-c…i-e), so no other kind gets the typo pass:
+        // not Alice Smith (one edit away), and not the shortcut again (also one edit from "alche").
+        val shortcut = Found(Kind.SHORTCUTS, "s", listOf(Match.prepare("Alchemie")), "Alchemie")
+        val r = Search.run("alcie", listOf(shortcut, contacts[0]))
+        assertEquals(listOf("Alchemie"), r.blocks.flatMap { b -> b.entries.map { it.value } })
+    }
 }
