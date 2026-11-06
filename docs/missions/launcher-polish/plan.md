@@ -309,7 +309,7 @@ Agreed with Sumeet, 2026-11-05:
 - A second fresh agent reviewed the fixes: pass. Its two points are taken: the spec and code comment now say what Needs you's count does (a number once both sources are read, or whenever something is listed), and the LoR app keeps one list of its tabs.
 - Its open question (an event past midnight reads "until 0:30") and the critique's three (should a broken file go to the agent; is the set-up card worth keeping; should Needs you show a count) are for Sumeet, listed under "Open questions for Sumeet".
 
-### Increment 4: Edit mode. Status: active
+### Increment 4: Edit mode. Status: done
 
 **Goal.** Edit home from the home menu or by dragging an app out of its long-press menu: drag to reorder, drop on an app to make a folder, drag in and out of the dock and folders, drag onto Remove. Folders can be renamed, reordered, and given a cover app. A folder whose last app leaves goes away. Home can have several pages (a schema addition: `home` becomes one page, `pages` holds more). Every edit shows "Undo" for a few seconds.
 
@@ -420,7 +420,7 @@ Agreed with Sumeet, 2026-11-05:
     - over Remove: the bar lit (screenshot);
     - released: the folder was removed, with one `wrote layout.json`.
   - R2, not reproduced, so nothing changed beyond a log line. The concern: the app menu's popup takes window focus (`dumpsys window` shows `Pop-Up Window` focused after a long press), and a late focus loss might drop a drag picked up just after it. `HomeActivity` now logs `a drag was put back: home lost window focus` whenever that clear drops a drag.
-    - Eleven fast pickups were run in one device-side shell command: down on Maps, then the 16 dp move sent 380 to 440 ms later, against a 400 ms long-press timeout. All eleven landed and none logged a put-back; the focus loss came before the pickup each time.
+    - Eleven fast pickups were run in one device-side shell command: down on Maps, then the 16 dp move sent 380 to 440 ms later (times at send; when they were delivered wasn't measured, and a move delivered before the 400 ms long-press timeout counts as a scroll, so the window before 400 ms was covered less than these numbers say). All eleven landed and none logged a put-back; the focus loss came before the pickup each time.
     - The shade case was checked again and logged the put-back.
   - R3, deferred: the pause and focus clear is shown only for the shade. The code comment and R4 above now say so, and Increment 8 holds the rest.
   - R4, fixed: the drop's `AtEnd(InFolder)` looks its page up with `getOrNull` too. `HomeEditTest` checks a stale one refuses `HOME_CHANGED`.
@@ -696,6 +696,8 @@ Agreed with Sumeet, 2026-11-05:
   - The spec's launcher section says what can be picked up and where it can go.
   - Reviewed with the increment.
 
+- A third fresh agent reviewed 0c49e8b: pass. Its doc point (the pickup times were measured at send) is corrected above; its point about the folder's tile keeping a stale `from` after a pin, and the test that doesn't drive `Held.step`, are carried to Increment 8 (a). Increment 4 is done.
+
 ### Increment 5: Search that finds more. Status: backlog
 
 **Goal.** Fuzzy matching for typos and initials ("yt" finds YouTube); apps' shortcuts and conversation shortcuts (from T3 Launcher Increment 8); contacts, with call and message actions; settings pages ("wifi", "bluetooth"); a calculator and unit answers; recent searches and apps when the field is empty; and an option to open the drawer with the keyboard up.
@@ -740,7 +742,8 @@ Carried from T3 Launcher's reviews:
 - normalised search labels cached (3.2);
 - R3, a duplicate thread when a slow launch is retried; R4, quick-send text lost after a failed send once the sheet is gone; R5, the thumbnail decoded at full size on the main thread (4).
 - From Increment 4's review:
-  - (a) Drag sources and zones are snapshots taken in `onGloballyPositioned`, which (ui 1.12.1) doesn't run again when only its callback changes. A tile whose item changed without a new layout keeps an old `From.At`, which can show the wrong icon under the finger or cause a "Home changed" refusal, but never a wrong write. Store only bounds, and look up the placed item at pickup.
+  - (a) Drag sources and zones are snapshots taken in `onGloballyPositioned`, which (ui 1.12.1) doesn't run again when only its callback changes. A tile whose item changed without a new layout keeps an old `From.At`, which can show the wrong icon under the finger or cause a "Home changed" refusal, but never a wrong write. Store only bounds, and look up the placed item at pickup. Since a folder moved by hand is pinned (Increment 4's R6), a folder dragged away and back keeps its bounds while its item changes, so this is easier to hit: on the Fold, drag an unpinned folder away and back, release, then drag it again.
+  - From the third review of Increment 4: the test of two steps on one unpinned folder builds the second `from` itself rather than calling `Held.step`; drive `Held` in a JVM test (it needs a `HomeContext` with a stub `HomeActions`).
   - (b) `Held.takes` runs a full `drop` on every move over an `Onto` or `Remove` target. Compute it once per target change if the Fold shows it.
   - (c) A drag cut off by the screen going off, a call, or gesture navigation taking the touch wasn't tried. Compose turns a cancelled press into a release, so when the cancel reaches Compose before `HomeActivity`'s pause or focus loss, the item may drop where the finger was. Only the shade was shown to put it back. Tell a cancel from a release (for example from the raw `MotionEvent`), or check each case on the device.
 
