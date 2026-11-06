@@ -1447,7 +1447,7 @@ Agreed with Sumeet, 2026-11-05:
   - **Choices.** Back's scale stays on the drawer or card while its close runs and is reset once it has gone. The edge swipes were driven with `input motionevent`, which the emulator's gesture navigation took as back gestures, so the progress drawing was seen here; how it feels is **[real Fold]**.
   - Reviewed with the increment.
 
-#### 7.4 Apps open from their icon. Status: todo
+#### 7.4 Apps open from their icon. Status: done
 - **Goal.** An app opened from home, the dock, a folder, the drawer or search grows out of its icon; a shortcut grows out of its app's icon.
   - **Bounds.** `HomeActions.open` and `openShortcut` take the icon's bounds in the window (`android.graphics.Rect`, null when no icon is on screen).
     - Each place that draws an app's icon and opens it reports the icon's bounds (`onGloballyPositioned { boundsInWindow() }` into a holder read at the tap): home and folder tiles, the dock, drawer tiles, and search's app and shortcut rows.
@@ -1462,6 +1462,13 @@ Agreed with Sumeet, 2026-11-05:
   If the emulator plays the system's default open instead (no frame shows the window at the icon), the issue stops and reports with the recording. Clip reveal is the next thing to try, a choice for the coordinator.
 
   Launches are recorded as before (`queue.db` for one launch from home and one shortcut). How it looks on One UI is **[real Fold]**. `assembleDebug testDebugUnitTest` passes on boat.
+- **2026-11-06.** Landed: `IconSpot` and `Modifier.iconSpot` in `AppMenu.kt` (an icon's layout coordinates, read as window bounds at the tap, so a moving drawer or folder reports where the icon is then); `HomeActions.open` and `openShortcut` take one; home and folder tiles, the dock, drawer tiles and search's app and shortcut rows report theirs, an app's menu passes its tile's to its shortcuts, and Go uses its result's (kept by entry key while the results stand); `HomeActivity.launchOptions` (`makeScaleUpAnimation` from the bounds) and the same rect on screen as source bounds. 205 tests pass on boat. Checked on `T3_Phone_API35` from `screenrecord`s (about 10 frames a second), read frame by frame:
+  - Gmail from home, Chrome from the dock, Files from the Google folder, Paint from the drawer, and Notes by Go from a search for "notes": in each, the first frame of the window is a small window over the icon's place, growing from there to full screen.
+  - Shortcuts: Gmail's Compose from its menu on home grows out of Gmail's icon, and the launch is recorded with `"shortcut":"manifest_compose_shortcut"` in `queue.db`. Clock's New timer does not: its intent goes to `HandleSetApiCalls`, a trampoline that starts `DeskClock` itself, so the options and bounds (logged as `bnds=[196,1267][333,1404]`, the Clock icon's) apply to the trampoline and the system plays its default open for `DeskClock`. Chrome's New tab is a trampoline too (`ChromeLauncherActivity`). Nothing a launcher can pass reaches the second activity, so that is left as it is.
+  - A settings page from search (Bluetooth) opens with the system's default open, as before.
+  - With `transition_animation_scale` 0, Gmail from home was full screen in the first frame that showed it; the scale was set back to 1.
+  - Not checked: how it looks on One UI (**[real Fold]**). Seen on the way, not changed: the drawer's Recent row takes the launched app at once, so the drawer's rows shift under the growing window.
+  - Reviewed with the increment.
 
 #### 7.5 Motion in a drag, and its haptics. Status: todo
 - **Goal.** While something is held, the items it moves ease to their new places; when it is let go, it settles where it went; pickup and drop each have a tick (carried from Increment 4).

@@ -57,30 +57,30 @@ import kotlin.math.sin
 class SearchShortcut(val hit: ShortcutHit, val owner: HomeApp)
 
 /** Opens what search found: an app, a shortcut, … */
-internal fun openFound(value: Any, at: At, home: HomeContext) {
+internal fun openFound(value: Any, at: At, home: HomeContext, icon: IconSpot?) {
     when (value) {
-        is HomeApp -> home.actions.open(value, at)
-        is SearchShortcut -> home.actions.openShortcut(value.owner, value.hit.info, at)
+        is HomeApp -> home.actions.open(value, at, icon)
+        is SearchShortcut -> home.actions.openShortcut(value.owner, value.hit.info, at, icon)
         is SettingsPage -> home.actions.openSetting(value, at.query.orEmpty())
         is SearchContact -> home.actions.openContact(value, ContactWay.OPEN, at.query.orEmpty())
     }
 }
 
 @Composable
-internal fun ResultRow(value: Any, go: Boolean, at: At, home: HomeContext) {
+internal fun ResultRow(value: Any, go: Boolean, at: At, home: HomeContext, icon: IconSpot) {
     val shape = RectangleShape
     Row(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp)
             .then(if (go) Modifier.background(Or.copy(alpha = 0.08f), shape).border(1.dp, Or.copy(alpha = 0.55f), shape) else Modifier)
-            .clickable(role = Role.Button) { openFound(value, at, home) }
+            .clickable(role = Role.Button) { openFound(value, at, home, icon) }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when (value) {
             is SearchShortcut -> {
-                ShortcutIcon(value, home)
+                ShortcutIcon(value, home, Modifier.iconSpot(icon))
                 RowText(value.hit.label, if (value.hit.conversation) "Chat · ${value.owner.label}" else value.owner.label)
             }
             is SettingsPage -> {
@@ -128,10 +128,10 @@ private fun RowText(title: String, sub: String, modifier: Modifier = Modifier) {
 
 /** The shortcut's icon, loaded when drawn; the app's icon until then (or when it has none). */
 @Composable
-private fun ShortcutIcon(s: SearchShortcut, home: HomeContext) {
+private fun ShortcutIcon(s: SearchShortcut, home: HomeContext, modifier: Modifier) {
     var icon by remember(s.hit.info.id, s.owner.key) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(s.hit.info.id, s.owner.key) { icon = home.actions.shortcutIcon(s.hit.info) }
-    Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+    Box(modifier.size(36.dp), contentAlignment = Alignment.Center) {
         val b = icon
         if (b != null) Image(b, contentDescription = null, modifier = Modifier.size(36.dp)) else AppIcon(s.owner, 36.dp)
     }

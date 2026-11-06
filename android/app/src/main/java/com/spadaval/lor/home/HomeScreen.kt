@@ -707,12 +707,13 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
                     .alpha(if (drag.held?.spot == spot.spot) 0f else 1f),
                 contentAlignment = Alignment.Center,
             ) {
-                WithAppMenu(app, at, home, spot) { menu ->
+                val icon = remember { IconSpot() }
+                WithAppMenu(app, at, home, spot, icon) { menu ->
                     Box {
                         AppIcon(
                             app, dockIcon,
-                            Modifier.semantics { contentDescription = app.label }
-                                .combinedClickable(onLongClickLabel = "Menu", onLongClick = menu) { if (!drag.editing) home.actions.open(app, at) },
+                            Modifier.iconSpot(icon).semantics { contentDescription = app.label }
+                                .combinedClickable(onLongClickLabel = "Menu", onLongClick = menu) { if (!drag.editing) home.actions.open(app, at, icon) },
                         )
                         if (app.dotKey in LocalDots.current) Dot()
                     }
@@ -734,15 +735,15 @@ private fun PageDots(current: Int, count: Int, mark: Color, modifier: Modifier) 
 
 /** An app tile whose tap opens it from [at] and whose long press opens its menu. */
 @Composable
-internal fun MenuTile(app: HomeApp, at: At, home: HomeContext, width: Dp = 76.dp, dot: Boolean = false, spot: From.At? = null, label: Boolean = true, beforeOpen: () -> Unit = {}) {
-    WithAppMenu(app, at, home, spot) { menu ->
+internal fun MenuTile(app: HomeApp, at: At, home: HomeContext, width: Dp = 76.dp, dot: Boolean = false, spot: From.At? = null, label: Boolean = true, icon: IconSpot = remember { IconSpot() }, beforeOpen: () -> Unit = {}) {
+    WithAppMenu(app, at, home, spot, icon) { menu ->
         // In edit mode a tap opens nothing (launcher polish 4.3).
-        AppTile(app, width, menu, dot, label) { if (!home.drag.editing) { beforeOpen(); home.actions.open(app, at) } }
+        AppTile(app, width, menu, dot, label, icon) { if (!home.drag.editing) { beforeOpen(); home.actions.open(app, at, icon) } }
     }
 }
 
 @Composable
-internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)? = null, dot: Boolean = false, label: Boolean = true, onClick: () -> Unit) {
+internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)? = null, dot: Boolean = false, label: Boolean = true, icon: IconSpot? = null, onClick: () -> Unit) {
     Column(
         // The cell's width, at most [width]: a tile never overflows a narrow column (launcher polish 6.4).
         Modifier.fillMaxWidth().widthIn(max = width)
@@ -753,7 +754,7 @@ internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)?
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box {
-            AppIcon(app, iconSize)
+            AppIcon(app, iconSize, if (icon != null) Modifier.iconSpot(icon) else Modifier)
             // A new app's dot (launcher polish 2.2), until it is first opened from the launcher.
             if (dot || app.dotKey in LocalDots.current) Dot()
         }

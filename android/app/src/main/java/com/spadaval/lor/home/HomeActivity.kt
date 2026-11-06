@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import android.app.ActivityOptions
 import android.content.Intent
 import android.content.pm.LauncherApps
 import android.content.pm.ShortcutInfo
@@ -110,9 +111,10 @@ class HomeActivity : ComponentActivity() {
     private val shortcutIcons = android.util.LruCache<String, ImageBitmap>(100)
 
     private val actions = object : HomeActions {
-        override fun open(app: HomeApp, at: At) {
+        override fun open(app: HomeApp, at: At, icon: IconSpot?) {
             try {
-                launcherApps.startMainActivity(app.info.componentName, app.user, null, null)
+                val from = icon?.bounds()
+                launcherApps.startMainActivity(app.info.componentName, app.user, from?.let(::onScreen), launchOptions(from))
                 record(app, at, shortcut = null)
             } catch (e: RuntimeException) {
                 // ActivityNotFoundException, SecurityException, or a profile that was turned off.
@@ -162,9 +164,10 @@ class HomeActivity : ComponentActivity() {
             }
         }
 
-        override fun openShortcut(app: HomeApp, shortcut: ShortcutInfo, at: At) {
+        override fun openShortcut(app: HomeApp, shortcut: ShortcutInfo, at: At, icon: IconSpot?) {
             try {
-                launcherApps.startShortcut(shortcut, null, null)
+                val from = icon?.bounds()
+                launcherApps.startShortcut(shortcut, from?.let(::onScreen), launchOptions(from))
                 record(app, at, shortcut.id)
             } catch (e: RuntimeException) {
                 // As open: the shortcut went away, its profile is locked, or home lost the permission.
@@ -282,6 +285,23 @@ class HomeActivity : ComponentActivity() {
         } catch (e: RuntimeException) {
             fail(failure)
         }
+    }
+
+    /**
+     * The window grows out of the icon at [icon] (window coordinates), or nothing when no icon is on
+     * screen (launcher polish 7.4). Launcher3's `getActivityLaunchOptions` (Lawnchair, Apache-2.0)
+     * passes a clip reveal from the icon's bounds when it can't run its own remote animation, which
+     * needs a system permission; Kvaesitso's `SearchableItemVM.launch` (GPL-3.0, ideas only) passes
+     * this scale-up, which is what "launch animations from the icon" asks.
+     */
+    private fun launchOptions(icon: android.graphics.Rect?): Bundle? =
+        icon?.let { ActivityOptions.makeScaleUpAnimation(window.decorView, it.left, it.top, it.width(), it.height()).toBundle() }
+
+    /** [r] in window coordinates, moved to the screen's, as an app's source bounds are given. */
+    private fun onScreen(r: android.graphics.Rect): android.graphics.Rect {
+        val at = IntArray(2)
+        window.decorView.getLocationOnScreen(at)
+        return android.graphics.Rect(r).apply { offset(at[0], at[1]) }
     }
 
     private fun record(app: HomeApp, at: At, shortcut: String?) {

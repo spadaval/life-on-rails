@@ -21,6 +21,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -53,11 +56,12 @@ class MenuShortcut(val info: ShortcutInfo, val icon: ImageBitmap?)
 
 /** What home does for its screens, implemented by [HomeActivity]. */
 interface HomeActions {
-    fun open(app: HomeApp, at: At)
+    /** Opens [app], growing out of its [icon] (in the window) when one is on screen (launcher polish 7.4). */
+    fun open(app: HomeApp, at: At, icon: IconSpot? = null)
 
     /** The app's shortcuts for its menu; empty unless LoR is the default home. */
     suspend fun shortcuts(app: HomeApp): List<MenuShortcut>
-    fun openShortcut(app: HomeApp, shortcut: ShortcutInfo, at: At)
+    fun openShortcut(app: HomeApp, shortcut: ShortcutInfo, at: At, icon: IconSpot? = null)
 
     /** A shortcut's icon for a search row, drawn off the main thread and cached; null when it has none. */
     suspend fun shortcutIcon(shortcut: ShortcutInfo): ImageBitmap?
@@ -104,6 +108,26 @@ interface HomeActions {
     fun restore()
 }
 
+/**
+ * Where an icon is drawn (launcher polish 7.4): its coordinates are kept as laid out and read at the
+ * tap, so a drawer or folder still moving reports where the icon is then.
+ */
+class IconSpot {
+    private var at: LayoutCoordinates? = null
+
+    /** The icon's bounds in the window, or null when it isn't on screen. */
+    fun bounds(): android.graphics.Rect? = at?.takeIf { it.isAttached }?.boundsInWindow()?.takeIf { it.width > 0f && it.height > 0f }?.let {
+        android.graphics.Rect(it.left.roundToInt(), it.top.roundToInt(), it.right.roundToInt(), it.bottom.roundToInt())
+    }
+
+    fun place(c: LayoutCoordinates) {
+        at = c
+    }
+}
+
+/** Reports where this icon is to [spot]. */
+fun Modifier.iconSpot(spot: IconSpot): Modifier = onGloballyPositioned(spot::place)
+
 /** What a screen of home needs to draw apps and their menus. */
 class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: List<HomeApp>, val ui: HomeUi) {
     val drag: DragState get() = ui.drag
@@ -132,7 +156,7 @@ class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: Lis
  * both actions for TalkBack and agent-device.
  */
 @Composable
-fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At? = null, content: @Composable (onLongClick: () -> Unit) -> Unit) {
+fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At? = null, icon: IconSpot, content: @Composable (onLongClick: () -> Unit) -> Unit) {
     var open by rememberFloatingMenu(home.ui)::open
     val haptics = LocalHapticFeedback.current
     // Picking the app up closes its menu (launcher polish 4.3).
@@ -143,7 +167,7 @@ fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At? = null, 
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             open = true
         }
-        if (open) AppMenu(app, at, home, spot) { open = false }
+        if (open) AppMenu(app, at, home, spot, icon) { open = false }
     }
 }
 
@@ -169,7 +193,7 @@ fun rememberFloatingMenu(ui: HomeUi): FloatingMenu {
 }
 
 @Composable
-private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, close: () -> Unit) {
+private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, icon: IconSpot, close: () -> Unit) {
     var shortcuts by remember(app) { mutableStateOf<List<MenuShortcut>>(emptyList()) }
     LaunchedEffect(app) { shortcuts = home.actions.shortcuts(app) }
     val actions = home.actions
@@ -196,7 +220,7 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, clo
     DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
         shortcuts.forEach { s ->
             Item(s.info.shortLabel?.toString() ?: s.info.longLabel?.toString() ?: "Shortcut", s.icon) {
-                close(); actions.openShortcut(app, s.info, at)
+                close(); actions.openShortcut(app, s.info, at, icon)
             }
         }
         if (shortcuts.isNotEmpty()) HorizontalDivider(color = Line)

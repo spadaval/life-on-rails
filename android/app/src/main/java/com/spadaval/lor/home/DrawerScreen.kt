@@ -238,10 +238,12 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
             focusManager.clearFocus()
         }
     }
+    // Where each result's icon is, by its entry's key, so Go grows its app out of it (launcher polish 7.4).
+    val found = remember(results) { HashMap<String, IconSpot>() }
     fun go() {
         val r = if (current) results else searchAll(ui.query, apps, sources, stats)
         val first = r.go
-        if (first != null) openFound(first.value, at, home) else elsewhere(sources.targets, ui.query).firstOrNull()?.let { home.actions.elsewhere(it, ui.query) }
+        if (first != null) openFound(first.value, at, home, found["q:${first.key}"]) else elsewhere(sources.targets, ui.query).firstOrNull()?.let { home.actions.elsewhere(it, ui.query) }
     }
     val saved = home.file?.drawer?.view ?: DrawerView.SECTIONS
     // Shown at once; the file catches up when the write lands.
@@ -324,9 +326,9 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
                         ) {
                             // Go's target, while the field has focus (launcher polish 5.1): DESIGN.md's selection.
                             if (e.go) Box(Modifier.matchParentSize().selection())
-                            MenuTile(e.app, at, home, dot = e.dot)
+                            MenuTile(e.app, at, home, dot = e.dot, icon = found.getOrPut(e.key) { IconSpot() })
                         }
-                        is Entry.Row -> ResultRow(e.value, e.go, at, home)
+                        is Entry.Row -> ResultRow(e.value, e.go, at, home, found.getOrPut(e.key) { IconSpot() })
                         is Entry.HiddenApps -> Text(
                             "Hidden apps (${e.count})",
                             style = Type.body.copy(color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center),
