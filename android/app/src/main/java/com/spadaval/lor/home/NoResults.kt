@@ -32,45 +32,66 @@ import androidx.compose.ui.unit.sp
  * agent through quick send. The web row is Kvaesitso's `WebsearchAction` (GPL-3.0, ideas only:
  * `Intent.ACTION_WEB_SEARCH` with `SearchManager.QUERY`); the store row is the market-search row
  * Launcher3 once had under its empty search (`VIEW_TYPE_SEARCH_MARKET`, Lawnchair, Apache-2.0).
- * Kvaesitso shows its actions on every search; here they show only when nothing matches.
+ * Kvaesitso shows its actions on every search; here they show only when nothing matches. Who
+ * takes them is resolved off the main thread, not per keystroke (5.1).
  */
 
-/** One way out of an empty search. [intent] is null for [Kind.AGENT], which opens quick send. */
-class Elsewhere(val kind: Kind, val text: String, val intent: Intent?) {
+/** One way out of an empty search; the intent is built when it is taken ([intentFor]). */
+class Elsewhere(val kind: Kind, val text: String) {
     enum class Kind { WEB, STORE, AGENT }
 }
 
+/**
+ * Who takes a search elsewhere, resolved by [HomeStore] when the app list loads, a package
+ * changes and home resumes (launcher polish 5.1, R5), never per keystroke: [web] is the package
+ * that takes a web search ("" when Android would ask), [store] the label of what takes
+ * `market://search` ("app stores" when Android would ask); null when nothing does.
+ */
+data class SearchTargets(val web: String?, val store: String?)
+
 /** The rows for [query]: each of web and store only when an app takes it, then the agent. */
-internal fun elsewhere(pm: PackageManager, query: String): List<Elsewhere> {
+internal fun elsewhere(targets: SearchTargets, query: String): List<Elsewhere> {
     val q = query.trim()
-    val web = Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, q)
-    val store = Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=" + Uri.encode(q)))
     return listOfNotNull(
-        Elsewhere(Elsewhere.Kind.WEB, "Search the web for \"$q\"", web).takeIf { takes(pm, web) },
-        storeName(pm, store)?.let { Elsewhere(Elsewhere.Kind.STORE, "Search $it for \"$q\"", store) },
-        Elsewhere(Elsewhere.Kind.AGENT, "Ask the agent about \"$q\"", null),
+        targets.web?.let { Elsewhere(Elsewhere.Kind.WEB, "Search the web for \"$q\"") },
+        targets.store?.let { Elsewhere(Elsewhere.Kind.STORE, "Search $it for \"$q\"") },
+        Elsewhere(Elsewhere.Kind.AGENT, "Ask the agent about \"$q\""),
     )
 }
 
-private fun takes(pm: PackageManager, intent: Intent) = pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY).isNotEmpty()
-
-/** The app that takes [intent], "app stores" when Android would ask which, or null when none does. */
-private fun storeName(pm: PackageManager, intent: Intent): String? {
-    if (!takes(pm, intent)) return null
-    val pkg = takenBy(pm, intent) ?: return "app stores"
-    return runCatching { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() }.getOrDefault("app stores")
+/** The intent for [way] and [query]; null for the agent, which opens quick send. */
+internal fun intentFor(way: Elsewhere, query: String): Intent? = when (way.kind) {
+    Elsewhere.Kind.WEB -> webSearch(query.trim())
+    Elsewhere.Kind.STORE -> storeSearch(query.trim())
+    Elsewhere.Kind.AGENT -> null
 }
+
+private fun webSearch(q: String) = Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, q)
+
+private fun storeSearch(q: String) = Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=" + Uri.encode(q)))
+
+/** Resolves [SearchTargets]; asks the package manager, so it runs off the main thread. */
+internal fun searchTargets(pm: PackageManager): SearchTargets {
+    val web = webSearch("").takeIf { takes(pm, it) }?.let { takenBy(pm, it) ?: "" }
+    val store = storeSearch("").takeIf { takes(pm, it) }?.let { intent ->
+        val pkg = takenBy(pm, intent) ?: return@let "app stores"
+        runCatching { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() }.getOrDefault("app stores")
+    }
+    return SearchTargets(web, store)
+}
+
+private fun takes(pm: PackageManager, intent: Intent) = pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY).isNotEmpty()
 
 /** The package that opens [intent] without asking; null when Android asks (its chooser is `android`). */
 internal fun takenBy(pm: PackageManager, intent: Intent): String? =
     pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName?.takeIf { it != "android" }
 
-/** "No app called …" and the rows under it. */
+/** "Nothing matches …" (left out under an answer) and the rows under it. */
 @Composable
-internal fun NoResults(query: String, ways: List<Elsewhere>, go: (Elsewhere) -> Unit) {
+internal fun NoResults(query: String, ways: List<Elsewhere>, line: Boolean, go: (Elsewhere) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
-        Text(
-            "No app called \"${query.trim()}\".",
+        if (line) Text(
+            "Nothing matches \"${query.trim()}\".",
             style = TextStyle(color = Muted, fontSize = 14.sp),
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         )

@@ -187,7 +187,7 @@ private fun place(layout: Layout, apps: List<HomeApp>): PlacedHome {
 }
 
 @Composable
-fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, reads: Int, stats: LaunchStats, ui: HomeUi, actions: HomeActions) {
+fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, reads: Int, stats: LaunchStats, search: SearchSources, ui: HomeUi, actions: HomeActions) {
     // While the file is broken, everything draws from the last good layout (launcher polish 3.1).
     // While an item is held, home draws the drag's working copy; just after a drop, what it wrote (launcher polish 4.3).
     val drag = ui.drag
@@ -269,7 +269,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             enter = slideInVertically { it / 3 } + fadeIn(),
             exit = slideOutVertically { it / 3 } + fadeOut(),
         ) {
-            Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, stats, ui, home)
+            Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, stats, search, ui, home)
         }
         folder?.let { FolderPanel(it, home, onClose = { ui.folder = null }) }
         // Edit mode's bar, and Remove while something is held (launcher polish 4.3).

@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -44,9 +46,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -61,7 +63,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spadaval.lor.collect.LaunchFrom
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /*
  * The drawer (launcher polish 2.2): search at the top, then one of three views. Sections opens on
@@ -78,7 +84,7 @@ private sealed interface Entry {
     val key: String
 
     class Header(val title: String, val reason: String?, override val key: String) : Entry
-    class Tile(val app: HomeApp, val dot: Boolean, override val key: String) : Entry
+    class Tile(val app: HomeApp, val dot: Boolean, override val key: String, val go: Boolean = false) : Entry
     class HiddenApps(val count: Int) : Entry {
         override val key = "hidden-apps"
     }
@@ -127,22 +133,67 @@ private fun build(view: DrawerView, apps: List<HomeApp>, file: LayoutFile?, stat
     return Built(out, letters)
 }
 
+/** The grid's entries for search results: a header per block when more than one shows. */
+private fun searchEntries(results: Results<Any>, goKey: String?): Built {
+    val out = mutableListOf<Entry>()
+    val headers = results.blocks.size > 1
+    results.blocks.forEach { block ->
+        if (headers) out.add(Entry.Header(block.kind.title, null, "qh:${block.kind}"))
+        block.entries.forEach { e ->
+            when (val v = e.value) {
+                is HomeApp -> out.add(Entry.Tile(v, false, "q:${e.key}", go = e.key == goKey))
+            }
+        }
+    }
+    return Built(out, emptyList())
+}
+
 /** The A–Z header an app sits under: its first letter without accents, or # for anything else. */
 internal fun letterOf(label: String): String {
-    val c = AppSearch.normalize(label).firstOrNull()?.uppercaseChar()
+    val c = Match.normalize(label).firstOrNull()?.uppercaseChar()
     return if (c != null && c in 'A'..'Z') c.toString() else "#"
 }
 
+/**
+ * Searches the drawer's [apps] and [sources] for [query] (launcher polish 5.1), logging how many
+ * items it scored and how long it took (never the query). Off the main thread, except for Go's
+ * fallback when the results on screen are for an older text.
+ */
+internal fun searchAll(query: String, apps: List<HomeApp>, sources: SearchSources, stats: LaunchStats, check: () -> Unit = {}): Results<Any> {
+    val start = System.nanoTime()
+    val entries: List<Found<Any>> = apps.map { Found(Kind.APPS, it.key, listOf(it.searchName), it) } +
+        sources.shortcuts + sources.settings + sources.contacts
+    val results = Search.run(query, entries, { e -> if (e.kind == Kind.APPS) stats.entries[e.key]?.weight ?: 0.0 else 0.0 }, check = check)
+    Log.d(HomeStore.SEARCH_TAG, "searched ${entries.size} items in ${"%.2f".format((System.nanoTime() - start) / 1e6)} ms")
+    return results
+}
+
 @Composable
-internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, ui: HomeUi, home: HomeContext) {
+internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSources, ui: HomeUi, home: HomeContext) {
     // Something typed makes it a search, recorded with the text as typed.
     val searching = ui.query.isNotBlank()
     val at = if (searching) At(LaunchFrom.SEARCH, query = ui.query) else At(LaunchFrom.DRAWER)
-    val results = remember(apps, ui.query) { AppSearch.search(ui.query, apps) { it.label } }
+    // Each keystroke starts a search off the main thread and cancels the one before (launcher polish 5.1).
+    val results by produceState(Results.empty<Any>(""), ui.query, apps, sources, stats) {
+        val q = ui.query
+        value = if (q.isBlank()) Results.empty(q) else withContext(Dispatchers.Default) {
+            val job = coroutineContext.job
+            searchAll(q, apps, sources, stats) { job.ensureActive() }
+        }
+    }
+    // Results for the text in the field; "nothing" waits for them so it doesn't flicker while typing.
+    val current = results.query == ui.query
     // While the app list loads (launcher polish 3.2), nothing matches, but there's nothing to say yet.
-    val nothing = searching && results.isEmpty() && apps.isNotEmpty()
-    val pm = LocalContext.current.packageManager
-    val ways = remember(nothing, ui.query) { if (nothing) elsewhere(pm, ui.query) else emptyList() }
+    val nothing = searching && current && results.nothing && apps.isNotEmpty()
+    val ways = remember(nothing, ui.query, sources.targets) { if (nothing) elsewhere(sources.targets, ui.query) else emptyList() }
+    var focused by remember { mutableStateOf(false) }
+    fun go() {
+        val r = if (current) results else searchAll(ui.query, apps, sources, stats)
+        when (val v = r.go?.value) {
+            is HomeApp -> home.actions.open(v, at)
+            else -> if (r.nothing) elsewhere(sources.targets, ui.query).firstOrNull()?.let { home.actions.elsewhere(it, ui.query) }
+        }
+    }
     val saved = home.file?.drawer?.view ?: DrawerView.SECTIONS
     // Shown at once; the file catches up when the write lands.
     var view by remember(saved) { mutableStateOf(saved) }
@@ -164,8 +215,8 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, ui: HomeUi, home: H
         OutlinedTextField(
             ui.query,
             { ui.query = it },
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            placeholder = { Text("Search apps", color = Dim) },
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp).onFocusChanged { focused = it.isFocused },
+            placeholder = { Text("Search", color = Dim) },
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -173,9 +224,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, ui: HomeUi, home: H
                 focusedBorderColor = Muted, unfocusedBorderColor = Line,
             ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = {
-                results.firstOrNull()?.let { home.actions.open(it, at) } ?: ways.firstOrNull()?.let { home.actions.elsewhere(it, ui.query) }
-            }),
+            keyboardActions = KeyboardActions(onGo = { go() }),
         )
         if (!searching) {
             ViewSwitch(view) { v ->
@@ -183,13 +232,14 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, ui: HomeUi, home: H
                 home.actions.setView(v)
             }
         } else if (nothing) {
-            NoResults(ui.query, ways) { home.actions.elsewhere(it, ui.query) }
+            NoResults(ui.query, ways, line = results.answer == null) { home.actions.elsewhere(it, ui.query) }
         }
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val columns = if (maxWidth >= 600.dp) 6 else 4
             val now = remember(apps, stats) { System.currentTimeMillis() }
-            val built = remember(view, apps, home.file, stats, columns, searching, results) {
-                if (searching) Built(results.map { Entry.Tile(it, false, "q:${it.key}") }, emptyList())
+            val goKey = if (focused && current) results.go?.key else null
+            val built = remember(view, apps, home.file, stats, columns, searching, results, goKey) {
+                if (searching) searchEntries(results, goKey)
                 else build(view, apps, home.file, stats, columns, now)
             }
             val grid = rememberLazyGridState()
@@ -211,7 +261,11 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, ui: HomeUi, home: H
                                 if (e.app.mainProfile) Source(b, From.Drawer(e.app.id, home.refFor(e.app)), 2, e.app, null) else null
                             },
                             contentAlignment = Alignment.TopCenter,
-                        ) { MenuTile(e.app, at, home, dot = e.dot) }
+                        ) {
+                            // Go's target, while the field has focus (launcher polish 5.1): DESIGN.md's selection.
+                            if (e.go) Box(Modifier.matchParentSize().background(Amber.copy(alpha = 0.08f), RoundedCornerShape(12.dp)).border(1.dp, Amber.copy(alpha = 0.55f), RoundedCornerShape(12.dp)))
+                            MenuTile(e.app, at, home, dot = e.dot)
+                        }
                         is Entry.HiddenApps -> Text(
                             "Hidden apps (${e.count})",
                             style = TextStyle(color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center),

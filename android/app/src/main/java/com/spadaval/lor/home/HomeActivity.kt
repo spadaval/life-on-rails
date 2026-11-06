@@ -59,9 +59,10 @@ class HomeActivity : ComponentActivity() {
             val stats by model.stats.collectAsStateWithLifecycle()
             val appsLoad by model.appsLoad.collectAsStateWithLifecycle()
             val reads by model.reads.collectAsStateWithLifecycle()
+            val search by model.search.collectAsStateWithLifecycle()
             LorTheme {
                 CompositionLocalProvider(LocalIcons provides icons) {
-                    HomeScreen(apps, appsLoad, layout, reads, stats, ui, actions)
+                    HomeScreen(apps, appsLoad, layout, reads, stats, search, ui, actions)
                 }
             }
         }
@@ -200,7 +201,7 @@ class HomeActivity : ComponentActivity() {
         }
 
         override fun elsewhere(way: Elsewhere, query: String) {
-            val intent = way.intent
+            val intent = intentFor(way, query)
             if (intent == null) {
                 QuickSend.open(this@HomeActivity, QuickSend.From.HOME, text = query.trim())
                 return

@@ -783,7 +783,7 @@ Agreed with Sumeet, 2026-11-05:
 - Added to the cross-links (T3 Launcher Increment 8): who merges a person shown twice, as an Android contact and a LoR person.
 - Sumeet's answers (2026-11-06) are recorded: contacts yes (5.6 no longer waits), notification dots yes (Increment 6), and for Increment 7 swipe down for notifications only.
 
-#### 5.1 The matcher, ranking across kinds, and search off the main thread. Status: todo
+#### 5.1 The matcher, ranking across kinds, and search off the main thread. Status: done
 - **Goal.** Apps are found by initials, letters in order and typos; search becomes a list of kinds that the later issues fill; a keystroke asks Android nothing.
   - **The matcher.** `home/Search.kt` (no Android in it): `Match.prepare(name)` and `Match.tier(q, prepared)` as the answers say. `AppSearch` goes; its tests move to `SearchTest` and keep passing. `HomeApp` prepares its label once (`val searchName by lazy`), which also closes Increment 8's "normalised search labels cached".
   - **Kinds.** `SearchResult`, a sealed type: `App(app)`, `Shortcut(…)` and `Setting(…)` and `Contact(…)` (empty until their issues), `Answer(…)` (5.4). `Search.run(query, sources, weights)` returns `Results(query, blocks, answer, go)`: the blocks in order, each with its kind and results, and the result Go opens. The ranking is the answers' (tiers, weights for apps, block order, minimum lengths). `sources` holds the prepared lists; a test builds them from plain values.
@@ -801,6 +801,22 @@ Agreed with Sumeet, 2026-11-05:
     - `elsewhere(targets, query)`: no web row with no web target, the store's label, the agent row always.
   - **On `T3_Phone_API35`:** "yt" shows YouTube with the Go selection, and Go opens it; "yuotube" and "pfotos" find YouTube and Photos; "clk" finds Clock; "zzqx" shows "Nothing matches "zzqx"." and the rows; with the F-Droid 1.23.2 client installed during the check (as 3.4), the store row appears on the next "zzqx" without a restart, with one `LorSearch` targets line at the install and none while typing. The `LorSearch` lines while typing "photos" letter by letter are recorded (items, ms), each under 16 ms, and `dumpsys gfxinfo com.spadaval.lor` reset before and read after typing shows no janky frames.
   - `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed: `home/Search.kt` (`Match`, `Prepared`, `Query`, `Kind`, `Found`, `Block`, `Results`, `Answer`, `Search.run`), `HomeApp.searchName`, `SearchSources` and `HomeStore.search` (the no-results targets resolved on the sources' own thread after each app-list load, package change and resume, logged only when they change), `searchAll` and the search's `produceState` in `DrawerScreen.kt`, `SearchTargets`, `elsewhere(targets, query)` and `intentFor` in `NoResults.kt`. `AppSearch` and `AppSearchTest` are gone; `SearchTest` (12 cases, `AppSearchTest`'s among them) passes on boat with the rest (155).
+  - **On `T3_Phone_API35`:**
+    - "yt" showed YT Music, then YouTube (each also in the work profile), with YT Music in the Go selection (screenshot);
+    - "yuotube" found YouTube, "pfotos" Photos and "clk" Clock;
+    - "pfotos" then Enter (the keyboard's Go) opened Photos;
+    - "zzqx" showed "Nothing matches "zzqx"." with the web, F-Droid and agent rows. With F-Droid uninstalled, the store row was gone. With it installed again during the check, `LorSearch` logged one line, `search targets: web com.google.android.googlequicksearchbox, store F-Droid`, at the install and none while typing, and the next "zzq" had the F-Droid row with no restart;
+    - typing "photos" letter by letter logged searches of 62 items in 0.9 to 2.1 ms each; the first search after install took 9.3 ms (the labels are prepared on first use).
+  - **Not met: no janky frames.** `dumpsys gfxinfo` while typing "photos" had 14 of 18 frames janky (median 31 ms), but this emulator is slow everywhere: six swipes of the drawer with no search had 70 of 133 janky (median 48 ms), with GL emulated on a busy host. Every search was under 16 ms; the frame check needs the real Fold **[real Fold]**.
+  - **Choices.**
+    - A typo shows only when nothing in the search matched better: one changed letter is too loose on short names ("cafe" is a typo of Camera and Calendar), and this keeps every case of `AppSearchTest` unchanged. "pfotos" and "settimgs" still find Photos and Settings.
+    - A dropped letter is mostly caught in order ("settngs", "yotube" are tier 5); the typo tier covers swapped, changed and added letters ("yuotube", "setttings", "youtubbe").
+    - "yt" puts YT Music (it starts with "yt") before YouTube (initials), as the tiers say.
+    - The `LorSearch` line is `Log.d` in every build: the app has no release build and no `BuildConfig`.
+    - `Found` is the result type (not `Entry`, which the drawer's grid already uses in the package).
+  - Reviewed with the increment.
 
 #### 5.2 Shortcuts and conversations in search. Status: todo
 - **Goal.** Typing a shortcut's or a chat's name finds it, and a tap opens it.

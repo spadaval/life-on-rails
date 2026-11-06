@@ -44,7 +44,21 @@ class HomeApp(val label: String, val info: LauncherActivityInfo) {
      * is the main profile's: `LauncherActivityInfo.getFirstInstallTime` ignores the profile.
      */
     val firstInstalled: Long = info.firstInstallTime
+
+    /** The label prepared for search once (launcher polish 5.1), on the first search that needs it. */
+    val searchName: Prepared by lazy { Match.prepare(label) }
 }
+
+/**
+ * What search finds besides apps, prepared off the main thread and held in memory (launcher
+ * polish 5.1): no keystroke asks Android for anything.
+ */
+data class SearchSources(
+    val targets: SearchTargets = SearchTargets(null, null),
+    val shortcuts: List<Found<Any>> = emptyList(),
+    val settings: List<Found<Any>> = emptyList(),
+    val contacts: List<Found<Any>> = emptyList(),
+)
 
 /** What home shows from the layout file: the parsed file, or why it can't be used. */
 sealed interface LayoutState {
@@ -105,6 +119,8 @@ class HomeStore(private val context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
     private val serial = Dispatchers.IO.limitedParallelism(1)
+    /** Search's sources are built here, so a slow query never holds up a layout edit on [serial]. */
+    private val sourcesSerial = Dispatchers.IO.limitedParallelism(1)
     private val collator = Collator.getInstance()
     private val byLabel = Comparator<HomeApp> { a, b -> collator.compare(a.label, b.label) }
     private val store = LayoutStore(File(context.filesDir, "layout.json"))
@@ -126,6 +142,9 @@ class HomeStore(private val context: Context) {
     val reads: StateFlow<Int> = _reads
     private val _stats = MutableStateFlow(LaunchStats())
     val stats: StateFlow<LaunchStats> = _stats
+    private val _search = MutableStateFlow(SearchSources())
+    /** Search's sources besides the app list (launcher polish 5.1). */
+    val search: StateFlow<SearchSources> = _search
     private val _changes = MutableSharedFlow<PackageChange>(extraBufferCapacity = 64)
     val changes: SharedFlow<PackageChange> = _changes
 
@@ -175,9 +194,33 @@ class HomeStore(private val context: Context) {
      * Home came to the front: reloads the app list if it never loaded, and rereads the layout file
      * if it changed since the last read or write (an agent or adb edited it).
      */
-    fun resume() = serially {
-        if (!loaded) loadApps()
-        if (store.file.lastModified() != stamp) readLayout()
+    fun resume() {
+        serially {
+            if (!loaded) loadApps()
+            if (store.file.lastModified() != stamp) readLayout()
+        }
+        // A new default browser or store fires no package callback.
+        resolveTargets()
+    }
+
+    /** Works out who takes a search elsewhere (launcher polish 5.1, R5), logging only a change. */
+    private fun resolveTargets() = onSources {
+        val t = searchTargets(context.packageManager)
+        if (t != _search.value.targets) {
+            _search.value = _search.value.copy(targets = t)
+            Log.i(SEARCH_TAG, "search targets: web ${t.web ?: "none"}, store ${t.store ?: "none"}")
+        }
+    }
+
+    /** Like [serially], on search's own thread. */
+    private fun onSources(block: () -> Unit) {
+        scope.launch(sourcesSerial) {
+            try {
+                block()
+            } catch (e: Exception) {
+                Log.w(SEARCH_TAG, "search sources update failed", e)
+            }
+        }
     }
 
     /** The last edit's copy for [undo] (launcher polish 4.2): kept in memory until the next edit or an undo. */
@@ -240,6 +283,7 @@ class HomeStore(private val context: Context) {
         _changes.tryEmit(PackageChange(packages, user))
         val fresh = packages.flatMap { pkg -> activities(pkg, user) }
         _apps.value = (_apps.value.filterNot { it.packageName in packages && it.user == user } + fresh).sortedWith(byLabel)
+        resolveTargets()
     }
 
     /** Serialised on [serial]; a failure is logged rather than taking home down. */
@@ -262,6 +306,7 @@ class HomeStore(private val context: Context) {
         Log.i(TAG, "loaded the app list (${all.size} activities)")
         // A layout that was waiting on the app list for its default can be made now.
         if (loaded && !store.file.exists()) readLayout()
+        resolveTargets()
     }
 
     private fun activities(pkg: String?, user: UserHandle): List<HomeApp> =
@@ -319,6 +364,7 @@ class HomeStore(private val context: Context) {
 
     companion object {
         private const val TAG = "LorHome"
+        const val SEARCH_TAG = "LorSearch"
         private val COMMON = listOf(
             "com.whatsapp", "com.google.android.gm", "com.google.android.calendar", "com.samsung.android.calendar",
             "com.google.android.apps.maps", "com.google.android.apps.photos", "com.sec.android.gallery3d",
