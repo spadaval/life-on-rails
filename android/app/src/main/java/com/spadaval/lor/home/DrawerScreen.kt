@@ -180,7 +180,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, ui: HomeUi, home: H
         if (!searching) {
             ViewSwitch(view) { v ->
                 view = v
-                home.actions.edit(null) { it.copy(drawer = it.drawer.copy(view = v)) }
+                home.actions.setView(v)
             }
         } else if (nothing) {
             NoResults(ui.query, ways) { home.actions.elsewhere(it, ui.query) }

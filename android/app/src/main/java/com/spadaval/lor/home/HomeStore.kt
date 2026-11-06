@@ -180,17 +180,40 @@ class HomeStore(private val context: Context) {
         if (store.file.lastModified() != stamp) readLayout()
     }
 
+    /** The last edit's copy for [undo] (launcher polish 4.2): kept in memory until the next edit or an undo. */
+    private var lastUndo: LayoutStore.Undo? = null
+
+    /** An edit's outcome: the file now, and whether it wrote something [undo] can take back. */
+    data class Edited(val layout: LayoutFile, val undoable: Boolean)
+
     /**
      * Applies [change] to the file (see [LayoutStore.edit]) and shows the result. The new modified
-     * time is recorded, so the next [resume] doesn't reread this write. Fails with the reason.
+     * time is recorded, so the next [resume] doesn't reread this write. An [undoable] edit that
+     * wrote can be taken back by [undo]; one that isn't (the drawer's view) drops what [undo]
+     * held, whose copy no longer matches the file. Fails with the reason.
      */
-    suspend fun edit(change: (LayoutFile) -> LayoutFile): Result<LayoutFile> = withContext(serial) {
+    suspend fun edit(undoable: Boolean = true, change: (LayoutFile) -> LayoutFile): Result<Edited> = withContext(serial) {
         store.edit(change).map {
+            if (it.undo == null) return@map Edited(it.layout, false)
             stamp = it.stamp
             _layout.value = LayoutState.Ready(it.layout)
+            lastUndo = it.undo.takeIf { undoable }
             Log.i(TAG, "wrote layout.json (an edit from the phone)")
-            it.layout
+            Edited(it.layout, undoable)
         }.onFailure { Log.i(TAG, "layout edit refused: ${it.message}") }
+    }
+
+    /** Puts the file back as it was before the last edit ([LayoutStore.undo]). Fails with the reason. */
+    suspend fun undo(): Result<LayoutFile> = withContext(serial) {
+        runCatching {
+            val undo = lastUndo ?: throw LayoutError("there is nothing to undo")
+            lastUndo = null
+            val read = store.undo(undo)
+            stamp = read.stamp
+            _layout.value = LayoutState.Ready(read.layout)
+            Log.i(TAG, "undid the last edit")
+            read.layout
+        }.onFailure { Log.i(TAG, "undo refused: ${it.message}") }
     }
 
     /**

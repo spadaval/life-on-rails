@@ -68,7 +68,10 @@ class HomeSettingsActivity : ComponentActivity() {
             LorTheme {
                 CompositionLocalProvider(LocalIcons provides icons) {
                     Surface(Modifier.fillMaxSize()) {
-                        HomeSettings(apps, layout, appsLoad == AppsLoad.LOADED, ::edit, ::restore, ::open)
+                        Box(Modifier.fillMaxSize()) {
+                            HomeSettings(apps, layout, appsLoad == AppsLoad.LOADED, ::edit, ::restore, ::open)
+                            UndoBar(undo, ::undo, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 16.dp))
+                        }
                     }
                 }
             }
@@ -80,12 +83,20 @@ class HomeSettingsActivity : ComponentActivity() {
         (application as LorApp).home.resume()
     }
 
-    /** Applies [change] to `layout.json`; [done] is said on success, a refusal says why. */
+    private val undo = UndoBarState()
+
+    /** Applies [change] to `layout.json`; the Undo bar says [done] on success, a refusal says why (launcher polish 4.2). */
     private fun edit(done: String?, change: (LayoutFile) -> LayoutFile) {
         lifecycleScope.launch {
-            (application as LorApp).home.edit(change)
-                .onSuccess { if (done != null) toast(done) }
+            (application as LorApp).home.edit(change = change)
+                .onSuccess { if (it.undoable) undo.show(done ?: "Home changed.") }
                 .onFailure { toast("Can't: ${it.message}.") }
+        }
+    }
+
+    private fun undo() {
+        lifecycleScope.launch {
+            (application as LorApp).home.undo().onFailure { toast("Can't: ${it.message}.") }
         }
     }
 

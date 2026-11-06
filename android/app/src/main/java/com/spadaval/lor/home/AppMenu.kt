@@ -64,8 +64,17 @@ interface HomeActions {
     /** The system's wallpaper picker. */
     fun wallpaper()
 
-    /** Applies [change] to `layout.json`; a refusal shows as a toast. [done] is said on success. */
+    /**
+     * Applies [change] to `layout.json`; a refusal shows as a toast. On success the Undo bar says
+     * [done], or "Home changed." (launcher polish 4.2).
+     */
     fun edit(done: String?, change: (LayoutFile) -> LayoutFile)
+
+    /** Takes back the last edit ([HomeStore.undo]). */
+    fun undo()
+
+    /** Writes the drawer's view: a view, not a change to home, so it shows no Undo and drops the pending one. */
+    fun setView(view: DrawerView)
 
     /** Takes a search that matched no app somewhere else ([Elsewhere]): the web, a store, or quick send. */
     fun elsewhere(way: Elsewhere, query: String)

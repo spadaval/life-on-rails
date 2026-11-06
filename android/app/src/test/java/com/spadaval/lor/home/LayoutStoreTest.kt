@@ -89,4 +89,51 @@ class LayoutStoreTest {
         assertEquals(two, store.read(null).layout)
         assertTrue(!store.broken.exists())
     }
+
+    /** Undo (launcher polish 4.2). A hand-formatted file: four spaces, keys out of order, an escaped slash, no final newline. */
+    private val handText = "{\n    \"layouts\": [{\"home\": [\"com.whatsapp\", \"com.android.chrome\\/.Main\"], \"name\": \"default\"}],\n    \"version\": 1, \"active\": \"default\"\n}"
+
+    @Test
+    fun undoPutsTheFileBackByteForByte() {
+        val store = store()
+        store.file.writeText(handText)
+        val edited = store.edit { it.removeFromHome(AppId("com.whatsapp", "com.whatsapp.Main")) }.getOrThrow()
+        val undo = edited.undo!!
+        assertEquals(handText, undo.before)
+        assertEquals(store.file.readText(), undo.wrote)
+        val back = store.undo(undo)
+        assertEquals(handText, store.file.readText())
+        assertEquals(handText, store.good.readText())
+        assertEquals(LayoutFile.parse(handText), back.layout)
+        assertEquals("a second undo refuses", "layout.json changed since; nothing was undone", undoFails(store, undo))
+    }
+
+    @Test
+    fun undoRefusesAfterAnotherWrite() {
+        val store = store()
+        store.write(one)
+        val undo = store.edit { it.addToDock(AppId("org.example", "org.example.Main"), AppRef("org.example")) }.getOrThrow().undo!!
+        store.file.writeText(two.toJson())
+        assertEquals("layout.json changed since; nothing was undone", undoFails(store, undo))
+        assertEquals(two.toJson(), store.file.readText())
+    }
+
+    @Test
+    fun anEditThatChangesNothingWritesNothing() {
+        val store = store()
+        store.file.writeText(handText)
+        store.file.setLastModified(1_000_000L)
+        val read = store.edit { it }.getOrThrow()
+        assertNull(read.undo)
+        assertEquals(handText, store.file.readText())
+        assertEquals(1_000_000L, store.file.lastModified())
+    }
+
+    private fun undoFails(store: LayoutStore, undo: LayoutStore.Undo): String = try {
+        store.undo(undo)
+        fail("undo")
+        ""
+    } catch (e: LayoutError) {
+        e.message!!
+    }
 }

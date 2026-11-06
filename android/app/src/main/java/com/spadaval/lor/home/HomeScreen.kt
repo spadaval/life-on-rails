@@ -106,6 +106,8 @@ class HomeUi {
     var homePresses by mutableStateOf(0)
     /** Where on home a long press on empty space opened the home menu. */
     var homeMenu by mutableStateOf<Offset?>(null)
+    /** The Undo bar after an edit (launcher polish 4.2). */
+    val undo = UndoBarState()
     /** The pager's page showing: 0 is the agent page, 1 is home, 2 on are the pages after it. */
     var page by mutableStateOf(1)
 
@@ -195,6 +197,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, stats, ui, home)
         }
         folder?.let { FolderPanel(it, home, onClose = { ui.folder = null }) }
+        // Above the drawer and folders, clear of the dock.
+        UndoBar(ui.undo, actions::undo, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 112.dp))
     }
 }
 

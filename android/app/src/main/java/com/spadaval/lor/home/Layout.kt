@@ -369,8 +369,14 @@ data class AppId(val packageName: String, val className: String)
 
 /** The layout file on disk. No Android here, so the JVM tests can reach it. */
 class LayoutStore(val file: File) {
-    /** A parsed file and the modified time it was read or written at. */
-    data class Read(val layout: LayoutFile, val stamp: Long)
+    /**
+     * A parsed file and the modified time it was read or written at. After an edit that wrote,
+     * [undo] holds what [undo] needs to put the file back (launcher polish 4.2).
+     */
+    data class Read(val layout: LayoutFile, val stamp: Long, val undo: Undo? = null)
+
+    /** The file's text before an edit, and the text the edit wrote. */
+    data class Undo(val before: String, val wrote: String)
 
     /**
      * The text of the last file that parsed (launcher polish 3.1), so a file that is broken when
@@ -390,12 +396,17 @@ class LayoutStore(val file: File) {
             val make = default ?: throw LayoutError("the app list didn't load, so there is no default layout yet")
             write(make())
         }
+        return readText().first
+    }
+
+    /** The file parsed, and its text exactly as it is on disk. */
+    private fun readText(): Pair<Read, String> {
         val stamp = file.lastModified()
         if (file.length() > LayoutFile.MAX_BYTES) throw LayoutError("the file is over ${LayoutFile.MAX_BYTES / 1024} KB")
         val text = file.readText()
         val layout = LayoutFile.parse(text)
         keepGood(text)
-        return Read(layout, stamp)
+        return Read(layout, stamp) to text
     }
 
     /** The last file that parsed, or null when there is none or it doesn't parse either. */
@@ -409,12 +420,29 @@ class LayoutStore(val file: File) {
 
     /**
      * Rereads the file, applies [change], and writes the result if it parses back to the same
-     * thing; otherwise the file is left as it was. Fails with the [LayoutError] or I/O error.
+     * thing; otherwise the file is left as it was. Fails with the [LayoutError] or I/O error. When
+     * [change] changes nothing, nothing is written and the result has no [Read.undo].
      */
     fun edit(change: (LayoutFile) -> LayoutFile): Result<Read> = runCatching {
         if (!file.exists()) throw LayoutError("there is no layout file yet")
-        val changed = change(read(null).layout)
-        Read(changed, write(changed))
+        val (read, before) = readText()
+        val changed = change(read.layout)
+        if (changed == read.layout) return@runCatching read
+        val stamp = write(changed)
+        Read(changed, stamp, Undo(before, changed.toJson() + "\n"))
+    }
+
+    /**
+     * Puts the file back as it was before the edit [undo] came from, byte for byte: the copy of
+     * its text, not an inverse edit, so a hand-formatted file comes back as it was written. Refuses
+     * when the file no longer holds what that edit wrote (an agent or adb wrote since).
+     */
+    fun undo(undo: Undo): Read {
+        if (!file.exists() || file.readText() != undo.wrote) throw LayoutError("layout.json changed since; nothing was undone")
+        val layout = LayoutFile.parse(undo.before)
+        writeAtomically(file, undo.before)
+        keepGood(undo.before)
+        return Read(layout, file.lastModified())
     }
 
     /**

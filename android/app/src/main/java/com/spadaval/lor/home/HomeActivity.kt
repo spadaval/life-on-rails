@@ -160,10 +160,21 @@ class HomeActivity : ComponentActivity() {
 
         override fun edit(done: String?, change: (LayoutFile) -> LayoutFile) {
             lifecycleScope.launch {
-                model.edit(change)
-                    .onSuccess { if (done != null) toast(done) }
+                model.edit(change = change)
+                    .onSuccess { if (it.undoable) ui.undo.show(done ?: "Home changed.") }
                     .onFailure { toast("Can't: ${it.message ?: "the layout couldn't be changed"}.") }
             }
+        }
+
+        override fun undo() {
+            lifecycleScope.launch {
+                model.undo().onFailure { toast("Can't: ${it.message ?: "the edit couldn't be undone"}.") }
+            }
+        }
+
+        override fun setView(view: DrawerView) {
+            ui.undo.message = null
+            lifecycleScope.launch { model.edit(undoable = false) { it.copy(drawer = it.drawer.copy(view = view)) } }
         }
 
         override fun elsewhere(way: Elsewhere, query: String) {

@@ -457,7 +457,7 @@ Agreed with Sumeet, 2026-11-05:
     - `hide` and the removes strip every empty extra page, including one an agent wrote.
   - Reviewed with the increment.
 
-#### 4.2 Undo for every edit. Status: todo
+#### 4.2 Undo for every edit. Status: done
 - **Goal.** Each edit can be taken back for a few seconds, and taking it back restores `layout.json` byte for byte.
   - `LayoutStore.edit` returns, beside the edited file and its stamp, the text it read and the text it wrote. When the change returns a file equal to the one it read, it writes nothing and returns no texts, so no Undo is kept (a drop in place, a step that changes nothing).
   - `LayoutStore.undo(before, wrote)` refuses ("layout.json changed since; nothing was undone") unless the file holds exactly `wrote`. Otherwise it writes `before` with `writeAtomically`, refreshes `layout.good.json`, and returns the new read.
@@ -478,6 +478,18 @@ Agreed with Sumeet, 2026-11-05:
     - in Home settings, Unhide, then Undo: it is hidden again and the sum matches;
     - an edit, then a write with `run-as` before Undo: the refusal toast, and the file holds the `run-as` text.
   - `assembleDebug testDebugUnitTest` passes on boat.
+
+- **2026-11-06.** Landed: `LayoutStore.Undo`, `Read.undo` and `LayoutStore.undo` in `Layout.kt` (an edit that changes nothing writes nothing and has no undo), `HomeStore.edit(undoable, change)` returning `Edited`, and `HomeStore.undo`; `home/Undo.kt` (`UndoBarState`, `UndoBar`) on home and in Home settings; `HomeActions.undo` and `setView`. `LayoutStoreTest` gains three cases (byte-for-byte undo of a hand-formatted file and `layout.good.json`, a second undo and an undo after another write refused, an unchanged edit writing nothing with the modified time kept); 141 tests pass on boat.
+  - **On `T3_Phone_API35`,** with `run-as … sha256sum files/layout.json` before and after:
+    - Remove from home on Photos showed "Photos is off home." with Undo over home; Undo gave back the same sum, with `wrote layout.json` then `undid the last edit` in `LorHome`;
+    - Hide on Lexica from a drawer search, then Undo: the same sum, and Lexica back in the search;
+    - in Home settings, Unhide on Camera showed "Camera is back in the drawer." with Undo; Undo gave the same sum and Camera hidden again;
+    - Remove from home, then a line appended to the file with `run-as`, then Undo: `undo refused: layout.json changed since; nothing was undone`, and the file kept the appended line.
+  - **Choices.**
+    - The bar is opaque (`0xFF15181D`, the colour of `StateFill` without its alpha), because `StateFill`'s alpha let Home settings' text show through it.
+    - It sits 112 dp above the bottom on home, clear of the dock, and lasts 4 s.
+    - An edit with no message says "Home changed." (the section edits in Home settings).
+  - Reviewed with the increment.
 
 #### 4.3 Drag on home and the dock, Remove, and edit mode. Status: todo
 - **Goal.** An app on home or in the dock can be picked up from its menu and moved anywhere on the page, in or out of the dock, or onto Remove. "Edit home" exists.

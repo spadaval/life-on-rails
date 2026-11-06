@@ -21,7 +21,9 @@ class HomeModel(private val store: HomeStore, scope: CoroutineScope, val icons: 
 
     fun resume() = store.resume()
 
-    suspend fun edit(change: (LayoutFile) -> LayoutFile): Result<LayoutFile> = store.edit(change)
+    suspend fun edit(undoable: Boolean = true, change: (LayoutFile) -> LayoutFile): Result<HomeStore.Edited> = store.edit(undoable, change)
+
+    suspend fun undo(): Result<LayoutFile> = store.undo()
 
     suspend fun restore(): Result<LayoutFile> = store.restore()
 }
