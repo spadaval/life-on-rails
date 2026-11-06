@@ -458,7 +458,7 @@ private fun QueueCard(
 @Composable
 internal fun Pill(text: String, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val shape = RectangleShape
-    val base = if (primary) Modifier.background(if (enabled) Or else OrDeep, shape) else Modifier.border(1.dp, if (enabled) Edge else Line, shape)
+    val base = if (primary) Modifier.background(Or, shape) else Modifier.border(1.dp, if (enabled) Edge else Line, shape)
     Text(
         text,
         style = Type.button.copy(
@@ -471,7 +471,7 @@ internal fun Pill(text: String, primary: Boolean = false, enabled: Boolean = tru
             fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Normal,
         ),
         // The pill stays small; the space around it makes the touch target 48 dp, as Material's buttons do.
-        modifier = Modifier.minimumInteractiveComponentSize().then(base).clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 11.dp, vertical = 6.dp),
+        modifier = Modifier.minimumInteractiveComponentSize().then(if (enabled) Modifier else Modifier.alpha(0.45f)).then(base).clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 11.dp, vertical = 6.dp),
     )
 }
 
@@ -486,7 +486,7 @@ internal fun Field(value: String, placeholder: String, modifier: Modifier = Modi
         shape = RectangleShape,
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Or,
-            focusedBorderColor = Mute, unfocusedBorderColor = Edge,
+            focusedBorderColor = Or.copy(alpha = 0.7f), unfocusedBorderColor = Edge,
         ),
     )
 }

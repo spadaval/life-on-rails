@@ -284,7 +284,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1, userScrollEnabled = held == null) { page ->
             if (page == 0) AgentPage() else CompositionLocalProvider(LocalWallInk provides ink) { HomePage(page - 1, placed, layout, appsLoad, ui, home) }
         }
-        PageDots(pager.currentPage, 1 + pageCount, ink.mark, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
+        // On the agent page the dots sit on its dark veil, not the wallpaper (6.8: dark ink vanished there).
+        PageDots(pager.currentPage, 1 + pageCount, if (pager.currentPage == 0) SurfaceInk.mark else ink.mark, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
         AnimatedVisibility(
             ui.drawer,
             enter = slideInVertically { it / 3 } + fadeIn(),
@@ -424,7 +425,7 @@ private fun DockSkeleton(count: Int) {
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 12.dp)
-            .framedPanel(PanelFace.copy(alpha = 0.72f))
+            .framedPanel(PanelFace.copy(alpha = 0.92f))
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
@@ -496,7 +497,7 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 12.dp)
-            .framedPanel(PanelFace.copy(alpha = 0.72f))
+            .framedPanel(PanelFace.copy(alpha = 0.92f))
             .dropZone(drag, "dock$page") { b -> Zone.Area(Place.Dock, b) }
             .padding(vertical = 10.dp)
             .height(dockIcon),
@@ -531,7 +532,7 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
 private fun PageDots(current: Int, count: Int, mark: Color, modifier: Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         (0 until count).forEach { page ->
-            val color = if (page == current) mark.copy(alpha = 0.7f) else mark.copy(alpha = 0.3f)
+            val color = if (page == current) mark.copy(alpha = 0.8f) else mark.copy(alpha = 0.5f)
             Box(Modifier.size(6.dp).background(color, if (page == 0) RectangleShape else CircleShape))
         }
     }
@@ -821,7 +822,7 @@ private fun TopBar(ui: HomeUi, modifier: Modifier) {
             modifier.padding(12.dp).fillMaxWidth().height(56.dp)
                 .background(PanelFace, shape)
                 .background(if (lit) Or.copy(alpha = 0.08f) else Color.Transparent, shape)
-                .border(1.dp, if (lit) Or.copy(alpha = 0.55f) else Line, shape)
+                .border(1.dp, if (lit) Or.copy(alpha = 0.55f) else Edge, shape)
                 .dropZone(drag, "remove") { b -> Zone.Remove(b) },
             contentAlignment = Alignment.Center,
         ) {
@@ -864,7 +865,7 @@ private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, close: () -> U
                 confirmButton = {
                     TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { close(); if (text.trim() != name) home.actions.edit("$name is ${text.trim()} now.") { it.renameFolder(at, text) } }) { Text("Rename") }
                 },
-                dismissButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = close) { Text("Cancel") } },
+                dismissButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, colors = DismissColors, onClick = close) { Text("Cancel") } },
             )
         }
         covering -> DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {

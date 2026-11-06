@@ -80,6 +80,6 @@ private fun BrokenLayoutDialog(state: LayoutState.Broken, appsLoaded: Boolean, r
             }
         },
         confirmButton = { if (action != null) TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = restore) { Text(action) } },
-        dismissButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = close) { Text("Close") } },
+        dismissButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, colors = DismissColors, onClick = close) { Text("Close") } },
     )
 }

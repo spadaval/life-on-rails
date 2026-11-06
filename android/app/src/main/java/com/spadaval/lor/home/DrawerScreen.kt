@@ -368,7 +368,7 @@ private fun ViewSwitch(view: DrawerView, choose: (DrawerView) -> Unit) {
                 style = Type.body.copy(color = if (on) Txt else Mute, fontSize = 13.sp, fontWeight = if (on) FontWeight.Medium else FontWeight.Normal),
                 modifier = Modifier
                     .background(if (on) Or.copy(alpha = 0.08f) else Color.Transparent, RectangleShape)
-                    .border(1.dp, if (on) Or.copy(alpha = 0.55f) else Line, RectangleShape)
+                    .border(1.dp, if (on) Or.copy(alpha = 0.55f) else Edge, RectangleShape)
                     .semantics { role = Role.Tab; selected = on }
                     .clickable { if (!on) choose(v) }
                     .padding(horizontal = 12.dp, vertical = 6.dp),

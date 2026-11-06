@@ -56,6 +56,9 @@ import androidx.compose.runtime.produceState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import com.spadaval.lor.ui.selection
+import com.spadaval.lor.ui.DismissColors
+import com.spadaval.lor.ui.Mute
+import com.spadaval.lor.ui.Well
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.selection.selectable
@@ -443,7 +446,8 @@ private fun Toggle(title: String, subtitle: String, on: Boolean, toggle: () -> U
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.width(16.dp))
-        Switch(on, onCheckedChange = null)
+        // DESIGN.md: the off state reads (Dust edge and thumb on Well), on is amber.
+        Switch(on, onCheckedChange = null, colors = androidx.compose.material3.SwitchDefaults.colors(uncheckedThumbColor = Mute, uncheckedBorderColor = Mute, uncheckedTrackColor = Well))
     }
 }
 
@@ -531,7 +535,7 @@ private fun NameDialog(title: String, initial: String, done: (String?) -> Unit) 
     AlertDialog(
         onDismissRequest = { done(null) },
         confirmButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { done(text.trim()) }, enabled = text.isNotBlank()) { Text("Save") } },
-        dismissButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { done(null) }) { Text("Cancel") } },
+        dismissButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, colors = DismissColors, onClick = { done(null) }) { Text("Cancel") } },
         title = { Text(title) },
         text = { OutlinedTextField(text, { text = it }, singleLine = true, label = { Text("Name") }) },
     )

@@ -43,6 +43,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -164,7 +165,8 @@ private fun Sheet(connection: T3Connection, from: QuickSend.From, initial: Strin
         ) {
             // Unpaired, there are no projects to read; the connection line says what to do.
             val paired = status !is T3Connection.Status.NotPaired && status !is T3Connection.Status.Rejected
-            if (paired) Text(
+            // Retrying, the connection line already says T3 is down; "Reading…" would contradict it (6.8).
+            if (paired && !(status is T3Connection.Status.Retrying && !shell.loaded)) Text(
                 when {
                     !shell.loaded -> "Reading T3's projects…"
                     target == null -> "No project named \"${Destination.INBOX}\" on this T3 server. Pick one."
@@ -258,7 +260,7 @@ private fun Field(value: String, opened: Int, onChange: (String) -> Unit) {
         maxLines = 6,
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Or,
-            focusedBorderColor = Mute, unfocusedBorderColor = Edge,
+            focusedBorderColor = Or.copy(alpha = 0.7f), unfocusedBorderColor = Edge,
         ),
     )
 }
@@ -266,7 +268,7 @@ private fun Field(value: String, opened: Int, onChange: (String) -> Unit) {
 @Composable
 private fun Pill(text: String, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val shape = RectangleShape
-    val base = if (primary) Modifier.background(if (enabled) Or else OrDeep, shape) else Modifier.border(1.dp, if (enabled) Edge else Line, shape)
+    val base = if (primary) Modifier.background(Or, shape) else Modifier.border(1.dp, if (enabled) Edge else Line, shape)
     Text(
         text,
         style = Type.button.copy(
@@ -279,7 +281,8 @@ private fun Pill(text: String, primary: Boolean = false, enabled: Boolean = true
             fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Normal,
         ),
         maxLines = 1,
-        modifier = base
+        // DESIGN.md: a disabled button is the same button at 45%.
+        modifier = (if (enabled) base else base.alpha(0.45f))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 11.dp, vertical = 6.dp),
     )

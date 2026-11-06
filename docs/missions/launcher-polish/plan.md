@@ -1187,7 +1187,7 @@ Agreed with Sumeet, 2026-11-05:
   - **Not checked:** None from Home settings (the same `Options` row; the header is simply not drawn); the event line on the plain light and dark wallpapers (the emulator's quick-boot reset had removed them; 6.3 checked both inks); a fresh start with the test server stopped (no reply is kept, so `headerEvent` gets nothing and draws no line, by reading the code).
   - Reviewed with the increment.
 
-#### 6.8 The look, critiqued. Status: todo
+#### 6.8 The look, critiqued. Status: done
 - **Goal.** The increment is judged as a whole, on a light and a dark wallpaper, before it closes.
   - Gather screenshots on `T3_Phone_API35` of home (date and clock headers, a folder, dots), an open folder, the drawer (Sections, a search), edit mode, the agent page, quick send, Home settings and a dialog, each on the light and the dark wallpaper (6.3), with an icon pack and with themed icons; plus home and the drawer on `T3_Fold_API35` unfolded.
   - Run the impeccable skill's `critique` (`.claude/skills/impeccable/reference/critique.md`, with `android.md`) as 3.6 did: Assessments A and B as separate sub-agents, B reporting the detector unavailable for Compose and measuring contrast from pixels and tokens instead. Ask A in particular whether the launcher now reads as LoR (3.6's "could be any minimal launcher").
@@ -1195,11 +1195,54 @@ Agreed with Sumeet, 2026-11-05:
   - Check `no-adb` for the look: each `look` field changed once from Home settings, the file read after each (most are already shown by 6.4 to 6.7; list them in one place here).
 - **Done when.** The critique's report and each finding's handling are recorded here; fixes are built on boat and their screens shot again; the increment's review, by a fresh agent, has the screenshots.
 
-- **2026-11-06, not done; handed back to the coordinator.** What is in hand and what is left:
-  - **The critique** needs Assessments A and B as two separate sub-agents, and this session was told not to spawn any (the host is short of memory). It is the coordinator's to arrange.
-  - **The Fold:** `start-t3-emulator T3_Fold_API35` started the unit and the emulator aborted 13 s later (`core-dump`, `status=6/ABRT`, 1.4 GB peak), so the Fold screenshots and 6.4's check of `grid.wide` on the unfolded screen are still to do. The phone emulator was started again.
-  - **The default (mixed) wallpaper,** from 6.3, measured during 6.5 with the same method (the text's extreme pixel against the wallpaper's, light ink): over the light sky, Gmail's label 2.8:1, Calendar's 3.5:1 and the date 3.4:1; over the dark part, YouTube's label 15.3:1. The answers expected this: Android gives that wallpaper no dark-text hint, so its light patches keep light ink with the shadow, recorded, not guaranteed. For the critique.
-  - **`no-adb` for the look,** each field changed from Home settings and read from the file: `grid.narrow.home`, `grid.narrow.drawer`, `labelSize`, `iconSize` (6.4); `iconPack`, `themedIcons`, `iconShape` (6.5); `header` (6.7). Not yet from Home settings: `grid.wide.*` (needs the wide screen) and `labels` (its switch was not pressed in a check).
+- **2026-11-06.** Landed.
+  - **The set:** 27 screenshots in `~/.cache/lor-launcher-builds/inc6/shots` (deleted after the review), all with the build of 9ff385a:
+    - on `T3_Phone_API35`, home, an open folder, the drawer, the agent page and edit mode on a plain `#f2f2f2`, a plain `#101010` and the emulator's default wallpaper;
+    - Arcticons with the clock header, themed square icons, Home settings (top and Look), the rename dialog, and quick send;
+    - on `T3_Fold_API35` (started by T3's device hub; `start-t3-emulator` couldn't cold-boot it, as its quick-boot snapshot was saved with another GPU renderer): home, drawer, agent page and Home settings unfolded, home at 8 columns, and home folded (`adb emu fold`).
+  - **The critique** (`critique.md`, `android.md`): Assessments A and B ran as two sub-agents, one after the other (memory), neither seeing the other.
+    - **B:** `impeccable detect --json android/app/src/main/java/com/spadaval/lor` printed `[]` with exit 0, because it scans markup and finds none in Kotlin. So the deterministic scan is unavailable for Compose, and the browser overlay was skipped (no web target). In their place B decoded the screenshots and measured contrast, and read the source for tokens, type sizes, targets, shapes, motion and shadows.
+    - **A** scored the set 28/40 on Nielsen's heuristics ("Good"), with consistency and minimalism at 2. Its specificity verdict: the bronze-framed chamfered panels, the amber selection, the condensed caps and the agent page's arc read as LoR. But home in its default Date style, with stock icons, could be any launcher, and the clock style is the more LoR one.
+    - Strengths it named: the colour jobs hold, the wallpaper inks follow `DESIGN.md`, and the agent page reads as a cockpit.
+  - **Findings and what was done:**
+    - **Fixed: the page dots vanished on the agent page over a light wallpaper.** They took the wallpaper's dark ink on the agent page's dark veil (B: 1.06:1). They now take the surface ink on page 0.
+    - **Fixed: inactive dots under 3:1 everywhere** (B: 2.0 to 2.4:1). They are now at 50% alpha, the current one at 80%.
+    - **Fixed: the dock turned grey on a light wallpaper** (A and B: 72% Panel Face over white is `#4f5054`, against `DESIGN.md`'s surfaces staying dark). Now 92%.
+    - **Fixed:**
+      - unselected drawer view chips and the edit-mode bar's edge were `Line` (1.2:1); they are now `Edge`, as `DESIGN.md` gives chips and segments;
+      - dialogs' dismiss buttons were amber like the confirming one; now Starlight (`DismissColors`);
+      - a disabled `Pill` was Banked Amber; it is now the same pill at 45%, as `DESIGN.md` defines disabled;
+      - focused fields had a Dust border; now amber at 70%;
+      - the Material switch's off state was 1.5:1; it is now a Dust thumb and edge on Well. It stays Material's rounded switch, like a status dot.
+    - **Fixed: quick send said "Reading T3's projects…" while saying T3 is disconnected** (A). The first line is left out while retrying.
+    - **Not fixed, for Sumeet** (Open questions): light ink over the light patches of a mixed wallpaper (A's P1; B: the date's core text 1.03:1 over the default wallpaper's pale band, the shadow carrying it). Per-region wallpaper colours are a hidden API (`WallpaperManager`'s local-colour listener isn't public), so the choices are a backing behind the header and first row, or the hint as now.
+    - **Not fixed, for Sumeet** (Open questions):
+      - whether Clock, not Date, should be the default header;
+      - whether LoR's own launcher icon should become amber on Deep Space;
+      - the drawer's Sections view repeating an app in Recent, Frequent and New (2.2's rows, by design);
+      - the arc's "now" being a dot rather than `DESIGN.md`'s reticle with a star (T3 Launcher 3.3's drawing).
+    - **Carried to Increment 8 (the Fold):**
+      - On the unfolded Fold, the Remove bar shown while something is held covers home's first row. Two drags onto row-1 icons there removed the dragged app instead (Undo brings it back), while a drag onto row 2 made a folder.
+      - The unfolded screen's left half holds only the date.
+      - The agent page's Send button floats mid-screen at the content column's edge.
+    - **No action:**
+      - themed icons leave apps without a monochrome layer in colour, as Pixel does;
+      - a themed tile's Panel Face disappears on a near-black wallpaper;
+      - "Takes Work" under each section in Home settings is 2.3's copy;
+      - dialog and folder titles in sentence case (a folder's title is its name, not a section head);
+      - the drawer's letter rail is 28 dp wide but runs the list's full height;
+      - the circular loading slot stands in for a round adaptive icon;
+      - label size's floor of 12 sp, below `DESIGN.md`'s 12.5 label size, is the floor the plan set.
+  - **6.4's wide grid, on the unfolded Fold,** set from Home settings: home grid 8 and drawer grid 10 on wide screens (this screen), label size 14, icon size 56, and Labels on home off then on. Each was read from the file (`"grid": {"wide": {"home": 8, "drawer": 10}}`, `"labels": false`, then `labelSize` 14 and `iconSize` 56), which completes `no-adb` for the look (the other fields in 6.4 to 6.7). With 13 apps and a folder at 8 columns, the labels' bounds didn't overlap (the gap was 3 px, labels ellipsised), and Gmail dragged onto Files on the second row made a folder: `Onto` still hits. The Fold's `layout.json` was put back to its sum (`e86e7fb8…`), and the Fold was shut down.
+  - **Checked after the fixes,** built on boat (199 tests pass) and shot on `T3_Phone_API35` over the light wallpaper:
+    - the agent page's current dot 8.9:1 and the other 4.3:1 on the veil;
+    - home's dots 10.1:1 and 3.5:1 on `#f2f2f2`;
+    - the dock's face `#232429` (dark).
+  - **The emulator was left with:**
+    - `layout.json` and `launch-stats.json` at their sums from before;
+    - the wallpaper set back to the image under Wallpaper & style's "On-device wallpapers" (the emulator's default; its crop may differ from before);
+    - the test images deleted, Arcticons uninstalled, and notification access off.
+  - Reviewed with the increment.
 
 ### Increment 7: Motion and feel. Status: backlog
 
@@ -1232,6 +1275,8 @@ Carried from T3 Launcher's reviews:
   - (c) A drag cut off by the screen going off, a call, or gesture navigation taking the touch wasn't tried. Compose turns a cancelled press into a release, so when the cancel reaches Compose before `HomeActivity`'s pause or focus loss, the item may drop where the finger was. Only the shade was shown to put it back. Tell a cancel from a release (for example from the raw `MotionEvent`), or check each case on the device.
 
 **From Increment 6's plan (2026-11-06).** The cover and inner screens' own grids are 6.4's `look.grid` (`narrow` and `wide`); this increment builds the inner-screen layout on them. The process-scoped icon cache stays here: Increment 6 keeps `Icons` per activity, but puts the icon pack's index in `HomeStore` and keys the cache by the icon style. There are two `Icons` today, home's (56 dp bitmaps) and Home settings' (40 dp), so the process cache keys on size as well as app and style; moving it into `HomeStore` changes where it lives, not what it holds.
+
+**From 6.8's critique (2026-11-06).** On the unfolded Fold: the Remove bar shown while something is held covers home's first row, so a drop meant for a row-1 icon removes the held app (Undo restores it); the left half holds only the date; the agent page's Send button floats mid-screen at the content column's edge.
 
 **Provisional Done when.** On `T3_Fold_API35`, a fold, an unfold, a dark-mode switch and a font-scale change each recreate home with its open drawer and scroll kept and with no app-list or icon reload (a debug log line per load, counted before and after), each carried item has a fix and a test or emulator check, and the inner-screen layout is screenshotted. **[real Fold]** The same on the device.
 
@@ -1295,3 +1340,10 @@ From Increment 5 (2026-11-06):
 - When a query equals a settings page's title or alias ("wifi") and an app matches it as well (WiFi Analyzer), both are tier 0 and the app's block comes first. Should the settings page win then?
 - (From Increment 5's review.) A typo of an app now shows beside a loose match of another kind, but blocks stay ordered by tier, so the loose match comes first and is Go's target: with a contact Christina Ramey, "chrame" shows her (letters in order), then Chrome (one edit), and Go opens her contact. Should an app one edit away outrank a letters-in-order match of another kind? Related, since that fix: an apps block holding only a typo now shows beside other kinds, and when it holds one app, that app brings up to five of its shortcuts ("Sigal" shows Signal and five Signal chats); Go is unaffected.
 - Calling a contact opens the dialer with the number (`ACTION_DIAL`, no permission). A call in one tap needs `CALL_PHONE`, a second runtime permission; not planned unless he wants it.
+
+From Increment 6's critique (2026-11-06), none blocking:
+- On a wallpaper that is dark overall with light patches (the emulator's default), home's date and top labels are light text over a pale band, legible only by their shadow. Android's per-region wallpaper colours aren't public API. Should the header and first row get a dark backing there, or stay as now?
+- Should home's header default to the Clock (a condensed readout, more LoR) rather than the Date?
+- Should LoR's own launcher icon become amber on Deep Space (today a green hash, the one off-palette mark on home)?
+- The drawer's Sections view shows an app in Recent, Frequent and New at once. Keep, or drop from each row what a row above holds?
+- The agent page's arc marks now with a dot; `DESIGN.md`'s now is a reticle with a four-point star. Worth drawing?

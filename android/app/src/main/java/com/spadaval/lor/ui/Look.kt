@@ -68,6 +68,10 @@ val Chamfer: Shape = CutCornerShape(topStart = 6.dp, topEnd = 0.dp, bottomEnd = 
 /** An outer panel (DESIGN.md, Cards): [face] in the chamfer, held in a 1 dp Frame Bronze edge. */
 fun Modifier.framedPanel(face: Color = PanelFace): Modifier = background(face, Chamfer).border(1.dp, Frame, Chamfer)
 
+/** A dialog's dismiss action: DESIGN.md's ordinary button text (Starlight), so only the confirming action is amber. */
+val DismissColors: androidx.compose.material3.ButtonColors
+    @Composable get() = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = Txt)
+
 /** DESIGN.md's selection: an 8% amber fill with a 1 dp amber edge at 55%. */
 fun Modifier.selection(shape: Shape = RectangleShape): Modifier =
     background(Or.copy(alpha = 0.08f), shape).border(1.dp, Or.copy(alpha = 0.55f), shape)
