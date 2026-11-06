@@ -39,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -78,21 +79,21 @@ import java.time.format.DateTimeFormatter
  * the thread, or LoR's dashboard. Nothing moves on its own: the page redraws when data changes.
  */
 
-private val Ink = Color(0xFFECEBE6)
-private val Muted = Color(0xFF9097A1)
-private val Dim = Color(0xFF616871)
-private val Line = Color(0x14FFFFFF)
-private val CardFill = Color(0xDD15181D)
+internal val Ink = Color(0xFFECEBE6)
+internal val Muted = Color(0xFF9097A1)
+internal val Dim = Color(0xFF616871)
+internal val Line = Color(0x14FFFFFF)
+internal val CardFill = Color(0xDD15181D)
 private val Veil = Color(0xD90B0D10)
-private val Amber = Color(0xFFE3A857)
+internal val Amber = Color(0xFFE3A857)
 private val Green = Color(0xFF84B98F)
-private val Red = Color(0xFFE2806F)
+internal val Red = Color(0xFFE2806F)
 private val Blue = Color(0xFF82A7E2)
 private val T3Tile = Color(0xFF3B3F8F)
 private val LorTile = Color(0xFF2C4A3A)
 
-private val Body = TextStyle(color = Ink, fontSize = 14.sp)
-private val Small = TextStyle(color = Muted, fontSize = 12.sp)
+internal val Body = TextStyle(color = Ink, fontSize = 14.sp)
+internal val Small = TextStyle(color = Muted, fontSize = 12.sp)
 private val Heading = TextStyle(color = Dim, fontSize = 11.sp, letterSpacing = 0.8.sp)
 
 @Composable
@@ -116,9 +117,10 @@ fun AgentPage() {
         // On a large screen the page keeps to the left, leaving the right for the T3 app beside it.
         Box(Modifier.fillMaxHeight().then(if (maxWidth >= 600.dp) Modifier.width(520.dp) else Modifier.fillMaxWidth())) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 120.dp)) {
-                Today(model.lor, model.lorError)
+                Today(model)
                 model.notice?.let { Text(it, style = Small.copy(color = Red), modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
-                T3State(status, shell.loaded)
+                if (status == T3Connection.Status.NotPaired || status is T3Connection.Status.Rejected) PairCard(model.connection, status, Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
+                else T3State(status, shell.loaded)
                 if (running.isNotEmpty()) {
                     Header("Running", running.size.toString())
                     running.forEach { RunningRow(it) { model.openThread(it.id, LaunchFrom.AGENT_CARD) } }
@@ -132,16 +134,34 @@ fun AgentPage() {
                         kind = "LoR", kindColor = Green, where = "flagged", title = need.title, detail = need.note,
                     ) { Pill("Open", primary = true) { model.openLor(taskPath(need.id), LaunchFrom.AGENT_CARD) } }
                 }
-                if (cards.isEmpty() && needs.isEmpty()) {
-                    Text(
-                        "Nothing needs you.",
-                        style = Small.copy(fontSize = 13.sp),
-                        modifier = Modifier
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                            .fillMaxWidth()
-                            .border(1.dp, Line, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                    )
+                val lorSource = when {
+                    model.lorError != null -> AgentStates.Source.UNSEEN
+                    model.lor != null && model.lorRead -> AgentStates.Source.SEEN
+                    else -> AgentStates.Source.READING
+                }
+                val t3Source = when {
+                    live && shell.loaded -> AgentStates.Source.SEEN
+                    status == T3Connection.Status.Connecting || status == T3Connection.Status.Stopped -> AgentStates.Source.READING
+                    else -> AgentStates.Source.UNSEEN
+                }
+                AgentStates.notes(lorSource, t3Source, cards.size, needs.size).forEach { note ->
+                    when (note) {
+                        AgentStates.Note.ALL_CLEAR -> {
+                            val lor = model.lor!!
+                            Column(
+                                Modifier
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    .fillMaxWidth()
+                                    .border(1.dp, Line, RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                            ) {
+                                Text("All clear.", style = Body.copy(fontSize = 13.sp))
+                                Text(AgentStates.next(lor.day.events, lor.now, lor.zone), style = Small.copy(fontSize = 12.5.sp), modifier = Modifier.padding(top = 2.dp))
+                            }
+                        }
+                        AgentStates.Note.LOR_UNSEEN -> Unseen("LoR can't be read, so its flags aren't here.")
+                        AgentStates.Note.T3_UNSEEN -> Unseen("T3 isn't connected, so its approvals aren't here.")
+                    }
                 }
             }
             SendButton(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 18.dp)) { QuickSend.open(context, QuickSend.From.AGENT) }
@@ -164,14 +184,44 @@ private fun Header(title: String, right: String? = null) {
 private val Clock = DateTimeFormatter.ofPattern("H:mm")
 private val Day = DateTimeFormatter.ofPattern("EEE d MMM")
 
+/**
+ * Today from LoR. When LoR can't be reached (launcher polish 3.3), the reason in plain words and a
+ * Retry; what LoR said last stays, greyed, with the time it said it.
+ */
 @Composable
-private fun Today(lor: DeviceHome?, error: String?) {
+private fun Today(model: AgentModel) {
+    val lor = model.lor
+    val error = model.lorError
     val zone = lor?.zone ?: ZoneId.systemDefault()
     Header("Today", (lor?.now ?: Instant.now()).atZone(zone).format(Day))
     if (lor == null) {
-        Text(if (error == null) "Reading LoR…" else "LoR isn't reachable ($error).", style = Small, modifier = Modifier.padding(horizontal = 18.dp))
+        if (error == null) Text("Reading LoR…", style = Small, modifier = Modifier.padding(horizontal = 18.dp))
+        else Unreachable(error, model)
         return
     }
+    // Greyed while it isn't fresh: LoR can't be reached, or no read has ended since the page opened.
+    Column(Modifier.alpha(if (error != null || !model.lorRead) 0.45f else 1f)) { TodayBody(lor, zone) }
+    if (error != null) Unreachable("$error Showing what it said at ${lor.now.atZone(zone).format(Clock)}.", model)
+}
+
+/** Why LoR can't be read, with a Retry that reads at once. */
+@Composable
+private fun Unreachable(text: String, model: AgentModel) {
+    Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(6.dp).background(Red, CircleShape))
+        Text(text, style = Small, modifier = Modifier.weight(1f).padding(start = 8.dp, end = 10.dp))
+        Pill(if (model.retrying) "Trying…" else "Retry", enabled = !model.retrying) { model.retry() }
+    }
+}
+
+/** A source the queue can't see, in place of an all-clear. */
+@Composable
+private fun Unseen(text: String) {
+    Text(text, style = Small, modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
+}
+
+@Composable
+private fun TodayBody(lor: DeviceHome, zone: ZoneId) {
     DayArc(lor)
     val running = lor.day.running
     val one = lor.one?.takeUnless { it.isTimer }
@@ -201,7 +251,6 @@ private fun Today(lor: DeviceHome?, error: String?) {
             }
         }
     }
-    if (error != null) Text("LoR isn't reachable ($error); showing ${lor.now.atZone(zone).format(Clock)}.", style = Small, modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 6.dp))
 }
 
 /** The waking day as an arc, filled up to now. Drawn once per read of LoR; nothing animates. */
@@ -238,12 +287,11 @@ private fun DayArc(lor: DeviceHome) {
 
 // ---- T3 ----
 
-/** One line when T3 can't show its threads; nothing while it is live. */
+/** One line when T3 can't show its threads; nothing while it is live. Unpaired and refused get [PairCard]. */
 @Composable
 private fun T3State(status: T3Connection.Status, loaded: Boolean) {
     val text = when (status) {
-        T3Connection.Status.NotPaired -> "T3 isn't paired. Pair it in LoR's Settings, under T3 Code."
-        is T3Connection.Status.Rejected -> "T3 refused this phone. Pair again in LoR's Settings."
+        T3Connection.Status.NotPaired, is T3Connection.Status.Rejected -> null
         is T3Connection.Status.Retrying -> "T3 is disconnected; trying again. Actions are off until it's back."
         T3Connection.Status.Live -> null
         T3Connection.Status.Connecting, T3Connection.Status.Stopped -> if (loaded) null else "Connecting to T3…"
@@ -396,7 +444,7 @@ private fun QueueCard(
 }
 
 @Composable
-private fun Pill(text: String, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
+internal fun Pill(text: String, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val shape = RoundedCornerShape(9.dp)
     val base = if (primary) Modifier.background(if (enabled) Ink else Muted, shape) else Modifier.border(1.dp, if (enabled) Color(0x33FFFFFF) else Line, shape)
     Text(
@@ -415,7 +463,7 @@ private fun Pill(text: String, primary: Boolean = false, enabled: Boolean = true
 }
 
 @Composable
-private fun Field(value: String, placeholder: String, modifier: Modifier = Modifier, onChange: (String) -> Unit) {
+internal fun Field(value: String, placeholder: String, modifier: Modifier = Modifier, onChange: (String) -> Unit) {
     OutlinedTextField(
         value,
         onChange,

@@ -32,11 +32,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
-import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.spadaval.lor.t3.LaunchDefaults
 import com.spadaval.lor.t3.ModelSelection
+import com.spadaval.lor.t3.PairScan
 import com.spadaval.lor.t3.Pairing
 import com.spadaval.lor.t3.PendingRequest
 import com.spadaval.lor.t3.Question
@@ -97,17 +95,7 @@ fun T3DebugScreen(onBack: () -> Unit) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
-                    val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
-                    GmsBarcodeScanning.getClient(context, options).startScan()
-                        .addOnSuccessListener { barcode ->
-                            val link = barcode.rawValue.orEmpty()
-                            // A scanned link names its own server, so the typed address doesn't override it.
-                            runCatching { Pairing.parse("", link) }.fold(
-                                { server = it.httpBase; pair("", link) },
-                                { pairing = "That QR code isn't a T3 pairing link." },
-                            )
-                        }
-                        .addOnFailureListener { pairing = "Cannot scan: ${it.message}" }
+                    PairScan.scan(context, { link, target -> server = target.httpBase; pair("", link) }, { pairing = it })
                 }) { Text("Scan QR") }
                 OutlinedButton(onClick = { pair(server, code) }) { Text("Pair") }
                 OutlinedButton(onClick = { connection.forget() }) { Text("Forget") }

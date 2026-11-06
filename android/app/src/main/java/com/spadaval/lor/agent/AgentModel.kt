@@ -37,10 +37,17 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     val connection = T3Connection.get(context)
     private val prefs = Prefs(context)
 
-    var lor by mutableStateOf<DeviceHome?>(null)
+    /** LoR's last good reply; kept for the process, so a recreated page starts with it (greyed until a read succeeds). */
+    var lor by mutableStateOf(lastHome)
         private set
-    /** Why the last read of LoR failed; the last good [lor] stays shown. */
+    /** Why the last read of LoR failed, in plain words ([LorClient.describe]); the last good [lor] stays shown. */
     var lorError by mutableStateOf<String?>(null)
+        private set
+    /** A read asked for by Retry is under way. */
+    var retrying by mutableStateOf(false)
+        private set
+    /** At least one read has ended since the page opened; until then a kept [lor] is shown greyed. */
+    var lorRead by mutableStateOf(false)
         private set
     /** Requests answered from this page, hidden before the shell catches up. */
     var answered by mutableStateOf(emptySet<String>())
@@ -90,12 +97,27 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
         val url = prefs.serverUrl
         val device = prefs.deviceName
         try {
-            lor = withContext(Dispatchers.IO) { LorClient(url).home(device) }
+            lor = withContext(Dispatchers.IO) { LorClient(url).home(device) }.also { lastHome = it }
             lorError = null
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            lorError = e.message ?: e.javaClass.simpleName
+            lorError = LorClient.describe(e)
+        } finally {
+            lorRead = true
+        }
+    }
+
+    /** Reads LoR now instead of at the next minute. */
+    fun retry() {
+        if (retrying) return
+        retrying = true
+        scope.launch {
+            try {
+                readLor()
+            } finally {
+                retrying = false
+            }
         }
     }
 
@@ -160,6 +182,8 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     }
 
     companion object {
+        /** The last good `/device/home` in this process (not on disk). */
+        @Volatile private var lastHome: DeviceHome? = null
         private const val LOR_EVERY_MS = 60_000L
         private const val RELEASE_AFTER_MS = 30_000L
     }

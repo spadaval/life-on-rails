@@ -76,4 +76,16 @@ class LorClient(baseUrl: String) {
             conn.disconnect()
         }
     }
+
+    companion object {
+        /**
+         * Why a call to LoR failed, in plain words (launcher polish 3.3): no answer at all is most
+         * often Tailscale being off; an answer that refused says what the server said.
+         */
+        fun describe(e: Throwable): String = when (e) {
+            is java.net.UnknownHostException, is java.net.ConnectException, is java.net.NoRouteToHostException,
+            is java.net.SocketTimeoutException -> "LoR didn't answer. Is Tailscale on?"
+            else -> (e.message ?: e.javaClass.simpleName).let { if (it.endsWith(".") || it.endsWith("?")) it else "$it." }
+        }
+    }
 }
