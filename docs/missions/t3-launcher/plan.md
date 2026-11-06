@@ -502,6 +502,7 @@ Agents editing the layout through a git repo, then search for people and threads
 
 **Unknowns.**
 - Which LoR endpoint gives people for search, and whether T3 thread search uses `orchestration.searchThreads` (adds one method to Increment 2's set).
+- (From Launcher polish Increment 5's review, 2026-11-06.) See [its cross-link on search](../launcher-polish/plan.md#cross-links-with-t3-launcher): people and threads are two more kinds added to its `Search.run`, its matcher and block order; a person's chats are found by the conversation shortcut's label (the people in a shortcut can't be read without a system permission); and who merges a person shown twice, as an Android contact (its 5.6), a messaging app's chat and a LoR person, is open.
 
 #### Increment 9: Smart folders. Status: backlog, moved out of this mission (2026-11-05); blocked by Increment 7 and Launcher polish Increment 2
 

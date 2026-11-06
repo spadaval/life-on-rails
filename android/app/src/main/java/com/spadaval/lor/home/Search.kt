@@ -223,7 +223,8 @@ class Results<out T>(val query: String, val answer: Answer?, val blocks: List<Bl
 
 object Search {
     /**
-     * Searches [sources] for [query]. Typo matches show only when nothing matched better. Within a kind: by tier, then by [weight] (apps' launch
+     * Searches [sources] for [query]. An app's typo shows only when no app matched better, another
+     * kind's only when nothing matched better. Within a kind: by tier, then by [weight] (apps' launch
      * weights; higher first), then as the source lists them. Kinds are blocks, ordered by their
      * best tier, ties in [Kind]'s order; [answer] comes first. [check] is called every 8 items, so
      * a cancelled search stops early.
@@ -246,10 +247,14 @@ object Search {
                 ?: if (digits != null && e.digits.any { it.contains(digits) }) Match.CONTAINS else null
             if (tier != null) found.add(Triple(tier, i, e))
         }
-        // A typo is a guess: looked for only when nothing matched better, so "cafe" doesn't bring
-        // Camera (and the costliest tier is skipped whenever something matched).
-        if (found.isEmpty()) sources.forEachIndexed { i, e ->
+        // A typo is a guess: an app's is looked for only when no app matched better, so "cafe"
+        // doesn't bring Camera; another kind's only when nothing of any kind did. So a loose match
+        // on a contact or a chat doesn't hide an app one edit away ("chrame"), and the costliest
+        // tier skips the contacts whenever something matched.
+        val typos = if (found.isEmpty()) null else setOf(Kind.APPS) - found.map { it.third.kind }.toSet()
+        if (typos == null || typos.isNotEmpty()) sources.forEachIndexed { i, e ->
             if (i % 8 == 0) check()
+            if (typos != null && e.kind !in typos) return@forEachIndexed
             if (q.norm.length >= e.kind.minLength && e.names.any { Match.isTypo(q, it) }) found.add(Triple(Match.TYPO, i, e))
         }
         val blocks = found.groupBy { it.third.kind }.map { (kind, list) ->

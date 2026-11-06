@@ -24,4 +24,9 @@ class SettingsPagesTest {
         assertEquals("Home settings", first("home settings"))
         assertEquals("Do Not Disturb", first("dnd"))
     }
+
+    @Test
+    fun everyTitleAndAliasGoesToItsRow() {
+        for (page in SettingsPage.ALL) for (q in listOf(page.title) + page.aliases) assertEquals(q, page.title, first(q))
+    }
 }

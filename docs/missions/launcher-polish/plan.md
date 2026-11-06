@@ -894,6 +894,7 @@ Agreed with Sumeet, 2026-11-05:
     - A unit typed without a target goes to its pair (km ↔ mi, kg ↔ lb, °C ↔ °F, …); data goes up one step (MB → GB), and GB and TB down to the step below. Data units are decimal (1 GB = 1000 MB). "in" is both the inch and the joining word: "5 in" is inches, "5 in in cm" works.
     - A very large or very small result is written as `1.2676506E30`, not with every digit.
   - Reviewed with the increment.
+  - **From the review (R9, no action):** "11/06/2026" (a date with slashes) gets a calculator card, and "5k" reads as 5 kelvin. Both are left until they are felt.
 
 #### 5.5 The empty field, and the drawer with the keyboard up. Status: done
 - **Goal.** An empty field offers what was searched lately, and the drawer can open ready to type.
@@ -943,6 +944,18 @@ Agreed with Sumeet, 2026-11-05:
     - Once a chat with a contact exists, Messages publishes a conversation shortcut with the same name, so the person shows twice, in Shortcuts and Contacts ("ali" after Message). T3 Launcher Increment 8's open question of merging a person shown twice covers this case too.
     - A call in one tap (`CALL_PHONE`) stays unplanned, as the answers say; it is in Open questions.
   - Reviewed with the increment.
+
+**Review, 2026-11-06.** A fresh agent reviewed d7f63a3..34b5099: contract and fitness pass, with findings. The coordinator decided each; what was done:
+- R1, fixed: since shortcuts (5.2) and contacts (5.6), a loose letters-in-order match of another kind hid every app typo, since typos were looked for only when nothing matched: "chrame" matches a contact Christina Ramey in order, so Chrome, one edit away, never showed. An app's typo is now looked for whenever no app matched better; other kinds keep the rule that nothing of any kind matched (so the 1,000 contacts aren't put through the typo tier when something matched). `ContactsSearchTest.aLooseMatchOfAnotherKindDoesNotHideAnAppTypo` covers "chrame", an app matched better hiding an app typo, and a contact's typo still waiting. On the emulator with a contact Christina Ramey: "chrame" showed her, then Chrome (both profiles) with its shortcuts. Go opened her contact, not Chrome: her block's tier (in order) comes before the app typo's, and the coordinator kept the tiers as planned; the question is in Open questions. Typing "chrame" logged searches of 151 items in 1.2 to 7.8 ms over three runs, and with 1,000 contacts imported again, "test person 99" stayed under 9 ms warm over three runs (17.2 ms once, in the first run after the install).
+- R2, fixed: the calculator's parser recursed per bracket and sign with no limit, and a pasted run of thousands of "(" or "-" overflowed the stack on `Dispatchers.Default`, which would take home down. A query over 200 characters gets no answer (`AnswersTest.aLongPasteIsNoAnswerAndNoCrash`).
+- R3, fixed: the spec said "a one-letter typo"; it now says one edit, two from eight letters, shown only when no app matched better.
+- R4, fixed: T3 Launcher's Handed-on Increment 8 has an Unknown pointing at this plan's cross-link: two more kinds in `Search.run`, chats found by the shortcut's label, and who merges a person shown twice.
+- R5, fixed: `SettingsPagesTest.everyTitleAndAliasGoesToItsRow` checks that every title and alias of every row, Night Light and LoR's two included, makes that row Go's target.
+- R6, fixed: `readContacts` marked the index fresh before reading, so a failed read was never tried again. The flag is still cleared first (so a change during the read marks it stale again), and a failure sets it back, so the next resume retries.
+- R7, fixed: "Contacts in search" sat inside Home settings' `file != null`; the Search heading and the row now show whatever the file's state, and only the keyboard switch needs the file.
+- R8, no action. R9, no action: recorded under 5.4.
+- Its question, whether an app typo should rank against weak in-order matches of other kinds across blocks: left as planned, and added to Open questions.
+- 178 tests pass on boat. The emulator was left as found: test contacts and the vCard deleted, `READ_CONTACTS` revoked, `layout.json` and `launch-stats.json` back to their sums from before the checks.
 
 ### Increment 6: The look. Status: backlog
 
@@ -1034,4 +1047,5 @@ From Increment 3 (2026-11-06), none blocking:
 
 From Increment 5 (2026-11-06):
 - When a query equals a settings page's title or alias ("wifi") and an app matches it as well (WiFi Analyzer), both are tier 0 and the app's block comes first. Should the settings page win then?
+- (From Increment 5's review.) A typo of an app now shows beside a loose match of another kind, but blocks stay ordered by tier, so the loose match comes first and is Go's target: with a contact Christina Ramey, "chrame" shows her (letters in order), then Chrome (one edit), and Go opens her contact. Should an app one edit away outrank a letters-in-order match of another kind?
 - Calling a contact opens the dialer with the number (`ACTION_DIAL`, no permission). A call in one tap needs `CALL_PHONE`, a second runtime permission; not planned unless he wants it.

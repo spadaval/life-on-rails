@@ -52,4 +52,21 @@ class ContactsSearchTest {
         assertEquals("Carol", r.go?.value)
         assertNull(Search.run("zzz", contacts).go)
     }
+
+    @Test
+    fun aLooseMatchOfAnotherKindDoesNotHideAnAppTypo() {
+        val chrome = Found(Kind.APPS, "a", listOf(Match.prepare("Chrome")), "Chrome")
+        val christina = contact("Christina Ramey")
+        // c-h-r…a-m-e is in Christina Ramey in order (tier 5); Chrome is one edit away (tier 6).
+        val r = Search.run("chrame", listOf(chrome, christina))
+        assertEquals(listOf("Christina Ramey", "Chrome"), r.blocks.flatMap { b -> b.entries.map { it.value } })
+        // The blocks keep the planned order, best tier first, so Go is the contact.
+        assertEquals(listOf(Kind.CONTACTS, Kind.APPS), r.blocks.map { it.kind })
+        // An app that matched better still hides the app typos ("chromec" is one edit from Chrome)…
+        val chromecast = Found(Kind.APPS, "b", listOf(Match.prepare("Chromecast")), "Chromecast")
+        assertEquals(listOf("Chromecast"), found("chromec", listOf(chrome, chromecast)))
+        // …and a contact's typo still waits for nothing of any kind to match (a-l-c…i-e is in Alchemie in order).
+        val alchemie = Found(Kind.APPS, "c", listOf(Match.prepare("Alchemie")), "Alchemie")
+        assertEquals(listOf("Alchemie"), found("alcie", listOf(contacts[0], alchemie)))
+    }
 }

@@ -55,6 +55,14 @@ class AnswersTest {
     }
 
     @Test
+    fun aLongPasteIsNoAnswerAndNoCrash() {
+        assertNull(v("(".repeat(5000) + "1"))
+        assertNull(v("-".repeat(5000) + "1"))
+        assertNull(v("1+".repeat(101) + "1"))
+        assertEquals("100", v("1+".repeat(99) + "1"))
+    }
+
+    @Test
     fun anAnswerKeepsItsQuery() {
         assertEquals(Answer("84", "12*7"), Answers.of(" 12*7 ", '.'))
     }

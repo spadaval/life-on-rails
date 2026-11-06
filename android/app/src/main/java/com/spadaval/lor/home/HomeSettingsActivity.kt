@@ -196,8 +196,8 @@ private fun HomeSettings(
                 }
             }
         }
+        item { Section("Search") }
         if (file != null) {
-            item { Section("Search") }
             item {
                 val on = file.drawer.keyboard
                 Toggle("Open the drawer with the keyboard up", "Ready to type a search", on) {
@@ -206,8 +206,9 @@ private fun HomeSettings(
                     }
                 }
             }
-            item { ContactsRow(open) }
         }
+        // The permission doesn't depend on the file, so it shows while the file loads or is broken.
+        item { ContactsRow(open) }
         item { HorizontalDivider(Modifier.padding(top = 12.dp)) }
         item {
             Link("Default home app", "Choose which app is home") { open(Intent(Settings.ACTION_HOME_SETTINGS)) }

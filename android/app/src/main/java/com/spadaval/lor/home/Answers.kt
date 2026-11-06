@@ -16,7 +16,8 @@ object Answers {
     /** The answer to [query], or null. [decimal] is the locale's decimal point. */
     fun of(query: String, decimal: Char = DecimalFormatSymbols.getInstance().decimalSeparator): Answer? {
         val q = query.trim()
-        if (q.isEmpty() || q.none { it.isDigit() }) return null
+        // The parser recurses per bracket and sign: a long paste is no sum, and mustn't overflow the stack.
+        if (q.isEmpty() || q.length > MAX_LENGTH || q.none { it.isDigit() }) return null
         return calculate(q, decimal) ?: convert(q, decimal)
     }
 
@@ -63,6 +64,7 @@ object Answers {
     }
 
     private const val OPERATORS = "+-*/×÷^"
+    const val MAX_LENGTH = 200
     private val NUMBER_THEN = Regex("""(-?[\d.,]+)\s*([^\d].*)""")
     private val SPLIT = Regex("""\s+(?:to|in|>)\s+""")
 

@@ -257,8 +257,18 @@ class HomeStore(private val context: Context) {
      * they are held in memory, as the other sources are.
      */
     private fun readContacts() {
-        val start = System.nanoTime()
+        // Cleared first, so a change during the read marks it stale again; a failed read is tried again on the next resume.
         contactsStale = false
+        try {
+            readContactsNow()
+        } catch (e: Exception) {
+            contactsStale = true
+            throw e
+        }
+    }
+
+    private fun readContactsNow() {
+        val start = System.nanoTime()
         contactsAllowed = contactsGranted()
         if (!contactsAllowed) {
             if (_search.value.contacts.isNotEmpty()) _search.value = _search.value.copy(contacts = emptyList())
