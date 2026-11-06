@@ -488,6 +488,7 @@ Agents editing the layout through a git repo, then search for people and threads
 
 **Unknowns.**
 - Which repo holds the file, and how the phone reaches it: over the tailnet, or served through LoR.
+- (From Launcher polish Increment 4, 2026-11-06.) Home has pages: a layout's `home` is its first page and `pages` the rest. An agent asking "is X on home" reads both, and "an app is on home once" is a rule of the phone's edits, not of the parser.
 - Whether changes made by hand on the phone are written back to the repo. The thread proposed it, but it wasn't decided. Half answered (2026-11-05): [Launcher polish](../launcher-polish/plan.md) writes every phone edit to `layout.json` (its P1), so hand edits reach the file; whether the repo receives them is this increment's.
 - ~~From 3.2's review: when the file breaks, keep showing the last good layout and show the error beside it.~~ Moved to Launcher polish, Increment 3 (2026-11-05).
 

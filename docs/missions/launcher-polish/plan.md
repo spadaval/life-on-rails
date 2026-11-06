@@ -344,7 +344,11 @@ Agreed with Sumeet, 2026-11-05:
   - One drag at a time lives in `HomeUi`: what is held, where it came from, and where the finger is. A pointer handler on `HomeScreen`'s root follows it in the Initial pass and consumes its moves, so the pager and the drawer swipe don't see them. The source only starts it, so a source that leaves the screen (the drawer closing, a folder panel closing) doesn't end it.
   - Each tile, folder slot, the dock, each page's grid, the open folder's card and Remove report their bounds in root coordinates (`onGloballyPositioned`).
   - A pure function (no Compose or Android types) turns the finger's position and those bounds into a target. A pure edit (4.1) turns the source and the target into the edited `LayoutFile`.
-  - While the drag is over a target, home draws that edit's result as a preview. Nothing is written until the drop, which is one `HomeStore.edit`, so one write and one Undo.
+  - **The preview is a working copy** (Kvaesitso's `attemptMove`). When the drag starts, home keeps the file it drew as the drag's `original` and a copy of it, `work`. Home draws `work` while something is held, so every tile's `Spot` and bounds are `work`'s, and the target under the finger is always in the coordinates of what is drawn.
+    - After the finger has stayed 300 ms over a `Before` or `AtEnd` target, that move is applied to `work`, and `from` becomes the held item's new `Spot` in it.
+    - `Onto` and `Remove` only highlight their target. They are never applied to `work` while held: a drop on them applies them once, to `work`.
+    - A step `drop` refuses (a full dock, a folder into the dock) isn't applied, and its target isn't highlighted.
+    - The drop is one `HomeStore.edit` whose change refuses ("Home changed; try again") unless the reread file equals `original`, and otherwise returns the final `work`. So it is one write and one Undo, and an outside write made during the drag is never overwritten.
   - In the preview, items take their new places without animation. The motion (items easing to their places, the icon settling on drop) and the drop haptic are Increment 7's (it already holds pickup and drop haptics).
 - *Pages are an optional addition, not a version bump.* A layout gains an optional `pages`, the pages after the first, and `home` stays what it has always been: the items of home's first page, in reading order, at most 24. A file without `pages` means exactly what it meant before, and no existing field changes meaning. Page objects (`{ "items": [...] }`) rather than bare lists leave room for Increment 9 to put something per page. See [Schema additions](#schema-additions).
 - *Undo is a copy of the file's text from before the edit.*
@@ -364,7 +368,19 @@ Agreed with Sumeet, 2026-11-05:
 - *A folder's cover app* is one of its apps, drawn as the folder's tile in place of the four-app preview, with the folder's name under it. A tap still opens the folder. Nova's "tap opens the cover, swipe opens the folder" is left out because a vertical swipe on home opens the drawer.
 - *A new folder's name* is the title of the two apps' category when they share one (Media, Tools…), else "Folder". Names may repeat (R4), so no number is added.
 - *Accessibility.* Every drag edit except order and pages also has a menu way: Add and Remove, Rename, Cover app, Move to section. Order has no way but dragging; Launcher3's accessibility "Move" actions wait until that is felt.
+- *A spike before 4.1* settles the two things that could reshape the controller: (1) whether an app menu (`DropdownMenu`, a popup window) opened mid-press cancels that press's later moves for a handler on home's root; (2) whether a drag survives the drawer leaving the screen mid-gesture. If (1) cancels, the app menu is drawn in home's own window instead of a popup; if (2) fails, the drawer stays composed (invisible) until the drag ends. The results are recorded here.
 - *Checking a drag on the emulator.* A drag that pauses (the long press, the 300 ms hover, the edge wait) is driven with `adb shell input motionevent DOWN|MOVE|UP x y` and pauses between them (API 30+). A plain tap or long press still goes through agent-device. `run-as com.spadaval.lor sha256sum files/layout.json` before an edit and after its Undo shows the bytes are back.
+
+**Plan review, 2026-11-06.** A fresh agent reviewed the plan (7b11b8c): contract pass, fitness fail on two design gaps, both fixed. Dispositions:
+- R1, taken: an edit by `Spot` carries what home drew there and refuses "Home changed; try again" when the reread file differs (4.1, with a test).
+- R2, taken: the preview is a working copy moved step by step; `Onto` and `Remove` only highlight (the shape of a drag).
+- R3, taken: `LayoutStore.edit` writes nothing and keeps no Undo when nothing changed (4.2).
+- R4, taken: the view switch goes through `setView`, drops the pending Undo and dismisses the bar (4.2).
+- R5, taken: a spike before 4.1 (the answers).
+- R6, taken: "on home once" is an edit rule (4.1, Schema additions), and T3 Launcher's handed-on Increment 7 says an agent reads `home` and `pages`.
+- R7, taken: one rule for empty pages, with a drag's page kept until the drop (4.1).
+- R8, recorded as a choice (4.1, the section carry).
+- R9, taken: the R3 test covers Add to home for B (4.1).
 
 #### 4.1 Pages, covers, and edits by place. Status: todo
 - **Goal.** The schema and the pure edits that every later issue draws and drags with, and home drawing pages and covers. No dragging yet.
@@ -389,21 +405,25 @@ Agreed with Sumeet, 2026-11-05:
     It moves the item: out of its place, then into the target. Its rules:
     - Onto an app on a page makes a folder of the two in the target's place. Onto a folder appends to it.
     - A folder goes only to pages: into the dock or onto anything it is refused ("folders don't go in the dock", "folders don't nest").
-    - An app may be on home once (any page, folders included) and in the dock once. A move from the drawer or the dock onto home refuses one already there, and a move into the dock refuses one already there.
+    - An app may be on home once (any page, folders included) and in the dock once. This is a rule of the edits, not of the parser, which doesn't refuse duplicates (that would stop files that parse today from parsing). A move from the drawer or the dock onto home refuses one already there, and a move into the dock refuses one already there. "Already there" is by resolution: home holding `p` (drawn as `p/.A`) doesn't hold `p/.B`.
     - The limits refuse: 24 a page, 5 in the dock, 4 extra pages.
     - `Remove` takes the item out (a folder with its apps). From the drawer it is no edit.
     - Dropping an item where it is returns the file unchanged, and nothing is written.
-    - A folder the move empties is removed, and an extra page it empties is removed (page 0 stays, even empty).
+    - A folder the move empties is removed (then and there, also in a drag's `work`).
     - A folder the move touches becomes `pinned`, and one that loses its cover app loses `cover`.
   - **Folder edits:** `renameFolder(spot, name)` (not blank), `setCover(spot, ref?)` (one of its refs, or none), `removeAt(spot)`. Each pins the folder.
-  - **The section carry:** `moveToSection` takes the installed apps and replaces a package ref that named the moved activity with refs to the package's other installed activities.
+  - **Empty pages, one rule.** Any edit (a drop, hide, Remove from home or from a folder, Add's placement) that leaves an extra page empty removes it; page 0 stays, even empty. The one exception is a drag: a page emptied in `work` while the item is held stays until the drop (as Launcher3 keeps its screens until `stripEmptyScreens`), so the page under the finger doesn't vanish, and the drop strips it. The open folder closes when an edit moves its page or index.
+  - **Edits by place check the place.** Every edit that takes a `Spot` also takes what home drew there (the `AppRef`, or the `Folder`), and refuses ("Home changed; try again") when the file reread by `LayoutStore.edit` holds something else there. Home rereads only on resume, so without this an adb or agent write made while home is on screen would let an edit move or remove whatever now sits at that index.
+  - **The section carry:** `moveToSection` takes the installed apps and replaces a package ref that named the moved activity with refs to the package's other installed activities. A choice: those are the activities installed now, so an activity the package adds later doesn't follow the section; it goes to its category.
   - **Drawing.** Home's pager holds the agent page, home, then one page per entry of `pages`, each drawn as home is (the date header only on home). The page dots show them all. A home press returns to home from any page. A launch from any page is `from: home`, so the Launches row in the spec is unchanged.
 
     A folder with a `cover` that is installed draws that app's icon (52 dp) as its tile. The open folder (`HomeUi.folder`) is a `Spot`; Remove from folder edits that folder; a reread from outside closes it.
 - **Done when.**
   - **JVM tests** (`LayoutTest`, `LayoutEditTest`, and a new `HomeEditTest` for `drop` and the folder edits) cover:
     - parsing, refusals and round trip for `pages` and `cover`: more than 4 pages, a page over 24 items, an unknown field in a page, a cover that isn't one of the folder's apps, and a file with neither field writing neither back;
-    - R3: package `p` with activities `p/.A` ("Alpha") and `p/.B` ("Beta"), and home holding `p`. `placesOf(B)` is empty, `placesOf(A)` is `Page(0, i)`, and Remove from home for B refuses;
+    - R3: package `p` with activities `p/.A` ("Alpha") and `p/.B` ("Beta"), and home holding `p`. `placesOf(B)` is empty, `placesOf(A)` is `Page(0, i)`, and Remove from home for B refuses. Add to home for B is allowed and writes `p/.B` beside `p` (the on-home-once rule doesn't count `p` as B);
+    - a `Spot` edit whose file holds something other than what home drew there refuses with "Home changed; try again";
+    - a drop that returns the file unchanged makes `LayoutStore.edit` write nothing and keep no Undo;
     - R4: two folders named "Google". `removeAt(InFolder(0, second, 0))` changes only the second;
     - the section carry: a section listing `p`, one of p's two activities moved to another section; the first section then lists the other activity;
     - each `drop` rule above, and each refusal;
@@ -421,11 +441,11 @@ Agreed with Sumeet, 2026-11-05:
 
 #### 4.2 Undo for every edit. Status: todo
 - **Goal.** Each edit can be taken back for a few seconds, and taking it back restores `layout.json` byte for byte.
-  - `LayoutStore.edit` returns, beside the edited file and its stamp, the text it read and the text it wrote.
+  - `LayoutStore.edit` returns, beside the edited file and its stamp, the text it read and the text it wrote. When the change returns a file equal to the one it read, it writes nothing and returns no texts, so no Undo is kept (a drop in place, a step that changes nothing).
   - `LayoutStore.undo(before, wrote)` refuses ("layout.json changed since; nothing was undone") unless the file holds exactly `wrote`. Otherwise it writes `before` with `writeAtomically`, refreshes `layout.good.json`, and returns the new read.
   - `HomeStore` keeps the last edit's pair in memory, replaced by the next edit and cleared by an undo. `HomeStore.undo()` runs on the serial dispatcher, records the stamp, and logs `undid the last edit` (`LorHome`).
   - **Home.** A snackbar at the bottom of `HomeScreen`, above the drawer and the dock, replaces the edit's success toast. It shows the edit's message ("Gmail is off home.", "Folder made.") or "Home changed." when an edit has none, and an "Undo" action (`DESIGN.md`'s underlined undo in the ink colour) for 4 s (`SnackbarDuration.Short`).
-    - It takes every edit through `HomeActions.edit`, except the drawer's view switch.
+    - It takes every edit through `HomeActions.edit`. The drawer's view switch no longer goes through it: it calls `HomeActions.setView(view)`, which edits with `HomeStore.edit(undoable = false)`. That write drops any pending Undo (its copy would no longer match the file) and dismisses the bar.
     - A refusal stays a toast (3.6: moving refusals belongs with Increment 6).
   - **Home settings.** Its edits (Unhide, the section edits) show the same bar there.
 - **Done when.**
@@ -445,7 +465,7 @@ Agreed with Sumeet, 2026-11-05:
 - **Goal.** An app on home or in the dock can be picked up from its menu and moved anywhere on the page, in or out of the dock, or onto Remove. "Edit home" exists.
   - **Pick up.** The app's long press opens its menu as now. Once the finger has moved 16 dp from where it pressed, the menu closes and the drag starts, in `HomeUi`, from the tile's `Spot`. The tile keeps one `combinedClickable` node for TalkBack and agent-device; the drag's handler sits beside it and adds no semantics.
 
-    First step: check that opening `DropdownMenu` (a popup window) mid-press doesn't cancel the press's later moves. If it does, the app menu is drawn in home's own window (a box over home at the tile) instead of a popup, and that is recorded here.
+    Whether the `DropdownMenu` popup cancels the press is settled by the spike before 4.1 (the answers).
   - **Follow.** The held icon (52 dp, no label) is drawn under the finger above everything. Its slot is empty in the preview. The pager doesn't scroll and the drawer swipe doesn't open while something is held.
   - **Targets.** `targetAt(point, bounds)` in a new `home/Drag.kt` uses plain Kotlin types only, so the JVM tests reach it:
     - within 0.55 of the icon's size from the icon centre of an app or folder on a page: `Onto`, unless a folder is held (folders only reorder). Making and filling folders is checked in 4.4;
@@ -513,7 +533,7 @@ Agreed with Sumeet, 2026-11-05:
 - **Goal.** An app is dragged from the drawer onto home, as on any launcher, and empty home says so.
   - **From the drawer.** A main-profile app's tile in the drawer (sections, A–Z, Most used, search results) starts a drag the same way: long press, menu, 16 dp. The drawer closes, the drag goes on over home as `FromDrawer`, and the drop rules of 4.1 apply.
 
-    Before building it, check that the drag survives the drawer leaving the screen mid-gesture (the root handler keeps the pointer). A work-profile app opens only its menu (refs can't name it, 1.1).
+    Whether the drag survives the drawer leaving the screen is settled by the spike before 4.1 (the answers). A work-profile app opens only its menu (refs can't name it, 1.1).
   - **Empty home** (3.2): "Home is empty." and "Swipe up for your apps, then drag one here, or long-press it and choose Add to home." Its grid area is a target (`AtEnd(Page(0))`) and the tap still opens the drawer.
 - **Done when.** On `T3_Phone_API35`:
   - a drawer app dragged onto home is in the file where it was dropped;
@@ -600,7 +620,7 @@ Optional fields this mission adds to `layout.json` schema version 1, each writte
 - (4.1) In a layout, `pages`, optional: the pages of home after the first, `[{ "items": [item, …] }, …]`, at most 4.
   - `items` is written as `home` is (apps and folders), at most 24, and may be absent or empty. Home's pages are `home`, then `pages` in order.
   - `home` keeps its meaning: the items of home's first page. A file without `pages` means what it did before.
-  - What the rules say of home holds on every page: `hidden` and Hide, a folder's `pinned`, the edits' "an app is on home once".
+  - What the rules say of home holds on every page: `hidden` and Hide, a folder's `pinned`, and the edits' rule that an app is on home once (an edit rule; the parser doesn't refuse duplicates). Anything asking whether an app is on home reads `home` and `pages`.
   - The phone removes an extra page an edit empties; the parser accepts an empty one.
 - (4.1) In a folder, `cover`, optional: one of the folder's `apps`, written as it is there. Any other value is an error. Its tile draws that app's icon instead of the four-app preview, and a tap still opens the folder. While that app isn't installed, the preview shows. An edit that takes the app out of the folder (a move, Remove, Hide) drops `cover`.
 - (4.2) No field. Undo's copy of the text before the last edit is in memory only.
