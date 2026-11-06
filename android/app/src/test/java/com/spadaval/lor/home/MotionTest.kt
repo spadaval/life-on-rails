@@ -12,8 +12,22 @@ class MotionTest {
         // From open: closing needs 30% of travel down.
         assertTrue(DrawerMotion.settles(fromOpen = true, start = 1f, shown = 0.75f, upDpS = 0f))
         assertFalse(DrawerMotion.settles(fromOpen = true, start = 1f, shown = 0.65f, upDpS = 0f))
-        // A gesture that caught the drawer mid-way measures from where it caught it.
-        assertFalse(DrawerMotion.settles(fromOpen = false, start = 0.5f, shown = 0.7f, upDpS = 0f))
+        // A gesture that caught the drawer mid-way measures 30% of the travel left from where it caught it.
+        assertFalse(DrawerMotion.settles(fromOpen = false, start = 0.5f, shown = 0.6f, upDpS = 0f))
+        assertTrue(DrawerMotion.settles(fromOpen = false, start = 0.5f, shown = 0.7f, upDpS = 0f))
+    }
+
+    @Test
+    fun aDrawerCaughtNearAnEndCanStillBeTakenToTheOther() {
+        // Caught closing at 0.8 and dragged fully open, let go slowly: it opens.
+        assertTrue(DrawerMotion.settles(fromOpen = false, start = 0.8f, shown = 1f, upDpS = 0f))
+        assertFalse(DrawerMotion.settles(fromOpen = false, start = 0.8f, shown = 0.82f, upDpS = 0f))
+        // The mirror: caught at 0.2 from open and pulled fully shut, it closes.
+        assertFalse(DrawerMotion.settles(fromOpen = true, start = 0.2f, shown = 0f, upDpS = 0f))
+        assertTrue(DrawerMotion.settles(fromOpen = true, start = 0.2f, shown = 0.18f, upDpS = 0f))
+        // The point is never past either end, wherever the gesture started.
+        for (s in listOf(0f, 0.5f, 0.9f, 0.99f)) assertTrue(DrawerMotion.commitPoint(false, s) <= 1f)
+        for (s in listOf(1f, 0.5f, 0.1f, 0.01f)) assertTrue(DrawerMotion.commitPoint(true, s) >= 0f)
     }
 
     @Test

@@ -183,14 +183,15 @@ class HomeUi {
     /** The open folder's tile icon, in root coordinates, when it was tapped (launcher polish 7.2). */
     var folderFrom: Rect? = null
 
-    /** The drawer's list is at its top, and where it is in root coordinates (its letter rail left out). */
     /**
      * How far a back gesture has gone, eased, from 0 to 1 (launcher polish 7.3): the drawer or the
-     * open folder is drawn scaled by `1 - 0.1 × back`.
+     * open folder is drawn scaled by `1 - 0.1 × back`. Back to 0 when either opens again.
      */
     var back by mutableFloatStateOf(0f)
 
+    /** The drawer's list is at its top, so a pull down there moves the drawer (launcher polish 7.1). */
     var drawerAtTop = true
+    /** Where the drawer's list is, in root coordinates, its letter rail left out: where that pull starts. */
     var drawerPullArea: Rect? = null
     /**
      * The open folder: its place in the file (launcher polish 4.1: by place, since names may
@@ -306,7 +307,12 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val filePages = file?.current?.allPages?.size ?: 1
     val pageCount = filePages + if (held != null && held.work.current.pages.size < LayoutFile.MAX_PAGES) 1 else 0
     // A file changed from outside (an agent, adb) may hold another folder at the open one's place.
-    LaunchedEffect(reads) { ui.folder = null }
+    // It closes at once: a reread puts things in place without motion (DESIGN.md's Motion).
+    LaunchedEffect(reads) {
+        if (ui.folder == null) return@LaunchedEffect
+        ui.snapFolder = true
+        ui.folder = null
+    }
     val pager = rememberPagerState(initialPage = 1) { 1 + pageCount }
     // The system bars' icons follow the ink: dark over a light wallpaper on home's pages, light on
     // the agent page's veil, the drawer and an open folder (6's review, R1).
@@ -336,11 +342,14 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         val to = if (ui.drawer) 1f else 0f
         val fling = ui.drawerFling
         ui.drawerFling = 0f
+        // An open starts whole, though a back gesture's close was caught before it ended (7's review, R2).
+        if (to == 1f) ui.back = 0f
         if (ui.snapDrawer) {
             ui.snapDrawer = false
             ui.drawerShown = to
         } else if (ui.drawerShown != to) {
-            animate(ui.drawerShown, to, fling, Motion.settle()) { v, _ -> ui.drawerShown = v }
+            // A finger that takes the drawer mid-settle owns it from that frame, before this effect is cancelled.
+            animate(ui.drawerShown, to, fling, Motion.settle()) { v, _ -> if (!ui.drawerHeld) ui.drawerShown = v }
         }
     }
     // A target waits 300 ms under the finger before the working copy takes it (Kvaesitso's attemptMove).
@@ -416,6 +425,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     LaunchedEffect(folderOpen, ui.homePresses) {
         if (folderOpen) {
             folderFading = false
+            ui.snapFolder = false
+            ui.back = 0f
             // The panel's first frame is its slowest (on the emulator, 140 ms); start the clock after it,
             // or the motion would be over before it is seen. It is drawn at nothing until then.
             if (folderShown.value == 0f) repeat(2) { withFrameNanos {} }
@@ -1264,6 +1275,7 @@ private class DrawerFinger(val ui: HomeUi, val haptics: HapticFeedback, val heig
     private val point = DrawerMotion.commitPoint(fromOpen, start)
     init {
         ui.drawerHeld = true
+        ui.back = 0f
     }
 
     /** The finger is [travel] px below where it pressed (up negative). */
@@ -1323,18 +1335,20 @@ private suspend fun AwaitPointerEventScope.awaitVerticalSlop(down: PointerInputC
 private suspend fun AwaitPointerEventScope.followDrawer(down: PointerInputChange, first: PointerInputChange, finger: DrawerFinger, tracker: VelocityTracker, pass: PointerEventPass) {
     first.consume()
     finger.move(first.position.y - down.position.y)
-    while (true) {
-        val c = awaitPointerEvent(pass).changes.firstOrNull { it.id == down.id }
-        if (c == null) {
-            finger.release(0f)
-            return
+    var vy = 0f
+    // Released however the gesture ends, a cancelled pointer coroutine too, so the drawer is never left held.
+    try {
+        while (true) {
+            val c = awaitPointerEvent(pass).changes.firstOrNull { it.id == down.id } ?: return
+            c.consume()
+            tracker.addPosition(c.uptimeMillis, c.position)
+            finger.move(c.position.y - down.position.y)
+            if (!c.pressed) {
+                vy = tracker.calculateVelocity().y
+                return
+            }
         }
-        c.consume()
-        tracker.addPosition(c.uptimeMillis, c.position)
-        finger.move(c.position.y - down.position.y)
-        if (!c.pressed) {
-            finger.release(tracker.calculateVelocity().y)
-            return
-        }
+    } finally {
+        finger.release(vy)
     }
 }

@@ -13,8 +13,12 @@ object DrawerMotion {
     /** A fling faster than this (dp/s) decides by its direction alone. */
     const val FLING = 800f
 
-    /** Where a gesture that started at [start] commits: 30% of the travel toward the other end. */
-    fun commitPoint(fromOpen: Boolean, start: Float): Float = if (fromOpen) start - COMMIT else start + COMMIT
+    /**
+     * Where a gesture that started at [start] commits: 30% of the travel left toward the other
+     * end, so a drawer caught mid-settle near one end still has a point short of the other.
+     */
+    fun commitPoint(fromOpen: Boolean, start: Float): Float =
+        if (fromOpen) start - COMMIT * start else start + COMMIT * (1f - start)
 
     /**
      * Whether the drawer ends open when a finger that started at [start] (open or not: [fromOpen])
