@@ -141,8 +141,8 @@ private fun HomeSettings(apps: List<HomeApp>, layout: LayoutState, edit: (String
         if (file != null) {
             item { Section("Drawer sections") }
             val all = file.drawer.allSections()
-            // Keyed by place: names are unique, but a crash here would lock the edits away.
-            items(all.size, key = { "section:$it" }) { i ->
+            // Keyed by name (unique, ignoring case), so a row's open dialog stays with its section.
+            items(all.size, key = { "section:" + all[it].name.lowercase() }) { i ->
                 val s = all[i]
                 SectionRow(file, s, first = i == 0, last = i == all.lastIndex, edit)
             }

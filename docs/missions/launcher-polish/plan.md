@@ -74,7 +74,7 @@ Agreed with Sumeet, 2026-11-05:
 - Checks it found missing, run on the emulator: Add to dock on Maps from home; Hide on Camera in the dock (took it out of the dock, into `hidden`); a sideways swipe to the agent page still works under the new long-press layer.
 - A second fresh agent reviewed the fixes (4b5e962): pass. Its one gap, that no JVM test failed if `toJson` stopped unescaping, is closed by a test on the JVM's `<\/`.
 
-### Increment 2: An organised drawer. Status: active
+### Increment 2: An organised drawer. Status: done
 
 **Goal.** The drawer opens on sections instead of one A–Z grid: Recent and Frequent (Frequent is the suggested row; see the answers below), then categories (Work, Communication, Money, Travel, Media, Games, Tools, System, Other). A–Z (with a letter rail for fast scrolling) and Most used are a tap away, and the drawer remembers the view. The work profile has its own section. A newly installed app carries a dot and shows in "New" for three days. Sections are edited by hand: move an app to another section from its menu, rename, reorder, hide, delete or re-categorise a section, and make a new one. A section edited by hand is `pinned`, which tells T3 Launcher Increment 9's agent to leave it alone.
 
@@ -117,6 +117,7 @@ Agreed with Sumeet, 2026-11-05:
 - R5, fixed: rename, hide, category and Move to section write only the section they touch when the file holds it; a reorder, a new section, and an edit to an automatic section write them all.
 - R6, fixed: a stale comment. R7 (a brief flicker when switching views twice quickly) and R8 (a write per launch) need nothing.
 - Its open question, whether a new or renamed section may take an automatic section's name: refused, as the code did; 2.3's Goal now says so.
+- A second fresh agent reviewed the fixes (c007d9f): pass. Its R1, rows keyed by place could let an open dialog follow the wrong section after a reread, is fixed by keying by name now that names are unique. Its R2 is carried to Increment 4. No build from this mission has been on the real phone, so no file there can hold a repeated name.
 
 ### Increment 3: No blank or raw screens. Status: backlog
 
@@ -140,6 +141,7 @@ Agreed with Sumeet, 2026-11-05:
 
 **Carried from Increment 1's review.**
 - R3: a package-name ref on home is drawn as the package's first activity, but the edits treat it as naming every activity of the package, so for a package with two launcher activities the second's menu says Remove from home and removes the first. Work out an app's places from the refs as home resolved them.
+- From Increment 2's second review: moving one activity of a package that a section lists by package name drops that package ref, so the package's other activities go back to their category. Replace the package ref with refs to its other activities (needs the app list).
 - R4: folders are found by name (the open folder, Remove from folder), and names may repeat within a layout. Track the open folder and edit folders by position, or make the parser refuse a repeated name.
 
 **Unknowns.** How Kvaesitso and Neo Launcher do drag and drop in Compose. Read both before choosing; this is the mission's biggest piece. Whether pages are a schema addition or a version bump (comes back to Sumeet if it is a bump).
