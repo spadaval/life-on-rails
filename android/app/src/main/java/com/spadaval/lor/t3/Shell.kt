@@ -26,6 +26,10 @@ data class T3Thread(
     val lastError: String?,
     /** What this thread waits on Sumeet for: its own request, then those of its hidden subagents and side chats. */
     val requests: List<PendingRequest>,
+    /** Whether its own run is under way (a request can outlive a cancelled run). */
+    val runLive: Boolean = state == ThreadState.RUNNING,
+    /** ISO time the live run started (`activityRunStartedAt`), or null when no run is live. */
+    val runStartedAt: String? = null,
 )
 
 /**
@@ -56,6 +60,7 @@ data class Shell(
         val providerNative: Boolean,
         /** Whether a subagent's run is still live; once it ends its parent no longer waits on it. */
         val runLive: Boolean,
+        val runStartedAt: String? = null,
     ) {
         val listed: Boolean get() = !subagent && !sideChat
     }
@@ -70,7 +75,7 @@ data class Shell(
                 requests.isNotEmpty() -> ThreadState.WAITING_ANSWER
                 else -> r.run
             }
-            T3Thread(id, r.title, r.projectId, projects[r.projectId] ?: r.projectId, state, r.updatedAt, r.lastError, requests)
+            T3Thread(id, r.title, r.projectId, projects[r.projectId] ?: r.projectId, state, r.updatedAt, r.lastError, requests, r.runLive, r.runStartedAt)
         }.sortedByDescending { it.updatedAt }
     }
 
@@ -157,6 +162,7 @@ data class Shell(
                 sideChat = lineage.optBoolean("sideChat"),
                 providerNative = subagent && str(t, "creationSource") == "provider",
                 runLive = runLive,
+                runStartedAt = if (runLive) str(t, "activityRunStartedAt") else null,
             )
         }
 

@@ -1,7 +1,9 @@
 package com.spadaval.lor.ui
 
 import android.Manifest
+import android.app.NotificationManager
 import android.app.StatusBarManager
+import android.content.pm.PackageManager
 import android.content.ComponentName
 import android.content.Intent
 import android.graphics.drawable.Icon
@@ -31,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.spadaval.lor.BuildInfo
 import com.spadaval.lor.R
 import com.spadaval.lor.tile.AskTileService
@@ -109,6 +112,9 @@ fun SettingsScreen() {
                 }) { Text("Choose the assistant") }
             }
         }
+        Section("Live Updates") {
+            LiveUpdatesSettings()
+        }
         Section("About") {
             Text("Life on Rails ${BuildInfo.VERSION}", style = MaterialTheme.typography.bodyMedium)
             Text(
@@ -118,4 +124,42 @@ fun SettingsScreen() {
             )
         }
     }
+}
+
+/** Whether running T3 turns can show as Live Updates, with a way to fix what's off. */
+@Composable
+private fun LiveUpdatesSettings() {
+    val context = LocalContext.current
+    val manager = remember { context.getSystemService(NotificationManager::class.java) }
+    fun allowed() = context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    fun promoted() = Build.VERSION.SDK_INT < 36 || manager.canPostPromotedNotifications()
+    var notify by remember { mutableStateOf(allowed()) }
+    var promote by remember { mutableStateOf(promoted()) }
+    // Both can change in the system's settings while this screen is away.
+    LifecycleResumeEffect(Unit) {
+        notify = allowed()
+        promote = promoted()
+        onPauseOrDispose {}
+    }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { notify = it }
+    Text(
+        "While a T3 turn runs, it shows in the status bar and on the lock screen, silently, until it ends. Tap it to open the thread.",
+        style = MaterialTheme.typography.bodySmall,
+    )
+    Text(
+        when {
+            !notify -> "Off: LoR may not post notifications."
+            !promote -> "Shown as ordinary notifications: Live Updates are off for LoR."
+            else -> "On."
+        },
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(top = 8.dp),
+    )
+    if (!notify) OutlinedButton(onClick = { ask.launch(Manifest.permission.POST_NOTIFICATIONS) }, modifier = Modifier.padding(top = 8.dp)) {
+        Text("Allow notifications")
+    } else if (!promote && Build.VERSION.SDK_INT >= 36) OutlinedButton(onClick = {
+        runCatching {
+            context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+        }
+    }, modifier = Modifier.padding(top = 8.dp)) { Text("Turn on Live Updates") }
 }

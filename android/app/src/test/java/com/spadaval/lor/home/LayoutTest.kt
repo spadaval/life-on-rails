@@ -120,7 +120,10 @@ class LayoutTest {
 
     @Test
     fun rejectsDeepNestingWithoutCrashing() {
-        // The JVM's org.json stops at depth 512; Android's overflows the stack, which parse catches.
+        // Android's org.json recurses without a limit, and parse catches its StackOverflowError.
+        // The JVM can't test that catch: its org.json stops at depth 512, and below that it catches
+        // a StackOverflowError itself (JSONTokener.nextValue) and throws a JSONException, even on a
+        // thread with a 16 KB stack. So this checks only that deep nesting is "not JSON", not a crash.
         val deep = "[".repeat(100_000) + "]".repeat(100_000)
         assertTrue(error("""{"version": 1, "active": "a", "layouts": $deep}""").startsWith("not JSON"))
     }

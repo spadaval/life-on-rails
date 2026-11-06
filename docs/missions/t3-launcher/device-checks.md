@@ -86,3 +86,23 @@ Notes:
 ### Real Fold setup (2026-11-05)
 
 Galaxy Z Fold7 (SM-F966U1), paired over wireless adb at `192.168.1.151`. Installed `main` at `c0f0421` (built on boat), made default home with `cmd role add-role-holder android.app.role.HOME com.spadaval.lor 0`, battery exempt via `dumpsys deviceidle whitelist +com.spadaval.lor` and `appops RUN_ANY_IN_BACKGROUND allow`. Process at setup: pid 21534, started 18:18:52 EST. Check 2 compares against this on 2026-11-06.
+
+## Increment 6: running turns as Live Updates, on the emulator
+
+2026-11-05. `T3_Phone_API36` (Pixel 9 profile, Android 16, the `android-36.1` Google APIs image, already on this host), LoR as the default home, the LoR app pointed at `http://10.0.2.2:3857`. The scratch T3 server (`:16021`, project `launcher-scratch`), turns started with `node apps/server/src/bin.ts thread start --base-dir .t3 --provider devReplay`, so every turn came from another client. Read back with `dumpsys notification --noredact` and screenshots.
+
+| Check | Result | Note |
+| --- | --- | --- |
+| Settings' Live Updates section | pass | With notifications denied it said "Off: LoR may not post notifications." with Allow notifications; the system prompt's Allow turned it to "On." (`POST_PROMOTED_NOTIFICATIONS` is granted at install.) |
+| A running turn posts a Live Update | pass | A `showcase` turn, home in front: one notification, channel `running_turns`, flags `ONGOING_EVENT\|ONLY_ALERT_ONCE\|LOCAL_ONLY\|PROMOTED_ONGOING`, "launcher-scratch · Running". |
+| It clears when the turn ends | pass | The `showcase` run took about 6 s; `LorLive` logged 1, then 0 six seconds later, and the notification was gone. |
+| The status bar chip | pass, not on home | Over the Settings app: a `question` turn showed the chip "Answer" (`shortCriticalText`), and a running turn the icon alone. On home there was no chip, only the small icon: Android hides an app's own chip while that app is in front, and LoR is home. |
+| The promoted notification in the shade | pass | At the top, above the Silent section, though the channel is low importance: "live update question", "launcher-scratch · Waiting for your answer". |
+| A turn started while the launcher is in the background | pass | Settings in front: a `showcase` turn showed (screenshot 1.5 s in: the chip with the icon) and cleared when it ended, leaving the waiting question's update. |
+| A tap opens the T3 app at the thread | pass | The T3 app copied there earlier was not paired at first and opened at "No environments connected". Paired with Add environment (`http://10.0.2.2:16021` and a code from `t3 pair --base-dir .t3`; a bare `10.0.2.2:16021` says "Pairing URL is invalid."). Then the tap opened "live update question" in `launcher-scratch` with its question. Answering it there cleared the Live Update. |
+| The connection in the background, without a foreground service | pass, over 15 minutes | Settings in front from 22:55 to 23:09, screen on, nothing else touching LoR. Then a `question` turn from the CLI posted its Live Update within 2 s, chip "Answer". The same pid (3797) throughout, no foreground service. |
+| After the review fixes | pass | The final build installed over it: the waiting question's update came back in the new process (the start sweep cleared the old one), and a new `showcase` turn over Settings showed with its tap target and cleared when it ended. No crashes in `logcat -b crash`, and no tickets or tokens in logcat. |
+
+Notes:
+- The home process is `mHomeProcess` with process state HOME, not cached, so the cached-app freezer leaves it alone; that's why the socket lives with no foreground service. An app that isn't home would not get this.
+- Doze was not tried: the emulator was plugged in and awake. A day on the Fold is in plan.md's Handed on, item 6.

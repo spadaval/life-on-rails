@@ -30,6 +30,22 @@ class AgentQueueTest {
     }
 
     @Test
+    fun withinAKindTheMostRecentlyUpdatedComesFirst() {
+        // In the shell's order, most recently updated first, with the kinds interleaved.
+        fun approval(id: String, at: String) = thread(id, ThreadState.WAITING_APPROVAL, at, PendingRequest(id, "r-$id", "command"))
+        fun question(id: String, at: String) = thread(id, ThreadState.WAITING_ANSWER, at, PendingRequest(id, "r-$id", "user_input"))
+        val threads = listOf(
+            question("q-new", "2026-11-05T20:50:00.000Z"),
+            approval("a-new", "2026-11-05T20:40:00.000Z"),
+            thread("f-new", ThreadState.FAILED, "2026-11-05T20:30:00.000Z"),
+            question("q-old", "2026-11-05T20:20:00.000Z"),
+            approval("a-old", "2026-11-05T20:10:00.000Z"),
+            thread("f-old", ThreadState.FAILED, "2026-11-05T20:00:00.000Z"),
+        )
+        assertEquals(listOf("a-new", "a-old", "q-new", "q-old", "f-new", "f-old"), AgentQueue.cards(threads, emptySet(), now).map { it.thread.id })
+    }
+
+    @Test
     fun anAnsweredRequestClearsItsCardAndTheNextOneShows() {
         // A thread waiting on its own approval and on a side chat's question, rolled up.
         val t = thread("t", ThreadState.WAITING_APPROVAL, requests = arrayOf(PendingRequest("t", "a1", "command"), PendingRequest("side", "q1", "user_input")))

@@ -313,11 +313,11 @@ Each check is run with the LoR home, and with One UI Home where a comparison hel
   - On the inner screen the split pairs T3 with the last app used, not with home: home can't be in a split on stock Android 15. Whether One UI does better is **[real Fold]**. If it doesn't, the agent page could live in its own activity that can take a split.
   - The page dots are centred on the whole inner screen while the page keeps to the left (as in 3.2).
   - Nothing shows the block's own label for a timer started from the tile; it still says "Uncategorized".
-- **Deferred from the review of 3.2's fixes and 3.3** (2026-11-05; F3 and F6 were fixed in Increment 4; moved to Launcher polish: F2 to its 1.1, F4 to its Increment 8):
+- **Deferred from the review of 3.2's fixes and 3.3** (2026-11-05; F3 and F6 were fixed in Increment 4, F5 and F7 in Increment 6; moved to Launcher polish: F2 to its 1.1, F4 to its Increment 8):
   - F2: if `loadAll()` fails on the first run, `_apps` stays empty and only a profile broadcast reloads it; one app update then puts a single app in `_apps`, and the next resume writes a one-app default layout that sticks (`HomeModel.kt`). Reload the app list on resume while it's empty.
   - F4: card actions run in the page's `rememberCoroutineScope`, so a dark-mode, font-scale or density change recreates the activity, cancels a respond that has already gone out, and re-enables the card. Belongs with the deferred process-scoped model.
-  - F5: `LayoutTest`'s deep-nesting case hits the JVM org.json's depth-512 `JSONException`, not the `StackOverflowError` catch. A real test parses about 400 levels on a thread with a 64 KB stack.
-  - F7: `AgentQueueTest` doesn't check the order within a kind (most recently updated first). Add an assertion if it's cheap.
+  - F5: `LayoutTest`'s deep-nesting case hits the JVM org.json's depth-512 `JSONException`, not the `StackOverflowError` catch. A real test parses about 400 levels on a thread with a 64 KB stack. **Done (2026-11-05, Increment 6), as far as the JVM allows:** it can't reach the catch. Below depth 512 the JVM's org.json catches a `StackOverflowError` itself in `JSONTokener.nextValue` and throws a `JSONException` ("JSON Array or Object depth too large to process."), even at 480 levels on a thread with a 16 KB stack (tried). The test keeps its 100,000 levels and now says it checks only "not JSON, no crash"; the catch is for Android's org.json, which has no limit.
+  - F7: `AgentQueueTest` doesn't check the order within a kind (most recently updated first). Add an assertion if it's cheap. **Done (2026-11-05, Increment 6):** `withinAKindTheMostRecentlyUpdatedComesFirst` feeds approvals, questions and failures interleaved in the shell's order and checks each kind keeps it.
 
 #### 3.4 The spec says what the phone is now. Status: done 2026-11-05
 - **Goal.** The second Done when of Increment 3: "The phone" and "Who is who" describe the app as the launcher. It's a client of both T3 and LoR, and it holds the queue that LoR's server doesn't.
@@ -427,13 +427,39 @@ Sending launches a T3 thread in the first of: the project named in the prompt, t
   - Agent-page launches (`agent_card`, `agent_icon`), the dock and folders were checked by the JVM and db tests, not on the emulator.
   - Home time as app sessions wasn't run on the emulator (its App usage sensor is off there). The first real day of it on the Fold will show whether the agent page needs a rule of its own.
 
-### Increment 6: Running turns as Live Updates. Status: active (2026-11-05: built, uncommitted, when the mission's orchestrator stopped; being finished on the emulator)
+### Increment 6: Running turns as Live Updates. Status: done on the emulator (2026-11-05, reviewed, fixes in the same commit); the Now Bar and a day in the background moved to [Handed on](#handed-on-2026-11-05)
 
 **Goal.** While a T3 turn runs, a Live Update shows it in the status bar and on the lock screen, and it ends when the turn ends.
 
 **Done when.** On an Android 16 emulator image, a running turn on a scratch server shows and clears its Live Update, including one started from another client while the launcher is in the background. (The Now Bar and a day in the background on the real Fold moved to [Handed on](#handed-on-2026-11-05).)
 
 **Unknowns.** Whether the connection must be held by a foreground service when the launcher isn't in front. Increment 1 shows only whether the process survives. This increment checks whether the connection does.
+
+**Built 2026-11-05.** `android/app/src/main/java/com/spadaval/lor/live/`: `LiveTurns.kt` (which threads show and what each says, pure) and `LiveUpdates.kt` (posting and cancelling the notifications). `LorApp` starts it for the process. `Shell.kt` now carries each thread's `runLive` and `activityRunStartedAt`. Settings has a Live Updates section. The manifest gains `POST_NOTIFICATIONS` and `POST_PROMOTED_NOTIFICATIONS`. Tests: `LiveTurnsTest` (6).
+- **Which turns show.** One notification per listed thread with a turn under way: running, or waiting on Sumeet for an approval or an answer. A request raised from a side chat or subagent onto an idle parent counts (review fix). A thread's own request left over from a cancelled run doesn't count. An idle or failed thread has none, so its update ends when the turn does. The text is "<project> · Running", "Waiting for your approval" or "Waiting for your answer". The chip (`setShortCriticalText`) says "Approve" or "Answer"; a turn that is just running shows the icon alone. The time shown is the run's start.
+- **How it posts.** The notification is tagged with the thread id, ongoing, `CATEGORY_PROGRESS`, `setRequestPromotedOngoing(true)` on Android 16, on a low-importance channel (`running_turns`: no sound, vibration or heads-up), with no progress bar, since a turn has no measurable progress. It is reposted only when what it says, or its tap target, changes. A tap opens the T3 app at the thread, as the agent page's cards do. On a process start it first clears anything it left before.
+- **The connection.** `LiveUpdates` holds the shared `T3Connection` for the life of the process, so it is always on once paired. While it is Connecting or Retrying, what's shown stays until the next snapshot corrects it. Unpaired or rejected, everything clears. No foreground service.
+- **Settings** says whether it's on, and offers "Allow notifications" or "Turn on Live Updates" (`ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS`) for whichever is off.
+- **What changed from the inherited code** (written by an earlier agent and left uncommitted, never built). It built and its tests passed as left. The changes: the log line fires only when the count changes, not on every shell change. Then the two review fixes below.
+
+**Proof.** `boat-build.sh` passed `assembleDebug testDebugUnitTest`: 72 tests, 6 in `LiveTurnsTest`, plus F7's new `AgentQueueTest` case. On `T3_Phone_API36` (Android 16) against the scratch server, every turn was started from the CLI, another client: a running turn posted a `PROMOTED_ONGOING` notification and cleared when it ended, with home in front and with the Settings app in front. The chip showed over another app, and the promoted notification sat at the top of the shade. A tap opened the T3 app at the thread. After 15 minutes in the background, a new turn still showed within 2 s, in the same process. Details in [device-checks.md](device-checks.md).
+
+**The unknown, answered on the emulator.** Over 15 minutes in the background with the screen on, the connection survived without a foreground service. LoR is the home app, so its process stays in state HOME rather than cached, and the cached-app freezer leaves it alone. Doze, a day, and One UI's own process rules are for the Fold (Handed on, item 6).
+
+**Review, 2026-11-05** (an agent that didn't write the code, reading the diff). Fixed:
+- R1: the environment id for the tap was cached for the life of the process, so pairing with another server kept opening threads at the old one. It now comes from `T3Connection.environmentId()`, which caches it per server, and a changed id reposts.
+- R2: a side chat's approval or question raised onto an idle parent showed nothing, though that is when the chip helps most. It now counts as a turn under way (new test).
+
+Deferred:
+- R3: while the environment id can't be read, each shell change retries the HTTP call before posting. Fixed for the common case by R1's per-server cache.
+- R4: granting notifications in Settings posts nothing until the next shell change. A running turn changes the shell often, so this is cosmetic.
+- R5: the tap's `FLAG_ACTIVITY_LAUNCH_ADJACENT` is chosen when the notification is built, so a fold or unfold after that keeps the old choice. From the shade over another app it splits T3 beside that app. **[real Fold]**
+- R6: while the connection retries (offline, Doze, the T3 host down), a finished turn keeps its update until the next snapshot. As designed, but Doze on the Fold could stretch it to hours.
+- Not a bug: home's 30 s let-go no longer stops the connection, since Live Updates always holds it. The socket, pinged every 20 s, runs whenever the process does. Battery cost is for the Fold.
+
+**Open.**
+- No chip on home: Android hides an app's own Live Update chip while it is in front, and LoR is home. The small icon still shows, and the agent page lists the running turns.
+- Doze wasn't tried on the emulator.
 
 ## Handed on (2026-11-05)
 
@@ -447,7 +473,7 @@ Every check that only the real Fold can answer. Each stays written up under its 
 - **3.** A few days with LoR as home, and whether it's good enough to keep. Whether One UI lets the T3 app open in a split beside home (stock Android 15 can't); if not, the agent page could move to an activity that can take a split.
 - **4.** The side key opens quick send from inside another app. Whether the sheet's keyboard opens by itself. Whether a home *swipe* on home should open the sheet (on the emulator only the home key does; loosening it risks review R1's misfire).
 - **5.** After a week of real use: the day timeline's 500-row limit, whether time with T3 beside home in a split counts as Life on Rails, and whether the agent page needs an attribution rule of its own.
-- **6.** Whether a running turn shows in One UI's Now Bar, and whether a turn started from another client still shows after a day with the launcher in the background.
+- **6.** Whether a running turn shows in One UI's Now Bar, and whether a turn started from another client still shows after a day with the launcher in the background (on the emulator the connection lived 15 minutes without a foreground service). How long a finished turn's update outlives Doze (review R6), the battery cost of the always-on socket, and whether the tap should split T3 beside the app in front on the inner screen (review R5).
 - **The T3 fork item** (Increment 4, Open questions): `onProvideAssistContent` in the fork's `MainActivity`, so quick send over T3's app picks the open thread's project.
 
 ### Agent-edited layouts: Increments 7 to 10
