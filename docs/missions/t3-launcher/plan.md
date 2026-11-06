@@ -421,7 +421,7 @@ Sending launches a T3 thread in the first of: the project named in the prompt, t
 - **From the review (2026-11-05).** F1 fixed in `6991e4c` (a blink on home after a locked spell stretched the last phone block; see the decision above). Deferred:
   - `dayTimeline` lists newest first with `LIMIT 500`, so a heavy phone day (home time between apps, plus launches) can lose its morning. Check the real row count after a week on the Fold.
   - In a split on the inner screen, `collect/Sessions.kt` tracks one app at a time, so time with T3 beside a resumed home may count as Life on Rails. Check it on the first real day on the Fold.
-  - `tests/db/device.test.ts` "Launches are not app sessions" is always true. A test that ingests a real app session next to a launch, and checks the block links only the session, would catch a reader that took both kinds.
+  - ~~`tests/db/device.test.ts` "Launches are not app sessions" is always true.~~ Done at close-out (2026-11-05): a new case ingests an app session beside a launch and checks the phone block links only the session. Breaking fill's `kind = 'app'` filter on purpose doesn't fail it, because a launch is an instant and fill drops zero-length fragments anyway. It would catch a launch that gained a duration. Today's pickups and screen time read `kind = 'app'` on their own and aren't covered by it.
 - **Open.**
   - The Today page draws "Recorded" (the timeline) only for days gone by, so a launch shows there from the next day. The check read `dayTimeline` directly.
   - Agent-page launches (`agent_card`, `agent_icon`), the dock and folders were checked by the JVM and db tests, not on the emulator.

@@ -99,6 +99,24 @@ dbDescribe("launches", () => {
       ["android", "YouTube", 'opened from search "you"'],
     ]);
   });
+
+  it("is not read as an app session: beside a real session, the phone block links only the session", async () => {
+    const session = "6f1c2c1e-0000-4000-8000-000000000030";
+    const tap = "6f1c2c1e-0000-4000-8000-000000000031";
+    await ingest({
+      device: "pixel-9a",
+      observations: [
+        obs(session, { t_start: "2026-10-14T16:00:00.000Z", t_end: "2026-10-14T16:10:00.000Z", app: "com.google.android.youtube", title: "YouTube", payload: { kind: "app" } }),
+        launch(tap, "2026-10-14T16:00:00.000Z", { from: "home", package: "com.google.android.youtube" }),
+      ],
+    });
+    const blocks = await sql<{ origin: string; t_start: Date; t_end: Date; obs: string[] }[]>`
+      SELECT b.origin, b.t_start, b.t_end, array_agg(tbo.observation_id::text) AS obs
+      FROM time_block b JOIN time_block_observation tbo ON tbo.block_id = b.id GROUP BY b.id`;
+    expect(blocks).toEqual([
+      { origin: "auto_activity", t_start: new Date("2026-10-14T16:00:00.000Z"), t_end: new Date("2026-10-14T16:10:00.000Z"), obs: [session] },
+    ]);
+  });
 });
 
 dbDescribe("device timer and state", () => {
