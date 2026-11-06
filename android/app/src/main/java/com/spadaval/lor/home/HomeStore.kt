@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
@@ -34,6 +35,11 @@ class HomeApp(val label: String, val info: LauncherActivityInfo) {
     val key = "${info.componentName.flattenToString()}#${info.user}"
     val id = AppId(packageName, info.componentName.className)
     val mainProfile: Boolean get() = user == Process.myUserHandle()
+    val category: Category by lazy {
+        val a = info.applicationInfo
+        categoryOf(packageName, a.category, a.flags and ApplicationInfo.FLAG_SYSTEM != 0)
+    }
+    val firstInstalled: Long get() = info.firstInstallTime
 }
 
 /** What home shows from the layout file: the parsed file, or why it can't be used. */
@@ -64,6 +70,7 @@ class HomeStore(private val context: Context) {
     private val collator = Collator.getInstance()
     private val byLabel = Comparator<HomeApp> { a, b -> collator.compare(a.label, b.label) }
     private val store = LayoutStore(File(context.filesDir, "layout.json"))
+    private val statsFile = File(context.filesDir, "launch-stats.json")
     private var stamp = -1L
 
     /** The app list loaded in full at least once; until then no default layout is written. */
@@ -73,6 +80,8 @@ class HomeStore(private val context: Context) {
     val apps: StateFlow<List<HomeApp>> = _apps
     private val _layout = MutableStateFlow<LayoutState>(LayoutState.Loading)
     val layout: StateFlow<LayoutState> = _layout
+    private val _stats = MutableStateFlow(LaunchStats())
+    val stats: StateFlow<LaunchStats> = _stats
     private val _changes = MutableSharedFlow<PackageChange>(extraBufferCapacity = 64)
     val changes: SharedFlow<PackageChange> = _changes
 
@@ -104,6 +113,16 @@ class HomeStore(private val context: Context) {
         ContextCompat.registerReceiver(context, profiles, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         serially { loadApps() }
         serially { readLayout() }
+        serially { if (statsFile.exists()) _stats.value = LaunchStats.parse(statsFile.readText()) }
+    }
+
+    /** Counts a launch of [app] from the launcher, for the drawer's Recent, Frequent and Most used. */
+    fun launched(app: HomeApp) {
+        val at = System.currentTimeMillis()
+        serially {
+            _stats.value = _stats.value.launched(app.key, at)
+            writeAtomically(statsFile, _stats.value.toJson())
+        }
     }
 
     /**

@@ -22,6 +22,8 @@ import java.time.format.DateTimeParseException
  *   "version": 1,
  *   "active": "default",
  *   "hidden": ["com.example.game"],                     // optional (launcher polish 1.1)
+ *   "drawer": { "view": "sections",                      // optional (launcher polish 2.1)
+ *               "sections": [{ "name": "Work", "category": "work", "apps": ["com.slack"] }] },
  *   "layouts": [
  *     { "name": "default",
  *       "expires": "2026-11-18T00:00:00Z",          // optional; read, not acted on until Increment 10
@@ -36,7 +38,12 @@ import java.time.format.DateTimeParseException
  * Unlike Launcher3's SQLite workspace (cells with x/y on numbered screens), positions are list
  * order: home fills a grid in reading order, so an agent edits a list rather than coordinates.
  */
-data class LayoutFile(val active: String, val layouts: List<Layout>, val hidden: List<AppRef> = emptyList()) {
+data class LayoutFile(
+    val active: String,
+    val layouts: List<Layout>,
+    val hidden: List<AppRef> = emptyList(),
+    val drawer: Drawer = Drawer(),
+) {
     val current: Layout get() = layouts.first { it.name == active }
 
     fun toJson(): String = unescapeSlashes(
@@ -44,6 +51,7 @@ data class LayoutFile(val active: String, val layouts: List<Layout>, val hidden:
             .put("version", VERSION)
             .put("active", active)
             .apply { if (hidden.isNotEmpty()) put("hidden", JSONArray(hidden.map { it.toString() })) }
+            .apply { if (drawer != Drawer()) put("drawer", drawer.toJson()) }
             .put("layouts", JSONArray(layouts.map { it.toJson() }))
             .toString(2),
     )
@@ -88,7 +96,7 @@ data class LayoutFile(val active: String, val layouts: List<Layout>, val hidden:
                 true
             }
             if (trailing) throw LayoutError("not JSON: more after the closing }")
-            root.onlyKeys("", "version", "active", "hidden", "layouts")
+            root.onlyKeys("", "version", "active", "hidden", "drawer", "layouts")
             val version = root.opt("version")
             if (version != VERSION) throw LayoutError("version: must be $VERSION, got ${version ?: "nothing"}")
             val layouts = root.array("", "layouts").mapIndexed { i, v -> parseLayout("layouts[$i]", v) }
@@ -102,8 +110,52 @@ data class LayoutFile(val active: String, val layouts: List<Layout>, val hidden:
             hidden.groupBy { it }.filterValues { it.size > 1 }.keys.firstOrNull()?.let {
                 throw LayoutError("hidden: \"$it\" is listed twice")
             }
-            return LayoutFile(active, layouts, hidden)
+            val drawer = if (root.has("drawer")) parseDrawer(root.opt("drawer")!!) else Drawer()
+            return LayoutFile(active, layouts, hidden, drawer)
         }
+
+        private fun parseDrawer(v: Any): Drawer {
+            if (v !is JSONObject) throw LayoutError("drawer: must be an object")
+            v.onlyKeys("drawer", "view", "sections")
+            val view = if (v.has("view")) {
+                val id = v.string("drawer", "view")
+                DrawerView.entries.firstOrNull { it.id == id }
+                    ?: throw LayoutError("drawer.view: must be one of ${DrawerView.entries.joinToString { it.id }}, got \"$id\"")
+            } else null
+            val sections = if (v.has("sections")) v.array("drawer", "sections").mapIndexed { i, s -> parseSection("drawer.sections[$i]", s) } else emptyList()
+            sections.groupBy { it.name.lowercase() }.filterValues { it.size > 1 }.values.firstOrNull()?.let {
+                throw LayoutError("drawer.sections: the name \"${it[0].name}\" is used twice")
+            }
+            sections.mapNotNull { it.category }.groupBy { it }.filterValues { it.size > 1 }.keys.firstOrNull()?.let {
+                throw LayoutError("drawer.sections: the category \"${it.id}\" is taken twice")
+            }
+            // Two refs may not name one activity, in one section or two.
+            val refs = sections.flatMap { s -> s.apps.map { s to it } }
+            refs.forEachIndexed { i, (s, a) ->
+                refs.drop(i + 1).firstOrNull { (_, b) -> a.overlaps(b) }?.let { (t, b) ->
+                    throw LayoutError("drawer.sections: \"$b\" in \"${t.name}\" names an app \"$a\" in \"${s.name}\" already names")
+                }
+            }
+            return Drawer(view, sections)
+        }
+
+        private fun parseSection(at: String, v: Any): DrawerSection {
+            if (v !is JSONObject) throw LayoutError("$at: must be an object")
+            v.onlyKeys(at, "name", "category", "apps", "hidden", "pinned", "reason")
+            val category = if (v.has("category")) {
+                val id = v.string(at, "category")
+                Category.of(id) ?: throw LayoutError("$at.category: must be one of ${Category.entries.joinToString { it.id }}, got \"$id\"")
+            } else null
+            val apps = if (v.has("apps")) v.array(at, "apps").mapIndexed { i, a -> parseRef("$at.apps[$i]", a) } else emptyList()
+            return DrawerSection(
+                v.string(at, "name"), category, apps,
+                hidden = v.bool(at, "hidden"), pinned = v.bool(at, "pinned"),
+                reason = if (v.has("reason")) v.string(at, "reason") else null,
+            )
+        }
+
+        private fun JSONObject.bool(at: String, key: String): Boolean =
+            if (has(key)) opt(key) as? Boolean ?: throw LayoutError("${path(at, key)}: must be true or false") else false
 
         private fun parseLayout(at: String, v: Any): Layout {
             if (v !is JSONObject) throw LayoutError("$at: must be an object")
@@ -196,6 +248,10 @@ data class AppRef(val packageName: String, val className: String? = null) : Layo
     fun matches(packageName: String, className: String): Boolean =
         packageName == this.packageName && (this.className == null || this.className == className)
 
+    /** Whether some activity is named by both refs: equal, or a package and one of its activities. */
+    fun overlaps(other: AppRef): Boolean =
+        packageName == other.packageName && (className == null || other.className == null || className == other.className)
+
     override fun toString() = if (className == null) packageName else "$packageName/$className"
     override fun toJsonValue(): Any = toString()
 
@@ -215,6 +271,43 @@ data class AppRef(val packageName: String, val className: String? = null) : Layo
 }
 
 class LayoutError(message: String) : Exception(message)
+
+/** How the drawer opens: on its sections, A–Z, or by launch count. */
+enum class DrawerView(val id: String) { SECTIONS("sections"), AZ("az"), USED("used") }
+
+/**
+ * The drawer's part of the file (launcher polish 2.1). [view] is the last view chosen, null until
+ * one is. [sections] are the sections the file holds, in order; see [allSections] and [sort].
+ */
+data class Drawer(val view: DrawerView? = null, val sections: List<DrawerSection> = emptyList()) {
+    fun toJson(): JSONObject = JSONObject().apply {
+        if (view != null) put("view", view.id)
+        if (sections.isNotEmpty()) put("sections", JSONArray(sections.map { it.toJson() }))
+    }
+}
+
+/**
+ * A drawer section: its [name], the [category] whose apps it takes, the [apps] put in it by hand
+ * (a package name means every activity), and whether it is [hidden] from the Sections view.
+ * [pinned] marks one edited by hand; [reason] is a line an agent wrote (T3 Launcher Increment 9).
+ */
+data class DrawerSection(
+    val name: String,
+    val category: Category? = null,
+    val apps: List<AppRef> = emptyList(),
+    val hidden: Boolean = false,
+    val pinned: Boolean = false,
+    val reason: String? = null,
+) {
+    fun toJson(): JSONObject = JSONObject().apply {
+        put("name", name)
+        if (category != null) put("category", category.id)
+        if (apps.isNotEmpty()) put("apps", JSONArray(apps.map { it.toString() }))
+        if (hidden) put("hidden", true)
+        if (pinned) put("pinned", true)
+        if (reason != null) put("reason", reason)
+    }
+}
 
 /** One launchable activity of a main-profile app, as the edits below match it against refs. */
 data class AppId(val packageName: String, val className: String)
@@ -354,14 +447,21 @@ class LayoutStore(val file: File) {
         val text = layout.toJson() + "\n"
         val back = LayoutFile.parse(text)
         if (back != layout) throw LayoutError("the edited layout doesn't read back the same")
-        val tmp = File(file.path + ".tmp")
-        // Synced before the rename, so a crash or power loss leaves the old file or the new one,
-        // never a partly written one (f2fs, Samsung's /data, can otherwise rename unwritten data).
-        FileOutputStream(tmp).use { out ->
-            out.write(text.toByteArray())
-            out.fd.sync()
-        }
-        if (!tmp.renameTo(file)) throw IOException("can't replace ${file.path}")
+        writeAtomically(file, text)
         return file.lastModified()
     }
+}
+
+/**
+ * Writes [text] to a temporary file beside [file] and renames it over [file]. Synced before the
+ * rename, so a crash or power loss leaves the old file or the new one, never a partly written one
+ * (f2fs, Samsung's /data, can otherwise rename unwritten data).
+ */
+fun writeAtomically(file: File, text: String) {
+    val tmp = File(file.path + ".tmp")
+    FileOutputStream(tmp).use { out ->
+        out.write(text.toByteArray())
+        out.fd.sync()
+    }
+    if (!tmp.renameTo(file)) throw IOException("can't replace ${file.path}")
 }

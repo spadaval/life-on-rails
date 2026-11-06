@@ -164,6 +164,7 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun record(app: HomeApp, at: At, shortcut: String?) {
+        (application as LorApp).home.launched(app)
         Launches.record(
             this,
             Launch(
