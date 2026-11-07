@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "backlog"
 title: "The minimap editor"
-updated_at: "2026-11-07T00:03:36.779553203+00:00"
+updated_at: "2026-11-07T22:18:57.239827742+00:00"
 ---
 
 ## Goal
@@ -38,3 +38,7 @@ Provisional: on `T3_Phone_API35` and `T3_Fold_API35`, each kind of edit made in 
 
 - Where the minimap opens from (the home menu, a pinch).
 - How a block's own settings (a widget's size, an apps block's columns) are edited.
+
+## Notes
+
+- 2026-11-07 [note] A widget's size is set on home: lor-sbth's lor-r0f9 resizes a widget block's height from its long-press menu (decision lor-9wlx). The minimap needn't edit it; it moves and orders widget blocks like the others, addressed by id.
