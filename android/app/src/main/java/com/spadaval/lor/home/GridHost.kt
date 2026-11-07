@@ -256,7 +256,9 @@ internal fun GridCells(grid: GridPlace, cell: @Composable (Panel) -> Unit) {
         val h = constraints.maxHeight
         val placeables = measurables.map { it.measure(Constraints.fixed(w, h)) }
         layout(w, h) {
-            placeables.forEachIndexed { i, p -> grid.offsetOf(shown[i].at, w, h)?.let { p.place(it) } }
+            // Each cell on its own layer, so a move only moves layers rather than redrawing the cells
+            // into home's (the drawer's first frame, 7.8); still placed, so what they report follows them.
+            placeables.forEachIndexed { i, p -> grid.offsetOf(shown[i].at, w, h)?.let { p.placeWithLayer(it) } }
         }
     }
 }
