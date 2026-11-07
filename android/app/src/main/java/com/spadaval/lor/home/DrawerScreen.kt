@@ -42,10 +42,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -63,7 +60,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -224,7 +220,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
     val keyboard = LocalSoftwareKeyboardController.current
     // Opened ready to type, when the file asks (launcher polish 5.5), once the drawer has settled
     // open (7.1), so a swipe that goes back down leaves no keyboard.
-    val settledOpen by remember { derivedStateOf { ui.drawer && !ui.drawerFollow.held && ui.drawerFollow.position >= 1f } }
+    val settledOpen by remember { derivedStateOf { ui.drawer && !ui.grid.follow.held && ui.drawerShown >= 1f } }
     LaunchedEffect(settledOpen) {
         if (settledOpen && home.file?.drawer?.keyboard == true) {
             focus.requestFocus()
@@ -232,8 +228,8 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
         }
     }
     // A finger taking the drawer puts the keyboard away, as a drag on the list does.
-    LaunchedEffect(ui.drawerFollow.held) {
-        if (ui.drawerFollow.held && focused) {
+    LaunchedEffect(ui.grid.follow.held) {
+        if (ui.grid.follow.held && focused) {
             keyboard?.hide()
             focusManager.clearFocus()
         }
@@ -301,15 +297,12 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
                 else build(view, apps, home.file, stats, columns, now)
             }
             val grid = rememberLazyGridState()
-            val atTop by remember { derivedStateOf { !grid.canScrollBackward } }
-            SideEffect { ui.drawerAtTop = atTop }
-            val rail = with(LocalDensity.current) { if (built.letters.isEmpty()) 0f else 28.dp.toPx() }
             // A new view starts at its top.
             LaunchedEffect(view) { grid.scrollToItem(0) }
             LazyVerticalGrid(
                 GridCells.Fixed(columns),
-                Modifier.fillMaxSize().nestedScroll(pullToClose)
-                    .onGloballyPositioned { c -> ui.drawerPullArea = c.boundsInRoot().let { it.copy(right = it.right - rail) } },
+                // A swipe the list can't take, at its top or its end, moves the grid (lor-qdmy; 7.1's pull down).
+                Modifier.fillMaxSize().nestedScroll(pullToClose).scrollsInGrid(grid),
                 state = grid,
                 contentPadding = PaddingValues(start = 8.dp, end = if (built.letters.isEmpty()) 8.dp else 28.dp, top = 8.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -417,6 +410,8 @@ private fun LetterRail(letters: List<Pair<String, Int>>, grid: LazyGridState, mo
             .width(28.dp)
             .padding(vertical = 8.dp)
             .onSizeChanged { height = it.height.coerceAtLeast(1) }
+            // Every vertical drag here is the rail's, never the grid's.
+            .scrollsInGrid { true }
             .pointerInput(letters) {
                 awaitEachGesture {
                     val down = awaitFirstDown()

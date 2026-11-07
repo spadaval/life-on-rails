@@ -2,7 +2,7 @@ package com.spadaval.lor.home
 
 /*
  * The launcher's motion rules that need no Compose (launcher polish 7.1), so the JVM tests reach
- * them. A [Follow] (the drawer; the grid's axes next) is one position from 0 to 1 that a finger
+ * them. A [Follow] (each move between the grid's cells, the drawer's too) is one position from 0 to 1 that a finger
  * sets and a spring finishes, after Launcher3 / Lawnchair's `AllAppsTransitionController`
  * (Apache-2.0) and Kvaesitso's `LauncherScaffold` (GPL-3.0; ideas only: the tick at the commit point).
  * "Open" below is at 1, as the drawer is.

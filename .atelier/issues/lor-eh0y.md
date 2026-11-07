@@ -4,6 +4,9 @@ id: "lor-eh0y"
 issue_type: "feature"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: lor-eh0y
 priority: "P1"
 relationships:
   blocks: []
@@ -25,7 +28,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Today's home on the grid"
-updated_at: "2026-11-07T20:55:48.411627889+00:00"
+updated_at: "2026-11-07T21:13:41.555305821+00:00"
 ---
 
 ## Goal
