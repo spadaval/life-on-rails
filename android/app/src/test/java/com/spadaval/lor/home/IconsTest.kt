@@ -35,7 +35,7 @@ class IconsTest {
         assertEquals(IconStyle(null, 0, false, HomeLook.IconShape.SYSTEM), IconStyle.of(HomeLook(), null))
     }
 
-    private fun file(look: String) = """{"version": 1, "active": "a", "look": $look, "layouts": [{"name": "a"}]}"""
+    private fun file(look: String) = v2Empty(""""look": $look,""")
 
     @Test
     fun iconFieldsParseAndRoundTrip() {

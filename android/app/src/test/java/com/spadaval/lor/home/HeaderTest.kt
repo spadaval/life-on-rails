@@ -28,11 +28,11 @@ class HeaderTest {
 
     @Test
     fun headerParses() {
-        val f = LayoutFile.parse("""{"version": 1, "active": "a", "look": {"header": "clock"}, "layouts": [{"name": "a"}]}""")
+        val f = LayoutFile.parse(v2Empty(""""look": {"header": "clock"},"""))
         assertEquals(HomeLook.Header.CLOCK, f.look.header)
         assertEquals(f, LayoutFile.parse(f.toJson()))
         try {
-            LayoutFile.parse("""{"version": 1, "active": "a", "look": {"header": "big"}, "layouts": [{"name": "a"}]}""")
+            LayoutFile.parse(v2Empty(""""look": {"header": "big"},"""))
             fail()
         } catch (e: LayoutError) {
             assertEquals("look.header: must be one of date, clock, none", e.message)

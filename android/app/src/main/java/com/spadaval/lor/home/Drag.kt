@@ -36,12 +36,12 @@ sealed interface Zone {
     val box: Bounds
 
     /**
-     * An item on a page, in the dock or in the open folder, at [spot]. Its icon's top is [iconTop]
+     * An item in an `apps` block, in the dock or in the open folder, at [spot]. Its icon's top is [iconTop]
      * and it is [iconSize] across, centred in [box].
      */
     data class Item(val spot: Spot, override val box: Bounds, val iconTop: Float, val iconSize: Float) : Zone
 
-    /** A list's space: a page's grid, the dock, the open folder's card, the new page. */
+    /** A list's space: an `apps` block's grid, the dock, the open folder's card, the new panel. */
     data class Area(val place: Place, override val box: Bounds) : Zone
 
     data class Remove(override val box: Bounds) : Zone
@@ -55,7 +55,7 @@ const val ONTO_SHARE = 0.55f
  * then an item (onto its icon's centre, else in front of it, or after it on its right half), then
  * a list's space after its items. Null where nothing takes a drop, so the item goes back.
  */
-fun targetAt(x: Float, y: Float, zones: List<Zone>, heldIsFolder: Boolean, openFolder: Spot.Page?, heldAt: Spot? = null): Target? {
+fun targetAt(x: Float, y: Float, zones: List<Zone>, heldIsFolder: Boolean, openFolder: Spot.Apps?, heldAt: Spot? = null): Target? {
     zones.firstOrNull { it is Zone.Remove && it.box.contains(x, y) }?.let { return Target.Remove }
     val shown = zones.filter { z ->
         when (z) {
@@ -71,7 +71,7 @@ fun targetAt(x: Float, y: Float, zones: List<Zone>, heldIsFolder: Boolean, openF
         val dx = x - z.box.centerX
         val dy = y - cy
         // Never onto the held item's own (empty) slot: that is where it already is.
-        if (spot is Spot.Page && spot != heldAt && !heldIsFolder && dx * dx + dy * dy <= (ONTO_SHARE * z.iconSize).let { it * it }) return Target.Onto(spot)
+        if (spot is Spot.Apps && spot != heldAt && !heldIsFolder && dx * dx + dy * dy <= (ONTO_SHARE * z.iconSize).let { it * it }) return Target.Onto(spot)
         return Target.Before(if (x > z.box.centerX) spot.next() else spot)
     }
     return shown.firstOrNull { it is Zone.Area && it.box.contains(x, y) }?.let { Target.AtEnd((it as Zone.Area).place) }
@@ -79,7 +79,7 @@ fun targetAt(x: Float, y: Float, zones: List<Zone>, heldIsFolder: Boolean, openF
 
 /** The place after this one in its list (which may be one past its end: in front of nothing). */
 fun Spot.next(): Spot = when (this) {
-    is Spot.Page -> copy(index = index + 1)
+    is Spot.Apps -> copy(index = index + 1)
     is Spot.Dock -> copy(index = index + 1)
     is Spot.InFolder -> copy(app = app + 1)
 }

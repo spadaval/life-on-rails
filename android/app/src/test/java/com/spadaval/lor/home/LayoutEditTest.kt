@@ -20,16 +20,30 @@ class LayoutEditTest {
     private val file = LayoutFile.parse(
         """
         {
-          "version": 1,
+          "version": 2,
           "active": "default",
           "layouts": [
             { "name": "default",
               "expires": "2026-11-18T00:00:00Z",
-              "home": ["com.whatsapp",
-                       { "folder": "Dev", "apps": ["com.github.android", "org.example/.Term"], "reason": "Together." },
-                       { "folder": "Solo", "apps": ["com.github.android"] }],
-              "dock": ["com.google.android.dialer"] },
-            { "name": "trip", "home": ["com.whatsapp", { "folder": "Dev", "apps": ["com.whatsapp", "a.b"] }], "dock": ["com.whatsapp"] }
+              "start": { "narrow": [1, 0] },
+              "dock": ["com.google.android.dialer"],
+              "panels": [
+                { "at": [0, 0], "type": "t3" },
+                { "at": [1, 0], "type": "stack", "blocks": [
+                  { "type": "clock" },
+                  { "type": "apps", "items": ["com.whatsapp",
+                    { "folder": "Dev", "apps": ["com.github.android", "org.example/.Term"], "reason": "Together." },
+                    { "folder": "Solo", "apps": ["com.github.android"] }] },
+                  { "type": "dock" }] },
+                { "at": [1, 1], "type": "drawer" }] },
+            { "name": "trip",
+              "start": { "narrow": [1, 0] },
+              "dock": ["com.whatsapp"],
+              "panels": [
+                { "at": [1, 0], "type": "stack", "blocks": [
+                  { "type": "clock" },
+                  { "type": "apps", "items": ["com.whatsapp", { "folder": "Dev", "apps": ["com.whatsapp", "a.b"] }] },
+                  { "type": "dock" }] }] }
           ]
         }
         """.trimIndent(),
@@ -74,7 +88,7 @@ class LayoutEditTest {
         assertEquals("it's already in the dock", refused { file.addToDock(dialer, AppRef("com.google.android.dialer")) })
         var full = file
         repeat(LayoutFile.MAX_HOME - file.current.home.size) { full = full.addToHome(AppId("a.a$it", "a.a$it.M"), AppRef("a.a$it")) }
-        assertEquals("a full home page sends it to a new page (4.1)", listOf(AppRef("z.z")), full.addToHome(AppId("z.z", "z.z.M"), AppRef("z.z")).current.pages[0].items)
+        assertEquals("a full home page sends it to a new page (4.1)", listOf(AppRef("z.z")), full.addToHome(AppId("z.z", "z.z.M"), AppRef("z.z")).current.items(page(1)))
         var dock = file
         repeat(LayoutFile.MAX_DOCK - 1) { dock = dock.addToDock(AppId("d.d$it", "d.d$it.M"), AppRef("d.d$it")) }
         assertEquals("the dock is full (5 apps)", refused { dock.addToDock(AppId("z.z", "z.z.M"), AppRef("z.z")) })
@@ -126,13 +140,13 @@ class LayoutEditTest {
 
     @Test
     fun hiddenParsesAndRoundTrips() {
-        val text = """{"version": 1, "active": "a", "hidden": ["com.x", "com.y/.Main"], "layouts": [{"name": "a"}]}"""
+        val text = v2Empty(""""hidden": ["com.x", "com.y/.Main"],""")
         val f = LayoutFile.parse(text)
         assertEquals(listOf(AppRef("com.x"), AppRef("com.y", "com.y.Main")), f.hidden)
         roundTrips(f)
-        assertFalse("an empty list is left out", LayoutFile("a", listOf(Layout("a", emptyList(), emptyList()))).toJson().contains("hidden"))
+        assertFalse("an empty list is left out", LayoutFile("a", listOf(Layout.grid("a", emptyList(), emptyList()))).toJson().contains("hidden"))
         fun error(hidden: String) = try {
-            LayoutFile.parse("""{"version": 1, "active": "a", "hidden": $hidden, "layouts": [{"name": "a"}]}""")
+            LayoutFile.parse(v2Empty(""""hidden": $hidden,"""))
             fail("parsed")
             ""
         } catch (e: LayoutError) {
@@ -161,7 +175,7 @@ class LayoutEditTest {
         store.write(file)
         val before = store.file.readText()
         // A folder with no apps doesn't parse, so this edit must leave the file alone.
-        val broken = store.edit { it.copy(layouts = it.layouts.map { l -> l.copy(home = l.home + Folder("Empty", emptyList())) }) }
+        val broken = store.edit { it.copy(layouts = it.layouts.map { l -> l.withItems(HOME_APPS, l.home + Folder("Empty", emptyList())) }) }
         assertTrue(broken.isFailure)
         assertEquals(before, store.file.readText())
         // A refusal leaves it alone too.
@@ -207,10 +221,10 @@ class LayoutEditTest {
         // An escaped backslash before a slash stays a backslash.
         assertEquals("\"a\\\\/b\"", LayoutFile.unescapeSlashes("\"a\\\\\\/b\""))
         assertEquals("\"a\\\\b\"", LayoutFile.unescapeSlashes("\"a\\\\b\""))
-        val f = LayoutFile("a", listOf(Layout("a", listOf(AppRef("com.x", "com.x.Main"), Folder("a\\/b", listOf(AppRef("a.b")))), emptyList())))
+        val f = LayoutFile("a", listOf(Layout.grid("a", listOf(AppRef("com.x", "com.x.Main"), Folder("a\\/b", listOf(AppRef("a.b")))), emptyList())))
         assertTrue(f.toJson().contains("\"com.x/com.x.Main\""))
         // The JVM's org.json escapes "</" as "<\/", so this fails if toJson stops unescaping.
-        assertTrue(f.copy(layouts = listOf(Layout("a", listOf(Folder("a</b", listOf(AppRef("a.b")))), emptyList()))).toJson().contains("\"a</b\""))
+        assertTrue(f.copy(layouts = listOf(Layout.grid("a", listOf(Folder("a</b", listOf(AppRef("a.b")))), emptyList()))).toJson().contains("\"a</b\""))
         assertEquals(f, LayoutFile.parse(f.toJson()))
     }
 }

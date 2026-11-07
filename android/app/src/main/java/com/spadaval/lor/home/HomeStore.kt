@@ -520,7 +520,7 @@ class HomeStore(private val context: Context) {
         val home = COMMON.filter { it in mine && it !in dock }
         val google = mine.filter { it.startsWith("com.google.") && it !in dock && it !in home }.sorted()
         val items = home.map(::AppRef) + listOfNotNull(google.takeIf { it.isNotEmpty() }?.let { Folder("Google", it.map(::AppRef)) })
-        return LayoutFile("default", listOf(Layout("default", items.take(LayoutFile.MAX_HOME), dock.map(::AppRef))))
+        return LayoutFile("default", listOf(Layout.grid("default", items.take(LayoutFile.MAX_HOME), dock.map(::AppRef))))
     }
 
     companion object {
