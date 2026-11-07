@@ -25,14 +25,13 @@ With themed icons on, every app on home is drawn in one style, not only the apps
 
 Provisional:
 - An app with no `monochrome` layer and no icon-pack entry gets a generated themed icon in LoR's colours (Dust on Panel Face, as 6.5's themed icons), made off the main thread and kept in the icon cache. `iconSource` gains the case, with JVM tests.
-- On `T3_Phone_API35` with themed icons on: home, the dock, a folder and the drawer screenshotted, with no full-colour icon left among the apps shown, and each generated icon recognisable (the choice of method and its failure cases written on this item).
+- On `T3_Phone_API35` with themed icons on: home, the dock, a folder and the drawer screenshotted, with no full-colour icon left among the apps shown. In the screenshots, Settings, Camera, Chrome, Files and at least four sideloaded third-party apps can each be told apart from the others; any that can't are listed on this item with the method's other failure cases.
 - Turning themed icons off brings back every app's own icon; the setting's line in Home settings says it now covers every app.
 
 ## Unknowns
 
 - How to make a recognisable one-colour icon from a full-colour one: Lawnchair's and Kvaesitso's approaches (read first, name the source and licence), luminance thresholding of the foreground layer, or an icon pack fallback such as Arcticons for the apps it covers.
-- Whether the colours should follow the wallpaper (Smart Launcher) or stay LoR's own (`DESIGN.md`: no colour for decoration).
 
 ## Background
 
-From the Smart Launcher comparison (`docs/research/launcher-vs-smart-launcher.md`). Launcher polish 6.5 built themed icons from the monochrome layer (`IconPacks.kt`, `Icons.kt`); its review noted that apps without one stay in colour, as Pixel's launcher does. Outside the Panels mission (lor-uj0r): it has nothing to do with the grid.
+From the Smart Launcher comparison (`docs/research/launcher-vs-smart-launcher.md`). Launcher polish 6.5 built themed icons from the monochrome layer (`IconPacks.kt`, `Icons.kt`); its review noted that apps without one stay in colour, as Pixel's launcher does. Outside the Panels mission (lor-uj0r): it has nothing to do with the grid. The colours stay LoR's own rather than following the wallpaper as Smart Launcher's do, settled by `DESIGN.md` (no colour for decoration).
