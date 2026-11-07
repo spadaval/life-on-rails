@@ -14,7 +14,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "The minimap: arrange the grid's panels"
-updated_at: "2026-11-07T23:36:40.805921739+00:00"
+updated_at: "2026-11-07T23:54:17.605211440+00:00"
 ---
 
 ## Goal
@@ -48,3 +48,7 @@ A new `home/Minimap.kt` (the map, the palette, the panel actions, the padlock), 
 - The minimap draws over home as the open folder does: Deep Space glass over the dimmed or blurred wallpaper (lor-gnk0's `FOLDER_GLASS`), with home's cells faded out under it. The Undo bar shows above it.
 - Waits on lor-ph30 as merged: the inner screen's drawing (lor-el51) is what shows `wide`, and lor-ozj2's screen-off rule is what shows `start.wide`.
 - If lor-lz97 is on `main` when this starts, the palette lists LoR (`lor`) as a once-per-layout type. Otherwise the note on lor-lz97 has it do so.
+
+## Notes
+
+- 2026-11-07 [note] From lor-v692's review: the once-per-layout panel list (ONCE) is private to GridEdit.kt. Make it public there for the palette rather than copying it.

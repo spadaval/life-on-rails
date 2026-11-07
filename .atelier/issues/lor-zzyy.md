@@ -14,7 +14,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Lock home: no edits on home until it is unlocked"
-updated_at: "2026-11-07T23:36:19.018382223+00:00"
+updated_at: "2026-11-07T23:54:17.590630991+00:00"
 ---
 
 ## Goal
@@ -44,3 +44,7 @@ On `T3_Phone_API35` against the test server, unless a line says otherwise:
 - Home reads `locked` from the parsed file it already holds (`HomeContext.file`), so nothing new is stored.
 - lor-gnk0 built the open folder's in-place name and its +, and lor-73li says which edits the lock covers.
 - If lor-r0f9 (widgets on home) is on `main` when this starts, its widget menu's Resize and Remove, and the home menu's "Add widget", are hidden while locked here, with a screenshot of each locked menu. Otherwise the note on lor-r0f9 has it do so.
+
+## Notes
+
+- 2026-11-07 [note] From lor-v692's review (finding lor-69ai): a lock written to the file while home is open makes a drop answer 'Home changed; try again' (dropHeld compares the file with h.original before the lock check), and home then rereads the file. So the Done when line that shows the lock's words must use an app-menu edit such as Remove from home, or lock through the home menu first; a drag after an outside lock shows HOME_CHANGED, which is correct.
