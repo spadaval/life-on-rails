@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Home drawn from the grid, moved by the finger"
-updated_at: "2026-11-07T21:40:47.551502803+00:00"
+updated_at: "2026-11-07T21:41:55.435514221+00:00"
 ---
 
 ## Goal
@@ -74,6 +74,7 @@ On `T3_Phone_API35`, with a version 1 `layout.json` with two extra pages (conver
   Reason: Done when asks for dots showing the position in the row.
 - 2026-11-07 [decision] HomeScreen writes the grid's panels, start and any correction (a cell that went) during composition, guarded so each write happens only on a change.
   Reason: Writing them in an effect left the first frame, and the frame after an edit removed the cell on screen, drawn from the previous grid (blank).
+- 2026-11-07 [handoff] Built and checked on both emulators (evidence lor-nafb, lor-okw0); see the Report. Review not yet requested; outstanding.
 
 ## Report
 
