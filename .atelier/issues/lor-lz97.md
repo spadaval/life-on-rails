@@ -48,6 +48,7 @@ LoR shows on home in native Compose: the `lor` panel (LoR's dashboard shaped for
 ## Context
 
 - Builds on lor-ph30 as merged: the `wide` field and the inner-screen rules (lor-j87u), the panels' forms by width (lor-el51: narrow under 600 dp), and F4's process-scoped card actions (lor-ozj2), which the `needs-you` block uses as the agent page does.
+- lor-sbth's clock block (lor-leh4, planned at the same time as this item) also needs a shared process-scoped `/device/home` reader. Whichever lands first builds it; the other extends that one reader (here with `/device/tasks`, `/device/people` and the lor panel's visibility) rather than adding a second.
 - lor-sbth works in the same `Blocks` section of `layout-v2.md` and in `StackPanel`; whichever lands second merges the other's lines.
 - The agent page's sections today: `Today`, `TodayBody` and `DayArc`, `RunningRow`, `T3QueueCard` and `QueueCard`, `AgentStates.notes`, all in `agent/`.
 - `DESIGN.md` governs the look: section heads as the agent page's, the selected tab as the selection row's segment, nothing animating on its own. The day arc is drawn once per read.
