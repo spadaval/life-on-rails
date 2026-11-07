@@ -12,10 +12,11 @@ relationships:
     id: "lor-iabt"
   - kind: "issue"
     id: "lor-lz97"
-  - kind: "issue"
-    id: "lor-odtk"
   attachments: []
   relates:
+  - kind: "issue"
+    id: "lor-odtk"
+    type: "blocked_by"
   - kind: "issue"
     id: "lor-ph30"
     type: "blocked_by"
@@ -29,7 +30,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "LoR and T3 panels"
-updated_at: "2026-11-07T22:17:58.378255264+00:00"
+updated_at: "2026-11-07T23:55:01.660124986+00:00"
 ---
 
 ## Goal
@@ -60,3 +61,5 @@ The server's `/device/*` reads, the phone's `home/` (layout and stack), `agent/`
   Rejected: One /device/lor endpoint holding everything: tasks and people would be read every minute for every block, even with no lor panel on the grid
 - 2026-11-07 [note] Questions for Sumeet, not planned (each is a write to LoR's data, which the strategy keeps for his yes): (1) tick a task done, and mark a flag Seen, from the lor panel and the needs-you block, as the web's Today does; (2) start, pause and stop the timer from the today block, as the phone's timer tile already does through /device/timer; (3) give a task to the agent from the Tasks tab. Each would be a new POST under /device/. Until he says yes, every row opens its place in the dashboard.
 - 2026-11-07 [plan] Planned 2026-11-07: children lor-odtk (server reads), lor-lz97 (lor panel and blocks), lor-iabt (T3 panel's wide form), in that order on this item's branch; decision lor-p86v (the lor panel and block types in layout.json); real-Fold validation lor-l2zj after merge, outside the mission. A fresh agent reviews this plan before lor-odtk starts, and lor-ph30 must merge first.
+- 2026-11-07 [decision] lor-odtk is a standalone blocker of lor-clgw on its own branch, merging alone (it adds read endpoints and a field to /device/home, nothing on the phone's screen).
+  Reason: lor-odtk is server-only and doesn't depend on the inner screen or widgets, so it can run while lor-ph30 is built; as a child it would wait for lor-sbth and lor-ph30.

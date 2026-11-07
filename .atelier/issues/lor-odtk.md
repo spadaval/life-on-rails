@@ -9,12 +9,15 @@ relationships:
   blocks: []
   children: []
   attachments: []
-  relates: []
+  relates:
+  - kind: "issue"
+    id: "lor-uj0r"
+    type: "advances"
 schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "The server's reads for LoR's panels: the agent's queue, tasks, people"
-updated_at: "2026-11-07T22:17:28.574588572+00:00"
+updated_at: "2026-11-07T23:55:01.620376407+00:00"
 ---
 
 ## Goal
