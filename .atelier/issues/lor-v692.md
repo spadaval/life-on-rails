@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The layout lock and the minimap's edits, as tested rules"
-updated_at: "2026-11-07T23:50:19.332712360+00:00"
+updated_at: "2026-11-07T23:50:56.003748467+00:00"
 ---
 
 ## Goal
@@ -75,6 +75,7 @@ The file can hold the layout lock, `HomeStore`'s one edit path refuses a locked 
   Reason: Within a stack that is the list position a drag shows on letting go (lor-9uc1); into another stack, Move to… computes 'before the dock, else last' as an index in the list it sees.
 - 2026-11-07 [decision] The drag empty-page test (HomeEditTest.aPageADragMadeAndLeftGoesAtTheDrop) makes the same calls as HomeScreen's dropHeld rather than calling dropHeld, which stays a one-line change.
   Reason: dropHeld is Compose state code beside lor-ph30's rewrite of the drop and pickup; extracting it would widen this item's HomeScreen.kt change, which the brief keeps to the one stripEmptyPanels call.
+- 2026-11-07 [handoff] Implemented in e10f4b9 on lor-v692; every Done when line ticked and the Report written. Proof: boat assembleDebug testDebugUnitTest after the last code change, 39 suites, no failures (GridEditTest 12, LayoutStoreTest 11, HomeEditTest 17, LayoutTest 11). Review: none yet. See the Report for open items.
 
 ## Report
 
