@@ -20,6 +20,9 @@ relationships:
     id: "lor-ph30"
     type: "blocked_by"
   - kind: "issue"
+    id: "lor-sbth"
+    type: "blocked_by"
+  - kind: "issue"
     id: "lor-uj0r"
     type: "advances"
 schema: "atelier.issue"
@@ -45,7 +48,7 @@ The server's `/device/*` reads, the phone's `home/` (layout and stack), `agent/`
 
 ## Context
 
-- Waits on lor-ph30 as merged: `wide`, the inner screen's rules and drawing, and folding without recreation.
+- Waits on lor-ph30 and lor-sbth (decision lor-tbqc: its shared `/device/home` reader and the stack's overflow scroll) as merged. From lor-ph30: `wide`, the inner screen's rules and drawing, and folding without recreation.
 - The strategy's Shape governs: native, not web; a panel that writes to LoR's data needs Sumeet's yes.
 - The real Fold's check is the `needs-human` validation item lor-l2zj, after merge; the end-to-end check above is its stand-in.
 
