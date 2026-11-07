@@ -1,6 +1,6 @@
 ---
 status: draft
-last_changed: "2026-11-07: weather from Google's Weather API (Sumeet); 2026-11-06: created from Sumeet's direction in the thread 'Launcher usability vs Smart Launcher'; takes over Launcher polish's Fold and widgets outcome"
+last_changed: "2026-11-07: polish from the Smart Launcher comparison added (lor-gnk0, the drawer's thumb reach in lor-ph30, the layout lock in lor-f3vn; Sumeet); weather from Google's Weather API (Sumeet); 2026-11-06: created from Sumeet's direction in the thread 'Launcher usability vs Smart Launcher'; takes over Launcher polish's Fold and widgets outcome"
 ---
 
 # Why
@@ -17,6 +17,7 @@ This mission takes over the Fold and widgets parts of [Launcher polish](../launc
 - **Folding keeps your place.** Unfolding shows the inner screen that holds the cell you were on; after the screen has been off, home starts again at that screen's start cell.
 - **The grid is edited on the phone,** in a minimap like Smart Launcher's page manager, with Undo, written to the file.
 - **Home hosts Android widgets and a clock block** (time, date, the next event, the next alarm, and weather from Google's Weather API, decision lor-kqhy).
+- **Home feels finished:** a pressed state on every tile, folders that look and open like Smart Launcher's (lor-gnk0), the narrow drawer within the thumb's reach, and a layout lock. These are the small gaps the Smart Launcher comparison found that no plan held.
 - **The day it ships, nothing is worse.** A version 1 file opens as a default grid that looks and behaves like today's home.
 
 Worth shipping on its own: the grid with today's home in it, then the inner screen, before the editor or new blocks.
@@ -35,13 +36,15 @@ Worth shipping on its own: the grid with today's home in it, then the inner scre
 
 # Scope
 
-In: the grid and its movement, schema version 2, the inner screen, folding, the minimap editor, widget hosting, the clock block, weather for it through LoR's server, LoR's and T3's panels in their narrow and wide forms, and new read endpoints on the LoR server for them.
+In: the grid and its movement, the pressed state and the folder's look, the drawer's thumb reach, the layout lock, schema version 2, the inner screen, folding, the minimap editor, widget hosting, the clock block, weather for it through LoR's server, LoR's and T3's panels in their narrow and wide forms, and new read endpoints on the LoR server for them.
 
 Out:
 - writing to LoR's data from a panel (until Sumeet says yes);
 - generative widgets;
 - the agent-edited layout repository, named and temporary layouts, and agent-sorted folders (handed on from T3 Launcher);
 - Launcher polish's carried robustness items that aren't about folding (lor-kxxz, outside the mission);
+- themed icons for apps with no monochrome layer (lor-fche, outside the mission: it has nothing to do with the grid);
+- count badges in place of dots (Sumeet, 2026-11-07: dots are enough unless he misses counts);
 - root, Recents and gesture navigation.
 
 Environment: `T3_Phone_API35` and `T3_Fold_API35` against the LoR test server (`scripts/ui-server.sh`, `http://10.0.2.2:3857`). Builds on boat (`android/boat-build.sh`). The real Fold only when Sumeet says so: its checks come after merge, in `needs-human` validation items outside the mission, each with its emulator stand-in run before merge.

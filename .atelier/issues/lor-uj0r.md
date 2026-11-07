@@ -16,12 +16,12 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Home as a grid of panels"
-updated_at: "2026-11-07T03:15:54.499774938+00:00"
+updated_at: "2026-11-07T20:51:32.709528728+00:00"
 ---
 
 ## Outcome
 
-Home becomes a grid of panels in `layout.json` (schema version 2): stacks of blocks such as the clock, widgets, apps and the dock, and custom panels for T3, LoR and the drawer. Moving between cells follows the finger on both axes, the Fold's inner screen shows one full panel or two halves, folding keeps your place, and the grid is edited on the phone in a minimap. A version 1 file opens as a grid that looks and behaves like today's home. The strategy is `docs/missions/launcher-panels/strategy.md`.
+Home becomes a grid of panels in `layout.json` (schema version 2): stacks of blocks such as the clock, widgets, apps and the dock, and custom panels for T3, LoR and the drawer. Moving between cells follows the finger on both axes, the Fold's inner screen shows one full panel or two halves, folding keeps your place, and the grid is edited on the phone in a minimap, with a layout lock. Tiles answer a press, folders look and open like Smart Launcher's, and the narrow drawer sits within the thumb's reach. A version 1 file opens as a grid that looks and behaves like today's home. The strategy is `docs/missions/launcher-panels/strategy.md`.
 
 ## Background
 
@@ -32,3 +32,4 @@ Home becomes a grid of panels in `layout.json` (schema version 2): stacks of blo
 ## Notes
 
 - 2026-11-06 [note] Planning reviewed by a fresh agent: 12 findings (R1–R12) and 3 on re-check (N1–N3). All were fixed, including decision lor-y7qi (how every page reaches the drawer) and the needs-human real-Fold item lor-mlx6, except N2 (no action: lor-mlx6 stays outside the mission so it can close without waiting on Sumeet). Verdict: ready for Sumeet's approval. lor-eo1g and lor-euec can start once he approves.
+- 2026-11-07 [note] Polish from the Smart Launcher comparison added with Sumeet's yes (2026-11-07): lor-gnk0 (pressed state and folders) in the mission after lor-eh0y; the narrow drawer's thumb reach in lor-ph30; the layout lock in lor-f3vn. Themed icons for every app is lor-fche, outside the mission. Count badges are out.

@@ -25,18 +25,20 @@ updated_at: "2026-11-07T00:07:48.214816564+00:00"
 
 ## Goal
 
-The inner screen is used, and folding keeps your place. Each panel is `full` or `half` there; inner screens are built row by row; a stack flows its blocks into two columns when full; the drawer has a wide grid; the agent page fills its panel. Unfolding shows the inner screen holding the current cell, folding shows the half last touched, and after any screen-off home starts at that screen's `start`. A fold, unfold, theme or font change keeps open folders, search text, scroll and edit mode, without recreating the activity or reloading the app list or icons. Landscape and large fonts don't overflow; the hinge and cutout insets are handled; the position indicator lines up with the content.
+The inner screen is used, and folding keeps your place. Each panel is `full` or `half` there; inner screens are built row by row; a stack flows its blocks into two columns when full; the drawer has a wide grid, and on the narrow screen its categories and search sit within the thumb's reach; the agent page fills its panel. Unfolding shows the inner screen holding the current cell, folding shows the half last touched, and after any screen-off home starts at that screen's `start`. A fold, unfold, theme or font change keeps open folders, search text, scroll and edit mode, without recreating the activity or reloading the app list or icons. Landscape and large fonts don't overflow; the hinge and cutout insets are handled; the position indicator lines up with the content.
 
 ## Done when
 
 Provisional:
 - On `T3_Fold_API35`: the default grid unfolded shows its `wide` start; a fold and an unfold mid-use (drawer open with search text, a folder open, scrolled) keep each; a screen-off then on returns to `start`; a dark-mode switch and a font-scale change keep state with no app-list or icon reload (a debug log line per load, counted before and after); screenshots of each inner screen of the default grid.
 - Version 2 additions (`wide` on a panel, `start.wide` used) in the schema doc, with parser tests.
+- On `T3_Phone_API35`, the narrow drawer's category switch and its search field are in the screen's lower half (as Smart Launcher's bottom category tabs are), screenshotted, with the drawer's search, sections, A–Z rail and Most used still working.
 - The Fold items carried from Launcher polish (Background) each fixed with a test or emulator check.
 
 ## Unknowns
 
 - Handling fold changes in place (`configChanges`) versus recreating with saved state: which Compose state survives each, and what the unfold can animate.
+- The narrow drawer's thumb reach: category tabs at the bottom with one category per page (Smart Launcher), or the sections list with its controls moved down. Designed with the drawer panel's wide form so it is done once.
 - What the agent page's full layout is until the T3 panel's wide form (lor-clgw); today it is held to 520 dp.
 
 ## Background
