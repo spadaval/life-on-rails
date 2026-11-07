@@ -36,6 +36,7 @@ On `T3_Phone_API35` against the test server, unless a line says otherwise:
 - [ ] Both lines are drawn in each `look.header` style that draws a header (date and clock) and in neither under `none`, in the header's type and the wallpaper's ink, with DESIGN.md's text shadow on light ink. The block's TalkBack description adds them after the date and event. Screenshots of both styles with an event, an alarm and the weather, on the light and the dark wallpaper.
 - [ ] The clock reads `/device/home` while it is composed and home is started, no more than once a minute, through one reader in process scope that the agent page's `AgentModel` also uses: with both on screen, one `/device/home` read a minute happens, not two (a `LorReads` log line per read); with only the clock in the composition window (a test layout with the clock on a stack two cells from the `t3` panel), it still updates within a minute of a change on the server (an event added to the test database).
 - [ ] The weather line shows the weather the test server returns for the `location` observation lor-q18v inserted (the screenshot beside the `curl` of `/device/home` at the same minute).
+- [ ] At font scale 2.0 (`settings put system font_scale 2.0`), on `T3_Phone_API35`, home's stack with the clock block showing all five parts and two widgets is screenshotted: no line of the clock is cut mid-line or drawn over another element, a long event title ends in an ellipsis, and the stack scrolls rather than clipping (lor-r0f9's overflow scroll).
 - [ ] On the unfolded `T3_Fold_API35`, home alone at full width draws the clock block in its flow column (lor-j87u) with all five parts, screenshotted.
 - [ ] `assembleDebug testDebugUnitTest` passes on boat.
 
@@ -47,6 +48,6 @@ On `T3_Phone_API35` against the test server, unless a line says otherwise:
 
 - Today the header reads `AgentModel.last`, which is set only while the agent page is composed and reading, so a clock away from the `t3` panel would go stale; that is why the read moves to a shared reader.
 - The next event stays LoR's (`/device/home`'s `day.events`): Sumeet's calendars already reach LoR, the agent page and the wall use the same events, and reading the phone's own calendar would need `READ_CALENDAR`, a permission Sumeet would grant. The next alarm needs no permission.
-- lor-lz97 (lor-clgw) plans the same process-scoped reader for its blocks and the `lor` panel. Whichever lands first builds it; the other extends that one reader rather than adding a second.
+- This item builds the process-scoped reader (review finding lor-1f2f). lor-clgw waits for lor-sbth, and lor-lz97 extends this reader for its blocks and the `lor` panel (`/device/tasks`, `/device/people`) rather than adding a second.
 - The weather line needs `GOOGLE_MAPS_KEY` in the env file, as lor-q18v's last line does (Sumeet's setup).
 - `layout-v2.md`'s `clock` line is rewritten by lor-vtmn.

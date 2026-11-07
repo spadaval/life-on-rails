@@ -54,6 +54,7 @@ The phone's home (`android/app/src/main/java/com/spadaval/lor/home/`, `net/Devic
 ## Context
 
 - Builds on lor-eh0y (the grid) and lor-ph30 (the inner screen; lor-j87u's wide flow decides which column each block is drawn in).
+- This item builds two pieces lor-clgw then reuses (review finding lor-1f2f): the process-scoped `/device/home` reader (lor-leh4) and the stack's overflow scroll, the blocks above the dock scrolling together over a fixed dock (lor-r0f9). lor-clgw waits for this item.
 - The real Fold's checks (a widget on One UI, the Tesla widget, the bind consent) are the `needs-human` validation item filed with this plan, after merge; these emulator checks are its stand-in.
 - Sumeet's setup, asked 2026-11-07: his Google key goes in the env file as `GOOGLE_MAPS_KEY` (lor-g4ta). lor-q18v's last line and lor-leh4's weather line need it.
 - Environment: `T3_Phone_API35` and `T3_Fold_API35` against `scripts/ui-server.sh`, one emulator at a time; builds on boat (`android/boat-build.sh`).

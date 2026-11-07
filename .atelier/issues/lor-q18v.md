@@ -31,10 +31,10 @@ LoR's server gives the phone the weather where it last was, through `/device/hom
 
 - [ ] `src/server/env.ts` reads `GOOGLE_MAPS_KEY` (default `""`); the spec's Config list in `docs/v2-product-engineering-spec.md` names it, with its comment on its own line.
 - [ ] `src/server/weather.ts` turns Google's `currentConditions:lookup` reply into `{ temp_c, condition, is_day, observed_at }`. A `pnpm test` test parses a saved reply (a fixture with no key in it) and refuses a reply missing `temperature.degrees`.
-- [ ] The cache, tested in `pnpm test` with an injected fetch and clock: a second read within 30 minutes for a place within the same 2-decimal rounding calls nothing; a read after 30 minutes or for another rounded place calls once; a failed call, a non-200 reply and a timeout each give `null`, log one line without the key or coordinates, and the next read calls again; with the key unset nothing is called and the result is `null`.
+- [ ] The cache, tested in `pnpm test` with an injected fetch and clock: a second read within 30 minutes calls nothing, even when the latest location has changed; a read after 30 minutes calls once, with the latest location; a failed call, a non-200 reply and a timeout each give `null`, reads in the next 5 minutes call nothing and give `null`, and a read after 5 minutes calls again; with the key unset nothing is called and the result is `null`. Every call logs one line with its status (or `timeout`, or the error's name) and its duration in ms, and the test shows no line contains the key or the coordinates.
 - [ ] A `pnpm test:db` test: `deviceHome` returns `weather` built from the latest `location` observation's coordinates (two observations, the later one used), with the fetch stubbed; with no `location` observation it returns `weather: null` and calls nothing.
 - [ ] `pnpm typecheck` passes.
-- [ ] With the key in the env file, on the test server (`scripts/ui-server.sh`) after inserting a `location` observation for Milpitas into the test database, `curl` of `/device/home` returns a `weather` object, and a second `curl` within a minute adds no Google call (the server log shows one). The handoff quotes the `weather` object.
+- [ ] With the key in the env file, on the test server (`scripts/ui-server.sh`) after inserting a `location` observation for Milpitas into the test database, `curl` of `/device/home` returns a `weather` object, and a second `curl` within a minute adds no Google call (the server log shows one call line for the two). The handoff quotes the `weather` object.
 
 ## Scope
 
