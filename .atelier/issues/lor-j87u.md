@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Schema `wide` and the inner screen's rules, tested"
-updated_at: "2026-11-07T22:35:21.942602432+00:00"
+updated_at: "2026-11-07T22:37:03.400532026+00:00"
 ---
 
 ## Goal
@@ -60,6 +60,7 @@ The file can say how each panel sits on the inner screen, and the rules the inne
 - 2026-11-07 [decision] StackFlow.wide returns the columns as lists, left to right, the dock last in the last column; the single-column case is one list. It is generic over the block type with an isDock predicate, and the StackBlock form calls it.
   Reason: The file has three block types today (clock, apps, dock, each at most once), so 'a stack of four blocks' can't be built from StackBlock until lor-sbth adds widget and today; the generic form tests the rule on four and six blocks. A list of columns is all lor-el51 needs to draw: it already draws each block by type.
   Rejected: Test four blocks only after lor-sbth: leaves the ceil(n/2) split untested now
+- 2026-11-07 [handoff] Implemented in a71822d on lor-ph30: wide parsed and written, Inner.kt's rules with InnerTest; boat assembleDebug testDebugUnitTest 254/0 after the last change. See ## Report. Review: none yet, outstanding.
 
 ## Report
 
@@ -77,4 +78,3 @@ Three decision notes above: `wide` held as a value with the type's default (a st
 
 - A home press to a `wide` start that is a pair's right half arrives with no focus, as the item says, so a fold from there lands on the left half. Worth knowing for lor-ozj2.
 - Review outstanding.
-
