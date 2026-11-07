@@ -15,7 +15,8 @@ import com.spadaval.lor.ui.Motion
 
 /*
  * Something a finger moves and a spring finishes (launcher polish 7.1, made neutral for the
- * panels' grid after Increment 7's review, R9): the drawer today, each axis of the grid next.
+ * panels' grid after Increment 7's review, R9): each move between the grid's cells (lor-qdmy),
+ * the drawer's included.
  * The rules and their sources are [FollowMotion]'s.
  */
 
@@ -94,41 +95,45 @@ fun SettleFollow(follow: Follow) {
 }
 
 /**
- * Waits for [down]'s finger to pass the touch slop; returns that move when it went mostly
- * vertically, else null (a tap, a lift, a sideways swipe, or a move something else took).
+ * Waits for [down]'s finger to pass the touch slop; returns that move, or null (a tap, a lift, or
+ * a move something else took). The caller picks the axis from it (Kvaesitso's `LauncherScaffold`
+ * decides once, here, by the larger component).
  */
-internal suspend fun AwaitPointerEventScope.awaitVerticalSlop(down: PointerInputChange, tracker: VelocityTracker, pass: PointerEventPass): PointerInputChange? {
+internal suspend fun AwaitPointerEventScope.awaitSlop(down: PointerInputChange, tracker: VelocityTracker, pass: PointerEventPass): PointerInputChange? {
     tracker.addPosition(down.uptimeMillis, down.position)
     while (true) {
         val c = awaitPointerEvent(pass).changes.firstOrNull { it.id == down.id } ?: return null
         if (!c.pressed || c.isConsumed) return null
         tracker.addPosition(c.uptimeMillis, c.position)
-        val d = c.position - down.position
-        if (d.getDistance() > viewConfiguration.touchSlop) return if (kotlin.math.abs(d.y) > kotlin.math.abs(d.x)) c else null
+        if ((c.position - down.position).getDistance() > viewConfiguration.touchSlop) return c
     }
 }
 
 /**
- * Moves [finger] with [down]'s finger from [first] on, measured vertically from where it pressed
- * (down toward 0), and lets it go on the lift.
+ * Moves [finger] with [down]'s finger from [first] on, measured from where it pressed along one
+ * axis ([horizontal] or not), and lets it go on the lift. [sign] is the way along that axis that
+ * takes the follow toward 1 when the finger moves the other way: 1 when a finger moving left or up
+ * takes it toward 1 (the cell to the right, the row below), -1 for the reverse.
  */
-internal suspend fun AwaitPointerEventScope.followVertically(down: PointerInputChange, first: PointerInputChange, finger: FollowFinger, tracker: VelocityTracker, pass: PointerEventPass) {
+internal suspend fun AwaitPointerEventScope.followAlong(down: PointerInputChange, first: PointerInputChange, finger: FollowFinger, tracker: VelocityTracker, pass: PointerEventPass, horizontal: Boolean, sign: Int) {
+    fun travel(c: PointerInputChange) = (if (horizontal) c.position.x - down.position.x else c.position.y - down.position.y) * sign
     first.consume()
-    finger.move(first.position.y - down.position.y)
-    var vy = 0f
+    finger.move(travel(first))
+    var v = 0f
     // Released however the gesture ends, a cancelled pointer coroutine too, so nothing is left held.
     try {
         while (true) {
             val c = awaitPointerEvent(pass).changes.firstOrNull { it.id == down.id } ?: return
             c.consume()
             tracker.addPosition(c.uptimeMillis, c.position)
-            finger.move(c.position.y - down.position.y)
+            finger.move(travel(c))
             if (!c.pressed) {
-                vy = tracker.calculateVelocity().y
+                val velocity = tracker.calculateVelocity()
+                v = (if (horizontal) velocity.x else velocity.y) * sign
                 return
             }
         }
     } finally {
-        finger.release(vy)
+        finger.release(v)
     }
 }

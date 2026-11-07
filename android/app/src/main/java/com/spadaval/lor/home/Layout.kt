@@ -327,9 +327,7 @@ data class LayoutFile(
 /**
  * One named layout: a sparse grid of [panels], the one [dock] every `dock` block draws, and the
  * [start] cell for each screen class. [expires] is kept for temporary layouts; nothing acts on it yet.
- *
- * Until the grid host (lor-qdmy) draws the grid, home's pager draws [pages]: the `apps` blocks of
- * the stacks in the narrow start's row, by column.
+ * Home draws the grid itself ([GridHost.kt]); [pages] are what the edits call home's pages.
  */
 data class Layout(
     val name: String,
@@ -348,7 +346,7 @@ data class Layout(
         get() = panels.filterIsInstance<Panel.Stack>().sortedWith(compareBy({ it.at.row }, { it.at.column }))
             .flatMap { p -> p.blocks.mapIndexedNotNull { b, block -> if (block is StackBlock.Apps) BlockAt(p.at, b) else null } }
 
-    /** The pages home's pager draws: the `apps` blocks in the narrow start's row, by column. */
+    /** Home's pages, for Add to home: the `apps` blocks in the narrow start's row, by column. */
     val pages: List<BlockAt> get() = appsBlocks.filter { it.cell.row == start.narrow.row }
 
     /** Each page's items, as [pages] orders them. */

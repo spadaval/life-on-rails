@@ -35,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.Animatable
 import androidx.compose.ui.draw.drawBehind
@@ -65,6 +66,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -75,8 +77,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -126,16 +126,17 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /*
- * The home shell (T3 Launcher, Increment 3.2): two pages, the agent page left of home; home draws
- * the layout file's apps, folders and dock; a swipe up opens the drawer with search.
+ * The home shell (T3 Launcher, Increment 3.2), drawn from the layout's grid of panels since
+ * lor-qdmy ([GridHost.kt]): the agent page left of home, home's pages to its right, the drawer with
+ * search under home; stacks draw the layout file's apps, folders, header and dock by block.
  *
  * The shape follows Launcher3 / Lawnchair (Apache-2.0): a workspace with the -1 page on its left
- * (there `LauncherOverlay`, here a pager page), a hotseat (`Hotseat.java`) fixed under the grid, a
+ * (there `LauncherOverlay`, here the `t3` panel left of home), a hotseat (`Hotseat.java`) fixed under the grid, a
  * folder icon previewing its first four apps on a 2x2 grid (`FolderIcon`, `ClippedFolderIconLayoutRule`)
  * that opens as a panel over a scrim, and all apps reached by a swipe up with search at its top,
  * where the keyboard's action opens the first result (`AllAppsSearchBarController.onEditorAction`).
  * A home press closes whatever is open and returns to home, as `Launcher.onNewIntent` does.
- * Motion is one-shot only: the drawer slides in and out, nothing loops (strategy: calm).
+ * Motion is one-shot only: cells slide in and out with the finger, nothing loops (strategy: calm).
  */
 
 /** Home's look from `layout.json` (launcher polish 6.4), for everything home and the drawer draw. */
@@ -163,18 +164,41 @@ internal val labelStyle: TextStyle
 /** What the activity can reset on a home press. */
 class HomeUi {
     /**
-     * Where the drawer is, from 0 (closed) to 1 (open), and where it is going (launcher polish
-     * 7.1). A finger moves it; otherwise [HomeScreen]'s [SettleFollow] takes it to its target.
+     * Where home is on the grid of panels and the move under way (lor-qdmy). A finger moves it;
+     * otherwise [HomeScreen]'s [SettleGrid] finishes the move. The drawer is one of its cells.
      */
-    val drawerFollow = Follow()
+    val grid = GridPlace().also { it.onLeftDrawer = { query = "" } }
 
-    /** The drawer's target: open or not. Set from anywhere; the drawer follows it. */
-    var drawer: Boolean
-        get() = drawerFollow.target == 1f
-        set(open) { drawerFollow.target = if (open) 1f else 0f }
+    /** The blocks that take a vertical swipe while they can scroll (the drawer's list, the agent page). */
+    val scrolls = GridScrolls()
 
-    /** Set by a home press that should jump rather than animate; each effect takes its own. */
-    var snapPager = false
+    /** Whether home is on the drawer's cell, or going there. */
+    val drawer: Boolean get() = grid.panel(grid.target) is Panel.Drawer
+
+    /** How much of the drawer is on screen, 0 to 1 (launcher polish 7.1's position, now the grid's). */
+    val drawerShown: Float get() = grid.drawerShown
+
+    /**
+     * Opens the drawer: the one a swipe up reaches, else a swipe down (decision lor-y7qi), else
+     * any drawer in the grid.
+     */
+    fun openDrawer() {
+        if (drawer) return
+        val way = listOf(Way.DOWN, Way.UP).firstOrNull { grid.panel(grid.next(it) ?: return@firstOrNull false) is Panel.Drawer }
+        if (way != null) grid.goTo(grid.next(way)!!, true, way)
+        else grid.panels.firstOrNull { it is Panel.Drawer }?.let { grid.goTo(it.at, true) }
+    }
+
+    /** Leaves the drawer for the cell it was opened from while that is there, else `start`. */
+    fun closeDrawer() {
+        if (!drawer) return
+        // On its way in: back where it came from.
+        if (grid.move != null) return grid.goTo(grid.cell, true)
+        val back = grid.back?.takeIf { grid.panel(it.from) != null }
+        if (back != null) grid.goTo(back.from, true, back.way.opposite) else grid.goTo(grid.start, true)
+    }
+
+    /** Set by a home press that should jump rather than animate. */
     var snapFolder = false
 
     /** The open folder's tile icon, in root coordinates, when it was tapped (launcher polish 7.2). */
@@ -186,10 +210,6 @@ class HomeUi {
      */
     var back by mutableFloatStateOf(0f)
 
-    /** The drawer's list is at its top, so a pull down there moves the drawer (launcher polish 7.1). */
-    var drawerAtTop = true
-    /** Where the drawer's list is, in root coordinates, its letter rail left out: where that pull starts. */
-    var drawerPullArea: Rect? = null
     /**
      * The open folder: its place in the file (launcher polish 4.1: by place, since names may
      * repeat) and its name, so an edit that moves another item into that place closes it.
@@ -199,8 +219,8 @@ class HomeUi {
     var homePresses by mutableStateOf(0)
     /** Where on home a long press on empty space opened the home menu. */
     var homeMenu by mutableStateOf<Offset?>(null)
-    /** The home page that long press was on, so only that page draws the menu. */
-    var homeMenuPage by mutableStateOf(0)
+    /** The cell that long press was on, so only that cell draws the menu. */
+    var homeMenuCell by mutableStateOf<Cell?>(null)
     /**
      * The open app or folder menu (with a folder's Rename dialog and Cover list), as the token of
      * the tile it was opened from; at most one (launcher polish 7.3, Increment 1's R5).
@@ -210,25 +230,20 @@ class HomeUi {
     val undo = UndoBarState()
     /** What is held, and edit mode (launcher polish 4.3). */
     val drag = DragState()
-    /** The pager's page showing: 0 is the agent page, 1 is home, 2 on are the pages after it. */
-    var page by mutableStateOf(1)
-
     /** Home with nothing open over it: a home press here opens quick send instead. */
-    val atRest: Boolean get() = !drawer && folder == null && homeMenu == null && menu == null && page == 1 && !drag.editing && drag.held == null
+    val atRest: Boolean get() = folder == null && homeMenu == null && menu == null && grid.cell == grid.start && grid.move == null && !drag.editing && drag.held == null
 
     /**
      * A home press ([animate] false when home wasn't on screen before it: then everything shuts
      * at once, since there's nothing to watch).
      */
     fun homePressed(animate: Boolean = true) {
-        // A home press puts a held item back and leaves edit mode.
-        drawerFollow.snap = !animate
-        snapPager = !animate
+        // A home press puts a held item back and leaves edit mode, and goes to `start` (lor-qdmy).
         snapFolder = !animate && folder != null
         drag.held = null
         drag.settling = null
         drag.editing = false
-        drawer = false
+        grid.goTo(grid.start, animate)
         folder = null
         homeMenu = null
         // Every floating view closes, as Launcher3's onNewIntent closes them (launcher polish 7.3).
@@ -280,16 +295,17 @@ internal sealed interface Placed {
     }
 }
 
-/** Home's pages and dock as drawn: each item with the place it holds in the file. */
-internal class PlacedHome(val pages: List<List<Placed>>, val dock: List<Pair<HomeApp, From.At>>) {
-    val count: Int get() = pages.sumOf { it.size }
+/** Home's `apps` blocks and dock as drawn: each item with the place it holds in the file. */
+internal class PlacedHome(val blocks: Map<BlockAt, List<Placed>>, val dock: List<Pair<HomeApp, From.At>>) {
+    val count: Int get() = blocks.values.sumOf { it.size }
+    val all: List<Placed> get() = blocks.values.flatten()
 }
 
 private fun resolve(ref: AppRef, apps: List<HomeApp>): HomeApp? =
     apps.firstOrNull { it.mainProfile && ref.matches(it.packageName, it.info.componentName.className) }
 
 private fun place(layout: Layout, apps: List<HomeApp>): PlacedHome {
-    val pages = layout.pages.map { p ->
+    val blocks = layout.appsBlocks.associateWith { p ->
         layout.items(p)!!.mapIndexedNotNull { i, item ->
             val at = From.At(Spot.Apps(p, i), item)
             when (item) {
@@ -300,7 +316,7 @@ private fun place(layout: Layout, apps: List<HomeApp>): PlacedHome {
             }
         }
     }
-    return PlacedHome(pages, layout.dock.mapIndexedNotNull { i, ref -> resolve(ref, apps)?.let { it to From.At(Spot.Dock(i), ref) } })
+    return PlacedHome(blocks, layout.dock.mapIndexedNotNull { i, ref -> resolve(ref, apps)?.let { it to From.At(Spot.Dock(i), ref) } })
 }
 
 @Composable
@@ -315,13 +331,32 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val home = remember(actions, file, apps) { HomeContext(actions, file, apps, ui) }
     val placed = remember(apps, file) { file?.let { place(it.current, apps) } }
     val folder = ui.folder?.let { open ->
-        placed?.pages?.flatten()?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf { f -> f.at.spot == open.spot && f.folder.name == open.name } }
+        placed?.all?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf { f -> f.at.spot == open.spot && f.folder.name == open.name } }
     }
     // An edit that empties the open folder removes it, so the panel closes.
     LaunchedEffect(ui.folder, folder, placed) { if (ui.folder != null && folder == null && placed != null) ui.folder = null }
-    // While something is held, an empty page follows the last, for a drop that makes one (launcher polish 4.5).
-    val filePages = file?.current?.pages?.size ?: 1
-    val pageCount = filePages + if (held != null && held.work.current.roomForPanel) 1 else 0
+    // The grid drawn (lor-qdmy): the file's, else the default grid with nothing on home yet.
+    val grid = ui.grid
+    val drawn = file?.current ?: remember { com.spadaval.lor.home.Layout.grid("default", emptyList(), emptyList()) }
+    // While something is held, an empty page follows the last in the start row, for a drop that makes one (launcher polish 4.5).
+    val newPanel = remember(held?.work) { held?.work?.current?.takeIf { it.roomForPanel }?.withNewPanel(emptyList())?.first?.panels?.last() }
+    val panels = drawn.panels + listOfNotNull(newPanel)
+    val wideScreen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
+    val start = if (wideScreen) drawn.start.wide ?: drawn.start.narrow else drawn.start.narrow
+    // The first layout puts home on its start; after that a cell that went leaves home on the nearest
+    // in its row, so it stands on a cell that exists (launcher polish 4.5).
+    // Set here rather than in an effect, so the frame drawn is never one behind the file (each write
+    // only when it changes something, so composition settles).
+    val first = remember { booleanArrayOf(true) }
+    if (grid.panels != panels) grid.panels = panels
+    if (grid.start != start) grid.start = start
+    if (first[0] && file != null) {
+        first[0] = false
+        grid.goTo(start, animate = false)
+    }
+    val cells = panels.map { it.at }
+    if (grid.move?.to?.let { it !in cells } == true) grid.goTo(grid.cell, animate = false)
+    if (grid.cell !in cells) grid.goTo(GridMoves.stay(cells, grid.cell, start), animate = false)
     // A file changed from outside (an agent, adb) may hold another folder at the open one's place.
     // It closes at once: a reread puts things in place without motion (DESIGN.md's Motion).
     LaunchedEffect(reads) {
@@ -329,18 +364,17 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         ui.snapFolder = true
         ui.folder = null
     }
-    val pager = rememberPagerState(initialPage = 1) { 1 + pageCount }
     // The system bars' icons follow the ink: dark over a light wallpaper on home's pages, light on
     // the agent page's veil, the drawer and an open folder (6's review, R1).
     // The drawer counts once any of it is under the status bar (launcher polish 7.1), decided in the
     // frame it crosses the bar rather than when a close starts.
     var heightPx by remember { mutableIntStateOf(0) }
     val barPx = WindowInsets.statusBars.getTop(LocalDensity.current)
-    val drawerUnderBar by remember(heightPx, barPx) { derivedStateOf { (1f - ui.drawerFollow.position) * heightPx < barPx } }
+    val underBar by remember(heightPx, barPx) { derivedStateOf { grid.panel(grid.underBar(heightPx, barPx)) } }
     // An open folder, opening or closing, holds the scrim (launcher polish 7.2).
     var panel by remember { mutableStateOf<ResolvedFolder?>(null) }
     SideEffect { if (folder != null) panel = folder }
-    val darkBarIcons = ink.ink == Ink.DARK && pager.currentPage >= 1 && !drawerUnderBar && folder == null && panel == null
+    val darkBarIcons = ink.ink == Ink.DARK && underBar is Panel.Stack && folder == null && panel == null
     val view = androidx.compose.ui.platform.LocalView.current
     var barsDark by remember { mutableStateOf<Boolean?>(null) }
     SideEffect {
@@ -352,8 +386,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         }
         barsDark = darkBarIcons
     }
-    // The drawer goes to its target, unless a finger has it; a home press from elsewhere jumps (7.1).
-    SettleFollow(ui.drawerFollow)
+    // Each move goes to its target, unless a finger has it; a home press from elsewhere jumps (7.1).
+    SettleGrid(grid)
     // A target waits 300 ms under the finger before the working copy takes it (Kvaesitso's attemptMove).
     LaunchedEffect(held, held?.pending) {
         val t = held?.pending ?: return@LaunchedEffect
@@ -361,16 +395,20 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         held.step(t)
         held.pending = null
     }
-    // Held at the screen's edge for 500 ms, the pager turns a page that way, never to the agent page (launcher polish 4.5).
+    // Held at the screen's edge for 500 ms, home moves a cell that way in its row, only to a stack
+    // with apps (never to the agent page; launcher polish 4.5).
     LaunchedEffect(held, held?.edge) {
         val e = held?.edge ?: 0
         if (e == 0) return@LaunchedEffect
         while (true) {
             delay(500)
-            val to = pager.currentPage + e
-            if (to !in 1 until pager.pageCount) break
-            // A turn once started finishes, or the pager would stop between pages (user scroll is off while held).
-            withContext(NonCancellable) { pager.animateScrollToPage(to) }
+            val to = grid.next(if (e > 0) Way.RIGHT else Way.LEFT) ?: break
+            if (grid.panel(to)?.hasApps != true) break
+            // A turn once started finishes, or home would stop between cells (no finger moves the grid while held).
+            withContext(NonCancellable) {
+                grid.goTo(to, animate = true)
+                snapshotFlow { grid.move }.first { it == null }
+            }
         }
     }
     val haptics = LocalHapticFeedback.current
@@ -444,28 +482,20 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             folderShown.snapTo(0f)
         } else {
             val spot = last.at.spot
-            val stays = placed?.pages?.flatten()?.any { (it as? Placed.InFolder)?.folder?.let { f -> f.at.spot == spot && f.folder.name == last.folder.name } == true } == true
+            val stays = placed?.all?.any { (it as? Placed.InFolder)?.folder?.let { f -> f.at.spot == spot && f.folder.name == last.folder.name } == true } == true
             folderFading = !stays
             folderShown.animateTo(0f, if (stays) Motion.move() else Motion.quick())
         }
         panel = null
     }
-    LaunchedEffect(ui.homePresses) {
-        if (ui.homePresses == 0) return@LaunchedEffect
-        if (ui.snapPager) {
-            ui.snapPager = false
-            pager.scrollToPage(1)
-        } else pager.animateScrollToPage(1)
-    }
-    LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { ui.page = it } }
     // Back closes what is open, in this order, and shows where it is going while the gesture lasts
     // for the drawer and a folder (launcher polish 7.3): each scales toward 0.9 with the progress
     // (Kvaesitso's `LauncherScaffold`, GPL-3.0, ideas only; Lawnchair's `onBackProgressed`, Apache-2.0).
     // Before Android 14 only the commit arrives, and it is the whole behaviour.
     // A new open (a drawer opened or caught, a folder tapped mid-close) starts whole, though a back
     // gesture's close was caught before it ended (7's review, R2), as a cancelled gesture does.
-    LaunchedEffect(ui.drawer, ui.drawerFollow.held) { if (ui.drawer || ui.drawerFollow.held) backEase.start() }
-    PredictiveBackHandler(enabled = ui.folder != null || ui.drawer || pager.currentPage != 1 || drag.editing) { events ->
+    LaunchedEffect(ui.drawer, grid.follow.held) { if (ui.drawer || grid.follow.held) backEase.start() }
+    PredictiveBackHandler(enabled = ui.folder != null || ui.drawer || grid.target != grid.start || drag.editing) { events ->
         // The gesture owns the scale from its start (7's third review).
         backEase.stop()
         val what = when {
@@ -485,39 +515,46 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         when (what) {
             Back.FOLDER -> ui.folder = null
             Back.EDIT -> drag.editing = false
-            Back.DRAWER -> { ui.drawer = false; ui.query = "" }
-            Back.PAGE -> ui.homePresses++
+            Back.DRAWER -> { ui.closeDrawer(); ui.query = "" }
+            Back.PAGE -> grid.goTo(grid.start, animate = true)
         }
     }
     // Once what back scaled has gone, the next one starts whole.
-    val backDone by remember { derivedStateOf { ui.drawerFollow.position == 0f && ui.folder == null } }
+    val backDone by remember { derivedStateOf { ui.drawerShown == 0f && ui.folder == null } }
     LaunchedEffect(backDone, panel) { if (backDone && panel == null) ui.back = 0f }
     // The drag handler lives across recompositions, so it reads the latest of these.
     val latestHome by rememberUpdatedState(home)
     val latestDrop by rememberUpdatedState<(Held, Target?) -> Unit>(::dropHeld)
     val dots by Dots.withDots.collectAsState()
     CompositionLocalProvider(LocalHomeLook provides (file?.look ?: HomeLook()), LocalDots provides dots) {
-    Box(Modifier.fillMaxSize().onSizeChanged { heightPx = it.height }.dragging(ui, haptics, { latestHome }, { h, t -> latestDrop(h, t) }).drawerPull(ui, haptics)) {
-        HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1, userScrollEnabled = held == null) { page ->
-            if (page == 0) AgentPage() else CompositionLocalProvider(LocalWallInk provides ink) { HomePage(page - 1, placed, layout, appsLoad, ui, home) }
-        }
-        // On the agent page the dots sit on its dark veil, not the wallpaper (6.8: dark ink vanished there).
-        PageDots(pager.currentPage, 1 + pageCount, if (pager.currentPage == 0) SurfaceInk.mark else ink.mark, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
-        // The drawer, wherever the finger or its settle has it (launcher polish 7.1); home stays still under it.
-        val drawerShows by remember { derivedStateOf { ui.drawerFollow.position > 0f } }
-        if (drawerShows) {
-            Box(
-                Modifier.fillMaxSize().graphicsLayer {
-                    translationY = (1f - ui.drawerFollow.position) * size.height
-                    // Predictive back (7.3): smaller about its centre as the gesture goes.
-                    val b = if (ui.folder == null && panel == null) 1f - BACK_SCALE * ui.back else 1f
-                    scaleX = b
-                    scaleY = b
-                },
-            ) {
-                Drawer(remember(apps, home) { apps.filterNot(home::hidden) }, stats, search, ui, home)
+    val barTop = rememberUpdatedState(barPx)
+    val shownApps = remember(apps, home) { apps.filterNot(home::hidden) }
+    Box(Modifier.fillMaxSize().onSizeChanged { heightPx = it.height }.dragging(ui, haptics, { latestHome }, { h, t -> latestDrop(h, t) }).gridFinger(ui, haptics) { barTop.value }) {
+        CompositionLocalProvider(LocalGridScrolls provides ui.scrolls) {
+            GridCells(grid) { p ->
+                when (p) {
+                    is Panel.T3 -> AgentPage()
+                    // The drawer, wherever the finger or its settle has it (launcher polish 7.1).
+                    is Panel.Drawer -> Box(
+                        Modifier.fillMaxSize().graphicsLayer {
+                            // Predictive back (7.3): smaller about its centre as the gesture goes.
+                            val b = if (ui.folder == null && panel == null && grid.cell == p.at) 1f - BACK_SCALE * ui.back else 1f
+                            scaleX = b
+                            scaleY = b
+                        },
+                    ) {
+                        Drawer(shownApps, stats, search, ui, home)
+                    }
+                    is Panel.Stack -> CompositionLocalProvider(LocalWallInk provides ink) {
+                        StackPanel(p, p.at == start, placed, layout, appsLoad, ui, home)
+                    }
+                }
             }
         }
+        // The dots of the row on screen, and of the row a vertical move brings (launcher polish 6.8:
+        // on the agent page they sit on its dark veil, not the wallpaper).
+        RowDots(grid, grid.cell, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
+        grid.move?.takeIf { !it.way.horizontal }?.let { RowDots(grid, it.to, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp)) }
         if (folder != null) {
             FolderPanel(folder, home, onClose = { ui.folder = null }, { folderShown.value }, { 1f - BACK_SCALE * ui.back }, ui.folderFrom, folderLayer) { cardBounds = it }
         } else if (panel != null) {
@@ -548,26 +585,17 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     }
 }
 
+/**
+ * A stack panel: its blocks top to bottom, the `apps` block taking the space between (lor-qdmy:
+ * drawn by block, not by page). A stack without a `clock` starts where home's grid would, as
+ * home's pages after the first did (launcher polish 6.7). Home's notes (the broken file, set-up,
+ * empty home) are drawn on the [start] cell's stack.
+ */
 @Composable
-private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad: AppsLoad, ui: HomeUi, home: HomeContext) {
+private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, layout: LayoutState, appsLoad: AppsLoad, ui: HomeUi, home: HomeContext) {
     val haptics = LocalHapticFeedback.current
-    BoxWithConstraints(
-        Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                // A swipe up brings the drawer with the finger (launcher polish 7.1).
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    if (ui.drawer || ui.drag.held != null) return@awaitEachGesture
-                    val tracker = VelocityTracker()
-                    val first = awaitVerticalSlop(down, tracker, PointerEventPass.Main) ?: return@awaitEachGesture
-                    // Only a swipe that starts upward is the drawer's.
-                    if (first.position.y > down.position.y) return@awaitEachGesture
-                    followVertically(down, first, drawerFinger(ui, haptics, size.height.toFloat(), density), tracker, PointerEventPass.Main)
-                }
-            }
-            .safeDrawingPadding(),
-    ) {
+    val cell = panel.at
+    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
         // Under everything: a long press that no app or folder took, on empty home, opens the home
         // menu, and a double tap opens quick send (launcher polish 7.6), not in edit mode.
         // Overlapping siblings get a touch only when the ones drawn above it don't, so a tap on an
@@ -579,67 +607,80 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
                     onLongPress = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         ui.homeMenu = it
-                        ui.homeMenuPage = n
+                        ui.homeMenuCell = cell
                     },
                 )
             },
         )
         val wide = maxWidth >= 600.dp
         val widthDp = maxWidth.value
-        // Only home's first page has the header (launcher polish 6.7: date, clock or none); the pages after it start where its grid would.
         val headerStyle = LocalHomeLook.current.header
+        val hasClock = panel.blocks.any { it is StackBlock.Clock }
         val header = @Composable {
-            if (n == 0 && headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar)
+            if (hasClock && headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar)
             else Spacer(Modifier.height(if (wide || headerStyle == HomeLook.Header.NONE) 24.dp else 104.dp))
         }
-        val body = @Composable { mod: Modifier ->
-            Column(mod) {
-                val columns = LocalHomeLook.current.columnsFor(widthDp).home
-                if (n == 0 && layout is LayoutState.Broken) {
-                    BrokenBanner(
-                        layout, appsLoad == AppsLoad.LOADED, Type.body.copy(color = Txt, fontSize = 13.sp),
-                        Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp).fillMaxWidth()
-                            .framedPanel(StateFill)
-                            .padding(horizontal = 14.dp),
-                        home.actions::restore,
-                    )
+        val body = homeBody(appsLoad, home.file, placed?.count ?: 0)
+        val apps: @Composable ColumnScope.(BlockAt) -> Unit = { at ->
+            val columns = LocalHomeLook.current.columnsFor(widthDp).home
+            if (start && layout is LayoutState.Broken) {
+                BrokenBanner(
+                    layout, appsLoad == AppsLoad.LOADED, Type.body.copy(color = Txt, fontSize = 13.sp),
+                    Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp).fillMaxWidth()
+                        .framedPanel(StateFill)
+                        .padding(horizontal = 14.dp),
+                    home.actions::restore,
+                )
+            }
+            // Until the first run is done (launcher polish 3.5); the default layout is drawn under it.
+            if (start) SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
+            val drops = body == HomeBody.GRID || body == HomeBody.EMPTY
+            // The block's space, from its first row to what follows it, takes a drop after its last item.
+            Box(
+                Modifier.weight(1f).fillMaxWidth()
+                    .dropZone(home.drag, "apps" to at) { b ->
+                        // The new panel a drag shows isn't in the file yet.
+                        val place = if (home.file?.current?.items(at) != null) Place.InApps(at) else Place.NewPanel
+                        if (drops) Zone.Area(place, b) else null
+                    },
+            ) {
+                when (body) {
+                    HomeBody.NOTHING -> {}
+                    HomeBody.SKELETON -> Skeleton(home.file!!.current.items(at).orEmpty(), columns)
+                    HomeBody.APPS_DIDNT_LOAD -> if (start) HomeNote("Apps didn't load. Trying again.", null)
+                    HomeBody.EMPTY -> if (start) HomeNote("Home is empty.", "Swipe up for your apps, then drag one here, or long-press it and choose Add to home.") { ui.openDrawer() }
+                    HomeBody.GRID -> HomeGrid(placed?.blocks?.get(at).orEmpty(), columns, ui, home)
                 }
-                // Until the first run is done (launcher polish 3.5); the default layout is drawn under it.
-                if (n == 0) SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
-                val body = homeBody(appsLoad, home.file, placed?.count ?: 0)
-                val drops = body == HomeBody.GRID || body == HomeBody.EMPTY
-                // The page's space, from its first row to the dock, takes a drop after its last item.
-                Box(
-                    Modifier.weight(1f).fillMaxWidth()
-                        .dropZone(home.drag, "page$n") { b ->
-                            // The page past the file's last is the new one a drag shows.
-                            val place = home.file?.current?.pages?.getOrNull(n)?.let(Place::InApps) ?: Place.NewPanel
-                            if (drops) Zone.Area(place, b) else null
-                        },
-                ) {
-                    when (body) {
-                        HomeBody.NOTHING -> {}
-                        HomeBody.SKELETON -> Skeleton(home.file!!.current.allPages.getOrElse(n) { emptyList() }, columns)
-                        HomeBody.APPS_DIDNT_LOAD -> if (n == 0) HomeNote("Apps didn't load. Trying again.", null)
-                        HomeBody.EMPTY -> if (n == 0) HomeNote("Home is empty.", "Swipe up for your apps, then drag one here, or long-press it and choose Add to home.") { ui.drawer = true }
-                        HomeBody.GRID -> HomeGrid(placed!!.pages.getOrElse(n) { emptyList() }, columns, ui, home)
+            }
+        }
+        val dock = @Composable {
+            if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.dock.orEmpty(), home, cell)
+        }
+        // The blocks below the header; with no `apps` block, the space goes before the dock.
+        val blocks = @Composable { mod: Modifier ->
+            Column(mod) {
+                if (panel.blocks.none { it is StackBlock.Apps }) Spacer(Modifier.weight(1f))
+                panel.blocks.forEachIndexed { i, block ->
+                    when (block) {
+                        StackBlock.Clock -> {}
+                        is StackBlock.Apps -> apps(BlockAt(cell, i))
+                        StackBlock.Dock -> dock()
                     }
                 }
-                if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.dock.orEmpty(), home, n)
             }
         }
         if (wide) {
             Row(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f)) { header() }
-                body(Modifier.weight(1f).padding(top = 24.dp))
+                blocks(Modifier.weight(1f).padding(top = 24.dp))
             }
         } else {
             Column(Modifier.fillMaxSize()) {
                 header()
-                body(Modifier.weight(1f))
+                blocks(Modifier.weight(1f))
             }
         }
-        ui.homeMenu?.takeIf { ui.homeMenuPage == n }?.let { HomeMenu(it, home, onEdit = { ui.drag.editing = true }) { ui.homeMenu = null } }
+        ui.homeMenu?.takeIf { ui.homeMenuCell == cell }?.let { HomeMenu(it, home, onEdit = { ui.drag.editing = true }) { ui.homeMenu = null } }
     }
 }
 
@@ -791,7 +832,7 @@ internal fun Modifier.animatePlacement(drag: DragState): Modifier = composed {
 }
 
 @Composable
-private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: Int) {
+private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, cell: Cell) {
     // An empty dock shows while something is held, so it can take it.
     if (apps.isEmpty() && home.drag.held == null) return
     val drag = home.drag
@@ -802,7 +843,7 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 12.dp)
             .framedPanel(PanelFace.copy(alpha = 0.92f))
-            .dropZone(drag, "dock$page") { b -> Zone.Area(Place.Dock, b) }
+            .dropZone(drag, "dock" to cell) { b -> Zone.Area(Place.Dock, b) }
             .padding(vertical = 10.dp)
             .height(dockIcon),
     ) {
@@ -812,9 +853,9 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
             // Equal cells, so the space between icons belongs to one of them.
             Box(
                 Modifier.weight(1f)
-                    // Keyed by page too: the dock is drawn on every page, and neighbours stay composed.
-                    .dropZone(drag, "dock$page" to keys[i]) { b -> Zone.Item(spot.spot, b, b.top, iconPx) }
-                    .dragSource(drag, "dock$page" to keys[i]) { b -> Source(b, spot, 0, app, null) }
+                    // Keyed by cell too: every `dock` block draws the dock, and neighbours stay composed.
+                    .dropZone(drag, Triple("dock", cell, keys[i])) { b -> Zone.Item(spot.spot, b, b.top, iconPx) }
+                    .dragSource(drag, Triple("dock", cell, keys[i])) { b -> Source(b, spot, 0, app, null) }
                     .animatePlacement(drag)
                     .alpha(if (drag.hides(spot.spot)) 0f else 1f),
                 contentAlignment = Alignment.Center,
@@ -835,12 +876,23 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, page: In
     }
 }
 
+/**
+ * Dots for the cells of [of]'s row, by column, the one on screen lit (the most of it, in a move
+ * across) and the agent page's square; none for a row of one. They move up and down with the row.
+ */
 @Composable
-private fun PageDots(current: Int, count: Int, mark: Color, modifier: Modifier) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        (0 until count).forEach { page ->
-            val color = if (page == current) mark.copy(alpha = 0.8f) else mark.copy(alpha = 0.5f)
-            Box(Modifier.size(6.dp).background(color, if (page == 0) RectangleShape else CircleShape))
+private fun RowDots(grid: GridPlace, of: Cell, ink: WallInk, heightPx: () -> Int, modifier: Modifier) {
+    val row = grid.panels.filter { it.at.row == of.row }.sortedBy { it.at.column }
+    if (row.size < 2) return
+    val lit by remember(grid, of) {
+        derivedStateOf { grid.move?.takeIf { it.way.horizontal && grid.follow.position >= 0.5f }?.to ?: of }
+    }
+    // On the agent page the dots sit on its dark veil, not the wallpaper (6.8: dark ink vanished there).
+    val mark = if (grid.panel(lit) is Panel.T3) SurfaceInk.mark else ink.mark
+    Row(modifier.offset { IntOffset(0, grid.offsetOf(of, 0, heightPx())?.y ?: 0) }, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        row.forEach { p ->
+            val color = if (p.at == lit) mark.copy(alpha = 0.8f) else mark.copy(alpha = 0.5f)
+            Box(Modifier.size(6.dp).background(color, if (p is Panel.T3) RectangleShape else CircleShape))
         }
     }
 }
@@ -1037,7 +1089,7 @@ internal fun Modifier.dragSource(drag: DragState, key: Any, source: (Bounds) -> 
 
 /**
  * Follows a drag from the press that starts it to its drop (launcher polish 4.3), in the Initial
- * pass so nothing under it (the pager, the drawer swipe, a list's scroll) sees the moves it takes.
+ * pass so nothing under it (the grid's finger, a list's scroll) sees the moves it takes.
  * A press on a source that is held past the long press (its menu opens) and then moves 16 dp picks
  * the source up; a lift or a move past the touch slop before the long press leaves the press to
  * whatever is under it.
@@ -1081,7 +1133,7 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
                 drag.held = Held(file, source.from, item, source.app, source.folder, home()).also { it.finger = c.position }
                 haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                 if (source.layer == 2) {
-                    ui.drawer = false
+                    ui.closeDrawer()
                     ui.query = ""
                 }
                 break
@@ -1271,36 +1323,4 @@ private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, close: () -> U
 @Composable
 private fun FolderMenuItem(text: String, onClick: () -> Unit) {
     DropdownMenuItem(text = { Text(text, style = Type.body.copy(color = Txt, fontSize = 15.sp)) }, onClick = onClick)
-}
-
-/**
- * A finger moving the drawer (launcher polish 7.1): the threshold tick is
- * `GestureThresholdActivate` (Kvaesitso's), a close clears the search, and each release logs one
- * `LorMotion` line, which the emulator checks read.
- */
-private fun drawerFinger(ui: HomeUi, haptics: HapticFeedback, heightPx: Float, density: Float): FollowFinger {
-    val start = ui.drawerFollow.position
-    return FollowFinger(ui.drawerFollow, heightPx, density, onTick = { haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) }) { open, upDpS ->
-        android.util.Log.d("LorMotion", "drawer let go at ${ui.drawerFollow.position} from $start, $upDpS dp/s up: ${if (open) "open" else "closed"}")
-        if (!open) ui.query = ""
-    }
-}
-
-/**
- * The pull down that closes the open drawer from the top of its list (launcher polish 7.1),
- * measured on home's root, which doesn't move, in the Initial pass as [dragging] is: the list moves
- * with the drawer, so its own scroll deltas would make the drawer lag. A press in the list (not its
- * letter rail) with the list at its top, moved down past the touch slop, is taken.
- */
-private fun Modifier.drawerPull(ui: HomeUi, haptics: HapticFeedback): Modifier = pointerInput(Unit) {
-    awaitEachGesture {
-        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-        val area = ui.drawerPullArea
-        if (!ui.drawer || ui.drawerFollow.position < 1f || !ui.drawerAtTop || ui.drag.held != null || area == null || !area.contains(down.position)) return@awaitEachGesture
-        val tracker = VelocityTracker()
-        // Only a pull that starts downward is the drawer's.
-        val first = awaitVerticalSlop(down, tracker, PointerEventPass.Initial) ?: return@awaitEachGesture
-        if (first.position.y < down.position.y) return@awaitEachGesture
-        followVertically(down, first, drawerFinger(ui, haptics, size.height.toFloat(), density), tracker, PointerEventPass.Initial)
-    }
 }

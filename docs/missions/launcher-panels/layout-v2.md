@@ -92,7 +92,7 @@ Launcher polish's rules carry over, with "home" meaning every `apps` block of th
 - An extra page an edit empties goes: a stack of only `apps` and `dock` whose `apps` block is empty is removed, unless it is at a `start` cell. Home's stack stays, even empty. The parser accepts an empty one.
 - The phone writes only fields that differ from their defaults (`wide` only when set, `look` and `drawer` only when not default), and writes `start`, `dock` and `panels` in every layout.
 
-Until the grid host (lor-qdmy) draws the grid, home draws today's pager from it: the agent page, then the `apps` blocks of the stacks in the narrow start's row, by column, each with home's header on the first and the dock on all. A `t3` or `drawer` panel's place in the grid is not drawn yet.
+Home draws the grid (lor-qdmy): one cell on screen, the narrow `start` after a home press. A swipe moves to the nearest cell that way in the row (the ends stop), or up and down by decision lor-y7qi's rule (the next row that way with a panel, wrapping; back to the cell a move came from, else the same column or the nearest, the left one on a tie). Each stack draws its blocks top to bottom: `clock` as home's header, `apps` taking the space between, `dock`; a stack without a `clock` starts where home's grid would.
 
 ## Reading a version 1 file
 

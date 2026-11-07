@@ -28,6 +28,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import com.spadaval.lor.home.scrollsInGrid
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -109,7 +110,9 @@ fun AgentPage() {
     BoxWithConstraints(Modifier.fillMaxSize().background(Veil).safeDrawingPadding()) {
         // On a large screen the page keeps to the left, leaving the right for the T3 app beside it.
         Box(Modifier.fillMaxHeight().then(if (maxWidth >= 600.dp) Modifier.width(520.dp) else Modifier.fillMaxWidth())) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 120.dp)) {
+            // Its scroll takes a vertical swipe until its edge; then the swipe moves home's grid (lor-qdmy).
+            val scroll = rememberScrollState()
+            Column(Modifier.fillMaxSize().scrollsInGrid(scroll).verticalScroll(scroll).padding(top = 12.dp, bottom = 120.dp)) {
                 Today(model)
                 model.notice?.let { Text(it, style = Small.copy(color = Bad), modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
                 if (status == T3Connection.Status.NotPaired || status is T3Connection.Status.Rejected) PairCard(model.connection, status, Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
