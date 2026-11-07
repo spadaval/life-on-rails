@@ -127,6 +127,14 @@ workflows:
     - done
     - superseded
     transitions:
+      plan:
+        from: [backlog]
+        to: todo
+        description: Bring a parked item back into the near-term plan.
+      defer:
+        from: [todo]
+        to: backlog
+        description: Park an item that is recorded but not near-term, such as a validation for later.
       done:
         from: [todo]
         to: done
@@ -135,7 +143,7 @@ workflows:
         validators:
         - blockers.none_open
       supersede:
-        from: [todo]
+        from: [backlog, todo]
         to: superseded
         required_fields: [close_reason]
         description: Retire it once it is no longer needed.

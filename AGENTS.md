@@ -29,7 +29,7 @@ Since 2026-11-06 LoR uses Atelier, with records under `.atelier/`.
 - **A non-trivial change goes on a work branch**, one worktree per agent working in parallel. A fresh agent that didn't write it reviews it before `atelier merge` puts it on `main`. A fix made after review is reviewed again, but only the fix's diff. Sumeet reviews after merge.
 - **Straight to `main`:** planning records and mission strategies (`docs/missions/<slug>/strategy.md`, linked from the mission), and trivial changes, recorded with `atelier review trivial --base <commit>`. A non-trivial planning change is still reviewed by a fresh agent before the work it defines starts, and a mission moves to ready only after Sumeet approves it (`atelier review approve <mission>`).
 - **Evidence:** record a receipt only for a check nothing else records, such as an emulator or device check, screenshots, a measurement or a failure. Don't record `pnpm test` or a boat build passing; name the test that proves the claim in the handoff note.
-- **A check that only the real phone or Fold can answer** is a loose end, `blocked_by` the item it follows; its emulator stand-in stays a Done when line of the item and runs before merge.
+- **A check that only the real phone or Fold can answer** comes after merge, in a `needs-human` item `blocked_by` the item it follows: a validation item when it assesses a mission's criteria or an increment's outcome, as the Panels mission's real-Fold checks do (lor-mlx6), and a loose end when it only follows a merge. Its emulator stand-in stays a Done when line of the item and runs before merge.
 - The launcher missions before Atelier (`docs/missions/t3-launcher`, `launcher-polish`) keep their `plan.md` as their record. The Panels mission is `lor-uj0r`.
 
 ## Commands
