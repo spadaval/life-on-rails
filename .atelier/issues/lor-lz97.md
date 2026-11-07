@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "The lor panel and LoR's blocks on home"
-updated_at: "2026-11-07T22:24:46.150629384+00:00"
+updated_at: "2026-11-07T23:37:54.452349906+00:00"
 ---
 
 ## Goal
@@ -61,3 +61,4 @@ LoR shows on home in native Compose: the `lor` panel (LoR's dashboard shaped for
   Rejected: An AgentModel per block or panel: the same /device/home read once per composable each minute
 - 2026-11-07 [decision] Superseded in part by lor-tbqc: the shared /device/home reader is lor-leh4's (lor-sbth), which this item extends with /device/tasks and /device/people, and the stack's overflow scroll is lor-r0f9's; lor-clgw waits on lor-sbth.
   Reason: Review finding R1 (lor-tbqc): one owner for each piece, decided by the coordinator.
+- 2026-11-07 [note] From lor-f3vn's plan: if lor-v692 is on main when this starts, add lor to its addPanel as a once-per-layout type, like t3 and drawer, and the four blocks as types that take no field, with GridEditTest covering them; and if lor-6get and lor-9uc1 are on main, name them in the minimap's palettes (LoR; Today, Needs you, Running, Agent queue), with a screenshot of each palette. If those land after this, they do it.
