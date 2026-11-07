@@ -12,9 +12,9 @@ relationships:
   relates: []
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "Folding keeps your place: no recreation, no reloads"
-updated_at: "2026-11-07T22:02:21.566426574+00:00"
+updated_at: "2026-11-07T23:30:43.770123624+00:00"
 ---
 
 ## Goal
