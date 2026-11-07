@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Home feels finished: a pressed state, and folders like Smart Launcher's"
-updated_at: "2026-11-07T22:58:49.169858702+00:00"
+updated_at: "2026-11-07T23:00:02.922176446+00:00"
 ---
 
 ## Goal
@@ -78,6 +78,7 @@ Home feels finished in the two places you touch most. A pressed icon answers the
   Rejected: Adding one app per tap and closing
 - 2026-11-07 [decision] The open folder is 4 columns on a narrow screen and 6 where the panel is 600 dp or wider, at most 100 dp a column, centred.
   Reason: A full-screen folder on the Fold's inner screen at 4 columns spread tiles 200 dp apart.
+- 2026-11-07 [handoff] Implemented on lor-gnk0 (db26b1d code, 9245942 records); every Done when line ticked, see ## Report. Boat assembleDebug testDebugUnitTest on db26b1d: 236 tests, 0 failures. Review not yet requested. The branch merges cleanly with main (13 commits ahead, lor-j87u's).
 
 ## Report
 
@@ -106,4 +107,3 @@ Eight decision notes below: the pressed state as an Indication, the bare tile, t
 - **The soft keyboard over the field** was seen only on the Fold (Gboard, `adjustPan`). On the phone emulator the default IME is agent-device's invisible helper. lor-sqfe's `adjustResize` still has to keep the field clear.
 - **The real Fold's blur** belongs to lor-f6zd. **Home-press latency** wasn't re-measured; the change adds a layer over home's cells and one effect.
 - **Outside the worktree:** `/tmp/claude-1000/gnk0-emu/` (screenshots, recordings, scripts, wallpapers) and `/tmp/claude-1000/gnk0-build/`. The phone emulator's `layout.json`, animator scale, IME and wallpaper were put back. The wallpaper was re-set from its original file, so its crop may differ slightly. The phone emulator is running and the emulator lock is released.
-
