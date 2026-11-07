@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Layout schema version 2: a grid of panels"
-updated_at: "2026-11-07T21:06:21.760688697+00:00"
+updated_at: "2026-11-07T21:07:21.612401829+00:00"
 ---
 
 ## Goal
@@ -66,6 +66,7 @@ Decision lor-y7qi: one drawer panel, reached from every page by the grid's movem
   Reason: Version 1 strips an extra page an edit empties, never home; an extra page converts to a stack of apps and dock
 - 2026-11-07 [decision] Until lor-qdmy, home's pager draws Layout.pages: the apps blocks of the stacks in start.narrow's row, by column, with the header on the first (as before, not from the clock block) and the dock on all. t3 and drawer panels in the file are not drawn from the grid yet; the agent page and drawer stay where they are.
   Reason: The issue's Scope keeps HomeScreen.kt to what compiles; lor-qdmy replaces the pager
+- 2026-11-07 [note] Handoff: implemented in 7182420 on lor-euec; see ## Report. assembleDebug testDebugUnitTest on boat: 213 tests, 0 failures. Review not requested yet (outstanding).
 
 ## Report
 
