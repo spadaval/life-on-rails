@@ -17,7 +17,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "The inner screen drawn: full panels, side-by-side halves"
-updated_at: "2026-11-07T22:02:02.069123072+00:00"
+updated_at: "2026-11-07T22:49:23.631974641+00:00"
 ---
 
 ## Goal
@@ -51,3 +51,7 @@ On `T3_Fold_API35` unfolded, with a version 1 `layout.json` with three extra pag
 - `GridCells` places each cell full screen today; on the inner screen a pair's cells are placed at half width side by side, and a move slides the whole inner screen.
 - The Pixel 9 Pro Fold's and the Galaxy Z Fold's inner screens report a fold that doesn't occlude content when flat, so the pair splits at the middle with no hinge gap and no `androidx.window` dependency. The real-Fold validation item checks this on One UI.
 - 6.8's critique (`docs/missions/launcher-polish/plan.md`, 6.8): the Remove bar covered home's first row on the unfolded Fold, and the agent page's Send button floated mid-screen at its 520 dp column's edge.
+
+## Notes
+
+- 2026-11-07 [note] From lor-j87u's review (finding lor-70hj): InnerScreens.next finds the shown screen with row.indexOf, which is -1 after an edit re-pairs the row (adding page 2 turns home alone into a pair), so a move right lands on the row's first screen. lor-el51 rebuilds the place after every edit with InnerScreens.place(screens, GridMoves.stay(...)), and makes next return null when the screen isn't found, with a test.
