@@ -24,6 +24,7 @@ import java.time.format.DateTimeParseException
  *   "version": 2,
  *   "active": "default",
  *   "hidden": [...], "drawer": {...}, "look": {...},       // optional, as in version 1
+ *   "locked": true,                                        // optional; the layout lock (decision lor-73li)
  *   "layouts": [
  *     { "name": "default",
  *       "expires": "2026-11-18T00:00:00Z",                 // optional; read, not acted on yet
@@ -49,6 +50,11 @@ data class LayoutFile(
     val hidden: List<AppRef> = emptyList(),
     val drawer: Drawer = Drawer(),
     val look: HomeLook = HomeLook(),
+    /**
+     * The layout lock (decision lor-73li): while true, [LayoutStore.edit] refuses a phone edit that
+     * changes [active] or [layouts]. Written only when true.
+     */
+    val locked: Boolean = false,
 ) {
     val current: Layout get() = layouts.first { it.name == active }
 
@@ -59,6 +65,7 @@ data class LayoutFile(
             .apply { if (hidden.isNotEmpty()) put("hidden", JSONArray(hidden.map { it.toString() })) }
             .apply { if (drawer != Drawer()) put("drawer", drawer.toJson()) }
             .apply { look.toJson().takeIf { it.length() > 0 }?.let { put("look", it) } }
+            .apply { if (locked) put("locked", true) }
             .put("layouts", JSONArray(layouts.map { it.toJson() }))
             .toString(2),
     )
@@ -108,7 +115,7 @@ data class LayoutFile(
                 true
             }
             if (trailing) throw LayoutError("not JSON: more after the closing }")
-            root.onlyKeys("", "version", "active", "hidden", "drawer", "look", "layouts")
+            root.onlyKeys("", "version", "active", "hidden", "drawer", "look", "locked", "layouts")
             val version = root.opt("version")
             val parseLayout: (String, Any) -> Layout = when (version) {
                 VERSION -> ::parseLayout
@@ -128,7 +135,7 @@ data class LayoutFile(
             }
             val drawer = if (root.has("drawer")) parseDrawer(root.opt("drawer")!!) else Drawer()
             val look = if (root.has("look")) HomeLook.parse(root.opt("look")!!) else HomeLook()
-            return LayoutFile(active, layouts, hidden, drawer, look)
+            return LayoutFile(active, layouts, hidden, drawer, look, locked = root.bool("", "locked"))
         }
 
         private fun parseDrawer(v: Any): Drawer {
@@ -262,7 +269,7 @@ data class LayoutFile(
                     val blocks = v.array(at, "blocks").mapIndexed { i, b -> parseBlock("$at.blocks[$i]", b) }
                     if (blocks.isEmpty()) throw LayoutError("$at.blocks: a stack needs at least one block")
                     blocks.forEachIndexed { i, b ->
-                        if (blocks.indexOfFirst { it.type == b.type } != i) throw LayoutError("$at.blocks[$i]: a stack holds one \"${b.type}\" block")
+                        if (!Panel.Stack(cell, blocks.take(i)).takes(b.type)) throw LayoutError("$at.blocks[$i]: a stack holds one \"${b.type}\" block")
                     }
                     Panel.Stack(cell, blocks).let { it.copy(wide = wide ?: it.wide) }
                 }
@@ -388,13 +395,14 @@ data class Layout(
     }
 
     /**
-     * Without the panels an extra version 1 page converts to (a stack of only `apps` and `dock`)
-     * whose `apps` block is empty; a start cell's panel stays, even empty (launcher polish 4.1's rule).
+     * Without the empty extra pages an edit emptied or made: a panel that is [Panel.isEmptyPage]
+     * goes unless [before] (the layout before the edit) already held an empty page at its cell, so
+     * a stack the minimap made stays (lor-v692, finding lor-i4al). A start cell's panel stays, even
+     * empty (launcher polish 4.1's rule).
      */
-    fun stripEmptyPanels(): Layout = copy(
+    fun stripEmptyPanels(before: Layout): Layout = copy(
         panels = panels.filterNot { p ->
-            p is Panel.Stack && p.at != start.narrow && p.at != start.wide &&
-                p.blocks.all { it is StackBlock.Dock || (it is StackBlock.Apps && it.items.isEmpty()) } && p.blocks.any { it is StackBlock.Apps }
+            p.isEmptyPage && p.at != start.narrow && p.at != start.wide && before.panelAt(p.at)?.isEmptyPage != true
         },
     )
 
@@ -469,6 +477,12 @@ sealed interface Panel {
     /** A column of [blocks]. */
     data class Stack(override val at: Cell, val blocks: List<StackBlock>, override val wide: Wide = Wide.HALF) : Panel {
         override fun toJson(): JSONObject = head("stack").put("blocks", JSONArray(blocks.map { it.toJson() }))
+
+        /**
+         * Whether this stack can take another block of [type]: a stack holds each type once. The
+         * parser and the grid edits both ask this, so a type that may repeat is allowed here.
+         */
+        fun takes(type: String): Boolean = blocks.none { it.type == type }
     }
 
     /** The agent page. */
@@ -491,6 +505,18 @@ sealed interface Panel {
 
     /** Whether this is a stack with an `apps` block. */
     val hasApps: Boolean get() = this is Stack && blocks.any { it is StackBlock.Apps }
+
+    /** Whether this is an empty extra page: a stack of only `apps` and `dock` whose `apps` block is empty. */
+    val isEmptyPage: Boolean
+        get() = this is Stack && blocks.any { it is StackBlock.Apps } &&
+            blocks.all { it is StackBlock.Dock || (it is StackBlock.Apps && it.items.isEmpty()) }
+
+    /** This panel at [cell]. */
+    fun movedTo(cell: Cell): Panel = when (this) {
+        is Stack -> copy(at = cell)
+        is T3 -> copy(at = cell)
+        is Drawer -> copy(at = cell)
+    }
 
     companion object {
         val TYPES = listOf("stack", "t3", "drawer")
@@ -524,6 +550,14 @@ sealed interface StackBlock {
 
     companion object {
         val TYPES = listOf("clock", "apps", "dock")
+
+        /** A new block of [type], for a type that takes no field (an `apps` block empty); null for any other. */
+        fun bare(type: String): StackBlock? = when (type) {
+            "clock" -> Clock
+            "apps" -> Apps(emptyList())
+            "dock" -> Dock
+            else -> null
+        }
     }
 }
 
@@ -582,6 +616,9 @@ data class AppRef(val packageName: String, val className: String? = null) : Layo
 }
 
 class LayoutError(message: String) : Exception(message)
+
+/** Why [LayoutStore.edit] refuses an edit to home while the file is locked (decision lor-73li). */
+const val LOCKED = "home is locked; unlock it from the home menu"
 
 /** How the drawer opens: on its sections, A–Z, or by launch count. */
 enum class DrawerView(val id: String) { SECTIONS("sections"), AZ("az"), USED("used") }
@@ -683,13 +720,16 @@ class LayoutStore(val file: File) {
     /**
      * Rereads the file, applies [change], and writes the result if it parses back to the same
      * thing; otherwise the file is left as it was. Fails with the [LayoutError] or I/O error. When
-     * [change] changes nothing, nothing is written and the result has no [Read.undo].
+     * [change] changes nothing, nothing is written and the result has no [Read.undo]. While the
+     * file is locked, an edit whose result differs in `active` or `layouts` is refused with [LOCKED].
      */
     fun edit(change: (LayoutFile) -> LayoutFile): Result<Read> = runCatching {
         if (!file.exists()) throw LayoutError("there is no layout file yet")
         val (read, before) = readText()
         val changed = change(read.layout)
         if (changed == read.layout) return@runCatching read
+        // The layout lock (decision lor-73li): one rule on what the edit changes, whatever code made it.
+        if (read.layout.locked && (changed.active != read.layout.active || changed.layouts != read.layout.layouts)) throw LayoutError(LOCKED)
         val stamp = write(changed)
         Read(changed, stamp, Undo(before, changed.toJson() + "\n"))
     }

@@ -10,8 +10,9 @@ package com.spadaval.lor.home
  *
  * Edits act on the active layout, except hide, which acts on every layout. A folder an edit
  * touches becomes `pinned` (it is Sumeet's now); a folder an edit empties is removed, and so is
- * an extra page's panel (a stack of only `apps` and `dock`; the start cell's panel stays even when
- * empty). "On home" means in any `apps` block of the grid.
+ * an extra page's panel (a stack of only `apps` and `dock`) the edit emptied or made; one that was
+ * already empty stays, and the start cell's panel stays even when empty ([Layout.stripEmptyPanels]).
+ * "On home" means in any `apps` block of the grid.
  *
  * Which app a ref names is worked out as home draws it (R3 of Increment 1's review): a package
  * name draws as the first main-profile activity of the package in label order, so it names that
@@ -138,7 +139,7 @@ fun LayoutFile.addToDock(app: AppId, ref: AppRef, installed: List<AppId> = empty
 /** Removes the refs in every `apps` block (not in folders) that name [app]. */
 fun LayoutFile.removeFromHome(app: AppId, installed: List<AppId> = emptyList()): LayoutFile {
     if (!placesOf(app, installed).home) throw LayoutError("it isn't on home")
-    return withCurrent(current.mapApps { items -> items.filterNot { it is AppRef && it.names(app, installed) } }.stripEmptyPanels())
+    return withCurrent(current.mapApps { items -> items.filterNot { it is AppRef && it.names(app, installed) } }.stripEmptyPanels(current))
 }
 
 fun LayoutFile.removeFromDock(app: AppId, installed: List<AppId> = emptyList()): LayoutFile {
@@ -179,7 +180,7 @@ fun LayoutFile.hide(packageName: String): LayoutFile {
                     is Folder -> if (item.apps.any(gone)) item.without(gone) else item
                 }
             }
-        }.copy(dock = layout.dock.filterNot(gone)).stripEmptyPanels()
+        }.copy(dock = layout.dock.filterNot(gone)).stripEmptyPanels(layout)
     }
     return copy(layouts = layouts, hidden = hidden + AppRef(packageName))
 }
@@ -233,7 +234,7 @@ fun LayoutFile.addToFolder(at: From.At, apps: List<Pair<AppId, AppRef>>, install
         layout = layout.withItems(block, items)
     }
     // Places are cells, so a panel that goes moves no other item's place.
-    return Dropped(withCurrent(layout.stripEmptyPanels()), spot.copy(index = index))
+    return Dropped(withCurrent(layout.stripEmptyPanels(current)), spot.copy(index = index))
 }
 
 private fun LayoutFile.changeFolder(at: From.At, change: (Folder) -> Folder): LayoutFile {
@@ -375,7 +376,7 @@ fun LayoutFile.drop(
         }
     }
     // Places are cells, so a panel that goes moves no other item's place.
-    if (strip) layout = layout.stripEmptyPanels()
+    if (strip) layout = layout.stripEmptyPanels(current)
     return Dropped(withCurrent(layout), at)
 }
 

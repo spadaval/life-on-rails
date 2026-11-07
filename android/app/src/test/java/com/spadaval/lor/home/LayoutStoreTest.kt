@@ -1,6 +1,7 @@
 package com.spadaval.lor.home
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -148,6 +149,85 @@ class LayoutStoreTest {
         store.undo(edited.undo!!)
         assertEquals(text, store.file.readText())
         assertEquals(listOf(Wide.HALF, Wide.FULL), wides(store.read(null).layout))
+    }
+
+    /**
+     * The layout lock (lor-v692, decision lor-73li): while the file is locked, every phone edit that
+     * changes the grid, the dock or a folder is refused and writes nothing; the rest are taken.
+     */
+    @Test
+    fun aLockedFileRefusesEditsToHomeAndTakesTheRest() {
+        fun ref(s: String) = AppRef(s)
+        fun app(s: String) = AppId(s, "$s.Main")
+        val folder = Folder("F", listOf(ref("b.b"), ref("c.c")))
+        val open = LayoutFile(
+            "default",
+            listOf(Layout.grid("default", listOf(ref("a.a"), folder), listOf(ref("d.d")), listOf(listOf(ref("e.e"))))),
+            hidden = listOf(ref("h.h")),
+        )
+        val locked = open.copy(locked = true)
+        val store = store()
+        store.write(locked)
+        val text = store.file.readText()
+        assertTrue(store.file.setLastModified(1_000_000L))
+        val home = Cell(1, 0)
+        val page = Cell(2, 0)
+        val homeApps = BlockAt(home, 1)
+        val f = From.At(Spot.Apps(homeApps, 1), folder)
+        val refusals: List<Pair<String, (LayoutFile) -> LayoutFile>> = listOf(
+            "addToHome" to { it.addToHome(app("z.z"), ref("z.z")) },
+            "addToDock" to { it.addToDock(app("z.z"), ref("z.z")) },
+            "removeFromHome" to { it.removeFromHome(app("a.a")) },
+            "removeFromDock" to { it.removeFromDock(app("d.d")) },
+            "removeFromFolder" to { it.removeFromFolder(app("b.b")) },
+            "removeAt" to { it.removeAt(From.At(Spot.Apps(homeApps, 0), ref("a.a"))) },
+            "hide of an app on home" to { it.hide("a.a") },
+            "a drop from the drawer" to { it.drop(From.Drawer(app("z.z"), ref("z.z")), Target.AtEnd(Place.InApps(homeApps))).file },
+            "a move between pages" to { it.drop(From.At(Spot.Apps(homeApps, 0), ref("a.a")), Target.AtEnd(Place.InApps(BlockAt(page, 0)))).file },
+            "a folder made by a drop" to { it.drop(From.At(Spot.Apps(BlockAt(page, 0), 0), ref("e.e")), Target.Onto(Spot.Apps(homeApps, 0))).file },
+            "renameFolder" to { it.renameFolder(f, "G") },
+            "setCover" to { it.setCover(f, ref("c.c")) },
+            "addToFolder" to { it.addToFolder(f, listOf(app("z.z") to ref("z.z"))).file },
+            "addPanel" to { it.addPanel(Cell(3, 0), "stack") },
+            "movePanel" to { it.movePanel(page, it.current.panelAt(page)!!, Cell(3, 0)) },
+            "removePanel" to { it.removePanel(page, it.current.panelAt(page)!!) },
+            "setWide" to { it.setWide(page, it.current.panelAt(page)!!, Wide.FULL) },
+            "setStart" to { it.setStart(page, StartScreen.NARROW) },
+            "addBlock" to { it.addBlock(page, 0, "clock") },
+            "moveBlock" to { it.moveBlock(BlockAt(home, 0), StackBlock.Clock, page, 0) },
+            "removeBlock" to { it.removeBlock(BlockAt(home, 0), StackBlock.Clock) },
+        )
+        for ((name, edit) in refusals) {
+            // Each would change the unlocked file, so the refusal is the lock's.
+            assertTrue(name, edit(open) != open)
+            assertEquals(name, LOCKED, store.edit(edit).exceptionOrNull()?.message)
+            assertEquals(name, text, store.file.readText())
+            assertEquals(name, 1_000_000L, store.file.lastModified())
+        }
+        assertTrue("the words name the home menu", LOCKED.contains("home menu"))
+        // Taken while locked: what leaves the grid alone.
+        val taken: List<Pair<String, (LayoutFile) -> LayoutFile>> = listOf(
+            "a drawer view change" to { it.copy(drawer = it.drawer.copy(view = DrawerView.AZ)) },
+            "a look change" to { it.copy(look = it.look.copy(labels = false)) },
+            "unhide" to { it.unhide("h.h") },
+            "moveToSection" to { it.moveToSection(app("a.a"), ref("a.a"), Category.TOOLS, "Work") },
+            "hide of an app on neither home nor the dock" to { it.hide("q.q") },
+        )
+        for ((name, edit) in taken) {
+            val read = store.edit(edit).getOrThrow()
+            assertTrue(name, read.layout.locked)
+            assertTrue(name, read.undo != null)
+        }
+        val unlocked = store.edit { it.setLocked(false) }.getOrThrow()
+        assertFalse(unlocked.layout.locked)
+        assertFalse(store.file.readText().contains("locked"))
+        // Lock, then Undo: the unlocked file comes back.
+        val before = store.file.readText()
+        val lock = store.edit { it.setLocked(true) }.getOrThrow()
+        assertTrue(store.read(null).layout.locked)
+        val back = store.undo(lock.undo!!)
+        assertFalse(back.layout.locked)
+        assertEquals(before, store.file.readText())
     }
 
     private fun undoFails(store: LayoutStore, undo: LayoutStore.Undo): String = try {
