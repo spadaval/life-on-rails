@@ -30,13 +30,13 @@ Home is drawn from the grid: the cell on screen, moved between by a swipe that f
 ## Done when
 
 On `T3_Phone_API35`, with a version 1 `layout.json` with two extra pages (converted by lor-euec), by `input swipe` and `input motionevent`:
-- **Across:** from home, a swipe right reaches the agent page and a swipe left the next page; a swipe released short of the commit point returns; the edges stop (no horizontal wrap).
-- **Up and down:** from home, a swipe up opens the drawer, following the finger as 7.1's does; with the vertical wrap, a swipe down from home also reaches the drawer (row 1, coming in from the top). A swipe that starts at the top edge pulls the system shade and leaves the grid where it was. From the drawer scrolled part-way, a swipe down scrolls the list, and at its top moves the grid, as 7.1's close does today.
-- **Every page** reaches the drawer by decision lor-y7qi's rule: from page 2, a swipe up opens the drawer and a swipe down from the drawer's top returns to page 2. JVM tests of the rule cover a grid with gaps.
-- **Composition:** a debug log line per composed cell shows only the visible cell and its neighbours composed, on a grid of at least five panels.
-- **What Launcher polish built still works:** 4.5's edge turn and new page by dragging (its five checks), a drag from the drawer to home (4.6), folders opening from their tile (7.2), predictive back from the drawer and a home press closing every floating view (7.3; a home press goes to `start`), apps opening from their icon (7.4), the double tap for quick send (7.6), page dots showing the position in the row, and Undo after a move.
-- The same moves on `T3_Fold_API35`, folded and unfolded, with one cell at full width on both.
-- `assembleDebug testDebugUnitTest` passes on boat, with JVM tests of the grid's neighbour and wrap rules.
+- [x] **Across:** from home, a swipe right reaches the agent page and a swipe left the next page; a swipe released short of the commit point returns; the edges stop (no horizontal wrap).
+- [x] **Up and down:** from home, a swipe up opens the drawer, following the finger as 7.1's does; with the vertical wrap, a swipe down from home also reaches the drawer (row 1, coming in from the top). A swipe that starts at the top edge pulls the system shade and leaves the grid where it was. From the drawer scrolled part-way, a swipe down scrolls the list, and at its top moves the grid, as 7.1's close does today.
+- [x] **Every page** reaches the drawer by decision lor-y7qi's rule: from page 2, a swipe up opens the drawer and a swipe down from the drawer's top returns to page 2. JVM tests of the rule cover a grid with gaps.
+- [x] **Composition:** a debug log line per composed cell shows only the visible cell and its neighbours composed, on a grid of at least five panels.
+- [x] **What Launcher polish built still works:** 4.5's edge turn and new page by dragging (its five checks), a drag from the drawer to home (4.6), folders opening from their tile (7.2), predictive back from the drawer and a home press closing every floating view (7.3; a home press goes to `start`), apps opening from their icon (7.4), the double tap for quick send (7.6), page dots showing the position in the row, and Undo after a move.
+- [x] The same moves on `T3_Fold_API35`, folded and unfolded, with one cell at full width on both.
+- [x] `assembleDebug testDebugUnitTest` passes on boat, with JVM tests of the grid's neighbour and wrap rules.
 
 ## Scope
 
@@ -74,3 +74,42 @@ On `T3_Phone_API35`, with a version 1 `layout.json` with two extra pages (conver
   Reason: Done when asks for dots showing the position in the row.
 - 2026-11-07 [decision] HomeScreen writes the grid's panels, start and any correction (a cell that went) during composition, guarded so each write happens only on a change.
   Reason: Writing them in an effect left the first frame, and the frame after an edit removed the cell on screen, drawn from the previous grid (blank).
+
+## Report
+
+Home is drawn from the grid: one cell on screen, moved by a swipe that follows the finger across a row (the ends stop) and up and down (wrapping, by lor-y7qi's rule), with the drawer as a cell. Every Done when line holds. The phone checks are evidence lor-nafb, the Fold's lor-okw0, with screenshots and recordings in `/tmp/claude-1000/qdmy-emu/`. On boat, `assembleDebug testDebugUnitTest` passed after the last code change: 229 tests, 0 failures, 0 errors.
+
+- The rules: `GridTest` (11 cases, all pass) covers across with its ends, up and down with the wrap both ways, every page of the default grid reaching the drawer and coming back to itself (lor-y7qi's way back), the way back forgetting a cell that went, a grid with gaps (empty columns and an empty row, ties going left), one row with no vertical move, no cell stranded in a sparse seven-cell grid, the swipe's axis, where home stands when its cell went, and the composition window.
+- Across, up and down, every page, composition and the Launcher polish checks (4.5's five, 4.6, 7.2, 7.3, 7.4, 7.6, dots, Undo): lor-nafb, from the `LorGrid` and `LorMotion` logcat lines, the file read after each edit, and screenshots. The drawer's top held at 40% sat at the finger's travel exactly (y 1440).
+- Folded and unfolded: lor-okw0. One cell at full width on both; the unfolded stack keeps its wide two-column layout.
+
+### Deviations
+
+- `AgentPage.kt` changed by one line (`scrollsInGrid`), outside the stated Scope: the grid's finger is measured on home's root, so a scrolling page has to say when it can still scroll.
+- `docs/v2-product-engineering-spec.md` and `layout-v2.md` now say how home moves; the stand-in paragraph in `layout-v2.md` is replaced.
+
+### Decisions
+
+Recorded as decision notes above: what was borrowed (Kvaesitso, Neo Launcher), one commit rule for every move, the shade's inset, gaps, a press during a settle, the composition window (the drawer only while a move involves it), placement rather than a layer, both cells sliding on a vertical move, straight moves to start, scrolling blocks registering, dots per row, and the grid written during composition.
+
+### What changed on screen against Launcher polish
+
+- Opening the drawer slides home up with it, and closing slides home back down; before, home stayed still under the drawer. The drawer's edge still tracks the finger 1:1.
+- A swipe down mid-screen on home opens the drawer from the top (the Done when asks for it); before, it did nothing.
+- The agent page reaches the drawer too: a swipe up at the end of its scroll, or down at its top. Before, its vertical swipes only scrolled.
+- In the drawer, a vertical swipe on the search field and view chips moves the grid, and so does a swipe up at the end of the list (to home, through the wrap). Before, only the pull down at the list's top closed it.
+- A home press from page 2 or 3 slides straight to home in one move; dots are drawn per row and none on the drawer.
+
+### Surprises
+
+- agent-device still couldn't open `emulator-5554` (the stale session `t3-790c7c1b0b7aa1f7623a3400`), so input went through adb and pictures through `screencap`, as for lor-eo1g.
+- `input swipe` sometimes reports a large release velocity the wrong way (one swipe down let go at 0.46 at -1085 dp/s and stayed; repeated, it read 0 and went). 7.1 already recorded that `input swipe` can't be trusted for velocity; the deterministic checks used `input motionevent`.
+- The first `T3_Fold_API35` boot aborted with a core dump after failing to load its snapshot; the second boot worked.
+
+### Open items
+
+- Review: none yet.
+- Before and after screenshots and 7.8's latency and frame measurements are lor-eh0y's lines, not run here.
+- The real Fold is lor-mlx6.
+- Not checked: the status bar's ink during a vertical move by recording (the rule is in `GridPlace.underBar`), and a non-default grid on the emulator (only the JVM tests cover gaps).
+- Both emulators run this branch's debug APK; their `layout.json` files were put back as they were.
