@@ -17,7 +17,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The inner screen drawn: full panels, side-by-side halves"
-updated_at: "2026-11-07T23:17:19.734763077+00:00"
+updated_at: "2026-11-07T23:17:37.830662640+00:00"
 ---
 
 ## Goal
@@ -27,18 +27,18 @@ Unfolded, home draws inner screens from lor-j87u's rules: a full panel fills the
 ## Done when
 
 On `T3_Fold_API35` unfolded, with a version 1 `layout.json` with three extra pages, against the test server, unless a line says otherwise:
-- [ ] Each inner screen of the converted grid is screenshotted: row 0 is the agent page at full width, then home and page 2 side by side, then pages 3 and 4 side by side; row 1 is the drawer alone at full width.
-- [ ] A swipe moves one inner screen across and follows the finger: from home's pair, right reaches the agent page and left reaches pages 3 and 4; a swipe let go short of the commit point returns; the ends stop. From either half of a pair a swipe up opens the drawer, and a swipe down from the drawer's top returns to that pair. Shown by `LorGrid` and `LorMotion` lines and by `input motionevent`, as lor-qdmy's checks were.
-- [ ] Only the inner screen on show and the inner screens a move reaches are composed (`LorGrid` composed lines on this grid), the drawer still only while a move involves it.
-- [ ] Each panel picks its form by the width it is given, narrow under 600 dp and wide from 600 dp: each half of a pair draws its narrow form; home alone at full width draws lor-j87u's two-column flow (the clock left; apps and the dock right). Shown with a file whose only stack is home, and in the screenshots above.
-- [ ] A pair splits the inner screen at its middle. Each half pads for the system insets on its own sides only: the left half for start, top and bottom, the right half for end, top and bottom. Screenshot of a pair, with no gap at the middle wider than the halves' own padding.
-- [ ] The page dots on the inner screen show one dot per inner screen of the row, the one on show lit, centred on the screen and clear of the dock. Screenshot of home's pair and of pages 3 and 4.
-- [ ] The agent page's full layout, per the decision note on lor-ph30: two columns, Today on the left; the T3 state, Running, Needs you and the notes on the right; each column scrolls on its own and reports `scrollsInGrid`; the quick-send button sits at the panel's bottom-end corner. As a half, and on `T3_Phone_API35`, it is today's single column. Screenshots of all three.
-- [ ] 6.8's Remove bar: with an app held on home's pair, the Remove bar overlaps no tile of home's first row, and a drop on a row-1 icon makes a folder (the file read after the drop shows it). Screenshot while held.
-- [ ] Halves pair only where the smallest width is 600 dp or more (decision note on lor-ph30). On `T3_Phone_API35` and the folded Fold with auto-rotate on, home still rotates to landscape and draws one cell, as lor-eh0y does, with lor-qdmy's across and up-and-down moves working; on the unfolded Fold in landscape, each inner screen of the grid above is paired as in portrait and screenshotted with nothing clipped or overlapping. Screenshots of all three.
-- [ ] At font scale 2.0 (`settings put system font_scale 2.0`), on `T3_Phone_API35` and the unfolded Fold: home, home's pair, the agent page, an open folder and the drawer are screenshotted with no text cut mid-line or drawn over another element; a label too long ends in an ellipsis.
-- [ ] On `T3_Phone_API35` and the folded Fold, lor-qdmy's across, up-and-down and every-page checks still pass with one cell on screen.
-- [ ] `assembleDebug testDebugUnitTest` passes on boat.
+- [x] Each inner screen of the converted grid is screenshotted: row 0 is the agent page at full width, then home and page 2 side by side, then pages 3 and 4 side by side; row 1 is the drawer alone at full width.
+- [x] A swipe moves one inner screen across and follows the finger: from home's pair, right reaches the agent page and left reaches pages 3 and 4; a swipe let go short of the commit point returns; the ends stop. From either half of a pair a swipe up opens the drawer, and a swipe down from the drawer's top returns to that pair. Shown by `LorGrid` and `LorMotion` lines and by `input motionevent`, as lor-qdmy's checks were.
+- [x] Only the inner screen on show and the inner screens a move reaches are composed (`LorGrid` composed lines on this grid), the drawer still only while a move involves it.
+- [x] Each panel picks its form by the width it is given, narrow under 600 dp and wide from 600 dp: each half of a pair draws its narrow form; home alone at full width draws lor-j87u's two-column flow (the clock left; apps and the dock right). Shown with a file whose only stack is home, and in the screenshots above.
+- [x] A pair splits the inner screen at its middle. Each half pads for the system insets on its own sides only: the left half for start, top and bottom, the right half for end, top and bottom. Screenshot of a pair, with no gap at the middle wider than the halves' own padding.
+- [x] The page dots on the inner screen show one dot per inner screen of the row, the one on show lit, centred on the screen and clear of the dock. Screenshot of home's pair and of pages 3 and 4.
+- [x] The agent page's full layout, per the decision note on lor-ph30: two columns, Today on the left; the T3 state, Running, Needs you and the notes on the right; each column scrolls on its own and reports `scrollsInGrid`; the quick-send button sits at the panel's bottom-end corner. As a half, and on `T3_Phone_API35`, it is today's single column. Screenshots of all three.
+- [x] 6.8's Remove bar: with an app held on home's pair, the Remove bar overlaps no tile of home's first row, and a drop on a row-1 icon makes a folder (the file read after the drop shows it). Screenshot while held.
+- [x] Halves pair only where the smallest width is 600 dp or more (decision note on lor-ph30). On `T3_Phone_API35` and the folded Fold with auto-rotate on, home still rotates to landscape and draws one cell, as lor-eh0y does, with lor-qdmy's across and up-and-down moves working; on the unfolded Fold in landscape, each inner screen of the grid above is paired as in portrait and screenshotted with nothing clipped or overlapping. Screenshots of all three.
+- [x] At font scale 2.0 (`settings put system font_scale 2.0`), on `T3_Phone_API35` and the unfolded Fold: home, home's pair, the agent page, an open folder and the drawer are screenshotted with no text cut mid-line or drawn over another element; a label too long ends in an ellipsis.
+- [x] On `T3_Phone_API35` and the folded Fold, lor-qdmy's across, up-and-down and every-page checks still pass with one cell on screen.
+- [x] `assembleDebug testDebugUnitTest` passes on boat.
 
 ## Scope
 
@@ -66,3 +66,30 @@ On `T3_Fold_API35` unfolded, with a version 1 `layout.json` with three extra pag
   Rejected: Move or shrink the Remove bar while held: changes the drop target everywhere for a problem in one layout
 - 2026-11-07 [decision] The agent page holds its scroll states above its two forms, so a fold, which changes the form, gives the single column the left column's scroll. The drawer's padding uses the per-half insets too (one line in DrawerScreen.kt); its layout stays lor-sqfe's.
   Reason: lor-ozj2 checks the agent page's scroll across a fold; a state remembered inside each form would be lost when the form changes. The insets line is the grid's job, not the drawer's layout.
+- 2026-11-07 [handoff] Implemented on lor-ph30 (code a63f453); see ## Report. Review: none yet, a fresh reviewer is needed before lor-ozj2 starts. Receipts lor-2e4u, lor-qxee.
+
+## Report
+
+The unfolded Fold now uses its inner screen: home and page 2 sit side by side, pages 3 and 4 share the next screen, the agent page fills the screen in two columns with Send in its corner, and a swipe moves one inner screen. Every Done when line holds. The pure rules are tested in `GridPlaceTest` (pairs drawn side by side, a move across sliding a whole screen, the way back keeping a right half's focus, a home press to a pair, an edit that pairs home building the place again, fold and unfold keeping the cell, and the narrow window) and `InnerTest.aScreenAnEditReplacedHasNoMoves` (lor-70hj), all passing in boat's `assembleDebug testDebugUnitTest`. The emulator checks are receipts lor-2e4u (the unfolded Fold: screens, moves, composition, forms, dots, the agent page, the Remove bar and a folder made by a drop, landscape, font scale 2.0) and lor-qxee (the phone, the phone in landscape, the folded Fold portrait and landscape, font scale 2.0 on the phone), with screenshots in `/tmp/claude-1000/el51-emu/`.
+
+### Decisions
+
+Four decision notes above: one place for both screen classes (cell plus focus, the screen derived); rebuilding the place only when an edit changes the pairing; `BarClear` for the Remove bar; the agent page's scroll held above its forms and the drawer's per-half insets.
+
+### Deviations
+
+- The phone changes in one case beyond the item's text: with `look.header` set to `none`, a stack's first row now starts 80 dp from the top instead of 24 dp, clear of the Remove bar, as on the Fold.
+- `pair()` applies lor-j87u's unfold and fold rules so the place stays consistent; lor-ozj2 still adds the touched half, the screen-off start and its checks.
+- `GridMoves.window` is gone; `GridPlace.composed()` replaces it (screens, not cells), and its test moved to `GridPlaceTest`.
+
+### Surprises
+
+- The Fold emulator lacks the apps on the phone's test pages, so the Fold checks use `layout-v1-three-pages-fold.json` (same shape, apps the Fold has).
+- The Fold emulator locks rotation per device state (`device_state_rotation_lock` 0:1, folded locked). The folded landscape check set it to 0:2 and restored it after.
+
+### Open items
+
+- Horizontal system insets are zero on the emulator's inner screen in both orientations, so each half padding only its own sides is shown by the code and the even split, not by a cutout. The real-Fold item lor-znfb sees One UI's.
+- The agent page's two columns report `scrollsInGrid` in code; the test server's page was too short to scroll, so no swipe inside a column was checked.
+- At font scale 2.0 on the phone, YouTube's label fills its cell with no gap to the next label; nothing overlaps or is cut, but it is tight.
+- While an item is held, the new empty page a drop can make joins the inner screens, so with home alone it pairs with home for the length of the drag (home draws its narrow form until the drop).
