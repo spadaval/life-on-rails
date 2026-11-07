@@ -88,6 +88,7 @@ Every Done when line holds on `T3_Phone_API35`, with the Fold screenshots on `T3
 - **Closed folder** (lor-er0u): a bare 2×2 of mini icons. Its label reads 19.4:1 on a white wallpaper and 15.3:1 on `#101010`.
 - **Open folder** (lor-txuu, lor-x711): full-screen Deep Space glass at 72% over the wallpaper, blurred by 24 dp (SurfaceFlinger showed the radius), or over a 50% black dim with blur off. Labels read 6.5:1 over white with or without blur, and 11.2:1 dimmed. It opens from its tile and closes into it. The name is edited in place, and the menu's Rename… opens it focused. The + adds apps. Each edit was read from `layout.json`, and Undo works with the folder still open.
 - **Drags** (lor-lm2s): an app held 400 ms above the name row or below the last row leaves, and lands on home. The last one out takes the folder away. Dragging into a folder, predictive back, a tap on the glass and TalkBack's names all work.
+- **Review R1, lor-0368** (lor-bof7): renaming a folder, undoing it and typing the same name again now writes, whether by Done or by closing the folder. Before the fix both ways left the old name. The fix keeps one guard for the field's life and clears it when the name changes. The reviewer's `remember(name)` alone still lost the close ending, because the close runs the first composition's `commit()`. The fix is d349d1f (b9dc661 before it); the boat build of d349d1f ran 236 tests, 0 failures.
 
 ### Deviations
 
