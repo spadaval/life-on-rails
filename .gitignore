@@ -18,3 +18,8 @@ coverage/
 .impeccable/*.json.local
 .impeccable/questions/
 .impeccable/decision-*.json
+
+# Atelier local runtime state
+/.atelier/agent.json
+/.atelier/runtime/
+/.atelier-bundle-stage-*/
