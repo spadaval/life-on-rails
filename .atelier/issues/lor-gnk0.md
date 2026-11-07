@@ -32,11 +32,11 @@ Home feels finished in the two places you touch most. A pressed icon answers the
 
 ## Done when
 
-- [ ] A pressed state on every app and folder tile (home, dock, folders, drawer, search results): the tile scales down slightly while held and returns when released, one-shot, in `DESIGN.md`'s motion, nothing looping. It doesn't delay the launch, the long press, or the pickup of a drag, and the launch animation from the icon's bounds still starts from the right place. Recorded on `T3_Phone_API35`, and checked again with the animator duration scale at 0, where it shows no motion.
-- [ ] The closed folder tile is lighter: its 2×2 preview of mini icons without the filled backing, or the nearest form `DESIGN.md` allows, with the choice and its reason written on this item. Labels and the preview still follow the wallpaper's ink, at 4.5:1 or more on the light and the dark wallpapers (measured from the pixels, as 6.3 did). The folder's `cover` app still replaces the preview.
-- [ ] An open folder fills the screen as a dark glass surface: Deep Space, translucent enough that the wallpaper shows through blurred where the device supports cross-window blur, and dark enough that its labels keep `SurfaceInk` (as the folder panel's do) at 4.5:1 or more over the light wallpaper, measured from the pixels without blur (the worst case) and again with blur where the emulator shows it. The screenshots say which path they show, blurred or dimmed only. Where blur isn't available the same face over the dimmed wallpaper must look right on its own. It still opens from its tile as Increment 7 built. Its name is edited in place, and the folder menu's "Rename…" now opens the folder with that field focused instead of a dialog, so every edit keeps a menu way. A + opens a picker of apps to add. Each edit writes `layout.json` with Undo; tests cover the edit functions. Screenshots on `T3_Phone_API35` and `T3_Fold_API35`, as the grid then draws a folder.
-- [ ] Dragging out of a full-screen folder has a rule that works without space outside the card: the folder closes and the drag goes on over home once the finger has been 400 ms (Launcher3's `ON_EXIT_CLOSE_DELAY`) outside the folder's grid of apps, above its name row or below its last row (a folder too full to leave room below scrolls, keeping a strip free); the rule is written on this item. Checked on the emulator: an app dragged out that way lands on home, and the last one out takes the folder away. Tapping the dimmed space outside the grid closes the folder.
-- [ ] Dragging into a folder, a folder's predictive back, and TalkBack's names on its tiles still work (emulator check).
+- [x] A pressed state on every app and folder tile (home, dock, folders, drawer, search results): the tile scales down slightly while held and returns when released, one-shot, in `DESIGN.md`'s motion, nothing looping. It doesn't delay the launch, the long press, or the pickup of a drag, and the launch animation from the icon's bounds still starts from the right place. Recorded on `T3_Phone_API35`, and checked again with the animator duration scale at 0, where it shows no motion.
+- [x] The closed folder tile is lighter: its 2×2 preview of mini icons without the filled backing, or the nearest form `DESIGN.md` allows, with the choice and its reason written on this item. Labels and the preview still follow the wallpaper's ink, at 4.5:1 or more on the light and the dark wallpapers (measured from the pixels, as 6.3 did). The folder's `cover` app still replaces the preview.
+- [x] An open folder fills the screen as a dark glass surface: Deep Space, translucent enough that the wallpaper shows through blurred where the device supports cross-window blur, and dark enough that its labels keep `SurfaceInk` (as the folder panel's do) at 4.5:1 or more over the light wallpaper, measured from the pixels without blur (the worst case) and again with blur where the emulator shows it. The screenshots say which path they show, blurred or dimmed only. Where blur isn't available the same face over the dimmed wallpaper must look right on its own. It still opens from its tile as Increment 7 built. Its name is edited in place, and the folder menu's "Rename…" now opens the folder with that field focused instead of a dialog, so every edit keeps a menu way. A + opens a picker of apps to add. Each edit writes `layout.json` with Undo; tests cover the edit functions. Screenshots on `T3_Phone_API35` and `T3_Fold_API35`, as the grid then draws a folder.
+- [x] Dragging out of a full-screen folder has a rule that works without space outside the card: the folder closes and the drag goes on over home once the finger has been 400 ms (Launcher3's `ON_EXIT_CLOSE_DELAY`) outside the folder's grid of apps, above its name row or below its last row (a folder too full to leave room below scrolls, keeping a strip free); the rule is written on this item. Checked on the emulator: an app dragged out that way lands on home, and the last one out takes the folder away. Tapping the dimmed space outside the grid closes the folder.
+- [x] Dragging into a folder, a folder's predictive back, and TalkBack's names on its tiles still work (emulator check).
 
 ## Context
 
@@ -78,3 +78,32 @@ Home feels finished in the two places you touch most. A pressed icon answers the
   Rejected: Adding one app per tap and closing
 - 2026-11-07 [decision] The open folder is 4 columns on a narrow screen and 6 where the panel is 600 dp or wider, at most 100 dp a column, centred.
   Reason: A full-screen folder on the Fold's inner screen at 4 columns spread tiles 200 dp apart.
+
+## Report
+
+Every Done when line holds on `T3_Phone_API35`, with the Fold screenshots on `T3_Fold_API35`; receipts lor-deqx to lor-uog6, files in `/tmp/claude-1000/gnk0-emu/`. JVM tests: `HomeEditTest.theOpenFoldersPlusAddsAppsAndMovesThemFromElsewhereOnHome` and `renamingInPlaceWritesTheTrimmedName`, `DragTest.aHeldAppLeavesAFullScreenFolderAfter400msOutsideItsApps`, `LookTest.anOpenFoldersLabelsReadOnItsGlassOverWhite`; the boat build of db26b1d ran `assembleDebug testDebugUnitTest`, 236 tests, 0 failures.
+
+- **Pressed state** (lor-deqx): a tile's icon goes from 137 to 122 px over about 160 ms while held and back on release, measured frame by frame from recordings; at the animator duration scale 0 it jumps in one frame each way. The same 0.9 on the dock, the drawer and search's apps. A tap still launches from the icon, and the long press and drags still work.
+- **Closed folder** (lor-er0u): a bare 2×2 of mini icons. Its label reads 19.4:1 on a white wallpaper and 15.3:1 on `#101010`.
+- **Open folder** (lor-txuu, lor-x711): full-screen Deep Space glass at 72% over the wallpaper, blurred by 24 dp (SurfaceFlinger showed the radius), or over a 50% black dim with blur off. Labels read 6.5:1 over white with or without blur, and 11.2:1 dimmed. It opens from its tile and closes into it. The name is edited in place, and the menu's Rename… opens it focused. The + adds apps. Each edit was read from `layout.json`, and Undo works with the folder still open.
+- **Drags** (lor-lm2s): an app held 400 ms above the name row or below the last row leaves, and lands on home. The last one out takes the folder away. Dragging into a folder, predictive back, a tap on the glass and TalkBack's names all work.
+
+### Deviations
+
+- Home's own cells fade out behind an open folder. Window blur only reaches what is behind the window (the wallpaper), so home's icons showed through the glass sharp.
+- The blur is `FLAG_BLUR_BEHIND`, not `Window.setBackgroundBlurRadius` as Unknowns guessed. The latter does nothing on home's opaque window.
+- The folder's agent-sorted reason line is Starlight at 13 sp, not Dust: Dust would need the glass at 82% to keep 4.5:1 over white.
+
+### Decisions
+
+Eight decision notes below: the pressed state as an Indication, the bare tile, the glass and the fade of home, blur-behind, the drag-out rule, rename in place, the + picker, and the columns.
+
+### Open items
+
+- **Undo of an add that moved an app from ahead of the folder** puts the folder back one place later, which closes it, since it is matched by place. Undo of an add with nothing moved keeps it open (checked).
+- **A one-app folder** shows one small icon in the tile's top-left quarter. That is easy to miss; Launcher3 draws the same.
+- **The name field** shows as two TalkBack nodes: the text field ("Tools") and a "Folder name" group beside it.
+- **The soft keyboard over the field** was seen only on the Fold (Gboard, `adjustPan`). On the phone emulator the default IME is agent-device's invisible helper. lor-sqfe's `adjustResize` still has to keep the field clear.
+- **The real Fold's blur** belongs to lor-f6zd. **Home-press latency** wasn't re-measured; the change adds a layer over home's cells and one effect.
+- **Outside the worktree:** `/tmp/claude-1000/gnk0-emu/` (screenshots, recordings, scripts, wallpapers) and `/tmp/claude-1000/gnk0-build/`. The phone emulator's `layout.json`, animator scale, IME and wallpaper were put back. The wallpaper was re-set from its original file, so its crop may differ slightly. The phone emulator is running and the emulator lock is released.
+
