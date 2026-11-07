@@ -462,7 +462,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
                 actions.refused(e.message ?: "it can't go there")
             }
         }
-        val stripped = final.withCurrent(final.current.stripEmptyPanels())
+        val stripped = final.withCurrent(final.current.stripEmptyPanels(h.original.current))
         // A page that went may have been before the one it settles on; then it fades where it is.
         if (stripped.current.pages.size != final.current.pages.size) at = null
         final = stripped

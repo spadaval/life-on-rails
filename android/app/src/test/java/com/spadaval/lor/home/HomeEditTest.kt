@@ -167,6 +167,44 @@ class HomeEditTest {
         assertEquals(listOf(listOf("a.a"), listOf("b.b")), f.hide("c.c").pages)
     }
 
+    /** lor-v692 (finding lor-i4al): a page goes when an edit empties or made it, not when it was already empty. */
+    @Test
+    fun anEmptyStackTheMinimapMadeStaysButAPageAnEditEmptiesGoes() {
+        // Home a.a, b.b; page 2 c.c; an empty stack the minimap made at [3, 0].
+        val f = file(listOf(ref("a.a"), ref("b.b")), listOf(ref("c.c"))).addPanel(Cell(3, 0), "stack")
+        val made = f.current.panelAt(Cell(3, 0))
+        val dropped = f.drop(at(f, Spot.Apps(page(0), 0)), Target.AtEnd(Place.InApps(page(1)))).file
+        assertEquals(made, dropped.current.panelAt(Cell(3, 0)))
+        assertEquals(made, f.removeFromHome(app("b.b")).current.panelAt(Cell(3, 0)))
+        assertEquals(made, f.hide("b.b").current.panelAt(Cell(3, 0)))
+        assertEquals(made, f.drop(at(f, Spot.Apps(page(0), 1)), Target.Onto(Spot.Apps(page(0), 0))).file.current.panelAt(Cell(3, 0)))
+        val g = file(listOf(Folder("F", listOf(ref("x.x"))), ref("b.b")), listOf(ref("c.c"))).addPanel(Cell(3, 0), "stack")
+        assertEquals(made, g.addToFolder(at(g, Spot.Apps(page(0), 0)), listOf(app("b.b") to ref("b.b"))).file.current.panelAt(Cell(3, 0)))
+        // A page an edit or a drag empties still goes, and the made one stays beside it.
+        val emptied = f.drop(at(f, Spot.Apps(page(1), 0)), Target.AtEnd(Place.InApps(page(0)))).file
+        assertNull(emptied.current.panelAt(Cell(2, 0)))
+        assertEquals(made, emptied.current.panelAt(Cell(3, 0)))
+        assertNull(f.removeFromHome(app("c.c")).current.panelAt(Cell(2, 0)))
+    }
+
+    /** The drop in HomeScreen.kt strips against the file the drag began on (`h.original`). */
+    @Test
+    fun aPageADragMadeAndLeftGoesAtTheDrop() {
+        val original = file(listOf(ref("a.a"), ref("b.b")), listOf(ref("c.c")))
+        // Held, a.a steps onto a new page, then back onto home; working copies keep empty pages.
+        val out = original.drop(at(original, Spot.Apps(page(0), 0)), Target.AtEnd(Place.NewPanel), strip = false)
+        assertEquals(listOf(listOf("b.b"), listOf("c.c"), listOf("a.a")), out.file.pages)
+        val from = From.At(out.at!!, out.file.itemAt(out.at!!)!!)
+        val back = out.file.drop(from, Target.AtEnd(Place.InApps(page(0))), strip = false)
+        assertEquals(listOf(listOf("b.b", "a.a"), listOf("c.c"), emptyList()), back.file.pages)
+        // Let go where it is: the drop changes nothing, then strips as HomeScreen's dropHeld does.
+        val work = back.file
+        val final = work.drop(From.At(back.at!!, work.itemAt(back.at!!)!!), Target.AtEnd(Place.InApps(page(0))), strip = false).file
+        val written = final.withCurrent(final.current.stripEmptyPanels(original.current))
+        assertEquals(original.current.panels.map { it.at }, written.current.panels.map { it.at })
+        assertEquals(listOf(listOf("b.b", "a.a"), listOf("c.c")), written.pages)
+    }
+
     @Test
     fun coversFollowTheirApp() {
         val f = file(listOf(Folder("F", listOf(ref("a.a"), ref("b.b")))))
