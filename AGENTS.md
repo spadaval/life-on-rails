@@ -22,12 +22,14 @@ Single-user self-hosted personal OS. What LoR is, what it is not, and how it sit
 
 ## How work lands
 
-Since 2026-11-06 LoR uses Atelier, with records under `.atelier/`. `atelier status` starts a session and `atelier land` ends one; the Claude Code hooks run both.
+Since 2026-11-06 LoR uses Atelier, with records under `.atelier/`.
 
-- **A non-trivial change goes on a work branch** (`atelier start <id>`, one worktree per agent working in parallel). A fresh agent that didn't write it reviews it before `atelier merge` puts it on `main`. A fix made after review is reviewed again, but only the fix's diff. Sumeet reviews after merge.
+- Start a session with `atelier status`; before handoff commit the records and run `atelier land`. Active work may remain open, with unfinished code handed off honestly. The Claude Code hooks run both.
+- One issue, in order: `atelier start <id>` (an item with a recorded branch switches to it; otherwise on `main` it creates a branch named `<id>`, and on another branch it takes that branch), implement, tick every Done when line and write the `## Report`, `atelier review request <id>`, fix and re-review, approve, then `atelier merge <id>`, which marks the work done. Work has no close step. Only a code change makes an approval stale, though a rewritten Done when line still gets a fresh one. Work that changes no code and can only happen after a merge or release is a loose end, unless it is an independent validation; a change with no issue takes the light path. Agent Factory's Atelier reference has the detail and defines check, review, land, done and close.
+- **A non-trivial change goes on a work branch**, one worktree per agent working in parallel. A fresh agent that didn't write it reviews it before `atelier merge` puts it on `main`. A fix made after review is reviewed again, but only the fix's diff. Sumeet reviews after merge.
 - **Straight to `main`:** planning records and mission strategies (`docs/missions/<slug>/strategy.md`, linked from the mission), and trivial changes, recorded with `atelier review trivial --base <commit>`. A non-trivial planning change is still reviewed by a fresh agent before the work it defines starts, and a mission moves to ready only after Sumeet approves it (`atelier review approve <mission>`).
-- **Evidence:** record a receipt only for a check nothing else records, such as an emulator or device check, screenshots, a measurement or a failure. Don't record `pnpm test` or a boat build passing; name the test that proves the claim in the handoff note. (This follows Atelier's lighter-workflow mission, atelier-n4mj, ahead of its release.)
-- **A check that only the real phone or Fold can answer** comes after merge, with its reason, and its emulator stand-in runs before merge.
+- **Evidence:** record a receipt only for a check nothing else records, such as an emulator or device check, screenshots, a measurement or a failure. Don't record `pnpm test` or a boat build passing; name the test that proves the claim in the handoff note.
+- **A check that only the real phone or Fold can answer** comes after merge, in a `needs-human` item `blocked_by` the item it follows: a validation item when it assesses a mission's criteria or an increment's outcome, as the Panels mission's real-Fold checks do (lor-mlx6), and a loose end when it only follows a merge. Its emulator stand-in stays a Done when line of the item and runs before merge.
 - The launcher missions before Atelier (`docs/missions/t3-launcher`, `launcher-polish`) keep their `plan.md` as their record. The Panels mission is `lor-uj0r`.
 
 ## Commands
