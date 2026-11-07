@@ -1,6 +1,6 @@
 ---
 status: draft
-last_changed: "2026-11-06: created from Sumeet's direction in the thread 'Launcher usability vs Smart Launcher'; takes over Launcher polish's Fold and widgets outcome"
+last_changed: "2026-11-07: weather from Google's Weather API (Sumeet); 2026-11-06: created from Sumeet's direction in the thread 'Launcher usability vs Smart Launcher'; takes over Launcher polish's Fold and widgets outcome"
 ---
 
 # Why
@@ -16,7 +16,7 @@ This mission takes over the Fold and widgets parts of [Launcher polish](../launc
 - **The inner screen is used.** Each panel is full width or half width there; two neighbouring halves share it; every panel has a narrow and a wide layout.
 - **Folding keeps your place.** Unfolding shows the inner screen that holds the cell you were on; after the screen has been off, home starts again at that screen's start cell.
 - **The grid is edited on the phone,** in a minimap like Smart Launcher's page manager, with Undo, written to the file.
-- **Home hosts Android widgets and a clock block** (time, date, the next event, the next alarm, and weather once it has a source).
+- **Home hosts Android widgets and a clock block** (time, date, the next event, the next alarm, and weather from Google's Weather API, decision lor-kqhy).
 - **The day it ships, nothing is worse.** A version 1 file opens as a default grid that looks and behaves like today's home.
 
 Worth shipping on its own: the grid with today's home in it, then the inner screen, before the editor or new blocks.
@@ -35,7 +35,7 @@ Worth shipping on its own: the grid with today's home in it, then the inner scre
 
 # Scope
 
-In: the grid and its movement, schema version 2, the inner screen, folding, the minimap editor, widget hosting, the clock block, weather for it if Sumeet chooses a source, LoR's and T3's panels in their narrow and wide forms, and new read endpoints on the LoR server for them.
+In: the grid and its movement, schema version 2, the inner screen, folding, the minimap editor, widget hosting, the clock block, weather for it through LoR's server, LoR's and T3's panels in their narrow and wide forms, and new read endpoints on the LoR server for them.
 
 Out:
 - writing to LoR's data from a panel (until Sumeet says yes);
@@ -63,4 +63,3 @@ These come back to Sumeet:
 - **The drawer from every page.** Settled by decision lor-y7qi: one drawer panel, reached from every page by the grid's movement rule.
 - **Edits by place.** Increment 4's edits address a page and an index; they must address a panel and block without losing their tests.
 - **Widget hosting on One UI** may differ from the emulator; widgets come after the inner screen for this reason.
-- **Weather** has no source in LoR today.

@@ -14,9 +14,9 @@ relationships:
   relates: []
 schema: "atelier.issue"
 schema_version: 2
-status: "draft"
+status: "todo"
 title: "Home as a grid of panels"
-updated_at: "2026-11-07T00:08:49.201684482+00:00"
+updated_at: "2026-11-07T03:15:54.499774938+00:00"
 ---
 
 ## Outcome

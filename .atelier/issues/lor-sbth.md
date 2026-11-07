@@ -14,6 +14,9 @@ relationships:
     id: "lor-eh0y"
     type: "blocked_by"
   - kind: "issue"
+    id: "lor-kqhy"
+    type: "related"
+  - kind: "issue"
     id: "lor-ph30"
     type: "blocked_by"
   - kind: "issue"
@@ -23,7 +26,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "backlog"
 title: "Widget and clock blocks"
-updated_at: "2026-11-07T00:07:48.222522137+00:00"
+updated_at: "2026-11-07T03:15:54.493472856+00:00"
 ---
 
 ## Goal
@@ -32,10 +35,10 @@ Home hosts Android widgets and a clock block. A `widget` block holds any Android
 
 ## Done when
 
-Provisional: on the emulator, a Clock and a Calendar widget are added, resized, survive a restart, and are in the file; the clock block shows the next event and alarm from the emulator's calendar and alarm clock, and the weather from the chosen source; schema additions written down.
+Provisional: on the emulator, a Clock and a Calendar widget are added, resized, survive a restart, and are in the file; the clock block shows the next event and alarm from the emulator's calendar and alarm clock, and the weather from LoR's server (decision lor-kqhy); schema additions written down.
 
 ## Unknowns
 
 - How Lawnchair and Kvaesitso host widgets, and how a widget's cell size maps to a block in a column.
-- **Weather has no source in LoR.** Before this is planned, an open decision record for Sumeet: a source that needs an account, a key or money is his (the strategy's Authority).
+- Weather: Google's Weather API, called by LoR's server (decision lor-kqhy).
 - When planned, its real-Fold check (a widget on One UI) goes in a `needs-human` validation item, after merge.
