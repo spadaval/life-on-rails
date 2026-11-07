@@ -5,7 +5,7 @@ import org.junit.Test
 
 /** What home's grid shows while it loads, when the list comes back empty, and when home is empty (launcher polish 3.2). */
 class HomeBodyTest {
-    private val file = LayoutFile("default", listOf(Layout("default", listOf(AppRef("com.whatsapp")), emptyList())))
+    private val file = LayoutFile("default", listOf(Layout.grid("default", listOf(AppRef("com.whatsapp")), emptyList())))
 
     @Test
     fun loadingShowsTheFilesShapeOrNothing() {

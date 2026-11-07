@@ -7,7 +7,7 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 class SectionEditTest {
-    private val base = LayoutFile("a", listOf(Layout("a", emptyList(), emptyList())))
+    private val base = LayoutFile("a", listOf(Layout.grid("a", emptyList(), emptyList())))
     private val chrome = AppId("com.android.chrome", "com.android.chrome.Main")
     private val chromeRef = AppRef("com.android.chrome")
 

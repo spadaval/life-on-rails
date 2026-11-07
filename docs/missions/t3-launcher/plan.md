@@ -243,7 +243,7 @@ Each check is run with the LoR home, and with One UI Home where a comparison hel
   - Before writing each basic part (grid, folder, drawer, search, icon loading), read how Kvaesitso and Lawnchair do it and note the source in the file (D1).
 - **Done when.** On the emulator: apps from the layout file show on home with their icons, a folder opens, the dock works, the drawer lists every app, typing finds an app, and tapping opens it. A JVM test covers parsing and validating the layout file. The layout schema is written down in this item. The same checks pass on a foldable AVD (`pixel_9_pro_fold`), folded and unfolded.
 - **Scope.** `android/` only.
-- **The layout file, schema version 1.** `layout.json` in the app's files directory (`/data/data/com.spadaval.lor/files/layout.json`; on a debug build `adb shell run-as com.spadaval.lor` reads and writes it). Home re-reads it when it comes back on screen and the file's modified time changed.
+- **The layout file, schema version 1.** (Superseded by schema version 2, [layout-v2.md](../launcher-panels/layout-v2.md), which carries this text over; a version 1 file is still read, by converting it.) `layout.json` in the app's files directory (`/data/data/com.spadaval.lor/files/layout.json`; on a debug build `adb shell run-as com.spadaval.lor` reads and writes it). Home re-reads it when it comes back on screen and the file's modified time changed.
   ```json
   {
     "version": 1,

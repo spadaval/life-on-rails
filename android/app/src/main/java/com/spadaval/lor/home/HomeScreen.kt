@@ -257,7 +257,7 @@ private const val BACK_SCALE = 0.1f
 private val BackEasing = CubicBezierEasing(0f, 0f, 0f, 1f)
 
 /** A folder with its installed apps, each with its place in the file; [cover] is its cover app if installed. */
-data class OpenFolder(val spot: Spot.Page, val name: String)
+data class OpenFolder(val spot: Spot.Apps, val name: String)
 
 class ResolvedFolder(val folder: Folder, val at: From.At, val apps: List<Pair<HomeApp, From.At>>, val cover: HomeApp?)
 
@@ -279,9 +279,9 @@ private fun resolve(ref: AppRef, apps: List<HomeApp>): HomeApp? =
     apps.firstOrNull { it.mainProfile && ref.matches(it.packageName, it.info.componentName.className) }
 
 private fun place(layout: Layout, apps: List<HomeApp>): PlacedHome {
-    val pages = layout.allPages.mapIndexed { p, items ->
-        items.mapIndexedNotNull { i, item ->
-            val at = From.At(Spot.Page(p, i), item)
+    val pages = layout.pages.map { p ->
+        layout.items(p)!!.mapIndexedNotNull { i, item ->
+            val at = From.At(Spot.Apps(p, i), item)
             when (item) {
                 is AppRef -> resolve(item, apps)?.let { Placed.App(it, at) }
                 is Folder -> item.apps.mapIndexedNotNull { a, ref -> resolve(ref, apps)?.let { it to From.At(Spot.InFolder(p, i, a), ref) } }
@@ -305,13 +305,13 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val home = remember(actions, file, apps) { HomeContext(actions, file, apps, ui) }
     val placed = remember(apps, file) { file?.let { place(it.current, apps) } }
     val folder = ui.folder?.let { open ->
-        placed?.pages?.getOrNull(open.spot.page)?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf { f -> f.at.spot == open.spot && f.folder.name == open.name } }
+        placed?.pages?.flatten()?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf { f -> f.at.spot == open.spot && f.folder.name == open.name } }
     }
     // An edit that empties the open folder removes it, so the panel closes.
     LaunchedEffect(ui.folder, folder, placed) { if (ui.folder != null && folder == null && placed != null) ui.folder = null }
     // While something is held, an empty page follows the last, for a drop that makes one (launcher polish 4.5).
-    val filePages = file?.current?.allPages?.size ?: 1
-    val pageCount = filePages + if (held != null && held.work.current.pages.size < LayoutFile.MAX_PAGES) 1 else 0
+    val filePages = file?.current?.pages?.size ?: 1
+    val pageCount = filePages + if (held != null && held.work.current.roomForPanel) 1 else 0
     // A file changed from outside (an agent, adb) may hold another folder at the open one's place.
     // It closes at once: a reread puts things in place without motion (DESIGN.md's Motion).
     LaunchedEffect(reads) {
@@ -397,7 +397,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
                 actions.refused(e.message ?: "it can't go there")
             }
         }
-        val stripped = final.withCurrent(final.current.stripEmptyPages())
+        val stripped = final.withCurrent(final.current.stripEmptyPanels())
         // A page that went may have been before the one it settles on; then it fades where it is.
         if (stripped.current.pages.size != final.current.pages.size) at = null
         final = stripped
@@ -445,7 +445,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             folderShown.snapTo(0f)
         } else {
             val spot = last.at.spot
-            val stays = placed?.pages?.getOrNull((spot as Spot.Page).page)?.any { (it as? Placed.InFolder)?.folder?.let { f -> f.at.spot == spot && f.folder.name == last.folder.name } == true } == true
+            val stays = placed?.pages?.flatten()?.any { (it as? Placed.InFolder)?.folder?.let { f -> f.at.spot == spot && f.folder.name == last.folder.name } == true } == true
             folderFading = !stays
             folderShown.animateTo(0f, if (stays) Motion.move() else Motion.quick())
         }
@@ -615,7 +615,7 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
                     Modifier.weight(1f).fillMaxWidth()
                         .dropZone(home.drag, "page$n") { b ->
                             // The page past the file's last is the new one a drag shows.
-                            val place = if (n >= (home.file?.current?.allPages?.size ?: 1)) Place.NewPage else Place.OnPage(n)
+                            val place = home.file?.current?.pages?.getOrNull(n)?.let(Place::InApps) ?: Place.NewPanel
                             if (drops) Zone.Area(place, b) else null
                         },
                 ) {
@@ -713,7 +713,7 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeCo
         items.forEachIndexed { i, item ->
             key(keys[i]) {
                 val spot = item.at.spot
-                val tile = (spot as Spot.Page).page to keys[i]
+                val tile = (spot as Spot.Apps).at to keys[i]
                 Box(
                     Modifier
                         .dropZone(drag, tile) { b -> Zone.Item(spot, b, b.top + icon.top, icon.size) }
@@ -731,7 +731,7 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeCo
                         is Placed.App -> MenuTile(item.app, At(LaunchFrom.HOME), home, spot = item.at, label = LocalHomeLook.current.labels)
                         is Placed.InFolder -> FolderTile(item.folder, home) { from ->
                             ui.folderFrom = from
-                            ui.folder = OpenFolder(item.folder.at.spot as Spot.Page, item.folder.folder.name)
+                            ui.folder = OpenFolder(item.folder.at.spot as Spot.Apps, item.folder.folder.name)
                         }
                     }
                 }
@@ -940,7 +940,7 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
     ) {
         val drag = home.drag
         val icon = rememberTileIcon()
-        val spot = folder.at.spot as Spot.Page
+        val spot = folder.at.spot as Spot.Apps
         Column(
             Modifier
                 .widthIn(max = 360.dp)

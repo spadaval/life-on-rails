@@ -134,7 +134,7 @@ class DrawerTest {
         assertEquals(listOf(yt), d.sorted()["Media (2)"])
     }
 
-    private fun parse(drawer: String) = LayoutFile.parse("""{"version": 1, "active": "a", "drawer": $drawer, "layouts": [{"name": "a"}]}""")
+    private fun parse(drawer: String) = LayoutFile.parse(v2Empty(""""drawer": $drawer,"""))
 
     private fun error(drawer: String): String = try {
         parse(drawer)

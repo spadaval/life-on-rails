@@ -13,9 +13,9 @@ class LayoutStoreTest {
     @get:Rule
     val tmp = TemporaryFolder()
 
-    private val one = LayoutFile("default", listOf(Layout("default", listOf(AppRef("com.whatsapp")), listOf(AppRef("com.android.chrome")))))
-    private val two = one.copy(layouts = listOf(Layout("default", listOf(AppRef("org.example")), emptyList())))
-    private val brokenText = """{ "version": 1, "active": "default", "layouts": [{ "name": "default", "hoem": [] }] }"""
+    private val one = LayoutFile("default", listOf(Layout.grid("default", listOf(AppRef("com.whatsapp")), listOf(AppRef("com.android.chrome")))))
+    private val two = one.copy(layouts = listOf(Layout.grid("default", listOf(AppRef("org.example")), emptyList())))
+    private val brokenText = """{ "version": 2, "active": "default", "layouts": [{ "name": "default", "panles": [] }] }"""
 
     private fun store() = LayoutStore(tmp.root.resolve("layout.json"))
 
@@ -55,10 +55,10 @@ class LayoutStoreTest {
         val store = store()
         store.write(one)
         store.file.writeText(brokenText)
-        assertTrue(readFails(store).contains("hoem"))
+        assertTrue(readFails(store).contains("panles"))
         assertEquals(one, store.readGood())
         // An edit refuses with the same error and changes nothing.
-        assertTrue(store.edit { it }.exceptionOrNull()!!.message!!.contains("hoem"))
+        assertTrue(store.edit { it }.exceptionOrNull()!!.message!!.contains("panles"))
         assertEquals(brokenText, store.file.readText())
     }
 
@@ -91,7 +91,8 @@ class LayoutStoreTest {
     }
 
     /** Undo (launcher polish 4.2). A hand-formatted file: four spaces, keys out of order, an escaped slash, no final newline. */
-    private val handText = "{\n    \"layouts\": [{\"home\": [\"com.whatsapp\", \"com.android.chrome\\/.Main\"], \"name\": \"default\"}],\n    \"version\": 1, \"active\": \"default\"\n}"
+    private val handText = "{\n    \"layouts\": [{\"panels\": [{\"type\": \"stack\", \"blocks\": [{\"type\": \"clock\"}, {\"items\": [\"com.whatsapp\", \"com.android.chrome\\/.Main\"], \"type\": \"apps\"}], \"at\": [1,0]}],\n" +
+        "      \"start\": {\"narrow\": [1,0]}, \"name\": \"default\"}],\n    \"version\": 2, \"active\": \"default\"\n}"
 
     @Test
     fun undoPutsTheFileBackByteForByte() {

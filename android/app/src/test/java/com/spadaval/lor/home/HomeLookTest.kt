@@ -8,7 +8,7 @@ import org.junit.Test
 
 /** `look` in layout.json (launcher polish 6.4). */
 class HomeLookTest {
-    private fun file(look: String?) = """{"version": 1, "active": "a", ${look?.let { "\"look\": $it," } ?: ""} "layouts": [{"name": "a"}]}"""
+    private fun file(look: String?) = v2Empty(look?.let { "\"look\": $it," } ?: "")
 
     private fun refused(look: String, message: String) {
         try {

@@ -240,7 +240,7 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
             when {
                 places.home -> Item("Remove from home") {
                     close()
-                    actions.edit("${app.label} is off home.") { if (here is Spot.Page) it.removeAt(spot) else it.removeFromHome(app.id, installed) }
+                    actions.edit("${app.label} is off home.") { if (here is Spot.Apps) it.removeAt(spot) else it.removeFromHome(app.id, installed) }
                 }
                 places.folder == null -> Item("Add to home") { close(); actions.edit("${app.label} is on home.") { it.addToHome(app.id, ref, installed) } }
             }
