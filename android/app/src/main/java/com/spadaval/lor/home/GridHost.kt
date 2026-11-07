@@ -4,7 +4,15 @@ import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -31,18 +39,27 @@ import kotlin.math.roundToInt
 
 /*
  * The grid host (lor-qdmy): home drawn from the layout's grid of panels, one cell on screen, moved
- * between by a swipe that follows the finger on both axes, the vertical axis wrapping. The rules
+ * between by a swipe that follows the finger on both axes, the vertical axis wrapping. On the inner
+ * screen (lor-el51) a screen is a full panel or two halves side by side, and a move goes a screen. The rules
  * of where a move goes are [GridMoves]'; this file holds where home is, draws the cell on screen
  * and its neighbours, and moves with the finger through one [Follow] per move (lor-eo1g).
  */
 
-/** A move from [GridPlace.cell] to [to], which lies [way] on screen. */
-data class GridMove(val to: Cell, val way: Way)
+/**
+ * A move from [GridPlace.cell] to [to], which lies [way] on screen. On the inner screen [to] is the
+ * cell standing for the inner screen it lands on, and [focus] that screen's focus (lor-j87u's [InnerPlace]).
+ */
+data class GridMove(val to: Cell, val way: Way, val focus: Cell? = null)
 
 /**
  * Where home is on the grid: the [cell] on screen and the [move] under way, whose [follow] runs
  * from 0 (at [cell]) to 1 (at [GridMove.to]). Set from anywhere (a home press arrives outside
  * composition); [SettleGrid] finishes each move.
+ *
+ * Where halves [paired] (the inner screen, lor-el51), home stands on an inner screen rather than a
+ * cell: [cell] is its [InnerPlace.focusCell] and [focus] its focus, so the screen on show is the one
+ * holding [cell]. A move goes a whole inner screen, by [InnerScreens]' rules; otherwise every cell is
+ * a screen of its own and the rules are [GridMoves]'.
  */
 class GridPlace {
     var cell by mutableStateOf(Layout.HOME)
@@ -51,10 +68,21 @@ class GridPlace {
     /** The last vertical move that arrived here, so a move back returns where it came from (lor-y7qi). */
     var back by mutableStateOf<Arrival?>(null)
 
-    /** The panels drawn, a drag's new one included; set by [HomeScreen]. */
+    /** The panels drawn, a drag's new one included; set by [HomeScreen] through [edited]. */
     var panels by mutableStateOf<List<Panel>>(emptyList())
     /** Where a home press goes: the layout's `start` for this screen. */
     var start by mutableStateOf(Layout.HOME)
+
+    /** Whether halves share a screen: where the smallest width is 600 dp or more (decision note on lor-ph30). Set through [pair]. */
+    var paired by mutableStateOf(false)
+        private set
+    /** The inner screen's focus, when [paired]; null when none is set. */
+    var focus by mutableStateOf<Cell?>(null)
+        private set
+
+    private val innerScreens = derivedStateOf { InnerScreens.of(panels) }
+    /** The inner screens of [panels], row by row. */
+    val screens: List<InnerScreen> get() = innerScreens.value
 
     /** Called on arriving at a cell from the drawer (the search clears, as the drawer's close did). */
     var onLeftDrawer: () -> Unit = {}
@@ -62,62 +90,162 @@ class GridPlace {
     val cells: List<Cell> get() = panels.map { it.at }
     fun panel(at: Cell): Panel? = panels.firstOrNull { it.at == at }
 
-    /** The cell a move [way] from here reaches, or null. */
-    fun next(way: Way): Cell? = GridMoves.next(cells, cell, way, back)
+    /** The screen [at] is drawn on: its inner screen when [paired], else itself alone. */
+    fun screenOf(at: Cell): InnerScreen = if (paired) InnerScreens.holding(screens, at) ?: InnerScreen(at) else InnerScreen(at)
+
+    /** Where home stands on the inner screen. */
+    val inner: InnerPlace get() = InnerPlace(screenOf(cell), focus)
+
+    /** The move [way] from here, or null when there is none. */
+    fun nextMove(way: Way): GridMove? =
+        if (!paired) GridMoves.next(cells, cell, way, back)?.let { GridMove(it, way) }
+        else InnerScreens.next(screens, inner, way, back)?.let { GridMove(it.to.focusCell, way, it.to.focus) }
+
+    /** The cell a move [way] from here reaches (on the inner screen, the one standing for its screen), or null. */
+    fun next(way: Way): Cell? = nextMove(way)?.to
 
     /** Where home is going: the move's cell while it heads there, else [cell]. */
     val target: Cell get() = move?.takeIf { follow.target == 1f }?.to ?: cell
 
+    /** Whether home is on, or going to, the screen that holds [at]. */
+    fun heading(at: Cell): Boolean = screenOf(target) == screenOf(at)
+
     /**
-     * Goes to [to], with a settle when [animate], else at once. A move under way toward [to] or back
-     * to it is turned there; one going elsewhere is dropped.
+     * Goes to [to], with a settle when [animate], else at once. On the inner screen it lands on the
+     * screen holding [to], with [focus] as its focus (none for a home press or back, lor-j87u's
+     * [InnerScreens.place]). A move under way toward that screen or back to this one is turned there;
+     * one going elsewhere is dropped.
      */
-    fun goTo(to: Cell, animate: Boolean, way: Way = GridMoves.wayTo(cell, to, back)) {
+    fun goTo(to: Cell, animate: Boolean, way: Way? = null, focus: Cell? = null) {
+        val dest = if (paired) focus ?: screenOf(to).left else to
         val m = move
+        val here = screenOf(cell)
+        val there = screenOf(dest)
         when {
-            !animate || (m != null && m.to != to && cell != to) -> {
-                if (cell != to) back = null
-                cell = to
+            !animate || (m != null && screenOf(m.to) != there && here != there) -> {
+                if (here != there) back = null
+                cell = dest
+                this.focus = focus
                 move = null
                 follow.position = 0f
                 follow.target = 0f
             }
-            m != null -> follow.target = if (m.to == to) 1f else 0f
-            cell != to -> {
-                move = GridMove(to, way)
+            m != null -> if (screenOf(m.to) == there) {
+                move = m.copy(to = dest, focus = focus)
                 follow.target = 1f
+            } else {
+                // Turned back to the screen on show: it stays, with the focus asked for.
+                cell = dest
+                this.focus = focus
+                follow.target = 0f
+            }
+            here != there -> {
+                move = GridMove(dest, way ?: GridMoves.wayTo(cell, dest, back), focus)
+                follow.target = 1f
+            }
+            else -> {
+                cell = dest
+                this.focus = focus
             }
         }
     }
 
-    /** The move reached its cell. */
-    internal fun arrive() {
-        val m = move ?: return
+    /** The move reached its cell; returns the cell it left, or null with no move. */
+    internal fun arrive(): Cell? {
+        val m = move ?: return null
         val from = cell
         back = if (m.way.horizontal) null else Arrival(from, m.way)
         cell = m.to
+        focus = m.focus
         move = null
         follow.position = 0f
         follow.target = 0f
         if (panel(from) is Panel.Drawer && panel(m.to) !is Panel.Drawer) onLeftDrawer()
-        android.util.Log.d("LorGrid", "at ${m.to} from $from")
+        return from
+    }
+
+    /**
+     * Halves start or stop sharing a screen (an unfold, a fold). Home stays on its cell: unfolded,
+     * on the inner screen holding it, with it as the focus ([InnerScreens.unfold]); folded, on the
+     * focus cell, which [cell] already is ([InnerScreens.fold]). A move under way is dropped.
+     */
+    fun pair(on: Boolean) {
+        if (paired == on) return
+        paired = on
+        move = null
+        follow.position = 0f
+        follow.target = 0f
+        focus = if (on) cell else null
+    }
+
+    /**
+     * The panels changed (an edit, a drag's new page, a file read): a move to a cell that went is
+     * dropped, and home stays on [cell] while it is there, else on the nearest in its row, else on
+     * [start]. On the inner screen, when the edit changed which panels pair, home's place is built
+     * again on the screen that now holds that cell, with no focus (lor-j87u's review, lor-70hj).
+     */
+    fun edited(new: List<Panel>, start: Cell) {
+        val before = screens
+        panels = new
+        val cells = cells
+        if (move?.to?.let { it !in cells } == true) goTo(cell, animate = false, focus = focus)
+        val stay = GridMoves.stay(cells, cell, start)
+        if (paired && screens != before) InnerScreens.place(screens, stay)?.let { goTo(it.focusCell, animate = false) }
+        else if (stay != cell) goTo(stay, animate = false)
+    }
+
+    /** The cells kept composed: those of the screen on show, of a move's screen, and of each screen a move from here reaches. */
+    fun composed(): List<Cell> {
+        val m = move
+        val here = screenOf(cell)
+        val going = m?.let { screenOf(it.to) }
+        val near = Way.entries.mapNotNull { nextMove(it)?.let { n -> screenOf(n.to) } }
+        // The drawer is composed only while a move involves it, as it was before the grid.
+        val reached = near.filter { s -> s.cells.none { panel(it) is Panel.Drawer } }
+        return (listOf(here) + listOfNotNull(going) + reached).distinct().flatMap { it.cells }.filter { panel(it) != null }
     }
 
     /** Where [at] is drawn, in px from the screen's origin, for a [w] by [h] screen; null when it isn't placed. */
     fun offsetOf(at: Cell, w: Int, h: Int): IntOffset? {
+        val s = screenOf(at)
+        val base = screenOffset(s, w, h) ?: return null
+        return if (at == s.right) base + IntOffset(w / 2, 0) else base
+    }
+
+    /** How wide [at] is drawn on a screen [w] px wide: half of it on a pair, else all of it. */
+    fun widthOf(at: Cell, w: Int): Int {
+        val s = screenOf(at)
+        return when {
+            s.right == null -> w
+            at == s.left -> w / 2
+            else -> w - w / 2
+        }
+    }
+
+    /** Which of the screen's sides [at] touches: both, or the left or right for a half of a pair. */
+    fun sidesOf(at: Cell): Sides {
+        val s = screenOf(at)
+        return when {
+            s.right == null -> Sides.BOTH
+            at == s.left -> Sides.LEFT
+            else -> Sides.RIGHT
+        }
+    }
+
+    private fun screenOffset(s: InnerScreen, w: Int, h: Int): IntOffset? {
         val m = move
         val p = if (m == null) 0f else follow.position
         val way = m?.way
         fun along(way: Way, share: Float) = if (way.horizontal) IntOffset((way.sign * share * w).roundToInt(), 0) else IntOffset(0, (way.sign * share * h).roundToInt())
         val here = if (way == null) IntOffset.Zero else along(way, -p)
         return when {
-            at == cell -> here
-            m != null && at == m.to -> along(m.way, 1f - p)
-            // During a move only its two cells are placed: a straight move (a home press from page 2)
-            // brings a cell that isn't the neighbour that way, which would share its slot (lor-glg9).
+            s == screenOf(cell) -> here
+            m != null && s == screenOf(m.to) -> along(m.way, 1f - p)
+            // During a move only its two screens are placed: a straight move (a home press from page 2)
+            // brings a screen that isn't the neighbour that way, which would share its slot (lor-glg9).
             m != null -> null
             // Otherwise a neighbour waits off screen where a move would bring it from.
-            else -> Way.entries.firstOrNull { next(it) == at }?.let { here + along(it, 1f) }
+            else -> Way.entries.firstOrNull { nextMove(it)?.let { n -> screenOf(n.to) } == s }?.let { here + along(it, 1f) }
         }
     }
 
@@ -150,7 +278,10 @@ fun SettleGrid(grid: GridPlace) {
     LaunchedEffect(grid) {
         snapshotFlow { Triple(grid.follow.position, grid.follow.target, grid.follow.held) }.collect { (p, t, held) ->
             if (held || grid.move == null) return@collect
-            if (p == 1f && t == 1f) grid.arrive()
+            if (p == 1f && t == 1f) grid.arrive()?.let { from ->
+                // On the inner screen, the screen's cells too, which the emulator checks read.
+                android.util.Log.d("LorGrid", "at ${grid.cell} from $from" + if (grid.paired) " on ${grid.inner.screen.cells}" else "")
+            }
             else if (p == 0f && t == 0f) grid.move = null
         }
     }
@@ -212,7 +343,7 @@ internal fun Modifier.gridFinger(ui: HomeUi, haptics: HapticFeedback, topPx: () 
             under
         } else {
             if (!way.horizontal && ui.scrolls.takes(down.position, way)) return@awaitEachGesture
-            GridMove(grid.next(way) ?: return@awaitEachGesture, way)
+            grid.nextMove(way) ?: return@awaitEachGesture
         }
         val from = grid.cell
         val sizePx = (if (move.way.horizontal) size.width else size.height).toFloat()
@@ -227,20 +358,18 @@ internal fun Modifier.gridFinger(ui: HomeUi, haptics: HapticFeedback, topPx: () 
 }
 
 /**
- * The cells home keeps composed, each full screen where [GridPlace.offsetOf] puts it: the cell on
- * screen, the one a move goes to, and the cells a move from here reaches (the strategy's Shape: so
- * a home press stays instant however many panels there are). The drawer is composed only while a
- * move involves it, as it was before the grid. Placed rather than drawn with an offset, so what
- * each cell reports of where it is (drop zones, sources) follows it; during a move only the move's
- * two cells are placed, and the others keep the off-screen place they last reported.
+ * The cells home keeps composed ([GridPlace.composed]), each where [GridPlace.offsetOf] puts it, full
+ * screen or, as a half of a pair on the inner screen, half of it (lor-el51): the screen on show, the
+ * one a move goes to, and the screens a move from here reaches (the strategy's Shape: so a home
+ * press stays instant however many panels there are). Each cell is keyed by its place, in the same
+ * spot in the tree on both screen classes, so a fold moves a panel rather than recreating it.
+ * Placed rather than drawn with an offset, so what each cell reports of where it is (drop zones,
+ * sources) follows it; during a move only the move's two screens are placed, and the others keep
+ * the off-screen place they last reported.
  */
 @Composable
 internal fun GridCells(grid: GridPlace, cell: @Composable (Panel) -> Unit) {
-    val m = grid.move
-    val around = GridMoves.window(grid.cells, grid.cell, grid.back).filter { at ->
-        at == grid.cell || at == m?.to || grid.panel(at) !is Panel.Drawer
-    }
-    val shown = (around + listOfNotNull(m?.to)).distinct().mapNotNull(grid::panel)
+    val shown = grid.composed().mapNotNull(grid::panel)
     ComposeLayout({
         shown.forEach { panel ->
             key(panel.at) {
@@ -248,19 +377,38 @@ internal fun GridCells(grid: GridPlace, cell: @Composable (Panel) -> Unit) {
                     android.util.Log.d("LorGrid", "composed ${panel.at} ${panel.type}")
                     onDispose { android.util.Log.d("LorGrid", "left ${panel.at}") }
                 }
-                cell(panel)
+                CompositionLocalProvider(LocalCellSides provides grid.sidesOf(panel.at)) { cell(panel) }
             }
         }
     }) { measurables, constraints ->
         val w = constraints.maxWidth
         val h = constraints.maxHeight
-        val placeables = measurables.map { it.measure(Constraints.fixed(w, h)) }
+        val placeables = measurables.mapIndexed { i, m -> m.measure(Constraints.fixed(grid.widthOf(shown[i].at, w), h)) }
         layout(w, h) {
             // Each cell on its own layer, so a move only moves layers rather than redrawing the cells
             // into home's (the drawer's first frame, 7.8); still placed, so what they report follows them.
             placeables.forEachIndexed { i, p -> grid.offsetOf(shown[i].at, w, h)?.let { p.placeWithLayer(it) } }
         }
     }
+}
+
+/** Which of the screen's sides a cell touches: a half of a pair touches one, a cell alone both. */
+enum class Sides { BOTH, LEFT, RIGHT }
+
+/** The sides the cell being drawn touches, for [cellInsetsPadding]. */
+val LocalCellSides = compositionLocalOf { Sides.BOTH }
+
+/**
+ * Pads for the system's insets (bars, cutout) on the sides this cell touches only: a half of a
+ * pair pads its outer side, top and bottom, so no gap opens where the halves meet (lor-el51).
+ */
+fun Modifier.cellInsetsPadding(): Modifier = composed {
+    val sides = when (LocalCellSides.current) {
+        Sides.BOTH -> WindowInsetsSides.Horizontal
+        Sides.LEFT -> WindowInsetsSides.Left
+        Sides.RIGHT -> WindowInsetsSides.Right
+    }
+    windowInsetsPadding(WindowInsets.safeDrawing.only(sides + WindowInsetsSides.Vertical))
 }
 
 /** A panel's type as the file writes it. */

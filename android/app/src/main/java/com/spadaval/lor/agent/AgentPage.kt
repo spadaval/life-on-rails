@@ -18,16 +18,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import com.spadaval.lor.home.cellInsetsPadding
 import com.spadaval.lor.home.scrollsInGrid
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -106,70 +107,90 @@ fun AgentPage() {
     val cards = AgentQueue.cards(shell.threads, model.answered, now)
     val running = AgentQueue.running(shell.threads)
 
-    // A dark veil over the wallpaper, as the mockup's page has, so the text reads on any wallpaper.
-    BoxWithConstraints(Modifier.fillMaxSize().background(Veil).safeDrawingPadding()) {
-        // On a large screen the page keeps to the left, leaving the right for the T3 app beside it.
-        Box(Modifier.fillMaxHeight().then(if (maxWidth >= 600.dp) Modifier.width(520.dp) else Modifier.fillMaxWidth())) {
-            // Its scroll takes a vertical swipe until its edge; then the swipe moves home's grid (lor-qdmy).
-            val scroll = rememberScrollState()
-            Column(Modifier.fillMaxSize().scrollsInGrid(scroll).verticalScroll(scroll).padding(top = 12.dp, bottom = 120.dp)) {
-                Today(model)
-                model.notice?.let { Text(it, style = Small.copy(color = Bad), modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
-                if (status == T3Connection.Status.NotPaired || status is T3Connection.Status.Rejected) PairCard(model.connection, status, Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
-                else T3State(status, shell.loaded)
-                if (running.isNotEmpty()) {
-                    Header("Running", running.size.toString())
-                    running.forEach { RunningRow(it) { model.openThread(it.id, LaunchFrom.AGENT_CARD) } }
-                }
-                val needs = model.lor?.needsYou.orEmpty()
-                val lorSource = when {
-                    model.lorError != null -> AgentStates.Source.UNSEEN
-                    model.lor != null && model.lorRead -> AgentStates.Source.SEEN
-                    else -> AgentStates.Source.READING
-                }
-                val t3Source = when {
-                    live && shell.loaded -> AgentStates.Source.SEEN
-                    status == T3Connection.Status.Connecting || status == T3Connection.Status.Stopped -> AgentStates.Source.READING
-                    else -> AgentStates.Source.UNSEEN
-                }
-                // A number once both sources are read, or whenever something is listed; with nothing
-                // listed and a source not yet seen, none: "0" would claim what the page can't know.
-                val count = cards.size + needs.size
-                val whole = lorSource == AgentStates.Source.SEEN && t3Source == AgentStates.Source.SEEN
-                Header("Needs you", if (whole || count > 0) count.toString() else null)
-                cards.forEach { T3QueueCard(it, model, live) }
-                needs.forEach { need ->
-                    QueueCard(
-                        tile = "LoR", tileColor = Raised, tileLabel = "Open in LoR", onTile = { model.openLor(taskPath(need.id), LaunchFrom.AGENT_ICON) },
-                        kind = "LoR", kindColor = Mute, where = "flagged", title = need.title, detail = need.note,
-                    ) { Pill("Open", primary = true) { model.openLor(taskPath(need.id), LaunchFrom.AGENT_CARD) } }
-                }
-                AgentStates.notes(lorSource, t3Source, cards.size, needs.size)
-                    // T3State's line above already says T3 is disconnected and its approvals with it.
-                    .filterNot { it == AgentStates.Note.T3_UNSEEN && status is T3Connection.Status.Retrying }
-                    .forEach { note ->
-                    when (note) {
-                        AgentStates.Note.ALL_CLEAR -> {
-                            val lor = model.lor!!
-                            Column(
-                                Modifier
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                                    .fillMaxWidth()
-                                    .border(1.dp, Line, RectangleShape)
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                            ) {
-                                Text("All clear.", style = Body.copy(fontSize = 13.sp))
-                                Text(AgentStates.next(lor.day.events, lor.now, lor.zone), style = Small.copy(fontSize = 12.5.sp), modifier = Modifier.padding(top = 2.dp))
-                            }
-                        }
-                        AgentStates.Note.LOR_UNSEEN -> Unseen("LoR can't be read, so its flags aren't here.")
-                        AgentStates.Note.T3_UNSEEN -> Unseen("T3 isn't connected, so its approvals aren't here.")
+    // The queue: T3's state, what is running, and what needs Sumeet, with the notes on what can't be seen.
+    val queue = @Composable {
+        model.notice?.let { Text(it, style = Small.copy(color = Bad), modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
+        if (status == T3Connection.Status.NotPaired || status is T3Connection.Status.Rejected) PairCard(model.connection, status, Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
+        else T3State(status, shell.loaded)
+        if (running.isNotEmpty()) {
+            Header("Running", running.size.toString())
+            running.forEach { RunningRow(it) { model.openThread(it.id, LaunchFrom.AGENT_CARD) } }
+        }
+        val needs = model.lor?.needsYou.orEmpty()
+        val lorSource = when {
+            model.lorError != null -> AgentStates.Source.UNSEEN
+            model.lor != null && model.lorRead -> AgentStates.Source.SEEN
+            else -> AgentStates.Source.READING
+        }
+        val t3Source = when {
+            live && shell.loaded -> AgentStates.Source.SEEN
+            status == T3Connection.Status.Connecting || status == T3Connection.Status.Stopped -> AgentStates.Source.READING
+            else -> AgentStates.Source.UNSEEN
+        }
+        // A number once both sources are read, or whenever something is listed; with nothing
+        // listed and a source not yet seen, none: "0" would claim what the page can't know.
+        val count = cards.size + needs.size
+        val whole = lorSource == AgentStates.Source.SEEN && t3Source == AgentStates.Source.SEEN
+        Header("Needs you", if (whole || count > 0) count.toString() else null)
+        cards.forEach { T3QueueCard(it, model, live) }
+        needs.forEach { need ->
+            QueueCard(
+                tile = "LoR", tileColor = Raised, tileLabel = "Open in LoR", onTile = { model.openLor(taskPath(need.id), LaunchFrom.AGENT_ICON) },
+                kind = "LoR", kindColor = Mute, where = "flagged", title = need.title, detail = need.note,
+            ) { Pill("Open", primary = true) { model.openLor(taskPath(need.id), LaunchFrom.AGENT_CARD) } }
+        }
+        AgentStates.notes(lorSource, t3Source, cards.size, needs.size)
+            // T3State's line above already says T3 is disconnected and its approvals with it.
+            .filterNot { it == AgentStates.Note.T3_UNSEEN && status is T3Connection.Status.Retrying }
+            .forEach { note ->
+            when (note) {
+                AgentStates.Note.ALL_CLEAR -> {
+                    val lor = model.lor!!
+                    Column(
+                        Modifier
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .fillMaxWidth()
+                            .border(1.dp, Line, RectangleShape)
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                    ) {
+                        Text("All clear.", style = Body.copy(fontSize = 13.sp))
+                        Text(AgentStates.next(lor.day.events, lor.now, lor.zone), style = Small.copy(fontSize = 12.5.sp), modifier = Modifier.padding(top = 2.dp))
                     }
                 }
+                AgentStates.Note.LOR_UNSEEN -> Unseen("LoR can't be read, so its flags aren't here.")
+                AgentStates.Note.T3_UNSEEN -> Unseen("T3 isn't connected, so its approvals aren't here.")
             }
-            SendButton(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 18.dp)) { QuickSend.open(context, QuickSend.From.AGENT) }
         }
     }
+
+    // Held here, so a fold, which changes the form, keeps the page's scroll: the single column takes
+    // the left column's.
+    val scroll = rememberScrollState()
+    val queueScroll = rememberScrollState()
+    // A dark veil over the wallpaper, as the mockup's page has, so the text reads on any wallpaper.
+    BoxWithConstraints(Modifier.fillMaxSize().background(Veil).cellInsetsPadding()) {
+        if (maxWidth >= 600.dp) {
+            // The full layout (decision note on lor-ph30, until lor-clgw): Today left, the queue right,
+            // each scrolling on its own and taking a vertical swipe until its edge (lor-qdmy).
+            Row(Modifier.fillMaxSize()) {
+                ScrollColumn(scroll, Modifier.weight(1f), bottom = 24.dp) { Today(model) }
+                ScrollColumn(queueScroll, Modifier.weight(1f), bottom = 120.dp) { queue() }
+            }
+        } else {
+            ScrollColumn(scroll, Modifier.fillMaxWidth(), bottom = 120.dp) {
+                Today(model)
+                queue()
+            }
+        }
+        // At the panel's bottom-end corner, whatever its width (6.8: it floated mid-screen on the Fold).
+        SendButton(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 18.dp)) { QuickSend.open(context, QuickSend.From.AGENT) }
+    }
+}
+
+/** A column of the page that scrolls on its own; its scroll takes a vertical swipe until its edge, then home's grid moves (lor-qdmy). */
+@Composable
+private fun ScrollColumn(scroll: ScrollState, modifier: Modifier, bottom: androidx.compose.ui.unit.Dp, content: @Composable () -> Unit) {
+    Column(modifier.fillMaxHeight().scrollsInGrid(scroll).verticalScroll(scroll).padding(top = 12.dp, bottom = bottom)) { content() }
 }
 
 private fun taskPath(id: String) = "/tasks?id=$id"

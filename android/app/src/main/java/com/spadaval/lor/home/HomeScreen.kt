@@ -184,8 +184,8 @@ class HomeUi {
      */
     fun openDrawer() {
         if (drawer) return
-        val way = listOf(Way.DOWN, Way.UP).firstOrNull { grid.panel(grid.next(it) ?: return@firstOrNull false) is Panel.Drawer }
-        if (way != null) grid.goTo(grid.next(way)!!, true, way)
+        val move = listOf(Way.DOWN, Way.UP).mapNotNull(grid::nextMove).firstOrNull { grid.panel(it.to) is Panel.Drawer }
+        if (move != null) grid.goTo(move.to, true, move.way, move.focus)
         else grid.panels.firstOrNull { it is Panel.Drawer }?.let { grid.goTo(it.at, true) }
     }
 
@@ -193,9 +193,10 @@ class HomeUi {
     fun closeDrawer() {
         if (!drawer) return
         // On its way in: back where it came from.
-        if (grid.move != null) return grid.goTo(grid.cell, true)
-        val back = grid.back?.takeIf { grid.panel(it.from) != null }
-        if (back != null) grid.goTo(back.from, true, back.way.opposite) else grid.goTo(grid.start, true)
+        if (grid.move != null) return grid.goTo(grid.cell, true, focus = grid.focus)
+        // The way back is the vertical move back (lor-y7qi), which on the inner screen keeps the focus.
+        val back = grid.back?.takeIf { grid.panel(it.from) != null }?.let { grid.nextMove(it.way.opposite) }
+        if (back != null) grid.goTo(back.to, true, back.way, back.focus) else grid.goTo(grid.start, true)
     }
 
     /** Set by a home press that should jump rather than animate. */
@@ -231,7 +232,7 @@ class HomeUi {
     /** What is held, and edit mode (launcher polish 4.3). */
     val drag = DragState()
     /** Home with nothing open over it: a home press here opens quick send instead. */
-    val atRest: Boolean get() = folder == null && homeMenu == null && menu == null && grid.cell == grid.start && grid.move == null && !drag.editing && drag.held == null
+    val atRest: Boolean get() = folder == null && homeMenu == null && menu == null && grid.heading(grid.start) && grid.move == null && !drag.editing && drag.held == null
 
     /**
      * A home press ([animate] false when home wasn't on screen before it: then everything shuts
@@ -341,22 +342,23 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // While something is held, an empty page follows the last in the start row, for a drop that makes one (launcher polish 4.5).
     val newPanel = remember(held?.work) { held?.work?.current?.takeIf { it.roomForPanel }?.withNewPanel(emptyList())?.first?.panels?.last() }
     val panels = drawn.panels + listOfNotNull(newPanel)
-    val wideScreen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val wideScreen = config.screenWidthDp >= 600
     val start = if (wideScreen) drawn.start.wide ?: drawn.start.narrow else drawn.start.narrow
+    // Halves share a screen only where the smallest width is 600 dp or more: the inner screen in
+    // either orientation, never a phone turned sideways (decision note on lor-ph30).
+    grid.pair(config.smallestScreenWidthDp >= 600)
     // The first layout puts home on its start; after that a cell that went leaves home on the nearest
     // in its row, so it stands on a cell that exists (launcher polish 4.5).
     // Set here rather than in an effect, so the frame drawn is never one behind the file (each write
     // only when it changes something, so composition settles).
     val first = remember { booleanArrayOf(true) }
-    if (grid.panels != panels) grid.panels = panels
     if (grid.start != start) grid.start = start
+    if (grid.panels != panels) grid.edited(panels, start)
     if (first[0] && file != null) {
         first[0] = false
         grid.goTo(start, animate = false)
     }
-    val cells = panels.map { it.at }
-    if (grid.move?.to?.let { it !in cells } == true) grid.goTo(grid.cell, animate = false)
-    if (grid.cell !in cells) grid.goTo(GridMoves.stay(cells, grid.cell, start), animate = false)
     // A file changed from outside (an agent, adb) may hold another folder at the open one's place.
     // It closes at once: a reread puts things in place without motion (DESIGN.md's Motion).
     LaunchedEffect(reads) {
@@ -495,7 +497,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // A new open (a drawer opened or caught, a folder tapped mid-close) starts whole, though a back
     // gesture's close was caught before it ended (7's review, R2), as a cancelled gesture does.
     LaunchedEffect(ui.drawer, grid.follow.held) { if (ui.drawer || grid.follow.held) backEase.start() }
-    PredictiveBackHandler(enabled = ui.folder != null || ui.drawer || grid.target != grid.start || drag.editing) { events ->
+    PredictiveBackHandler(enabled = ui.folder != null || ui.drawer || !grid.heading(grid.start) || drag.editing) { events ->
         // The gesture owns the scale from its start (7's third review).
         backEase.stop()
         val what = when {
@@ -595,7 +597,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
 private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, layout: LayoutState, appsLoad: AppsLoad, ui: HomeUi, home: HomeContext) {
     val haptics = LocalHapticFeedback.current
     val cell = panel.at
-    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+    BoxWithConstraints(Modifier.fillMaxSize().cellInsetsPadding()) {
         // Under everything: a long press that no app or folder took, on empty home, opens the home
         // menu, and a double tap opens quick send (launcher polish 7.6), not in edit mode.
         // Overlapping siblings get a touch only when the ones drawn above it don't, so a tap on an
@@ -618,7 +620,8 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
         val hasClock = panel.blocks.any { it is StackBlock.Clock }
         val header = @Composable {
             if (hasClock && headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar)
-            else Spacer(Modifier.height(if (wide || headerStyle == HomeLook.Header.NONE) 24.dp else 104.dp))
+            // Clear of the Remove bar, so a drop meant for the first row lands there (6.8's critique).
+            else Spacer(Modifier.height(if (wide || headerStyle == HomeLook.Header.NONE) BarClear else 104.dp))
         }
         val body = homeBody(appsLoad, home.file, placed?.count ?: 0)
         val apps: @Composable ColumnScope.(BlockAt) -> Unit = { at ->
@@ -656,11 +659,13 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
         val dock = @Composable {
             if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.dock.orEmpty(), home, cell)
         }
-        // The blocks below the header; with no `apps` block, the space goes before the dock.
-        val blocks = @Composable { mod: Modifier ->
+        // Blocks, each with its place in the stack, top to bottom; with no `apps` block, the space
+        // goes before the dock. The clock is the header, drawn where [blocks]' caller puts it.
+        val blocks = @Composable { mod: Modifier, list: List<IndexedValue<StackBlock>>, top: @Composable () -> Unit ->
             Column(mod) {
-                if (panel.blocks.none { it is StackBlock.Apps }) Spacer(Modifier.weight(1f))
-                panel.blocks.forEachIndexed { i, block ->
+                top()
+                if (list.none { it.value is StackBlock.Apps }) Spacer(Modifier.weight(1f))
+                list.forEach { (i, block) ->
                     when (block) {
                         StackBlock.Clock -> {}
                         is StackBlock.Apps -> apps(BlockAt(cell, i))
@@ -669,16 +674,24 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
                 }
             }
         }
+        val all = panel.blocks.withIndex().toList()
         if (wide) {
+            // The platform's flow (lor-j87u): the clock and the first half of the blocks left, the
+            // rest with the dock right; a page of apps and a dock is one column.
             Row(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(1f)) { header() }
-                blocks(Modifier.weight(1f).padding(top = 24.dp))
+                StackFlow.wide(all) { it.value is StackBlock.Dock }.forEachIndexed { c, column ->
+                    val clock = column.any { it.value is StackBlock.Clock }
+                    blocks(Modifier.weight(1f).fillMaxSize(), column) {
+                        when {
+                            clock -> header()
+                            // A column with no clock starts clear of the Remove bar.
+                            c > 0 || !hasClock -> Spacer(Modifier.height(BarClear))
+                        }
+                    }
+                }
             }
         } else {
-            Column(Modifier.fillMaxSize()) {
-                header()
-                blocks(Modifier.weight(1f))
-            }
+            blocks(Modifier.fillMaxSize(), all, header)
         }
         ui.homeMenu?.takeIf { ui.homeMenuCell == cell }?.let { HomeMenu(it, home, onEdit = { ui.drag.editing = true }) { ui.homeMenu = null } }
     }
@@ -877,22 +890,23 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, cell: Ce
 }
 
 /**
- * Dots for the cells of [of]'s row, by column, the one on screen lit (the most of it, in a move
- * across) and the agent page's square; none for a row of one. They move up and down with the row.
+ * Dots for the screens of [of]'s row, left to right, the one on screen lit (the most of it, in a
+ * move across) and the agent page's square; none for a row of one. On the inner screen a dot
+ * stands for an inner screen, a pair's or a full panel's (lor-el51). They move up and down with the row.
  */
 @Composable
 private fun RowDots(grid: GridPlace, of: Cell, ink: WallInk, heightPx: () -> Int, modifier: Modifier) {
-    val row = grid.panels.filter { it.at.row == of.row }.sortedBy { it.at.column }
+    val row = grid.panels.filter { it.at.row == of.row }.sortedBy { it.at.column }.map { grid.screenOf(it.at) }.distinct()
     if (row.size < 2) return
     val lit by remember(grid, of) {
-        derivedStateOf { grid.move?.takeIf { it.way.horizontal && grid.follow.position >= 0.5f }?.to ?: of }
+        derivedStateOf { grid.screenOf(grid.move?.takeIf { it.way.horizontal && grid.follow.position >= 0.5f }?.to ?: of) }
     }
     // On the agent page the dots sit on its dark veil, not the wallpaper (6.8: dark ink vanished there).
-    val mark = if (grid.panel(lit) is Panel.T3) SurfaceInk.mark else ink.mark
+    val mark = if (grid.panel(lit.left) is Panel.T3) SurfaceInk.mark else ink.mark
     Row(modifier.offset { IntOffset(0, grid.offsetOf(of, 0, heightPx())?.y ?: 0) }, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        row.forEach { p ->
-            val color = if (p.at == lit) mark.copy(alpha = 0.8f) else mark.copy(alpha = 0.5f)
-            Box(Modifier.size(6.dp).background(color, if (p is Panel.T3) RectangleShape else CircleShape))
+        row.forEach { s ->
+            val color = if (s == lit) mark.copy(alpha = 0.8f) else mark.copy(alpha = 0.5f)
+            Box(Modifier.size(6.dp).background(color, if (grid.panel(s.left) is Panel.T3) RectangleShape else CircleShape))
         }
     }
 }
@@ -1242,6 +1256,13 @@ private fun SettleItem(s: Settle, drag: DragState, progress: () -> Float) {
 }
 
 /** Edit mode's bar, or Remove while something is held. */
+/** The Remove bar's height and margin. */
+private val RemoveBarHeight = 56.dp
+private val TopBarMargin = 12.dp
+
+/** How far below the top a stack's first row starts, so the Remove bar covers none of it (6.8's critique). */
+internal val BarClear = RemoveBarHeight + TopBarMargin * 2
+
 @Composable
 private fun TopBar(ui: HomeUi, modifier: Modifier) {
     val drag = ui.drag
@@ -1251,7 +1272,7 @@ private fun TopBar(ui: HomeUi, modifier: Modifier) {
     if (held != null) {
         val lit = held.lit == Target.Remove
         Box(
-            modifier.padding(12.dp).fillMaxWidth().height(56.dp)
+            modifier.padding(TopBarMargin).fillMaxWidth().height(RemoveBarHeight)
                 .background(PanelFace, shape)
                 .background(if (lit) Or.copy(alpha = 0.08f) else Color.Transparent, shape)
                 .border(1.dp, if (lit) Or.copy(alpha = 0.55f) else Edge, shape)

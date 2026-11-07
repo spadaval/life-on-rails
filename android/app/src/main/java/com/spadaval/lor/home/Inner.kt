@@ -67,12 +67,14 @@ object InnerScreens {
     fun place(screens: Collection<InnerScreen>, cell: Cell): InnerPlace? = holding(screens, cell)?.let { InnerPlace(it) }
 
     /**
-     * Where a move [way] from [from] goes, or null when there is none.
+     * Where a move [way] from [from] goes, or null when there is none or [from]'s screen isn't one of [screens].
      * - Across: the next screen in the row; the ends stop. It arrives with no focus.
      * - Up and down: [GridMoves.next] from the focus cell, with its way back ([back]), lands on the
      *   screen holding the cell it returns, with that cell as the focus.
      */
     fun next(screens: List<InnerScreen>, from: InnerPlace, way: Way, back: Arrival? = null): InnerMove? {
+        // A screen not among [screens] (an edit re-paired its row) has no moves (lor-70hj).
+        if (from.screen !in screens) return null
         if (way.horizontal) {
             val row = screens.filter { it.row == from.screen.row }
             val to = row.getOrNull(row.indexOf(from.screen) + way.sign) ?: return null

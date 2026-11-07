@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -258,7 +257,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
             }
         }
     }
-    Column(Modifier.fillMaxSize().background(Bg).swallowTaps().safeDrawingPadding().padding(top = 12.dp)) {
+    Column(Modifier.fillMaxSize().background(Bg).swallowTaps().cellInsetsPadding().padding(top = 12.dp)) {
         OutlinedTextField(
             field,
             { field = it; ui.query = it.text },

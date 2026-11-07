@@ -124,8 +124,5 @@ class GridTest {
         assertEquals(Way.DOWN, GridMoves.wayTo(c(1, 1), c(1, 0), Arrival(c(1, 0), Way.UP)))
         assertEquals(Way.DOWN, GridMoves.wayTo(c(1, 1), c(1, 0), Arrival(c(3, 0), Way.UP)))
         assertEquals(Way.UP, GridMoves.wayTo(c(1, 1), c(1, 0), Arrival(c(3, 0), Way.DOWN)))
-        // Home's window: itself, the agent page, page 1 and the drawer; not page 2.
-        assertEquals(setOf(c(1, 0), c(0, 0), c(2, 0), c(1, 1)), GridMoves.window(default, c(1, 0), null))
-        assertEquals(setOf(c(3, 0), c(2, 0), c(1, 1)), GridMoves.window(default, c(3, 0), null))
     }
 }

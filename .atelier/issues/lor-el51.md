@@ -15,9 +15,9 @@ relationships:
     type: "blocked_by"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "The inner screen drawn: full panels, side-by-side halves"
-updated_at: "2026-11-07T22:49:23.631974641+00:00"
+updated_at: "2026-11-07T22:49:49.288704432+00:00"
 ---
 
 ## Goal

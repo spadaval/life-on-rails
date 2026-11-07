@@ -139,6 +139,13 @@ class InnerTest {
     }
 
     @Test
+    fun aScreenAnEditReplacedHasNoMoves() {
+        // lor-70hj: home alone, then page 2 added, pairing them; the old place's screen is gone.
+        val screens = InnerScreens.of(default(1))
+        for (way in Way.entries) assertNull(InnerScreens.next(screens, InnerPlace(full(1)), way))
+    }
+
+    @Test
     fun aHomePressClearsTheFocusAndATouchElsewhereIsIgnored() {
         val screens = InnerScreens.of(default(2))
         assertEquals(InnerPlace(pair(1, 2)), InnerScreens.place(screens, c(2, 0)))
