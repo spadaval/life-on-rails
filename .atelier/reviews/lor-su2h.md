@@ -10,6 +10,12 @@ created_at: 2026-11-07T23:20:42.793867898Z
 event:
   event: finding
   recommendation: no_action
+  disposition:
+    decision: no_action
+    identity: orchestrator
+    commit: 669cde5ae88b691197f1fe6a37fc5a89ca55a038
+    recorded_at: 2026-11-07T23:21:04.753529741Z
+    reason: A comment's place; the author may move it with R1's fix.
 ---
 
 Nit (lor-el51): android/app/src/main/java/com/spadaval/lor/home/HomeScreen.kt:1258, TopBar's KDoc 'Edit mode's bar, or Remove while something is held.' is now stranded above the new RemoveBarHeight KDoc, so TopBar has no doc and the first comment documents nothing. No consequence; worth moving with the fix_now finding's change.
