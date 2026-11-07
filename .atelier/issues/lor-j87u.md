@@ -16,11 +16,17 @@ relationships:
   - kind: "issue"
     id: "lor-eh0y"
     type: "blocked_by"
+  - kind: "issue"
+    id: "lor-uj0r"
+    type: "advances"
+workflow_branch:
+  branch_base: main
+  work_branch: lor-j87u
 schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Schema `wide` and the inner screen's rules, tested"
-updated_at: "2026-11-07T22:37:03.400532026+00:00"
+updated_at: "2026-11-07T22:37:53.132707990+00:00"
 ---
 
 ## Goal

@@ -4,17 +4,12 @@ id: "lor-ph30"
 issue_type: "feature"
 labels:
 - "launcher"
-workflow_branch:
-  branch_base: main
-  work_branch: lor-ph30
 priority: "P2"
 relationships:
   blocks: []
   children:
   - kind: "issue"
     id: "lor-el51"
-  - kind: "issue"
-    id: "lor-j87u"
   - kind: "issue"
     id: "lor-ozj2"
   - kind: "issue"
@@ -25,13 +20,16 @@ relationships:
     id: "lor-eh0y"
     type: "blocked_by"
   - kind: "issue"
+    id: "lor-j87u"
+    type: "blocked_by"
+  - kind: "issue"
     id: "lor-uj0r"
     type: "advances"
 schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "The inner screen, and folding that keeps your place"
-updated_at: "2026-11-07T22:30:57.419290335+00:00"
+updated_at: "2026-11-07T22:37:53.210403902+00:00"
 ---
 
 ## Goal
@@ -89,3 +87,5 @@ Carried from Launcher polish's old Increment 8 (`docs/missions/launcher-polish/p
 - 2026-11-07 [decision] 6.8's 'the left half holds only the date': home alone at full width (the first-run grid, or any layout with no extra pages) keeps lor-j87u's flow, the clock alone in the left column, apps and the dock on the right. With a page beside it, home is a half and pairs, so the critique no longer applies there (review finding lor-hq8b).
   Reason: lor-sbth makes the clock block the time, date, next event, next alarm and weather, which fills that column; changing the flow rule now for one block's current size would be undone then. The narrow form is unchanged, and the first-run grid is not the layout in daily use.
   Rejected: Flow the apps block into both columns when the clock is the only other block: a special case of the platform's one flow rule, for a gap lor-sbth closes
+- 2026-11-07 [decision] lor-j87u is a blocker of lor-ph30 rather than a child, on its own branch lor-j87u, as lor-euec and lor-eo1g were for lor-eh0y.
+  Reason: A child stays open until its parent merges, so lor-el51 couldn't start after lor-j87u on one branch. lor-j87u changes nothing on screen, so it can merge alone.
