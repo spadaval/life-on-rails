@@ -72,7 +72,7 @@ class GridPlace {
      * Goes to [to], with a settle when [animate], else at once. A move under way toward [to] or back
      * to it is turned there; one going elsewhere is dropped.
      */
-    fun goTo(to: Cell, animate: Boolean, way: Way = GridMoves.wayTo(cell, to)) {
+    fun goTo(to: Cell, animate: Boolean, way: Way = GridMoves.wayTo(cell, to, back)) {
         val m = move
         when {
             !animate || (m != null && m.to != to && cell != to) -> {
@@ -113,7 +113,10 @@ class GridPlace {
         return when {
             at == cell -> here
             m != null && at == m.to -> along(m.way, 1f - p)
-            // A neighbour waits off screen where a move would bring it from.
+            // During a move only its two cells are placed: a straight move (a home press from page 2)
+            // brings a cell that isn't the neighbour that way, which would share its slot (lor-glg9).
+            m != null -> null
+            // Otherwise a neighbour waits off screen where a move would bring it from.
             else -> Way.entries.firstOrNull { next(it) == at }?.let { here + along(it, 1f) }
         }
     }
@@ -228,7 +231,8 @@ internal fun Modifier.gridFinger(ui: HomeUi, haptics: HapticFeedback, topPx: () 
  * screen, the one a move goes to, and the cells a move from here reaches (the strategy's Shape: so
  * a home press stays instant however many panels there are). The drawer is composed only while a
  * move involves it, as it was before the grid. Placed rather than drawn with an offset, so what
- * each cell reports of where it is (drop zones, sources) follows it.
+ * each cell reports of where it is (drop zones, sources) follows it; during a move only the move's
+ * two cells are placed, and the others keep the off-screen place they last reported.
  */
 @Composable
 internal fun GridCells(grid: GridPlace, cell: @Composable (Panel) -> Unit) {

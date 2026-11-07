@@ -68,9 +68,13 @@ object GridMoves {
     fun stay(cells: Collection<Cell>, cell: Cell, start: Cell): Cell =
         if (cell in cells) cell else nearest(cells, cell.row, cell.column) ?: start
 
-    /** The way to draw a move from [from] straight to [to] (a home press, back): across in a row, else by rows. */
-    fun wayTo(from: Cell, to: Cell): Way = when {
+    /**
+     * The way to draw a move from [from] straight to [to] (a home press, back): across in a row;
+     * back to the row the last vertical move ([back]) came from, the way it came; else by rows.
+     */
+    fun wayTo(from: Cell, to: Cell, back: Arrival? = null): Way = when {
         from.row == to.row -> if (to.column < from.column) Way.LEFT else Way.RIGHT
+        back != null && back.from.row == to.row -> back.way.opposite
         to.row < from.row -> Way.UP
         else -> Way.DOWN
     }
