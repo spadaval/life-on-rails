@@ -41,6 +41,15 @@ class LookTest {
     }
 
     @Test
+    fun anOpenFoldersLabelsReadOnItsGlassOverWhite() {
+        // lor-gnk0: Starlight (SurfaceInk) on the glass over white, the worst wallpaper, unblurred.
+        reads(Palette.TXT, Palette.over(Palette.BG, Palette.FOLDER_GLASS, 0xFFFFFFFF), "Starlight on the folder's glass over white")
+        // Where blur is off, the glass lies over a dim, which only darkens it.
+        val dimmed = Palette.over(0xFF000000, Palette.FOLDER_DIM, 0xFFFFFFFF)
+        reads(Palette.TXT, Palette.over(Palette.BG, Palette.FOLDER_GLASS, dimmed), "Starlight on the folder's glass over the dim")
+    }
+
+    @Test
     fun theLaunchersOldDimWouldFail() {
         // 3.6's critique: the launcher's Dim (0xFF616871) read at 2.3 to 3.5:1. Far Dust replaces it.
         assertTrue(contrast(0xFF616871, Palette.PANEL) < 4.5)

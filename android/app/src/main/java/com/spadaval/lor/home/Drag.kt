@@ -15,7 +15,7 @@ import androidx.compose.ui.geometry.Offset
  * gives the start: a long press opens the app's menu, and moving 16 dp from the press closes it
  * and picks the item up. A drop near an icon's centre goes onto it (`Workspace`'s folder-creation
  * radius), Remove sits at the top (`DeleteDropTarget`), and an open folder closes when the finger
- * has been outside it for 400 ms (`Folder.ON_EXIT_CLOSE_DELAY`).
+ * has been outside its apps for 400 ms (`Folder.ON_EXIT_CLOSE_DELAY`; [FolderExit]).
  *
  * From Kvaesitso (GPL-3.0, `ui/component/dragndrop/DragAndDropGrid.kt`): the target is found by
  * hit-testing laid-out bounds against the finger, the held item is drawn at the finger above
@@ -75,6 +75,32 @@ fun targetAt(x: Float, y: Float, zones: List<Zone>, heldIsFolder: Boolean, openF
         return Target.Before(if (x > z.box.centerX) spot.next() else spot)
     }
     return shown.firstOrNull { it is Zone.Area && it.box.contains(x, y) }?.let { Target.AtEnd((it as Zone.Area).place) }
+}
+
+/**
+ * When a held app leaves an open folder (lor-gnk0, after Launcher3's `Folder.ON_EXIT_CLOSE_DELAY`,
+ * Apache-2.0). The open folder fills the screen, so there is no space outside a card: the folder's
+ * area is its name row and its grid of apps, [area] as laid out (the part of a scrolling grid on
+ * screen). Once the finger has been outside it, above the name row or below the last row (or off
+ * its sides), for [CLOSE_MS] together, the folder closes and the drag goes on over home.
+ */
+class FolderExit {
+    private var since: Long? = null
+
+    /** Whether the folder closes now, with the finger at ([x], [y]) at [now] ms. */
+    fun closes(area: Bounds, x: Float, y: Float, now: Long): Boolean {
+        if (area.contains(x, y)) {
+            since = null
+            return false
+        }
+        val from = since ?: now.also { since = it }
+        return now - from >= CLOSE_MS
+    }
+
+    companion object {
+        /** Launcher3's `ON_EXIT_CLOSE_DELAY`. */
+        const val CLOSE_MS = 400L
+    }
 }
 
 /** The place after this one in its list (which may be one past its end: in front of nothing). */

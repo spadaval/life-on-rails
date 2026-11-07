@@ -26,6 +26,14 @@ object Palette {
     /** The agent page's veil: Deep Space at 92% (launcher polish 6.3). */
     const val VEIL_ALPHA = 0xEB / 255.0
 
+    /**
+     * An open folder's glass (lor-gnk0): Deep Space at 72% over the wallpaper. Starlight on it over white, the worst wallpaper unblurred, reads at about 6.4:1.
+     */
+    const val FOLDER_GLASS = 0.72
+
+    /** The dim under the folder's glass where the window can't blur the wallpaper: black at 50%. */
+    const val FOLDER_DIM = 0.5
+
     /** WCAG relative luminance of an opaque colour. */
     fun luminance(argb: Long): Double {
         fun channel(shift: Int): Double {

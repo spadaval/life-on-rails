@@ -225,4 +225,50 @@ class HomeEditTest {
         assertEquals(listOf("a.a", "b.b"), second.file.drop(From.At(second.at!!, second.file.itemAt(second.at!!)!!), Target.Remove).file.pages[0])
         assertEquals(HOME_CHANGED, refused { f.drop(at(f, Spot.Apps(page(0), 0)), Target.AtEnd(Place.InFolder(Spot.Apps(page(5), 0)))) })
     }
+
+    @Test
+    fun theOpenFoldersPlusAddsAppsAndMovesThemFromElsewhereOnHome() {
+        // lor-gnk0. Page 0: x.x, [F: a.a], [G: b.b, c.c]; page 1: d.d; dock: x.x.
+        val f = file(
+            listOf(ref("x.x"), Folder("F", listOf(ref("a.a"))), Folder("G", listOf(ref("b.b"), ref("c.c")))),
+            listOf(ref("d.d")),
+            dock = listOf(ref("x.x")),
+        )
+        val folder = at(f, Spot.Apps(page(0), 1))
+        // A new app goes last; the folder stays where it is and is pinned.
+        val one = f.addToFolder(folder, listOf(app("e.e") to ref("e.e")))
+        assertEquals(listOf(listOf("x.x", "[F: a.a, e.e]", "[G: b.b, c.c]"), listOf("d.d")), one.file.pages)
+        assertEquals(Spot.Apps(page(0), 1), one.at)
+        assertTrue((one.file.current.home[1] as Folder).pinned)
+        // From elsewhere on home they move, in the order picked: an app ahead of it moves the folder up,
+        // an extra page emptied goes, another folder keeps the rest; the dock keeps its own.
+        val many = f.addToFolder(folder, listOf(app("d.d") to ref("d.d"), app("x.x") to ref("x.x"), app("b.b") to ref("b.b")))
+        assertEquals(listOf(listOf("[F: a.a, d.d, x.x, b.b]", "[G: c.c]")), many.file.pages)
+        assertEquals(Spot.Apps(page(0), 0), many.at)
+        assertEquals(listOf(ref("x.x")), many.file.current.dock)
+        assertEquals(many.file.current.home[0], many.file.itemAt(many.at!!))
+        // A folder emptied by it goes.
+        val g = f.addToFolder(folder, listOf(app("b.b") to ref("b.b"), app("c.c") to ref("c.c")))
+        assertEquals(listOf(listOf("x.x", "[F: a.a, b.b, c.c]"), listOf("d.d")), g.file.pages)
+        roundTrips(many.file)
+        // Refusals: an app it holds, nothing picked, a folder that changed, not a folder.
+        assertEquals("it's already in F", refused { f.addToFolder(folder, listOf(app("a.a") to ref("a.a"))) })
+        assertEquals("no apps were picked", refused { f.addToFolder(folder, emptyList()) })
+        assertEquals(HOME_CHANGED, refused { one.file.addToFolder(folder, listOf(app("z.z") to ref("z.z"))) })
+        assertEquals("that isn't a folder", refused { f.addToFolder(at(f, Spot.Apps(page(0), 0)), listOf(app("z.z") to ref("z.z"))) })
+    }
+
+    @Test
+    fun renamingInPlaceWritesTheTrimmedName() {
+        // lor-gnk0: the open folder's name field writes through renameFolder; blank is refused.
+        val f = file(listOf(Folder("F", listOf(ref("a.a"), ref("b.b")))))
+        val folder = at(f, Spot.Apps(page(0), 0))
+        val renamed = f.renameFolder(folder, "  Travel ")
+        assertEquals("Travel", (renamed.current.home[0] as Folder).name)
+        assertTrue((renamed.current.home[0] as Folder).pinned)
+        assertEquals(listOf(ref("a.a"), ref("b.b")), (renamed.current.home[0] as Folder).apps)
+        assertEquals("a folder needs a name", refused { f.renameFolder(folder, "") })
+        // Renaming again from the name drawn before the first landed refuses rather than renaming the wrong thing.
+        assertEquals(HOME_CHANGED, refused { renamed.renameFolder(folder, "Trips") })
+    }
 }

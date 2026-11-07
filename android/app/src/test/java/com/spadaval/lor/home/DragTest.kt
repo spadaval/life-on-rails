@@ -50,4 +50,24 @@ class DragTest {
         assertEquals(Target.Before(Spot.Apps(page(0), 0)), targetAt(45f, 130f, zones, false, null, heldAt = Spot.Apps(page(0), 0)))
         assertEquals(Target.Onto(Spot.Apps(page(0), 1)), targetAt(150f, 130f, zones, false, null, heldAt = Spot.Apps(page(0), 0)))
     }
+
+    @Test
+    fun aHeldAppLeavesAFullScreenFolderAfter400msOutsideItsApps() {
+        // lor-gnk0: the folder's name row and apps span y 280 to 500 across the screen.
+        val area = card.box
+        val exit = FolderExit()
+        assertEquals(false, exit.closes(area, 200f, 400f, 0))
+        // Above the name row: the clock starts, and runs while the finger stays out.
+        assertEquals(false, exit.closes(area, 200f, 200f, 100))
+        assertEquals(false, exit.closes(area, 200f, 150f, 499))
+        assertEquals(true, exit.closes(area, 200f, 150f, 500))
+        // Back inside resets it; below the last row counts as outside too.
+        val again = FolderExit()
+        assertEquals(false, again.closes(area, 200f, 600f, 0))
+        assertEquals(false, again.closes(area, 200f, 450f, 300))
+        assertEquals(false, again.closes(area, 200f, 600f, 350))
+        assertEquals(false, again.closes(area, 200f, 600f, 700))
+        assertEquals(true, again.closes(area, 200f, 600f, 750))
+        assertEquals(400L, FolderExit.CLOSE_MS)
+    }
 }
