@@ -11,9 +11,6 @@ relationships:
   attachments: []
   relates:
   - kind: "issue"
-    id: "lor-el51"
-    type: "blocked_by"
-  - kind: "issue"
     id: "lor-j87u"
     type: "blocked_by"
 schema: "atelier.issue"

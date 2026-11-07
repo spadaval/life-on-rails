@@ -29,7 +29,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "The inner screen, and folding that keeps your place"
-updated_at: "2026-11-07T22:37:53.210403902+00:00"
+updated_at: "2026-11-07T22:49:48.882308660+00:00"
 ---
 
 ## Goal
@@ -89,3 +89,5 @@ Carried from Launcher polish's old Increment 8 (`docs/missions/launcher-polish/p
   Rejected: Flow the apps block into both columns when the clock is the only other block: a special case of the platform's one flow rule, for a gap lor-sbth closes
 - 2026-11-07 [decision] lor-j87u is a blocker of lor-ph30 rather than a child, on its own branch lor-j87u, as lor-euec and lor-eo1g were for lor-eh0y.
   Reason: A child stays open until its parent merges, so lor-el51 couldn't start after lor-j87u on one branch. lor-j87u changes nothing on screen, so it can merge alone.
+- 2026-11-07 [decision] The children are worked in order on branch lor-ph30: lor-el51, then lor-ozj2, then lor-sqfe, each reviewed as its own slice. lor-ozj2 and lor-sqfe no longer carry blocked_by lor-el51; they start after lor-el51's review is approved.
+  Reason: Atelier keeps a child open until its parent merges, so a blocked_by between siblings would stall them; on one shared branch, order does the same job.

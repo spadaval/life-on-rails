@@ -9,10 +9,7 @@ relationships:
   blocks: []
   children: []
   attachments: []
-  relates:
-  - kind: "issue"
-    id: "lor-el51"
-    type: "blocked_by"
+  relates: []
 schema: "atelier.issue"
 schema_version: 2
 status: "todo"
