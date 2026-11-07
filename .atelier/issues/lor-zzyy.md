@@ -19,7 +19,7 @@ updated_at: "2026-11-07T23:36:19.018382223+00:00"
 
 ## Goal
 
-Locking home from the home menu stops every edit on home, as Lawnchair's "Lock home screen" and Smart Launcher's padlock do. A long press still opens an app's menu, without its editing entries. A drag picks nothing up, and the Undo bar says why. Folders still open, but can't be renamed or added to. Unlocking restores editing. The refusal itself is lor-v692's, in `LayoutStore.edit` (decision lor-73li); this item hides or stills what that rule would refuse, so a locked home rarely shows a refusal.
+Locking home from the home menu stops every edit on home, as Lawnchair's "Lock home screen" and Smart Launcher's padlock do. A long press still opens an app's menu, without its editing entries. A drag picks nothing up, and the Undo bar says why. Folders still open, but can't be renamed or added to. Unlocking restores editing, from the home menu, or from the minimap's padlock (lor-6get), which Home settings' "Panels" opens even on a grid with no stack and so no home menu. The refusal itself is lor-v692's, in `LayoutStore.edit` (decision lor-73li); this item hides or stills what that rule would refuse, so a locked home rarely shows a refusal.
 
 ## Done when
 
@@ -43,4 +43,4 @@ On `T3_Phone_API35` against the test server, unless a line says otherwise:
 - Read 2026-11-07 in Lawnchair (Apache-2.0, at aeb92c1), whose lock is the nearest built one: `LauncherOptionsPopup.kt` toggles `lockHomeScreen` from the home menu and drops edit mode and widgets from it while locked; `Workspace.beginDragShared` starts no drag while locked, though the long press still gives its haptic; `FolderNameEditText` takes no touch; `LawnchairShortcut.kt` drops Customize and Uninstall. Here Uninstall stays, since it isn't a change to the layout. Name the source and licence in the files that follow it.
 - Home reads `locked` from the parsed file it already holds (`HomeContext.file`), so nothing new is stored.
 - lor-gnk0 built the open folder's in-place name and its +, and lor-73li says which edits the lock covers.
-- If lor-r0f9 (widgets on home) is on `main` when this starts, its widget menu's Resize and Remove are hidden while locked here, with a screenshot of the locked menu. Otherwise the note on lor-r0f9 has it do so.
+- If lor-r0f9 (widgets on home) is on `main` when this starts, its widget menu's Resize and Remove, and the home menu's "Add widget", are hidden while locked here, with a screenshot of each locked menu. Otherwise the note on lor-r0f9 has it do so.

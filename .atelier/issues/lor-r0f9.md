@@ -57,4 +57,4 @@ New `home/Widgets.kt` (the host, the block, the picker sheet, the bind and confi
 
 ## Notes
 
-- 2026-11-07 [note] From lor-f3vn's plan: the layout lock (decision lor-73li) refuses this item's add, resize and remove in LayoutStore.edit with no work here. If lor-zzyy (lock home) is on main when this starts, also hide the widget menu's Resize and Remove while locked, with a screenshot of the locked menu; and if lor-9uc1 (a stack's blocks) is on main, check that the minimap's Move to… on a widget keeps its id and height and draws it in the new stack with no bind dialog. If those land after this, they do it.
+- 2026-11-07 [note] From lor-f3vn's plan: the layout lock (decision lor-73li) refuses this item's add, resize and remove in LayoutStore.edit with no work here. If lor-zzyy (lock home) is on main when this starts, also hide the widget menu's Resize and Remove and the home menu's "Add widget" while locked, with a screenshot of each locked menu; and if lor-9uc1 (a stack's blocks) is on main, check that the minimap's Move to… on a widget keeps its id and height and draws it in the new stack with no bind dialog. If those land after this, they do it.

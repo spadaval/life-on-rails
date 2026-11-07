@@ -21,7 +21,7 @@ schema_version: 2
 closed_at: "2026-11-07T23:35:30.694554577+00:00"
 status: "done"
 title: "How the layout lock is held and what it stops"
-updated_at: "2026-11-07T23:35:30.694554577+00:00"
+updated_at: "2026-11-07T23:42:51.963096242+00:00"
 ---
 
 ## Context
@@ -50,6 +50,10 @@ A top-level `"locked": true`, enforced by one rule in the edit path on what an e
 - **What it doesn't stop.** Edits to `hidden`, `drawer` and `look` alone: the drawer's view and sections, Unhide, Home settings' look. Hide of an app that is on home or in the dock changes `layouts`, so it is refused; Hide of one that isn't is taken. Undo isn't checked: after Lock, the Undo held is the lock's own, so Undo unlocks. `restore` of a broken file and the first run's default aren't edits. An agent or a hand edit of the file isn't stopped: the lock guards against an accidental touch on the phone, and the file stays the place an agent rearranges home.
 - **On screen** (lor-f3vn's children): what the rule would refuse is hidden or does nothing, so a locked home rarely shows a refusal. A long press still opens an app's menu without its editing entries, and a drag picks nothing up and says why in the Undo bar.
 - Consequences: `layout-v2.md` documents `locked` under Top-level fields as a version 2 addition; the refusal lives in `LayoutStore.edit`, which `HomeStore.edit` calls, so the JVM tests reach it.
+
+## Notes
+
+- 2026-11-07 [note] Review residual risk (lor-f3vn's plan review): the refusal names the home menu, but a grid with no stack has no home menu; there the minimap's padlock, opened from Home settings' Panels row (lor-6get), unlocks. The contract is unchanged.
 
 ## Report
 
