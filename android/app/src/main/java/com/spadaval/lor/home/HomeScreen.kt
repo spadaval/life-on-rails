@@ -32,6 +32,8 @@ import kotlinx.coroutines.withContext
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.Animatable
@@ -59,8 +61,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.AwaitPointerEventScope
-import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -162,21 +162,18 @@ internal val labelStyle: TextStyle
 
 /** What the activity can reset on a home press. */
 class HomeUi {
-    /** The drawer's target: open or not. Set from anywhere; [HomeScreen] moves [drawerShown] to it. */
-    var drawer by mutableStateOf(false)
-
     /**
-     * Where the drawer is, from 0 (closed) to 1 (open) (launcher polish 7.1). A finger sets it
-     * while [drawerHeld]; otherwise one effect in [HomeScreen] animates it to [drawer].
+     * Where the drawer is, from 0 (closed) to 1 (open), and where it is going (launcher polish
+     * 7.1). A finger moves it; otherwise [HomeScreen]'s [SettleFollow] takes it to its target.
      */
-    var drawerShown by mutableFloatStateOf(0f)
-    var drawerHeld by mutableStateOf(false)
+    val drawerFollow = Follow()
 
-    /** The velocity (drawer heights per second, up positive) a finger let the drawer go with. */
-    var drawerFling = 0f
+    /** The drawer's target: open or not. Set from anywhere; the drawer follows it. */
+    var drawer: Boolean
+        get() = drawerFollow.target == 1f
+        set(open) { drawerFollow.target = if (open) 1f else 0f }
 
     /** Set by a home press that should jump rather than animate; each effect takes its own. */
-    var snapDrawer = false
     var snapPager = false
     var snapFolder = false
 
@@ -188,12 +185,6 @@ class HomeUi {
      * open folder is drawn scaled by `1 - 0.1 × back`. Back to 0 when either opens again.
      */
     var back by mutableFloatStateOf(0f)
-
-    /**
-     * Raised when something opens while a back gesture's scale is still on it (a drawer caught, a
-     * folder tapped mid-close): HomeScreen eases [back] to 0 rather than jumping it (7's review).
-     */
-    var backResets by mutableIntStateOf(0)
 
     /** The drawer's list is at its top, so a pull down there moves the drawer (launcher polish 7.1). */
     var drawerAtTop = true
@@ -231,7 +222,7 @@ class HomeUi {
      */
     fun homePressed(animate: Boolean = true) {
         // A home press puts a held item back and leaves edit mode.
-        snapDrawer = !animate
+        drawerFollow.snap = !animate
         snapPager = !animate
         snapFolder = !animate && folder != null
         drag.held = null
@@ -255,6 +246,25 @@ private const val BACK_SCALE = 0.1f
 
 /** The back gesture's progress eased as Android's `PathInterpolator(0, 0, 0, 1)`: quick at first, then slower. */
 private val BackEasing = CubicBezierEasing(0f, 0f, 0f, 1f)
+
+/**
+ * The one job that eases [HomeUi.back] to 0 (launcher polish 7.3): for a cancelled gesture and for
+ * a new open alike, and stopped when a back gesture starts, so two writers never alternate.
+ */
+private class BackEase(private val ui: HomeUi, private val scope: CoroutineScope) {
+    private var job: Job? = null
+
+    fun start() {
+        if (ui.back == 0f) return
+        job?.cancel()
+        job = scope.launch { animate(ui.back, 0f, animationSpec = Motion.quick()) { v, _ -> ui.back = v } }
+    }
+
+    fun stop() {
+        job?.cancel()
+        job = null
+    }
+}
 
 /** A folder with its installed apps, each with its place in the file; [cover] is its cover app if installed. */
 data class OpenFolder(val spot: Spot.Page, val name: String)
@@ -326,7 +336,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // frame it crosses the bar rather than when a close starts.
     var heightPx by remember { mutableIntStateOf(0) }
     val barPx = WindowInsets.statusBars.getTop(LocalDensity.current)
-    val drawerUnderBar by remember(heightPx, barPx) { derivedStateOf { (1f - ui.drawerShown) * heightPx < barPx } }
+    val drawerUnderBar by remember(heightPx, barPx) { derivedStateOf { (1f - ui.drawerFollow.position) * heightPx < barPx } }
     // An open folder, opening or closing, holds the scrim (launcher polish 7.2).
     var panel by remember { mutableStateOf<ResolvedFolder?>(null) }
     SideEffect { if (folder != null) panel = folder }
@@ -343,21 +353,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         barsDark = darkBarIcons
     }
     // The drawer goes to its target, unless a finger has it; a home press from elsewhere jumps (7.1).
-    LaunchedEffect(ui.drawer, ui.drawerHeld, ui.homePresses) {
-        if (ui.drawerHeld) return@LaunchedEffect
-        val to = if (ui.drawer) 1f else 0f
-        val fling = ui.drawerFling
-        ui.drawerFling = 0f
-        // An open starts whole, though a back gesture's close was caught before it ended (7's review, R2).
-        if (to == 1f && ui.back > 0f) ui.backResets++
-        if (ui.snapDrawer) {
-            ui.snapDrawer = false
-            ui.drawerShown = to
-        } else if (ui.drawerShown != to) {
-            // A finger that takes the drawer mid-settle owns it from that frame, before this effect is cancelled.
-            animate(ui.drawerShown, to, fling, Motion.settle()) { v, _ -> if (!ui.drawerHeld) ui.drawerShown = v }
-        }
-    }
+    SettleFollow(ui.drawerFollow)
     // A target waits 300 ms under the finger before the working copy takes it (Kvaesitso's attemptMove).
     LaunchedEffect(held, held?.pending) {
         val t = held?.pending ?: return@LaunchedEffect
@@ -422,6 +418,9 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         s.progress.animateTo(1f, if (s.kind == Settle.Kind.FADE) Motion.quick() else Motion.move())
         if (drag.settling === s) drag.settling = null
     }
+    // What is left of a back gesture's scale eases to 0 in one job (7's third review).
+    val backScope = rememberCoroutineScope()
+    val backEase = remember(backScope) { BackEase(ui, backScope) }
     // A folder opens from its tile and closes back into it, or fades where it is if its tile went away (7.2).
     val folderShown = remember { Animatable(0f) }
     val folderLayer = rememberGraphicsLayer()
@@ -432,7 +431,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         if (folderOpen) {
             folderFading = false
             ui.snapFolder = false
-            if (ui.back > 0f) ui.backResets++
+            backEase.start()
             // The panel's first frame is its slowest (on the emulator, 140 ms); start the clock after it,
             // or the motion would be over before it is seen. It is drawn at nothing until then.
             if (folderShown.value == 0f) repeat(2) { withFrameNanos {} }
@@ -463,12 +462,12 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // for the drawer and a folder (launcher polish 7.3): each scales toward 0.9 with the progress
     // (Kvaesitso's `LauncherScaffold`, GPL-3.0, ideas only; Lawnchair's `onBackProgressed`, Apache-2.0).
     // Before Android 14 only the commit arrives, and it is the whole behaviour.
-    val backScope = rememberCoroutineScope()
-    // A new open eases away what is left of a back gesture's scale, as a cancelled gesture does.
-    LaunchedEffect(ui.backResets) {
-        if (ui.back > 0f) animate(ui.back, 0f, animationSpec = Motion.quick()) { v, _ -> ui.back = v }
-    }
+    // A new open (a drawer opened or caught, a folder tapped mid-close) starts whole, though a back
+    // gesture's close was caught before it ended (7's review, R2), as a cancelled gesture does.
+    LaunchedEffect(ui.drawer, ui.drawerFollow.held) { if (ui.drawer || ui.drawerFollow.held) backEase.start() }
     PredictiveBackHandler(enabled = ui.folder != null || ui.drawer || pager.currentPage != 1 || drag.editing) { events ->
+        // The gesture owns the scale from its start (7's third review).
+        backEase.stop()
         val what = when {
             ui.folder != null -> Back.FOLDER
             drag.editing -> Back.EDIT
@@ -479,8 +478,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             events.collect { e -> if (what == Back.FOLDER || what == Back.DRAWER) ui.back = BackEasing.transform(e.progress) }
         } catch (e: kotlinx.coroutines.CancellationException) {
             // A cancelled gesture returns it to full size.
-            val from = ui.back
-            backScope.launch { animate(from, 0f, animationSpec = Motion.quick()) { v, _ -> ui.back = v } }
+            backEase.start()
             throw e
         }
         // The commit: the close runs from where the gesture left it; the scale goes with it.
@@ -492,7 +490,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         }
     }
     // Once what back scaled has gone, the next one starts whole.
-    val backDone by remember { derivedStateOf { ui.drawerShown == 0f && ui.folder == null } }
+    val backDone by remember { derivedStateOf { ui.drawerFollow.position == 0f && ui.folder == null } }
     LaunchedEffect(backDone, panel) { if (backDone && panel == null) ui.back = 0f }
     // The drag handler lives across recompositions, so it reads the latest of these.
     val latestHome by rememberUpdatedState(home)
@@ -506,11 +504,11 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         // On the agent page the dots sit on its dark veil, not the wallpaper (6.8: dark ink vanished there).
         PageDots(pager.currentPage, 1 + pageCount, if (pager.currentPage == 0) SurfaceInk.mark else ink.mark, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
         // The drawer, wherever the finger or its settle has it (launcher polish 7.1); home stays still under it.
-        val drawerShows by remember { derivedStateOf { ui.drawerShown > 0f } }
+        val drawerShows by remember { derivedStateOf { ui.drawerFollow.position > 0f } }
         if (drawerShows) {
             Box(
                 Modifier.fillMaxSize().graphicsLayer {
-                    translationY = (1f - ui.drawerShown) * size.height
+                    translationY = (1f - ui.drawerFollow.position) * size.height
                     // Predictive back (7.3): smaller about its centre as the gesture goes.
                     val b = if (ui.folder == null && panel == null) 1f - BACK_SCALE * ui.back else 1f
                     scaleX = b
@@ -565,7 +563,7 @@ private fun HomePage(n: Int, placed: PlacedHome?, layout: LayoutState, appsLoad:
                     val first = awaitVerticalSlop(down, tracker, PointerEventPass.Main) ?: return@awaitEachGesture
                     // Only a swipe that starts upward is the drawer's.
                     if (first.position.y > down.position.y) return@awaitEachGesture
-                    followDrawer(down, first, DrawerFinger(ui, haptics, size.height.toFloat(), density, fromOpen = false), tracker, PointerEventPass.Main)
+                    followVertically(down, first, drawerFinger(ui, haptics, size.height.toFloat(), density), tracker, PointerEventPass.Main)
                 }
             }
             .safeDrawingPadding(),
@@ -1276,34 +1274,15 @@ private fun FolderMenuItem(text: String, onClick: () -> Unit) {
 }
 
 /**
- * A finger moving the drawer (launcher polish 7.1): 1:1 with its travel, a tick at the commit
- * point either way, and on release the drawer settles where [DrawerMotion.settles] says, from the
- * finger's velocity.
+ * A finger moving the drawer (launcher polish 7.1): the threshold tick is
+ * `GestureThresholdActivate` (Kvaesitso's), a close clears the search, and each release logs one
+ * `LorMotion` line, which the emulator checks read.
  */
-private class DrawerFinger(val ui: HomeUi, val haptics: HapticFeedback, val heightPx: Float, val density: Float, val fromOpen: Boolean) {
-    private val start = ui.drawerShown
-    private val point = DrawerMotion.commitPoint(fromOpen, start)
-    init {
-        ui.drawerHeld = true
-        if (ui.back > 0f) ui.backResets++
-    }
-
-    /** The finger is [travel] px below where it pressed (up negative). */
-    fun move(travel: Float) {
-        val before = ui.drawerShown
-        val now = (start - travel / heightPx).coerceIn(0f, 1f)
-        ui.drawerShown = now
-        if (DrawerMotion.crossed(point, before, now)) haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-    }
-
-    /** Let go at [vy] px/s (down positive). */
-    fun release(vy: Float) {
-        val open = DrawerMotion.settles(fromOpen, start, ui.drawerShown, -vy / density)
-        android.util.Log.d("LorMotion", "drawer let go at ${ui.drawerShown} from $start, ${-vy / density} dp/s up: ${if (open) "open" else "closed"}")
-        ui.drawerFling = -vy / heightPx
-        ui.drawer = open
+private fun drawerFinger(ui: HomeUi, haptics: HapticFeedback, heightPx: Float, density: Float): FollowFinger {
+    val start = ui.drawerFollow.position
+    return FollowFinger(ui.drawerFollow, heightPx, density, onTick = { haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) }) { open, upDpS ->
+        android.util.Log.d("LorMotion", "drawer let go at ${ui.drawerFollow.position} from $start, $upDpS dp/s up: ${if (open) "open" else "closed"}")
         if (!open) ui.query = ""
-        ui.drawerHeld = false
     }
 }
 
@@ -1317,48 +1296,11 @@ private fun Modifier.drawerPull(ui: HomeUi, haptics: HapticFeedback): Modifier =
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
         val area = ui.drawerPullArea
-        if (!ui.drawer || ui.drawerShown < 1f || !ui.drawerAtTop || ui.drag.held != null || area == null || !area.contains(down.position)) return@awaitEachGesture
+        if (!ui.drawer || ui.drawerFollow.position < 1f || !ui.drawerAtTop || ui.drag.held != null || area == null || !area.contains(down.position)) return@awaitEachGesture
         val tracker = VelocityTracker()
         // Only a pull that starts downward is the drawer's.
         val first = awaitVerticalSlop(down, tracker, PointerEventPass.Initial) ?: return@awaitEachGesture
         if (first.position.y < down.position.y) return@awaitEachGesture
-        followDrawer(down, first, DrawerFinger(ui, haptics, size.height.toFloat(), density, fromOpen = true), tracker, PointerEventPass.Initial)
-    }
-}
-
-/**
- * Waits for [down]'s finger to pass the touch slop; returns that move when it went mostly
- * vertically, else null (a tap, a lift, a sideways swipe, or a move something else took).
- */
-private suspend fun AwaitPointerEventScope.awaitVerticalSlop(down: PointerInputChange, tracker: VelocityTracker, pass: PointerEventPass): PointerInputChange? {
-    tracker.addPosition(down.uptimeMillis, down.position)
-    while (true) {
-        val c = awaitPointerEvent(pass).changes.firstOrNull { it.id == down.id } ?: return null
-        if (!c.pressed || c.isConsumed) return null
-        tracker.addPosition(c.uptimeMillis, c.position)
-        val d = c.position - down.position
-        if (d.getDistance() > viewConfiguration.touchSlop) return if (kotlin.math.abs(d.y) > kotlin.math.abs(d.x)) c else null
-    }
-}
-
-/** Moves the drawer with [down]'s finger from [first] on, measured from where it pressed, and lets it go on the lift. */
-private suspend fun AwaitPointerEventScope.followDrawer(down: PointerInputChange, first: PointerInputChange, finger: DrawerFinger, tracker: VelocityTracker, pass: PointerEventPass) {
-    first.consume()
-    finger.move(first.position.y - down.position.y)
-    var vy = 0f
-    // Released however the gesture ends, a cancelled pointer coroutine too, so the drawer is never left held.
-    try {
-        while (true) {
-            val c = awaitPointerEvent(pass).changes.firstOrNull { it.id == down.id } ?: return
-            c.consume()
-            tracker.addPosition(c.uptimeMillis, c.position)
-            finger.move(c.position.y - down.position.y)
-            if (!c.pressed) {
-                vy = tracker.calculateVelocity().y
-                return
-            }
-        }
-    } finally {
-        finger.release(vy)
+        followVertically(down, first, drawerFinger(ui, haptics, size.height.toFloat(), density), tracker, PointerEventPass.Initial)
     }
 }
