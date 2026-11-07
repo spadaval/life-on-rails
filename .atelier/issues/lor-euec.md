@@ -9,12 +9,15 @@ relationships:
   blocks: []
   children: []
   attachments: []
-  relates: []
+  relates:
+  - kind: "issue"
+    id: "lor-uj0r"
+    type: "advances"
 schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Layout schema version 2: a grid of panels"
-updated_at: "2026-11-07T00:08:40.314738090+00:00"
+updated_at: "2026-11-07T20:55:44.934532651+00:00"
 ---
 
 ## Goal

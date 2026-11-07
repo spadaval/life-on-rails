@@ -9,13 +9,15 @@ relationships:
   blocks: []
   children:
   - kind: "issue"
-    id: "lor-eo1g"
-  - kind: "issue"
-    id: "lor-euec"
-  - kind: "issue"
     id: "lor-qdmy"
   attachments: []
   relates:
+  - kind: "issue"
+    id: "lor-eo1g"
+    type: "blocked_by"
+  - kind: "issue"
+    id: "lor-euec"
+    type: "blocked_by"
   - kind: "issue"
     id: "lor-uj0r"
     type: "advances"
@@ -23,7 +25,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Today's home on the grid"
-updated_at: "2026-11-07T00:07:48.183901621+00:00"
+updated_at: "2026-11-07T20:55:48.411627889+00:00"
 ---
 
 ## Goal
@@ -41,3 +43,8 @@ Today's home runs on the grid. `layout.json` is version 2 with panels; a version
 - The grid, cells, `start`, wrapping and the composition window are in the strategy's Shape. The inner screen's full and half panels, folding and `start` after screen-off are lor-ph30; here the inner screen shows one cell at full width, as home does today.
 - Today: `HomeScreen.kt` draws a `HorizontalPager` (page 0 the agent page, then home's pages) with the drawer as an overlay pulled up from any home page (`DrawerFinger`, `followDrawer`, `drawerPull`). The dock is drawn on each home page; the header only on the first. `HomeEdit.kt` addresses items as `Spot.Page(page, index)`, `Spot.Dock(i)` and folders within a page.
 - The real-Fold check of this increment is the `needs-human` validation item lor-mlx6, after merge.
+
+## Notes
+
+- 2026-11-07 [decision] lor-euec and lor-eo1g are blockers of this increment rather than children, each on its own branch. The 'before' build for this increment's screenshots and 7.8 measurements is 7f94a83, the commit before either.
+  Reason: Atelier puts children on the parent's branch, and the two ready items should run in parallel in their own worktrees; neither changes the screen, so each can merge to main alone.

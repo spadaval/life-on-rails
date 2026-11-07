@@ -9,12 +9,15 @@ relationships:
   blocks: []
   children: []
   attachments: []
-  relates: []
+  relates:
+  - kind: "issue"
+    id: "lor-uj0r"
+    type: "advances"
 schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "One finger-following holder for the drawer and the grid"
-updated_at: "2026-11-07T00:07:48.199100621+00:00"
+updated_at: "2026-11-07T20:55:44.960892741+00:00"
 ---
 
 ## Goal
