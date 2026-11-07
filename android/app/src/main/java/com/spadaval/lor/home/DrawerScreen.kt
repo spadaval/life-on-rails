@@ -312,7 +312,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
                         // A main-profile app can be picked up and dragged onto home (launcher polish 4.6); refs can't name a work-profile one.
                         is Entry.Tile -> Box(
                             Modifier.dragSource(home.drag, e.key) { b ->
-                                if (e.app.mainProfile) Source(b, From.Drawer(e.app.id, home.refFor(e.app)), 2, e.app, null) else null
+                                if (e.app.mainProfile) Source(b, Slot.DrawerApp(e.app.key), 2) else null
                             },
                             contentAlignment = Alignment.TopCenter,
                         ) {

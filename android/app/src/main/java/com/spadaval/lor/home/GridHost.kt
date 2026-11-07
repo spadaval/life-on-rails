@@ -168,14 +168,33 @@ class GridPlace {
      * Halves start or stop sharing a screen (an unfold, a fold). Home stays on its cell: unfolded,
      * on the inner screen holding it, with it as the focus ([InnerScreens.unfold]); folded, on the
      * focus cell, which [cell] already is ([InnerScreens.fold]). A move under way is dropped.
+     * Returns whether the pairing changed.
      */
-    fun pair(on: Boolean) {
-        if (paired == on) return
+    fun pair(on: Boolean): Boolean {
+        if (paired == on) return false
         paired = on
         move = null
         follow.position = 0f
         follow.target = 0f
         focus = if (on) cell else null
+        return true
+    }
+
+    /**
+     * A press at [x] on a screen [w] px wide (lor-ozj2): on a pair, the half under it becomes the
+     * focus, with no motion, so a fold lands there. A press while a move settles touches nothing.
+     * Returns the half that became the focus, or null when the focus didn't change.
+     */
+    fun pressed(x: Float, w: Int): Cell? {
+        if (!paired || move != null) return null
+        val s = screenOf(cell)
+        val right = s.right ?: return null
+        val at = if (x < w / 2f) s.left else right
+        val now = inner.touched(at)
+        if (now.focus == focus) return null
+        cell = now.focusCell
+        focus = now.focus
+        return at
     }
 
     /**
@@ -333,6 +352,8 @@ internal fun Modifier.gridFinger(ui: HomeUi, haptics: HapticFeedback, topPx: () 
     val grid = ui.grid
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        // Any press on a half makes it the one a fold lands on.
+        grid.pressed(down.position.x, size.width)?.let { android.util.Log.d("LorGrid", "touched $it on ${grid.inner.screen.cells}") }
         if (ui.drag.held != null || ui.folder != null || down.position.y < topPx()) return@awaitEachGesture
         val tracker = VelocityTracker()
         val first = awaitSlop(down, tracker, PointerEventPass.Initial) ?: return@awaitEachGesture

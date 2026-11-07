@@ -190,4 +190,52 @@ class GridPlaceTest {
             assertEquals("$pages pages", InnerScreen(held.at), g.screenOf(held.at))
         }
     }
+
+    // Folding keeps your place (lor-ozj2).
+
+    @Test
+    fun aPressOnAHalfIsWhereAFoldLands() {
+        // From home's pair, a press on page 1's half makes it the focus with no motion, and a fold shows it.
+        val g = inner(3)
+        assertEquals(Cell(2, 0), g.pressed(700f, w))
+        assertNull(g.move)
+        assertEquals(InnerPlace(InnerScreen(Cell(1, 0), Cell(2, 0)), Cell(2, 0)), g.inner)
+        assertNull("the same half again changes nothing", g.pressed(900f, w))
+        g.pair(false)
+        assertEquals(Cell(2, 0), g.cell)
+        // Back to the left half, a fold shows home.
+        val l = inner(3)
+        l.pressed(700f, w)
+        assertEquals(Cell(1, 0), l.pressed(100f, w))
+        l.pair(false)
+        assertEquals(Cell(1, 0), l.cell)
+    }
+
+    @Test
+    fun aPairReachedBySwipeAndUntouchedFoldsToItsLeft() {
+        // Unfolded from page 1, then a swipe to pages 2 and 3 and back: no half was touched, so the left.
+        val g = GridPlace().apply {
+            edited(Layout.grid("d", emptyList(), emptyList(), List(3) { emptyList() }).panels, Layout.HOME)
+            goTo(Cell(2, 0), animate = false)
+        }
+        g.pair(true)
+        assertEquals(InnerPlace(InnerScreen(Cell(1, 0), Cell(2, 0)), Cell(2, 0)), g.inner)
+        g.move = g.nextMove(Way.RIGHT)
+        g.arrive()
+        g.move = g.nextMove(Way.LEFT)
+        g.arrive()
+        assertEquals(InnerPlace(InnerScreen(Cell(1, 0), Cell(2, 0))), g.inner)
+        g.pair(false)
+        assertEquals(Cell(1, 0), g.cell)
+    }
+
+    @Test
+    fun aPressTouchesNothingOffAPairOrDuringAMove() {
+        assertNull("one cell at a time", place(Cell(1, 0)).pressed(900f, w))
+        assertNull("the agent page is full", inner(3, Cell(0, 0)).pressed(900f, w))
+        val g = inner(3)
+        g.move = g.nextMove(Way.RIGHT)
+        assertNull("a move settling", g.pressed(900f, w))
+        assertEquals(null, g.focus)
+    }
 }

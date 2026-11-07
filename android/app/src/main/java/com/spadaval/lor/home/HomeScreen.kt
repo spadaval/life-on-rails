@@ -311,13 +311,35 @@ private fun place(layout: Layout, apps: List<HomeApp>): PlacedHome {
             val at = From.At(Spot.Apps(p, i), item)
             when (item) {
                 is AppRef -> resolve(item, apps)?.let { Placed.App(it, at) }
-                is Folder -> item.apps.mapIndexedNotNull { a, ref -> resolve(ref, apps)?.let { it to From.At(Spot.InFolder(p, i, a), ref) } }
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { Placed.InFolder(ResolvedFolder(item, at, it, item.cover?.let { c -> resolve(c, apps) })) }
+                is Folder -> placeFolder(item, at, apps)?.let { Placed.InFolder(it) }
             }
         }
     }
     return PlacedHome(blocks, layout.dock.mapIndexedNotNull { i, ref -> resolve(ref, apps)?.let { it to From.At(Spot.Dock(i), ref) } })
+}
+
+/** The folder [item] at [at] with its installed apps, or null when none is installed. */
+private fun placeFolder(item: Folder, at: From.At, apps: List<HomeApp>): ResolvedFolder? {
+    val spot = at.spot as Spot.Apps
+    return item.apps.mapIndexedNotNull { a, ref -> resolve(ref, apps)?.let { it to From.At(Spot.InFolder(spot.at, spot.index, a), ref) } }
+        .takeIf { it.isNotEmpty() }
+        ?.let { ResolvedFolder(item, at, it, item.cover?.let { c -> resolve(c, apps) }) }
+}
+
+/** What a press picks up: where it is in the file, the item, and the app or folder drawn. */
+private class Picked(val from: From, val item: LayoutItem, val app: HomeApp?, val folder: ResolvedFolder?)
+
+/**
+ * What a press on [slot] picks up, looked up in the layout drawn now rather than kept from when
+ * its tile was laid out (4's review item (a)); null when it has gone or isn't installed.
+ */
+private fun HomeContext.pick(slot: Slot): Picked? {
+    if (slot is Slot.DrawerApp) return apps.firstOrNull { it.key == slot.app && it.mainProfile }?.let { a -> refFor(a).let { Picked(From.Drawer(a.id, it), it, a, null) } }
+    val at = file?.current?.find(slot) ?: return null
+    return when (val item = at.item) {
+        is AppRef -> resolve(item, apps)?.let { Picked(at, item, it, null) }
+        is Folder -> placeFolder(item, at, apps)?.let { Picked(at, item, null, it) }
+    }
 }
 
 @Composable
@@ -347,7 +369,10 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val start = if (wideScreen) drawn.start.wide ?: drawn.start.narrow else drawn.start.narrow
     // Halves share a screen only where the smallest width is 600 dp or more: the inner screen in
     // either orientation, never a phone turned sideways (decision note on lor-ph30).
-    grid.pair(config.smallestScreenWidthDp >= 600)
+    // A fold or unfold lands where lor-j87u's rules say; the lines the fold checks read (lor-ozj2).
+    if (grid.pair(config.smallestScreenWidthDp >= 600)) {
+        android.util.Log.d("LorGrid", if (grid.paired) "unfolded: at ${grid.cell} on ${grid.inner.screen.cells}" else "folded: at ${grid.cell}")
+    }
     // The first layout puts home on its start; after that a cell that went leaves home on the nearest
     // in its row, so it stands on a cell that exists (launcher polish 4.5).
     // Set here rather than in an effect, so the frame drawn is never one behind the file (each write
@@ -580,7 +605,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         // Edit mode's bar, and Remove while something is held (launcher polish 4.3).
         TopBar(ui, Modifier.align(Alignment.TopCenter).safeDrawingPadding())
         held?.let { HeldItem(it) }
-        drag.settling?.let { SettleItem(it, drag) { it.progress.value } }
+        drag.settling?.let { SettleItem(it, drag, file?.current) { it.progress.value } }
         // Above the drawer and folders, clear of the dock.
         UndoBar(ui.undo, actions::undo, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 112.dp))
     }
@@ -641,11 +666,7 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
             // The block's space, from its first row to what follows it, takes a drop after its last item.
             Box(
                 Modifier.weight(1f).fillMaxWidth()
-                    .dropZone(home.drag, "apps" to at) { b ->
-                        // The new panel a drag shows isn't in the file yet.
-                        val place = if (home.file?.current?.items(at) != null) Place.InApps(at) else Place.NewPanel
-                        if (drops) Zone.Area(place, b) else null
-                    },
+                    .dropZone(home.drag, "apps" to at) { b -> if (drops) DropMark.Area(Space.Apps(at), b) else null },
             ) {
                 when (body) {
                     HomeBody.NOTHING -> {}
@@ -759,19 +780,20 @@ private fun HomeNote(title: String, detail: String?, onClick: (() -> Unit)? = nu
 private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeContext) {
     val icon = rememberTileIcon()
     val drag = home.drag
-    // Keyed by what each tile is, so a tile moved by a drag eases from its old place (launcher polish 7.5).
-    val keys = remember(items) { itemKeys(items.map { it.at.item }) }
+    // Keyed by what each tile is, so a tile moved by a drag eases from its old place (launcher polish 7.5);
+    // the same keys name it to a drag (4's review item (a)).
+    val layout = home.file?.current
+    val slots = remember(items, layout) { items.map { layout?.slotOf(it.at.spot) as? Slot.Tile } }
     CellGrid(columns, rowGap = 14.dp, modifier = Modifier.padding(horizontal = 8.dp)) {
         items.forEachIndexed { i, item ->
-            key(keys[i]) {
-                val spot = item.at.spot
-                val tile = (spot as Spot.Apps).at to keys[i]
+            val slot = slots[i] ?: return@forEachIndexed
+            key(slot.key) {
+                val spot = item.at.spot as Spot.Apps
+                val tile = slot.block to slot.key
                 Box(
                     Modifier
-                        .dropZone(drag, tile) { b -> Zone.Item(spot, b, b.top + icon.top, icon.size) }
-                        .dragSource(drag, tile) { b ->
-                            Source(b, item.at, 0, (item as? Placed.App)?.app, (item as? Placed.InFolder)?.folder)
-                        }
+                        .dropZone(drag, tile) { b -> DropMark.Item(slot, b, b.top + icon.top, icon.size) }
+                        .dragSource(drag, tile) { b -> Source(b, slot, 0) }
                         // After the zone and source, so they report the slot, not where the tile is drawn mid-ease.
                         .animatePlacement(drag)
                         .alpha(if (drag.hides(spot)) 0f else 1f)
@@ -856,19 +878,20 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, cell: Ce
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 12.dp)
             .framedPanel(PanelFace.copy(alpha = 0.92f))
-            .dropZone(drag, "dock" to cell) { b -> Zone.Area(Place.Dock, b) }
+            .dropZone(drag, "dock" to cell) { b -> DropMark.Area(Space.Dock, b) }
             .padding(vertical = 10.dp)
             .height(dockIcon),
     ) {
         val at = At(LaunchFrom.DOCK)
-        val keys = remember(apps) { itemKeys(apps.map { it.second.item }) }
-        apps.forEachIndexed { i, (app, spot) -> key(keys[i]) {
+        val layout = home.file?.current
+        val slots = remember(apps, layout) { apps.map { layout?.slotOf(it.second.spot) as? Slot.Dock } }
+        apps.forEachIndexed { i, (app, spot) -> val slot = slots[i] ?: return@forEachIndexed; key(slot.key) {
             // Equal cells, so the space between icons belongs to one of them.
             Box(
                 Modifier.weight(1f)
                     // Keyed by cell too: every `dock` block draws the dock, and neighbours stay composed.
-                    .dropZone(drag, Triple("dock", cell, keys[i])) { b -> Zone.Item(spot.spot, b, b.top, iconPx) }
-                    .dragSource(drag, Triple("dock", cell, keys[i])) { b -> Source(b, spot, 0, app, null) }
+                    .dropZone(drag, Triple("dock", cell, slot.key)) { b -> DropMark.Item(slot, b, b.top, iconPx) }
+                    .dragSource(drag, Triple("dock", cell, slot.key)) { b -> Source(b, slot, 0) }
                     .animatePlacement(drag)
                     .alpha(if (drag.hides(spot.spot)) 0f else 1f),
                 contentAlignment = Alignment.Center,
@@ -1004,7 +1027,8 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
     ) {
         val drag = home.drag
         val icon = rememberTileIcon()
-        val spot = folder.at.spot as Spot.Apps
+        val layout = home.file?.current
+        val tile = remember(folder, layout) { layout?.slotOf(folder.at.spot) as? Slot.Tile }
         Column(
             Modifier
                 .widthIn(max = 360.dp)
@@ -1029,7 +1053,7 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
                 }
                 .framedPanel(PanelFace.copy(alpha = 0.95f))
                 // The card takes a drop after the folder's last app (launcher polish 4.4).
-                .dropZone(drag, "card") { b -> Zone.Area(Place.InFolder(spot), b) }
+                .dropZone(drag, "card") { b -> tile?.let { DropMark.Area(Space.Card(it), b) } }
                 .swallowTaps()
                 .padding(16.dp),
         ) {
@@ -1038,14 +1062,15 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -
                 Text(it, style = Type.body.copy(color = Mute, fontSize = 13.sp), modifier = Modifier.padding(start = 6.dp, top = 4.dp))
             }
             Spacer(Modifier.height(14.dp))
-            val keys = remember(folder) { itemKeys(folder.apps.map { it.second.item }) }
+            val slots = remember(folder, layout) { folder.apps.map { layout?.slotOf(it.second.spot) as? Slot.InFolder } }
             CellGrid(4, Modifier.fillMaxWidth().padding(bottom = 10.dp), rowGap = 10.dp) {
                 folder.apps.forEachIndexed { i, (app, at) ->
-                    key(keys[i]) {
+                    val slot = slots[i] ?: return@forEachIndexed
+                    key(slot.key) {
                         Box(
                             Modifier
-                                .dropZone(drag, "folder" to keys[i]) { b -> Zone.Item(at.spot, b, b.top + icon.top, icon.size) }
-                                .dragSource(drag, "folder" to keys[i]) { b -> Source(b, at, 1, app, null) }
+                                .dropZone(drag, "folder" to slot.key) { b -> DropMark.Item(slot, b, b.top + icon.top, icon.size) }
+                                .dragSource(drag, "folder" to slot.key) { b -> Source(b, slot, 1) }
                                 .animatePlacement(drag)
                                 .alpha(if (drag.hides(at.spot)) 0f else 1f),
                             contentAlignment = Alignment.TopCenter,
@@ -1081,7 +1106,7 @@ private fun Rect.toArray() = floatArrayOf(left, top, right, bottom)
 
 /** Reports where this is as a drop zone while it is laid out; null for none. */
 @Composable
-internal fun Modifier.dropZone(drag: DragState, key: Any, zone: (Bounds) -> Zone?): Modifier {
+internal fun Modifier.dropZone(drag: DragState, key: Any, zone: (Bounds) -> DropMark?): Modifier {
     val k = "zone" to key
     DisposableEffect(k) { onDispose { drag.zones.remove(k) } }
     return onGloballyPositioned { c ->
@@ -1120,8 +1145,7 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
             else -> 0
         }
         val source = drag.sourceAt(down.position, layer) ?: return@awaitEachGesture
-        val file = home().file ?: return@awaitEachGesture
-        if (drag.held != null) return@awaitEachGesture
+        if (home().file == null || drag.held != null) return@awaitEachGesture
         // Up to the long press: a lift or a move past the slop is a tap, a scroll or a swipe.
         val early = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
             var ended = false
@@ -1138,13 +1162,13 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
             if (!c.pressed) return@awaitEachGesture
             c.consume()
             if ((c.position - down.position).getDistance() > start) {
-                val item = when (val f = source.from) {
-                    is From.At -> f.item
-                    is From.Drawer -> f.ref
-                }
+                // What is there now, in the file home draws now (4's review item (a)).
+                val now = home()
+                val file = now.file ?: return@awaitEachGesture
+                val picked = now.pick(source.slot) ?: return@awaitEachGesture
                 // A new pickup ends a settle at once, and ticks (launcher polish 7.5).
                 drag.settling = null
-                drag.held = Held(file, source.from, item, source.app, source.folder, home()).also { it.finger = c.position }
+                drag.held = Held(file, picked.from, picked.item, picked.app, picked.folder, now).also { it.finger = c.position }
                 haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                 if (source.layer == 2) {
                     ui.closeDrawer()
@@ -1166,7 +1190,7 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
             c.consume()
             held.finger = c.position
             val width = size.width.toFloat()
-            val zones = drag.zones.values.filter { !it.box.empty && it.box.centerX in 0f..width }
+            val zones = held.work.current.zones(drag.zones.values.filter { !it.box.empty && it.box.centerX in 0f..width })
             val t = targetAt(c.position.x, c.position.y, zones, held.isFolder, ui.folder?.spot, held.spot)
             if (!c.pressed) {
                 drop(held, t)
@@ -1213,16 +1237,18 @@ private fun HeldItem(held: Held) {
  * screen to go to, it fades where it is.
  */
 @Composable
-private fun SettleItem(s: Settle, drag: DragState, progress: () -> Float) {
+private fun SettleItem(s: Settle, drag: DragState, layout: Layout?, progress: () -> Float) {
     val density = LocalDensity.current
     val size = iconSize
     val half = with(density) { (size / 2).toPx() }
     val iconTop = with(density) { 4.dp.toPx() }
     var width by remember { mutableIntStateOf(0) }
+    // The tile that is at [Settle.to] in the layout drawn, by what it is (4's review item (a)).
+    val slot = remember(s, layout) { s.to?.let { layout?.slotOf(it) } }
     fun target(): Offset? {
         val to = s.to ?: return null
-        if (s.kind == Settle.Kind.FADE) return null
-        val src = drag.sources.values.firstOrNull { (it.from as? From.At)?.spot == to && it.layer != 2 && !it.box.empty && it.box.centerX in 0f..width.toFloat() } ?: return null
+        if (s.kind == Settle.Kind.FADE || slot == null) return null
+        val src = drag.sources.values.firstOrNull { it.slot == slot && it.layer != 2 && !it.box.empty && it.box.centerX in 0f..width.toFloat() } ?: return null
         val b = src.box
         // The dock's icons are centred in their cells; a tile's sits 4 dp down.
         return Offset(b.centerX, if (to is Spot.Dock) (b.top + b.bottom) / 2 else b.top + iconTop + half)
@@ -1276,7 +1302,7 @@ private fun TopBar(ui: HomeUi, modifier: Modifier) {
                 .background(PanelFace, shape)
                 .background(if (lit) Or.copy(alpha = 0.08f) else Color.Transparent, shape)
                 .border(1.dp, if (lit) Or.copy(alpha = 0.55f) else Edge, shape)
-                .dropZone(drag, "remove") { b -> Zone.Remove(b) },
+                .dropZone(drag, "remove") { b -> DropMark.Remove(b) },
             contentAlignment = Alignment.Center,
         ) {
             Text("Remove", style = Type.body.copy(color = if (lit) Txt else Mute, fontSize = 15.sp))

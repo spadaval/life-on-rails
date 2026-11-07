@@ -87,14 +87,13 @@ class HomeSettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(SystemBarStyle.dark(android.graphics.Color.TRANSPARENT), SystemBarStyle.dark(android.graphics.Color.TRANSPARENT))
         val store = (application as LorApp).home
-        val icons = Icons(this, (40 * resources.displayMetrics.density).toInt())
         setContent {
             val apps by store.apps.collectAsStateWithLifecycle()
             val layout by store.layout.collectAsStateWithLifecycle()
             val packIndex by store.packs.index.collectAsStateWithLifecycle()
             val appsLoad by store.appsLoad.collectAsStateWithLifecycle()
             LorTheme {
-                ProvideIcons(icons, layout.shown?.look, packIndex) {
+                ProvideIcons(store.icons, layout.shown?.look, packIndex, drawSize = 40.dp) {
                     Surface(Modifier.fillMaxSize()) {
                         Box(Modifier.fillMaxSize()) {
                             HomeSettings(apps, layout, appsLoad == AppsLoad.LOADED, ::edit, ::restore, ::open)
