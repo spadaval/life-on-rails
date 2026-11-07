@@ -11,6 +11,7 @@ Chosen 2026-10-14 after four sketch rounds. Each folder holds the Today and Grap
 - **Type.** Saira Condensed caps for the page title, nav, section headers and big readouts; Saira in sentence case for everything else, buttons included. Tabular numerals.
 - **Signature move.** Today's waking day is an arc from rising (wake start) to setting (wake end), drawn as a route line with hour ticks: tracked time in bright orange, the rest dashed, a target reticle at now, calendar events as cyan diamonds, and the remaining time as the big readout under the zenith. The Graph is a star map: goals are four-point stars sized by hours against target, linked to their projects and habits by fine lines, with the selected goal in a reticle and a System Info panel beside it.
 - **Restraint.** A faint engraved grid behind the arc and the map only. No glow except the selected star, no fake HUD numbers, no scanlines.
+- **Depth (2026-11-07).** `DESIGN.md` had grown this into a flat rule: no blur, no shadows, no glow at all. Sumeet found that went further than the look chosen here, since Elite's own panels are blurred glass with bloom, and replaced it: blur as a backdrop behind what opens over other content, soft black shadows under what floats, and glow on the one selected, focused or current thing. Nothing pulses, and emphasis still comes from colour and fill first.
 
 ## Astral (reference, not built)
 

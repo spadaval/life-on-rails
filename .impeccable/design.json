@@ -249,7 +249,27 @@
       {
         "name": "selection-edge",
         "value": "inset 0 0 0 1px rgb(240 138 44 / 0.55)",
-        "purpose": "The selected-row edge, paired with an 8% amber background. The system has no drop shadows."
+        "purpose": "The selected-row edge, paired with an 8% amber background. Panels cast no shadow; floating surfaces (menus, dialogs, sheets, a dragged icon) take a soft black one (see Elevation & Depth in DESIGN.md)."
+      },
+      {
+        "name": "float",
+        "value": "0 8px 24px rgb(0 0 0 / 0.5)",
+        "purpose": "Under a floating surface: a menu, a dialog, a sheet, a dragged icon. Panels in the page cast none."
+      },
+      {
+        "name": "glow-or",
+        "value": "0 0 12px rgb(240 138 44 / 0.4)",
+        "purpose": "The one or two selected, focused or current things (selection, now). Never animated, never on body text."
+      },
+      {
+        "name": "glow-cy",
+        "value": "0 0 12px rgb(108 198 236 / 0.4)",
+        "purpose": "As glow-or, for the agent or planned time when it is the highlighted thing."
+      },
+      {
+        "name": "backdrop",
+        "value": "backdrop-filter: blur(24px); background: rgb(17 18 24 / 0.72)",
+        "purpose": "Glass behind what opens over other content; raise the alpha until text keeps 4.5:1 over the lightest unblurred content behind it."
       }
     ],
     "motion": [
@@ -375,7 +395,7 @@
   ],
   "narrative": {
     "northStar": "Elite: Mostly Harmless",
-    "overview": "A star atlas worn in the menu language of Elite: Dangerous, with the volume turned down. The waking day is a route you travel along; goals are stars you steer by. Space-black ground, panels held in thin orange-brown frames with clipped corners, condensed capitals for the instrument labels and plain sentence-case Saira for everything a person reads. It is a cockpit that never raises its voice: no alarms, no glow, no fake telemetry, nothing red for falling behind.\n\nDensity is operational, not airy: a fixed 208px left rail, a 62px page head, then framed panels in a 22px-gutter grid. One amber-orange carries every meaning of \"now, running, tracked, selected\"; one cyan carries \"planned\" and \"the agent\". Everything else is warm grey on blue-black. The two signature drawings, the day arc on Today and the star map on Graph, are the only places with the engraved grid and the only places with reticles.\n\nIt refuses the stretched single phone column and the grey-card planner. Dark only; there is no light theme and none is to be built.",
+    "overview": "A star atlas worn in the menu language of Elite: Dangerous, with the volume turned down. The waking day is a route you travel along; goals are stars you steer by. Space-black ground, panels held in thin orange-brown frames with clipped corners, condensed capitals for the instrument labels and plain sentence-case Saira for everything a person reads. It is a cockpit that never raises its voice: no alarms, nothing pulsing for attention, no fake telemetry, nothing red for falling behind. Like Elite's own panels it has depth: translucent glass over what lies behind, soft shadows under what floats, and a glow on the one or two things that are selected or now.\n\nDensity is operational, not airy: a fixed 208px left rail, a 62px page head, then framed panels in a 22px-gutter grid. One amber-orange carries every meaning of \"now, running, tracked, selected\"; one cyan carries \"planned\" and \"the agent\". Everything else is warm grey on blue-black. The two signature drawings, the day arc on Today and the star map on Graph, are the only places with the engraved grid and the only places with reticles.\n\nIt refuses the stretched single phone column and the grey-card planner. Dark only; there is no light theme and none is to be built.",
     "keyCharacteristics": [
       "Space black with a cool undertone, panels one step lighter, wells one step darker.",
       "Orange-brown 1px frames with 6px chamfers on outer panels; everything else square.",
@@ -411,8 +431,8 @@
         "section": "typography"
       },
       {
-        "name": "The No-Glow Rule",
-        "body": "Nothing glows, pulses or casts a shadow. Emphasis comes from colour and fill, never from blur.",
+        "name": "The Quiet-Emphasis Rule",
+        "body": "Emphasis comes from colour and fill first. Glow marks only the one or two selected, focused or current things; nothing pulses, shimmers or flashes to get attention. Blur is allowed as a backdrop behind what opens over other content, and a soft black shadow under what floats.",
         "section": "elevation"
       },
       {
@@ -432,7 +452,7 @@
     ],
     "donts": [
       "Don't add a light theme.",
-      "Don't use shadows, glows, blur, scanlines or pulsing; the selected star's reticle is the strongest emphasis the world has.",
+      "Don't use scanlines, pulsing, coloured shadows, or glow as decoration or on more than the one or two highlighted things on a screen; the selected star's reticle is the strongest emphasis the world has.",
       "Don't put fake HUD numbers, decorative telemetry or invented coordinates on screen; every figure is real data.",
       "Don't use coral for overdue, behind, or under target; coral means a machine has failed.",
       "Don't round corners on buttons, inputs, chips or panels; the only round shapes are status dots and map bodies.",

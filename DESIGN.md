@@ -135,7 +135,7 @@ components:
 
 **Creative North Star: "Elite: Mostly Harmless"**
 
-A star atlas worn in the menu language of Elite: Dangerous, with the volume turned down. The waking day is a route you travel along; goals are stars you steer by. Space-black ground, panels held in thin orange-brown frames with clipped corners, condensed capitals for the instrument labels and plain sentence-case Saira for everything a person reads. It is a cockpit that never raises its voice: no alarms, no glow, no fake telemetry, nothing red for falling behind.
+A star atlas worn in the menu language of Elite: Dangerous, with the volume turned down. The waking day is a route you travel along; goals are stars you steer by. Space-black ground, panels held in thin orange-brown frames with clipped corners, condensed capitals for the instrument labels and plain sentence-case Saira for everything a person reads. It is a cockpit that never raises its voice: no alarms, nothing pulsing for attention, no fake telemetry, nothing red for falling behind. Like Elite's own panels it has depth: translucent glass over what lies behind, soft shadows under what floats, and a glow on the one or two things that are selected or now.
 
 Density is operational, not airy: a fixed 208px left rail, a 62px page head, then framed panels in a 22px-gutter grid. One amber-orange carries every meaning of "now, running, tracked, selected"; one cyan carries "planned" and "the agent". Everything else is warm grey on blue-black. The two signature drawings, the day arc on Today and the star map of the wiki in Notes, are the only places with the engraved grid and the only places with reticles.
 
@@ -183,7 +183,7 @@ A near-monochrome blue-black instrument panel with warm grey type, lit by one am
 **The Never Red Rule.** Under target, behind, overdue and unstarted are shown dim (`mute` / `dim`), never coral. Coral is reserved for machinery that has failed.
 
 ### Over the wallpaper (the phone's home)
-The launcher on the phone draws some things straight on Sumeet's wallpaper: app and folder labels, the date header and its next-event line, the page dots, and the folder tile's preview fill. These are the one exception, by Sumeet's decision (2026-11-06), to "dark only" and to the No-Glow rule, because the wallpaper is his and may be light:
+The launcher on the phone draws some things straight on Sumeet's wallpaper: app and folder labels, the date header and its next-event line, the page dots, and the folder tile's preview fill. These are the one exception, by Sumeet's decision (2026-11-06), to "dark only", because the wallpaper is his and may be light:
 - **Light ink** (the default): Starlight text and Dust asides with a still text shadow (1dp down, 3dp blur, black at 60%). The shadow is for legibility over a photo, never for emphasis.
 - **Dark ink**, when Android says the wallpaper supports dark text (`WallpaperColors.HINT_SUPPORTS_DARK_TEXT`): Deep Space for text and asides alike, no shadow. The darkest wallpaper with that hint is about `#858585`, where Deep Space reads at about 5.3:1 and a grey aside wouldn't.
 - The hint describes the wallpaper as a whole, so a light patch on a dark wallpaper (or a dark one on a light wallpaper) is not guaranteed to read; the shadow carries light ink there.
@@ -225,10 +225,14 @@ Spacing rhythm: 6 / 8 / 12 / 20 / 22 / 30px. Panels pad 16px top and bottom, 20p
 
 ## Elevation & Depth
 
-Flat. There are no box shadows anywhere. Depth is tonal and by framing: `well` below the page, `bg` as the ground, `panel` as a face held inside a 1px `frame` border, `raised` for hover. The only inset "shadow" is the 1px amber inset edge on a selected row, which is a line, not a shadow.
+Depth is tonal and by framing first: `well` below the page, `bg` as the ground, `panel` as a face held inside a 1px `frame` border, `raised` for hover. On top of that, as Elite's panels do (Sumeet, 2026-11-07, replacing the earlier flat rule, which went further than the look chosen in `docs/design/README.md`):
+- **Blur as a backdrop.** Something that opens over other content (a sheet, a menu, a dialog, the drawer, an open folder, a translucent strip like the star map's legend) may blur what is behind it, so it reads as glass in front rather than a hole cut through. The panel's face stays dark enough that its text keeps 4.5:1 over the lightest unblurred content that can sit behind it; where blur isn't available (an old browser, a phone without cross-window blur, battery saver) the same face over a dim must look right on its own.
+- **Shadows under what floats.** A soft, dark shadow under something lifted above the page (a menu, a dialog, a sheet, an icon being dragged) shows what sits on what. Shadows are black, low and wide, never coloured; things that lie in the page (panels, rows, cards) cast none. Light text's shadow over the phone's wallpaper is for legibility, not depth (see Over the wallpaper).
+- **Glow on the one or two highlighted things.** A soft glow in the colour that already means it (amber for selected and now, cyan for the agent and planned) may mark the selected or focused element, the running timer, or now on the arc. It is a highlight, so it works only while it is rare: one or two on a screen (the selection and now), never on body text, never as decoration, never animated.
+- **Values.** Float shadow `0 8px 24px rgb(0 0 0 / 0.5)` (on the phone, 8dp elevation's ambient shadow in black). Backdrop blur 24px (24dp), behind a `panel` face at 72%, raised to whatever the 4.5:1 above needs. Glow `0 0 12px` in `or` or `cy` at 40%.
 
 ### Named Rules
-**The No-Glow Rule.** Nothing glows, pulses or casts a shadow. Emphasis comes from colour and fill, never from blur.
+**The Quiet-Emphasis Rule.** Emphasis comes from colour and fill first. Glow marks only the one or two selected, focused or current things; nothing pulses, shimmers or flashes to get attention (see Motion).
 
 **The Engraved-Grid Rule.** The faint 60px engraved grid (white at 2.5-3% alpha) sits behind the day arc and the star map only. Not behind panels, pages or lists.
 
@@ -269,7 +273,7 @@ Quiet, rectangular, sentence case. They outline until touched.
 ### Cards / Containers
 - **Corner Style:** 6px chamfers on two opposite corners (top-left, bottom-right); otherwise square.
 - **Background:** `panel` face inside a 1px `frame` shell.
-- **Shadow Strategy:** none (see Elevation & Depth).
+- **Shadow Strategy:** none; panels lie in the page. Floating surfaces take the shadow in Elevation & Depth.
 - **Border:** the 1px bronze frame is the border.
 - **Internal Padding:** 16px vertical, 20px horizontal. A header row holds the condensed section title left and a 13px `mute` aside right (a count, a link, a unit like "hours / target").
 
@@ -325,7 +329,7 @@ The one place LoR is not dark: the TRMNL X on the fridge, e-paper read from acro
 
 ### Don't:
 - **Don't** add a light theme. The paper frame on the wall display is not one; it is a separate drawing. Dark text over a light wallpaper on the phone's home is not one either (see Over the wallpaper).
-- **Don't** use shadows, glows, blur, scanlines or pulsing; the selected star's reticle is the strongest emphasis the world has. The one shadow is light text's over the phone's wallpaper (see Over the wallpaper).
+- **Don't** use scanlines, pulsing, coloured shadows, or glow as decoration or on more than the one or two highlighted things on a screen (see Elevation & Depth); the selected star's reticle is the strongest emphasis the world has.
 - **Don't** put fake HUD numbers, decorative telemetry or invented coordinates on screen; every figure is real data.
 - **Don't** use coral for overdue, behind, or under target; coral means a machine has failed.
 - **Don't** round corners on buttons, inputs, chips or panels; the only round shapes are status dots and map bodies.

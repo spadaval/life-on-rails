@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
  * After Launcher3's `WallpaperColorHints` (Apache-2.0, via Lawnchair) and Kvaesitso's
  * `WallpaperColors.kt` (GPL-3.0, ideas only): the hints are read once and followed by a listener,
  * and a wallpaper Android says supports dark text gets dark text. DESIGN.md, "Over the wallpaper",
- * is Sumeet's written exception (2026-11-06) to "dark only" and No-Glow for this text.
+ * is Sumeet's written exception (2026-11-06) to "dark only" for this text; its shadow is for legibility.
  */
 
 /** Which ink text standing on the wallpaper takes. */
