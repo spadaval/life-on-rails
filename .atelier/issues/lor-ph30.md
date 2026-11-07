@@ -9,7 +9,13 @@ relationships:
   blocks: []
   children:
   - kind: "issue"
+    id: "lor-el51"
+  - kind: "issue"
     id: "lor-j87u"
+  - kind: "issue"
+    id: "lor-ozj2"
+  - kind: "issue"
+    id: "lor-sqfe"
   attachments: []
   relates:
   - kind: "issue"
@@ -20,9 +26,9 @@ relationships:
     type: "advances"
 schema: "atelier.issue"
 schema_version: 2
-status: "backlog"
+status: "todo"
 title: "The inner screen, and folding that keeps your place"
-updated_at: "2026-11-07T22:01:43.653292493+00:00"
+updated_at: "2026-11-07T22:03:19.851132731+00:00"
 ---
 
 ## Goal
@@ -31,7 +37,7 @@ The inner screen is used, and folding keeps your place. Each panel is `full` or 
 
 ## Done when
 
-- [ ] Each child is done, with its proof: lor-ph30.1 (schema and rules), then lor-ph30.2 (the inner screen drawn), lor-ph30.3 (folding keeps your place) and lor-ph30.4 (the drawer within the thumb's reach), in that order on this item's branch.
+- [ ] Each child is done, with its proof: lor-j87u (schema and rules), then lor-el51 (the inner screen drawn), lor-ozj2 (folding keeps your place) and lor-sqfe (the drawer within the thumb's reach), in that order on this item's branch.
 - [ ] End to end on `T3_Fold_API35` with a version 1 `layout.json` with two extra pages, against the test server, in one session: unfolded, home starts on its `wide` start (home and page 2 side by side); a swipe up opens the drawer and `ma` is typed; a fold shows the drawer on the cover screen with `ma` still in the field; an unfold shows it again; a home press, a move to page 3, a tap on it, a fold shows page 3; screen off, unfold, screen on shows the `wide` start. Each step screenshotted, and logcat shows no `HomeActivity` `onCreate` after the first. Recorded as an evidence receipt on this item.
 - [ ] Launcher polish 7.8's home-press measurement on `T3_Phone_API35`, on this branch and on `main` at the commit it branched from, in one emulator session: the median `TotalTime` on this branch is within 10% of the base. Recorded in the same receipt or one beside it.
 
@@ -41,17 +47,39 @@ The inner screen is used, and folding keeps your place. Each panel is `full` or 
 
 ## Context
 
-- Builds on lor-eh0y as merged: `Grid.kt` (`GridMoves`, lor-y7qi's rule), `GridHost.kt` (`GridPlace`, `GridCells`, `gridFinger`) and `HomeScreen.kt`. Today the inner screen shows one cell at full width, and `StackPanel` already has a wide form (the header left, the blocks right) that lor-ph30.1's flow rule generalises.
+- Builds on lor-eh0y as merged: `Grid.kt` (`GridMoves`, lor-y7qi's rule), `GridHost.kt` (`GridPlace`, `GridCells`, `gridFinger`) and `HomeScreen.kt`. Today the inner screen shows one cell at full width, and `StackPanel` already has a wide form (the header left, the blocks right) that lor-j87u's flow rule generalises.
 - The manifest's `HomeActivity` already handles `orientation|screenSize|screenLayout|smallestScreenSize` in place; `uiMode`, `fontScale` and `density` still recreate it, and `HomeUi`, `HomeModel` and `Icons` are per activity.
 - The strategy's Shape governs: the inner screen, folding, the composition window, and motion that is one-shot and follows the finger.
 - Environment: `T3_Phone_API35` and `T3_Fold_API35` (a Pixel 9 Pro Fold; outer 1080x2424, inner 2076x2152) against `scripts/ui-server.sh`. One emulator at a time. Fold and unfold with `adb shell cmd device_state state`, as lor-qdmy's evidence lor-okw0 did. Builds on boat (`android/boat-build.sh`).
-- The real Fold's checks are the `needs-human` validation item filed with this plan, after merge; these emulator checks are its stand-in.
+- The real Fold's checks are the `needs-human` validation item lor-znfb, after merge; these emulator checks are its stand-in.
 
 ## Background
 
 Carried from Launcher polish's old Increment 8 (`docs/missions/launcher-polish/plan.md`, which has the detail), each now a Done when line of a child:
-- a process-scoped icon cache keyed by app, icon style and size (lor-ph30.3);
-- F4: card actions cancelled when the agent page leaves composition (now also by moving away on the grid), run in a process scope (lor-ph30.3);
-- the icon-cache race, a stale icon after a package change (lor-ph30.3);
-- drag sources and zones as snapshots taken in `onGloballyPositioned` (4's review, item a), easier to hit on the Fold (lor-ph30.3);
-- 6.8's critique on the unfolded Fold: the Remove bar covers home's first row (lor-ph30.2); the agent page's Send button floats mid-screen (lor-ph30.2, by the full layout).
+- a process-scoped icon cache keyed by app, icon style and size (lor-ozj2);
+- F4: card actions cancelled when the agent page leaves composition (now also by moving away on the grid), run in a process scope (lor-ozj2);
+- the icon-cache race, a stale icon after a package change (lor-ozj2);
+- drag sources and zones as snapshots taken in `onGloballyPositioned` (4's review, item a), easier to hit on the Fold (lor-ozj2);
+- 6.8's critique on the unfolded Fold: the Remove bar covers home's first row (lor-el51); the agent page's Send button floats mid-screen (lor-el51, by the full layout).
+
+## Notes
+
+- 2026-11-07 [decision] Fold, unfold, dark mode and font size are handled in place: HomeActivity's configChanges adds density|uiMode|fontScale to the list it already has (orientation|screenSize|screenLayout|smallestScreenSize, which a fold changes). Nothing uses rememberSaveable or saved state. The unfold animates nothing of LoR's own: the window resizes and the next frame draws the inner screen, under the system's fold transition. A change still not handled (a locale change) recreates home at its start, with the app list and icons from the process caches.
+  Reason: In place, every Compose state survives as it is: HomeUi (search text, the open folder, edit mode, the grid's place) is an activity field, AgentModel and the list states are remembered, and no load runs again. Recreated, only rememberSaveable and the saved-state bundle survive, so each would need saving, and an activity-scoped HomeModel and Icons reload. Nothing in home reads uiMode (LorTheme is always dark; the wallpaper's ink comes from WallpaperManager), and Compose takes the new font scale and density from onConfigurationChanged. The strategy's Shape already asks for no recreation; a fold isn't a finger's motion, and DESIGN.md's motion is one-shot and follows the finger.
+  Rejected: Recreate with saved state (rememberSaveable for search text, folder, scroll and edit mode): more code, and a fold would still reload per-activity state and lose any state that wasn't saved
+  Rejected: An unfold animation of LoR's own: the system already animates the fold, and DESIGN.md has motion follow the finger
+- 2026-11-07 [decision] The narrow drawer's thumb reach: the drawer stays one scrolling list, with its controls moved to the bottom: the search field lowest, above it the view switch and, in the Sections view, a Jump button that opens a menu of the list's headers. The wide form is the same layout with look.grid.wide's columns and the field at most 560 dp, centred; a drawer picks its form by its own width, so a half drawer is the narrow one.
+  Reason: One list keeps Recent, Frequent and New above the sections, search across everything, A–Z with its rail and Most used as they are; per-category pages would need a horizontal pager inside a grid cell, whose sideways swipes the grid's finger takes when the drawer has a neighbour, and would split A–Z and Most used. A Jump menu reaches any section from the bottom without a horizontally scrolling chip row, which would fight the grid's sideways move too. One layout for both widths is the 'done once' the item asked for.
+  Rejected: Smart Launcher's bottom tabs with one category per page
+  Rejected: A horizontally scrolling row of section chips at the bottom
+- 2026-11-07 [decision] The agent page's full layout until lor-clgw: two columns, Today on the left; the T3 state, Running, Needs you and the notes on the right; each scrolls on its own; the quick-send button at the panel's bottom-end corner. As a half and on the phone it stays today's single column.
+  Reason: It fills the inner screen (today it keeps to 520 dp at the left, and 6.8 found the Send button floating mid-screen) by splitting the existing column, not designing new content, since lor-clgw replaces this form with the thread list beside the chosen thread.
+  Rejected: Keep the 520 dp column, centred or left, with Send at the screen's corner: leaves a third of the inner screen empty, the gap the mission exists to close
+  Rejected: Build part of lor-clgw's thread list now: that item's scope and its unknowns
+- 2026-11-07 [decision] Home rotates only where the smallest width is 600 dp or more (the inner screen), as Launcher3's RotationHelper allows rotation only on a large screen; on the phone and the cover screen it stays portrait. So landscape is checked on the inner screen, and the file's screen class rule (narrow under 600 dp wide) is unchanged.
+  Reason: A phone in landscape is over 600 dp wide, so by the file's rule it would show the wide start and side-by-side halves on a screen about 410 dp tall. Pixel Launcher and One UI Home keep home portrait on a phone by default. Sumeet may overrule: today LoR's home does rotate on the phone with auto-rotate on.
+  Rejected: Class screens by smallest width instead: changes what start.narrow and start.wide mean in version 2, which is Sumeet's call
+  Rejected: Let the phone rotate into the wide layout: a cramped layout nobody asked for
+- 2026-11-07 [decision] Smaller choices: a screen-off goes to the start as a home press from elsewhere does (everything closes, no motion), applied when the screen comes back on so the start is that screen's; the pair splits at the middle with no androidx.window dependency; the process icon cache keeps every size it has drawn, so after one fold and unfold neither screen draws icons again.
+  Reason: Coming back to the phone should be a fresh home, as the strategy's 'starts again' says. The Pixel 9 Pro Fold's and Galaxy Z Fold's inner screens report a fold that doesn't occlude content when flat, so a hinge rule would be code no target runs (AGENTS.md: nothing until its absence is felt); the real-Fold item checks it. If the two screens differ in density, keeping both sizes is what makes later folds free.
+- 2026-11-07 [plan] Planned 2026-11-07: children lor-j87u (schema wide and the rules), lor-el51 (the inner screen drawn), lor-ozj2 (folding keeps your place), lor-sqfe (the drawer's thumb reach and wide form), on this item's branch; decision lor-b1dx (the wide field); real-Fold validation lor-znfb after merge. Set to todo, but a fresh agent reviews this plan before lor-j87u starts, and lor-eh0y must merge first.
