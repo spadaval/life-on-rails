@@ -28,7 +28,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Today's home on the grid"
-updated_at: "2026-11-07T21:13:41.555305821+00:00"
+updated_at: "2026-11-07T21:54:12.390551019+00:00"
 ---
 
 ## Goal
@@ -52,6 +52,7 @@ Today's home runs on the grid. `layout.json` is version 2 with panels; a version
 - 2026-11-07 [decision] lor-euec and lor-eo1g are blockers of this increment rather than children, each on its own branch. The 'before' build for this increment's screenshots and 7.8 measurements is 7f94a83, the commit before either.
   Reason: Atelier puts children on the parent's branch, and the two ready items should run in parallel in their own worktrees; neither changes the screen, so each can merge to main alone.
 - 2026-11-07 The child line is ticked on lor-qdmy's record, whose Done when lines are all ticked; it is fully met when lor-qdmy merges, and lor-euec and lor-eo1g are already done.
+- 2026-11-07 [note] Handoff (evidence slice): screenshot and 7.8 lines hold, evidence lor-3nhh; see ## Report. Open for the review: an open's first frame 51.1 ms before, 60.3 after (+18%). No code changed; not reviewed.
 
 ## Report
 
