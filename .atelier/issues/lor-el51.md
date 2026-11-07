@@ -35,18 +35,19 @@ On `T3_Fold_API35` unfolded, with a version 1 `layout.json` with three extra pag
 - [ ] The page dots on the inner screen show one dot per inner screen of the row, the one on show lit, centred on the screen and clear of the dock. Screenshot of home's pair and of pages 3 and 4.
 - [ ] The agent page's full layout, per the decision note on lor-ph30: two columns, Today on the left; the T3 state, Running, Needs you and the notes on the right; each column scrolls on its own and reports `scrollsInGrid`; the quick-send button sits at the panel's bottom-end corner. As a half, and on `T3_Phone_API35`, it is today's single column. Screenshots of all three.
 - [ ] 6.8's Remove bar: with an app held on home's pair, the Remove bar overlaps no tile of home's first row, and a drop on a row-1 icon makes a folder (the file read after the drop shows it). Screenshot while held.
-- [ ] Home turns to landscape only where the smallest width is 600 dp or more, as Launcher3's `RotationHelper` allows rotation only on a large screen: on `T3_Phone_API35` and the folded Fold, home stays portrait with auto-rotate on; on the unfolded Fold in landscape, each inner screen of the grid above is screenshotted with nothing clipped or overlapping.
+- [ ] Halves pair only where the smallest width is 600 dp or more (decision note on lor-ph30). On `T3_Phone_API35` and the folded Fold with auto-rotate on, home still rotates to landscape and draws one cell, as lor-eh0y does, with lor-qdmy's across and up-and-down moves working; on the unfolded Fold in landscape, each inner screen of the grid above is paired as in portrait and screenshotted with nothing clipped or overlapping. Screenshots of all three.
 - [ ] At font scale 2.0 (`settings put system font_scale 2.0`), on `T3_Phone_API35` and the unfolded Fold: home, home's pair, the agent page, an open folder and the drawer are screenshotted with no text cut mid-line or drawn over another element; a label too long ends in an ellipsis.
 - [ ] On `T3_Phone_API35` and the folded Fold, lor-qdmy's across, up-and-down and every-page checks still pass with one cell on screen.
 - [ ] `assembleDebug testDebugUnitTest` passes on boat.
 
 ## Scope
 
-`GridHost.kt`, `HomeScreen.kt` (`StackPanel`, `RowDots`, the Remove bar), `AgentPage.kt`, `HomeActivity.kt` for the rotation rule. Not folding or screen-off (lor-ozj2), not the drawer's own layout (lor-sqfe): here the drawer is drawn as it is, at whatever width its screen gives it.
+`GridHost.kt`, `HomeScreen.kt` (`StackPanel`, `RowDots`, the Remove bar), `AgentPage.kt`. Not folding or screen-off (lor-ozj2), not the drawer's own layout (lor-sqfe): here the drawer is drawn as it is, at whatever width its screen gives it.
 
 ## Context
 
 - lor-j87u's rules decide what each inner screen holds, where moves go and how a stack flows; this item only draws them. The narrow screen keeps lor-qdmy's one cell.
+- Each panel stays composed under `key(panel.at)`, in the same place in the tree, on both screen classes: an inner screen is a placement of its cells, not a composable of its own keyed by pair. So a fold moves a panel rather than recreating it, and the drawer's list scroll and the agent page's scroll survive (lor-ozj2 checks them).
 - `GridCells` places each cell full screen today; on the inner screen a pair's cells are placed at half width side by side, and a move slides the whole inner screen.
 - The Pixel 9 Pro Fold's and the Galaxy Z Fold's inner screens report a fold that doesn't occlude content when flat, so the pair splits at the middle with no hinge gap and no `androidx.window` dependency. The real-Fold validation item checks this on One UI.
 - 6.8's critique (`docs/missions/launcher-polish/plan.md`, 6.8): the Remove bar covered home's first row on the unfolded Fold, and the agent page's Send button floated mid-screen at its 520 dp column's edge.
