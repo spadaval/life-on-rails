@@ -157,3 +157,6 @@ workflows:
         to: superseded
         required_fields: [close_reason]
         description: Retire a question that no longer needs deciding.
+merge_checks:
+  - shell.check:
+      command: "git diff --check HEAD^ HEAD -- . ':!.atelier'"
