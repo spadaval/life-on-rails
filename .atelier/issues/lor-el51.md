@@ -17,7 +17,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The inner screen drawn: full panels, side-by-side halves"
-updated_at: "2026-11-07T22:49:49.288704432+00:00"
+updated_at: "2026-11-07T23:17:19.734763077+00:00"
 ---
 
 ## Goal
@@ -55,3 +55,14 @@ On `T3_Fold_API35` unfolded, with a version 1 `layout.json` with three extra pag
 ## Notes
 
 - 2026-11-07 [note] From lor-j87u's review (finding lor-70hj): InnerScreens.next finds the shown screen with row.indexOf, which is -1 after an edit re-pairs the row (adding page 2 turns home alone into a pair), so a move right lands on the row's first screen. lor-el51 rebuilds the place after every edit with InnerScreens.place(screens, GridMoves.stay(...)), and makes next return null when the screen isn't found, with a test.
+- 2026-11-07 [decision] GridPlace keeps one place for both screen classes: cell plus an inner-screen focus, with the screen on show derived as the inner screen holding cell. A move carries its landing focus (GridMove.focus). pair(on) applies lor-j87u's unfold (focus = cell) and fold (cell is already the focus cell), dropping a move under way; touch tracking is left to lor-ozj2.
+  Reason: Deriving the screen from the cell means no stored screen can go stale after an edit, the bug lor-70hj found, and the narrow screen's code path is the same one with every cell its own screen. The pair transition has to leave a consistent place, so it applies the rules lor-j87u already tested rather than inventing an interim one.
+  Rejected: Store an InnerPlace beside cell: two copies of where home is, which an edit or a fold can split
+- 2026-11-07 [decision] Home's place is rebuilt with InnerScreens.place only when an edit changes the inner screens (which panels pair), not on every change to the panel list.
+  Reason: Panel equality includes each stack's items, so every drag step and item edit changes the list; rebuilding then would clear a touched half's focus and cut a move short for no reason. lor-70hj's case, an edit that re-pairs the row, always changes the screens.
+  Rejected: Rebuild after every panel change, as the note's wording reads
+- 2026-11-07 [decision] 6.8's Remove bar: a stack's first row starts at least BarClear (the bar's 56 dp plus its 12 dp margins) below the top wherever the header doesn't already push it lower: the wide form's columns with no clock, and the narrow form with the header set to none.
+  Reason: The narrow halves already start below the bar (the date header or the 104 dp spacer); 6.8's overlap was the wide form's 24 dp top. The one phone change is with look.header none, which had the same overlap.
+  Rejected: Move or shrink the Remove bar while held: changes the drop target everywhere for a problem in one layout
+- 2026-11-07 [decision] The agent page holds its scroll states above its two forms, so a fold, which changes the form, gives the single column the left column's scroll. The drawer's padding uses the per-half insets too (one line in DrawerScreen.kt); its layout stays lor-sqfe's.
+  Reason: lor-ozj2 checks the agent page's scroll across a fold; a state remembered inside each form would be lost when the form changes. The insets line is the grid's job, not the drawer's layout.
