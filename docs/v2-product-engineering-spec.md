@@ -8,7 +8,7 @@
 | **Runs on** | `buildbot` (Ubuntu 26.04, headless, Tailscale `buildbot.tail47515a.ts.net`) |
 | **State** | Running on `buildbot`. On 2026-10-31 the pieces were joined into one persistent agent: a WhatsApp channel, a morning brief, time labelled by inference, and a work queue. See "State of the build". |
 
-This is a personal project on one box with one user. There is no PR plan, review gate, or staged rollout: work goes to `main` when it works. The earlier, much longer spec (history, superseded decisions, the 2023 post-mortem) is not carried here; the v1 text is in git at `e050ace`.
+This is a personal project on one box with one user. There is no staged rollout. Work is tracked in Atelier, and a non-trivial change reaches `main` after review by a fresh agent (`AGENTS.md`, "How work lands"); Sumeet reviews after merge. The earlier, much longer spec (history, superseded decisions, the 2023 post-mortem) is not carried here; the v1 text is in git at `e050ace`.
 
 ---
 

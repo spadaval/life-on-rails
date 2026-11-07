@@ -3,6 +3,9 @@ created_at: "2026-11-07T00:09:10.561117971+00:00"
 id: "lor-hrz4"
 issue_type: "task"
 labels: []
+workflow_branch:
+  branch_base: main
+  work_branch: task/lor-hrz4
 priority: "P2"
 relationships:
   blocks: []
@@ -11,9 +14,9 @@ relationships:
   relates: []
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "LoR works through Atelier: agent docs"
-updated_at: "2026-11-07T00:09:10.561117971+00:00"
+updated_at: "2026-11-07T00:09:14.719304568+00:00"
 ---
 
 ## Goal
