@@ -1157,9 +1157,11 @@ private fun FolderName(folder: ResolvedFolder, home: HomeContext, add: () -> Uni
     val latest by rememberUpdatedState(text.text)
     val at by rememberUpdatedState(folder.at)
     // The name written from this field while the folder still has [name], so a Done and the close
-    // after it write once. Keyed by the name: once the write lands (or an Undo puts the name back),
-    // the same text may be written again (review R1, lor-0368).
-    val wrote = remember(name) { arrayOfNulls<String>(1) }
+    // after it write once. Cleared whenever the name changes (the write landed, or an Undo put it
+    // back), so the same text may be written again (review R1, lor-0368). One array for the field's
+    // life, not one per name: the close's write runs the first composition's commit().
+    val wrote = remember { arrayOfNulls<String>(1) }
+    LaunchedEffect(name) { wrote[0] = null }
     fun commit() {
         val now = at.item as Folder
         val t = latest.trim()
