@@ -4,7 +4,7 @@ Single-user self-hosted personal OS. What LoR is, what it is not, and how it sit
 
 ## Rules
 
-- Personal project, one box, no users: no PR plan, review gate, or staged rollout. Work goes to `main` when it works.
+- Personal project, one box, no users: no staged rollout. Work is tracked in Atelier (`.atelier/`), worked the Agent Factory way (see "How work lands").
 - Prefer the simplest shape: no fallbacks, watchdogs, retention, or permission layers until their absence is felt.
 - Add a table when the code that uses it is written.
 - Never import from `archive/2023/` (frozen 2023 draft).
@@ -19,6 +19,16 @@ Single-user self-hosted personal OS. What LoR is, what it is not, and how it sit
 - Config is the env file only (`~/.config/life-on-rails/env`); every comment in it on its own line.
 - Binds `127.0.0.1:3847`. The `:3848` listener is the only thing `tailscale serve` targets, and it checks the owner's identity header. The one listener on the home network is the TRMNL X's (`LOR_TRMNL_BIND:3849`, off when unset): the firmware's `/api/setup|display|log` and its images, every call keyed; and the firmware build in `LOR_TRMNL_FIRMWARE` by its exact name, unkeyed because the updater sends no headers. Nothing else.
 - Credentials live in mode-0600 files under `~/.config/life-on-rails/`: the env file for keys set by hand, a file of their own for tokens LoR obtains at runtime (like `google-token.json`), which LoR writes when it gets them. Never in tables or logs. Titles and subjects may be logged.
+
+## How work lands
+
+Since 2026-11-06 LoR uses Atelier, with records under `.atelier/`. `atelier status` starts a session and `atelier land` ends one; the Claude Code hooks run both.
+
+- **A non-trivial change goes on a work branch** (`atelier start <id>`, one worktree per agent working in parallel). A fresh agent that didn't write it reviews it before `atelier merge` puts it on `main`. A fix made after review is reviewed again, but only the fix's diff. Sumeet reviews after merge.
+- **Straight to `main`:** planning records and mission strategies (`docs/missions/<slug>/strategy.md`, linked from the mission), and trivial changes, recorded with `atelier review trivial --base <commit>`. A non-trivial planning change is still reviewed by a fresh agent before the work it defines starts, and a mission moves to ready only after Sumeet approves it (`atelier review approve <mission>`).
+- **Evidence:** record a receipt only for a check nothing else records, such as an emulator or device check, screenshots, a measurement or a failure. Don't record `pnpm test` or a boat build passing; name the test that proves the claim in the handoff note. (This follows Atelier's lighter-workflow mission, atelier-n4mj, ahead of its release.)
+- **A check that only the real phone or Fold can answer** comes after merge, with its reason, and its emulator stand-in runs before merge.
+- The launcher missions before Atelier (`docs/missions/t3-launcher`, `launcher-polish`) keep their `plan.md` as their record. The Panels mission is `lor-uj0r`.
 
 ## Commands
 

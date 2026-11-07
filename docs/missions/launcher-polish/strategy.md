@@ -1,6 +1,6 @@
 ---
 status: draft
-last_changed: "2026-11-05: created from Sumeet's direction (the T3 Launcher concept is proven; make it a nice launcher)"
+last_changed: "2026-11-06: the Fold and widgets moved to the Atelier mission lor-uj0r, Home as a grid of panels (Sumeet's direction); 2026-11-05: created from Sumeet's direction (the T3 Launcher concept is proven; make it a nice launcher)"
 ---
 
 # Why
@@ -18,14 +18,13 @@ LoR's home is a launcher Sumeet calls nice to live in:
 - **Search finds more than app names.** It finds typos and initials, apps' shortcuts and conversations, contacts, settings pages, and quick answers, and hands off to the web or quick send when nothing matches.
 - **No screen is blank or raw.** Loading, broken layout, empty home, unpaired T3, unreachable LoR, nothing needing him, no search results and first run each have a designed state.
 - **It looks and feels finished.** Wallpaper-aware contrast, icon packs and themed icons, grid and label settings, the "Elite: Mostly Harmless" look from `DESIGN.md`, notification dots, haptics, a drawer that follows the finger, and launch animations from the icon.
-- **It uses the Fold.** The inner screen gets a layout made for its width, each screen has its own grid, and fold, unfold, theme or font changes keep state without reloading.
-- **Home hosts widgets,** both third-party Android widgets and native LoR ones (the day arc, the one thing, the timer).
+- **The Fold and widgets** moved on 2026-11-06 to the mission lor-uj0r, Home as a grid of panels ([its strategy](../launcher-panels/strategy.md)), which replaces Increments 8 and 9 here.
 
 Worth shipping on its own: the long-press menu, hidden apps and the organised drawer, before any of the rest.
 
 # Success Criteria
 
-- `no-adb`: every field of `layout.json` that says what home holds or how it looks can be changed on the phone, without adb or an agent: home and its pages, the dock, folders (name, apps, order, cover app), hidden apps, drawer sections, look settings and widgets. Left out: `version`; `active`, `layouts` and `expires`, which T3 Launcher Increment 10 gives a phone UI; a folder's or section's `reason`, which agents write; and `pinned`, which hand edits set and nothing edits directly. Shown at close on the emulator, one change per field, reading the file after each.
+- `no-adb`: every field of `layout.json` that says what home holds or how it looks can be changed on the phone, without adb or an agent: home and its pages, the dock, folders (name, apps, order, cover app), hidden apps, drawer sections and look settings (widgets and panels are lor-uj0r's). Left out: `version`; `active`, `layouts` and `expires`, which T3 Launcher Increment 10 gives a phone UI; a folder's or section's `reason`, which agents write; and `pinned`, which hand edits set and nothing edits directly. Shown at close on the emulator, one change per field, reading the file after each.
 - `nice`: Sumeet says it's nice to live in, or names what isn't. A named human judgment, asked for at close on the build he is running then; how long he has run it is his to say, and the mission does not wait for a trial.
 
 # Shape

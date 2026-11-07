@@ -1608,7 +1608,7 @@ Agreed with Sumeet, 2026-11-05:
 - A second fresh agent reviewed 3ee48a4: pass, with two points, both taken by the orchestrator: a new open (a drawer caught, a folder tapped mid-close) now eases what is left of a back gesture's scale to full size over `Motion.quick()` instead of jumping it in one frame (`HomeUi.backResets`); and `COMMIT`'s KDoc and 7.1's text now describe the commit point as 30% of the travel left. Checked: boat build, 207 tests; on `T3_Phone_API35` a drawer closed by back, caught at 0.013 and reopened (`LorMotion`: let go at 0.47 … open), no crash; the easing wasn't recorded frame by frame. (So R2 above now eases rather than jumps.)
 - A third fresh agent reviewed db1e65a: pass. Deferred: the reset's ease isn't cancelled when a new back gesture starts within its 150 ms, so the two writers can alternate briefly; keep one job for "back easing to 0", shared with the cancel path, and cancel it when a back gesture starts, when this code is next touched (the panels work will be). Increment 7 is done.
 
-### Increment 8: The Fold, and holding state. Status: backlog
+### Increment 8: The Fold, and holding state. Status: superseded (2026-11-06: by the Atelier mission lor-uj0r, Home as a grid of panels; its Increment lor-ph30 takes the Fold items below, and lor-kxxz the rest)
 
 **Goal.** The inner screen gets a layout made for its width: the agent page and home side by side, page dots that line up with the content, the hinge and cutout insets handled. The cover and inner screens can have their own grids. Landscape and large fonts don't overflow. A fold, unfold, theme or font change keeps everything without reloading the app list or icons.
 
@@ -1632,7 +1632,7 @@ Carried from T3 Launcher's reviews:
 
 **Provisional Done when.** On `T3_Fold_API35`, a fold, an unfold, a dark-mode switch and a font-scale change each recreate home with its open drawer and scroll kept and with no app-list or icon reload (a debug log line per load, counted before and after), each carried item has a fix and a test or emulator check, and the inner-screen layout is screenshotted. **[real Fold]** The same on the device.
 
-### Increment 9: Widgets. Status: backlog
+### Increment 9: Widgets. Status: superseded (2026-11-06: by lor-uj0r's Increment lor-sbth)
 
 **Goal.** Home hosts third-party Android widgets (`AppWidgetHost`, bind and configure flows, resize), placed in the layout file. Native LoR widgets: the day arc, the one thing, the running timer with pause, the next event, drawn from `/device/home`.
 
