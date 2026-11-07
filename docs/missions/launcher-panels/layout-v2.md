@@ -63,9 +63,10 @@ A panel is `{ "at": [column, row], "type": … }`.
 - `at`: two whole numbers from 0. The grid is sparse: a cell holds at most one panel, and cells without one are empty. Moving between cells, the inner screen's pairing and the vertical wrap are behaviour, not fields (the strategy's Shape and decision lor-y7qi).
 - `type` is one of:
   - `stack`: a column of blocks, `"blocks": [block, …]`, at least one, each block type at most once in a stack.
-  - `t3`: the agent page. No other field.
-  - `drawer`: the app drawer as a panel. No other field.
-- Fields for full and half panels on the inner screen, and new panel types (`lor`), are added by the issues that use them.
+  - `t3`: the agent page. No other field but `wide`.
+  - `drawer`: the app drawer as a panel. No other field but `wide`.
+- `wide` (optional, any type; a version 2 addition, lor-j87u, decision lor-b1dx): how the panel sits on the inner screen, `"full"` or `"half"`. Any other value, or a value that isn't a string, is an error naming its place (`layouts[0].panels[2].wide: "Full" is not "full" or "half"`). Absent, it is the type's default: `stack` half, `t3` full, `drawer` half (and `lor` full, when lor-clgw adds that type). A row's inner screens are built left to right by column: a `full` panel is one inner screen; a `half` shares one with the next panel in the row, past any gap, when that panel is also a `half` not already paired; otherwise it is alone and drawn in its full layout. So no grid is invalid. The rule is `InnerScreens` in `Inner.kt`, which home draws from lor-el51 on. A converted version 1 file has no `wide`, so its inner screens are the agent page; home and page 2; pages 3 and 4; and so on, with the drawer alone on row 1.
+- New panel types (`lor`) are added by the issues that use them.
 - A row holds at most 5 stacks with an `apps` block (home and 4 more, as version 1's pages), until the editor (lor-f3vn) sets its own limit.
 
 ### Blocks
@@ -90,7 +91,7 @@ Launcher polish's rules carry over, with "home" meaning every `apps` block of th
 - Add to home appends to the first stack with room in the start row, by column; when all are full, it makes a new stack.
 - A drop past the last page makes a new stack of `apps` and `dock` after the last panel in the start row (Launcher polish 4.5).
 - An extra page an edit empties goes: a stack of only `apps` and `dock` whose `apps` block is empty is removed, unless it is at a `start` cell. Home's stack stays, even empty. The parser accepts an empty one.
-- The phone writes only fields that differ from their defaults (`wide` only when set, `look` and `drawer` only when not default), and writes `start`, `dock` and `panels` in every layout.
+- The phone writes only fields that differ from their defaults (`start.wide` only when set, a panel's `wide` only when it differs from its type's default, `look` and `drawer` only when not default), and writes `start`, `dock` and `panels` in every layout. So a `wide` the file states that equals the type's default is dropped at the next write; any other is kept.
 
 Home draws the grid (lor-qdmy): one cell on screen, the narrow `start` after a home press. A swipe moves to the nearest cell that way in the row (the ends stop), or up and down by decision lor-y7qi's rule (the next row that way with a panel, wrapping; back to the cell a move came from, else the same column or the nearest, the left one on a tie). Each stack draws its blocks top to bottom: `clock` as home's header, `apps` taking the space between, `dock`; a stack without a `clock` starts where home's grid would.
 
@@ -103,6 +104,6 @@ A version 1 file is parsed with version 1's rules (its errors name version 1's p
 - each of version 1's `pages` at `[2, 0]`, `[3, 0]` and on: a stack of `apps` (the page's `items`) and `dock`;
 - one `drawer` panel at `[1, 1]`, in home's column on row 1 (decision lor-y7qi: every page reaches it by the grid's movement rule);
 - `start` is `{ "narrow": [1, 0] }`;
-- `name`, `expires` and `dock` as they were, and the top-level fields unchanged.
+- `name`, `expires` and `dock` as they were, and the top-level fields unchanged; no panel gets a `wide`.
 
 Reading converts in memory only: the file stays version 1 until the phone next writes it, and then it is version 2. `layout.good.json` and the broken-file restore take a version 1 file the same way, and Undo of the first version 2 write puts the version 1 text back, byte for byte. The first run's default layout is this grid, with home's apps and no extra pages.

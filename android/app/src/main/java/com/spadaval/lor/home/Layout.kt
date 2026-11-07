@@ -30,8 +30,8 @@ import java.time.format.DateTimeParseException
  *       "start": { "narrow": [1, 0], "wide": [1, 0] },     // wide optional, defaults to narrow
  *       "dock": ["com.google.android.dialer"],             // the one dock every `dock` block draws
  *       "panels": [
- *         { "at": [0, 0], "type": "t3" },
- *         { "at": [1, 0], "type": "stack", "blocks": [
+ *         { "at": [0, 0], "type": "t3" },                 // "wide": "full" or "half"; absent, the type's
+ *         { "at": [1, 0], "type": "stack", "blocks": [     // default (stack half, t3 full, drawer half)
  *             { "type": "clock" },
  *             { "type": "apps", "items": ["com.whatsapp", { "folder": "Dev", "apps": ["com.github.android"] }] },
  *             { "type": "dock" }] },
@@ -255,20 +255,26 @@ data class LayoutFile(
             if (v !is JSONObject) throw LayoutError("$at: must be an object")
             val type = v.string(at, "type")
             val cell = parseCell("$at.at", v.opt("at"))
+            val wide = if (v.has("wide")) parseWide("$at.wide", v.opt("wide")) else null
             return when (type) {
                 "stack" -> {
-                    v.onlyKeys(at, "at", "type", "blocks")
+                    v.onlyKeys(at, "at", "type", "wide", "blocks")
                     val blocks = v.array(at, "blocks").mapIndexed { i, b -> parseBlock("$at.blocks[$i]", b) }
                     if (blocks.isEmpty()) throw LayoutError("$at.blocks: a stack needs at least one block")
                     blocks.forEachIndexed { i, b ->
                         if (blocks.indexOfFirst { it.type == b.type } != i) throw LayoutError("$at.blocks[$i]: a stack holds one \"${b.type}\" block")
                     }
-                    Panel.Stack(cell, blocks)
+                    Panel.Stack(cell, blocks).let { it.copy(wide = wide ?: it.wide) }
                 }
-                "t3" -> { v.onlyKeys(at, "at", "type"); Panel.T3(cell) }
-                "drawer" -> { v.onlyKeys(at, "at", "type"); Panel.Drawer(cell) }
+                "t3" -> { v.onlyKeys(at, "at", "type", "wide"); Panel.T3(cell).let { it.copy(wide = wide ?: it.wide) } }
+                "drawer" -> { v.onlyKeys(at, "at", "type", "wide"); Panel.Drawer(cell).let { it.copy(wide = wide ?: it.wide) } }
                 else -> throw LayoutError("$at.type: must be one of ${Panel.TYPES.joinToString()}, got \"$type\"")
             }
+        }
+
+        private fun parseWide(at: String, v: Any?): Wide {
+            val s = v as? String ?: throw LayoutError("$at: must be \"full\" or \"half\"")
+            return Wide.entries.firstOrNull { it.id == s } ?: throw LayoutError("$at: \"$s\" is not \"full\" or \"half\"")
         }
 
         private fun parseBlock(at: String, v: Any): StackBlock {
@@ -445,26 +451,43 @@ data class Start(val narrow: Cell, val wide: Cell? = null) {
 /** An `apps` block: the stack panel at [cell], its block number [block]. */
 data class BlockAt(val cell: Cell, val block: Int)
 
-/** A panel of the grid, at its cell. */
+/**
+ * How a panel sits on the inner screen (decision lor-b1dx): [FULL] is one inner screen; two
+ * [HALF] panels of a row share one ([InnerScreens]).
+ */
+enum class Wide(val id: String) { FULL("full"), HALF("half") }
+
+/**
+ * A panel of the grid, at its cell. [wide] is the file's, or the type's default when the file has
+ * none ([defaultWide]); the phone writes it only when it differs.
+ */
 sealed interface Panel {
     val at: Cell
+    val wide: Wide
     fun toJson(): JSONObject
 
     /** A column of [blocks]. */
-    data class Stack(override val at: Cell, val blocks: List<StackBlock>) : Panel {
-        override fun toJson(): JSONObject = JSONObject().put("at", at.toJson()).put("type", "stack")
-            .put("blocks", JSONArray(blocks.map { it.toJson() }))
+    data class Stack(override val at: Cell, val blocks: List<StackBlock>, override val wide: Wide = Wide.HALF) : Panel {
+        override fun toJson(): JSONObject = head("stack").put("blocks", JSONArray(blocks.map { it.toJson() }))
     }
 
     /** The agent page. */
-    data class T3(override val at: Cell) : Panel {
-        override fun toJson(): JSONObject = JSONObject().put("at", at.toJson()).put("type", "t3")
+    data class T3(override val at: Cell, override val wide: Wide = Wide.FULL) : Panel {
+        override fun toJson(): JSONObject = head("t3")
     }
 
     /** The app drawer as a panel; not the top-level `drawer` settings, which it draws with. */
-    data class Drawer(override val at: Cell) : Panel {
-        override fun toJson(): JSONObject = JSONObject().put("at", at.toJson()).put("type", "drawer")
+    data class Drawer(override val at: Cell, override val wide: Wide = Wide.HALF) : Panel {
+        override fun toJson(): JSONObject = head("drawer")
     }
+
+    /** The type's `wide` when the file says none. */
+    val defaultWide: Wide
+        get() = when (this) {
+            is Stack -> Wide.HALF
+            is T3 -> Wide.FULL
+            is Drawer -> Wide.HALF
+        }
 
     /** Whether this is a stack with an `apps` block. */
     val hasApps: Boolean get() = this is Stack && blocks.any { it is StackBlock.Apps }
@@ -473,6 +496,10 @@ sealed interface Panel {
         val TYPES = listOf("stack", "t3", "drawer")
     }
 }
+
+/** A panel's `at`, `type`, and `wide` when it isn't the type's default. */
+private fun Panel.head(type: String): JSONObject = JSONObject().put("at", at.toJson()).put("type", type)
+    .apply { if (wide != defaultWide) put("wide", wide.id) }
 
 /** A block of a stack panel. */
 sealed interface StackBlock {

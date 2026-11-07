@@ -4,6 +4,9 @@ id: "lor-ph30"
 issue_type: "feature"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: lor-ph30
 priority: "P2"
 relationships:
   blocks: []
@@ -28,7 +31,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "The inner screen, and folding that keeps your place"
-updated_at: "2026-11-07T22:03:19.851132731+00:00"
+updated_at: "2026-11-07T22:30:57.419290335+00:00"
 ---
 
 ## Goal

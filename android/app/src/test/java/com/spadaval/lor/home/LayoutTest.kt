@@ -139,6 +139,45 @@ class LayoutTest {
     }
 
     @Test
+    fun wideOnEveryPanelType() {
+        val types = mapOf(
+            "stack" to """, "blocks": [{"type": "apps"}]""",
+            "t3" to "",
+            "drawer" to "",
+        )
+        val defaults = mapOf("stack" to Wide.HALF, "t3" to Wide.FULL, "drawer" to Wide.HALF)
+        for ((type, rest) in types) {
+            fun panel(wide: String?) = panels("""$t3, {"at": [1, 0], "type": "$type"${if (wide == null) "" else ", \"wide\": $wide"}$rest}""")
+            fun wideOf(wide: String?) = LayoutFile.parse(panel(wide)).current.panelAt(Cell(1, 0))!!.wide
+            assertEquals(type, Wide.FULL, wideOf("\"full\""))
+            assertEquals(type, Wide.HALF, wideOf("\"half\""))
+            assertEquals("$type's default", defaults[type], wideOf(null))
+            assertEquals(type, "layouts[0].panels[1].wide: \"Full\" is not \"full\" or \"half\"", error(panel("\"Full\"")))
+            assertEquals(type, "layouts[0].panels[1].wide: \"\" is not \"full\" or \"half\"", error(panel("\"\"")))
+            for (bad in listOf("1", "true", "null", "[\"full\"]")) {
+                assertEquals("$type $bad", "layouts[0].panels[1].wide: must be \"full\" or \"half\"", error(panel(bad)))
+            }
+        }
+    }
+
+    @Test
+    fun wideIsWrittenOnlyWhenItDiffersFromTheTypesDefault() {
+        val file = LayoutFile.parse(
+            panels(
+                """{"at": [0, 0], "type": "t3", "wide": "half"}, {"at": [1, 0], "type": "stack", "wide": "full", "blocks": [{"type": "apps"}]},
+                {"at": [2, 0], "type": "stack", "wide": "half", "blocks": [{"type": "apps"}]}, {"at": [3, 0], "type": "t3", "wide": "full"},
+                {"at": [0, 1], "type": "drawer", "wide": "half"}""",
+            ),
+        )
+        val json = file.toJson()
+        assertEquals("only the two that differ", 2, Regex("\"wide\"").findAll(json).count())
+        assertTrue(json.contains("\"wide\": \"half\"") && json.contains("\"wide\": \"full\""))
+        assertEquals(file, LayoutFile.parse(json))
+        assertEquals(Wide.HALF, file.current.panelAt(Cell(0, 0))!!.wide)
+        assertEquals(Wide.FULL, file.current.panelAt(Cell(1, 0))!!.wide)
+    }
+
+    @Test
     fun rejectsWhatIsWrongInTheGridAndSaysWhere() {
         // panels
         assertEquals("layouts[0].panels: must be a list", error(one("""{"name": "a", "start": {"narrow": [0, 0]}}""")))
@@ -146,8 +185,8 @@ class LayoutTest {
         assertEquals("layouts[0].panels[0]: must be an object", error(panels("3")))
         assertEquals("layouts[0].panels[0].type: must be a string", error(panels("""{"at": [0, 0]}""")))
         assertEquals("layouts[0].panels[0].type: must be one of stack, t3, drawer, got \"widget\"", error(panels("""{"at": [0, 0], "type": "widget"}""")))
-        assertEquals("layouts[0].panels[0]: unknown field \"size\" (allowed: at, type)", error(panels("""{"at": [0, 0], "type": "t3", "size": "full"}""")))
-        assertEquals("layouts[0].panels[0]: unknown field \"blocks\" (allowed: at, type)", error(panels("""{"at": [0, 0], "type": "drawer", "blocks": []}""")))
+        assertEquals("layouts[0].panels[0]: unknown field \"size\" (allowed: at, type, wide)", error(panels("""{"at": [0, 0], "type": "t3", "size": "full"}""")))
+        assertEquals("layouts[0].panels[0]: unknown field \"blocks\" (allowed: at, type, wide)", error(panels("""{"at": [0, 0], "type": "drawer", "blocks": []}""")))
         // at
         for (bad in listOf("[0]", "[0, 0, 0]", "[-1, 0]", "[0.5, 0]", "[\"0\", 0]", "\"0,0\"", """{"column": 0}""")) {
             assertEquals(bad, "layouts[0].panels[0].at: must be [column, row], two whole numbers from 0", error(panels("""{"at": $bad, "type": "t3"}""")))
@@ -157,7 +196,7 @@ class LayoutTest {
         // blocks
         assertEquals("layouts[0].panels[0].blocks: must be a list", error(panels("""{"at": [0, 0], "type": "stack"}""")))
         assertEquals("layouts[0].panels[0].blocks: a stack needs at least one block", error(stack("[]")))
-        assertEquals("layouts[0].panels[0]: unknown field \"items\" (allowed: at, type, blocks)",
+        assertEquals("layouts[0].panels[0]: unknown field \"items\" (allowed: at, type, wide, blocks)",
             error(panels("""{"at": [0, 0], "type": "stack", "blocks": [{"type": "dock"}], "items": []}""")))
         assertEquals("layouts[0].panels[0].blocks[1]: must be an object", error(stack("""[{"type": "clock"}, "apps"]""")))
         assertEquals("layouts[0].panels[0].blocks[1].type: must be a string", error(stack("""[{"type": "clock"}, {"items": []}]""")))
