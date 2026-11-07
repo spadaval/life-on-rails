@@ -60,6 +60,7 @@ The screenshot and 7.8 lines hold, recorded as evidence lor-3nhh. On `T3_Phone_A
 
 - **Screenshots.** Home, the agent page, page 2 and the open drawer are pixel-identical below the status bar on both builds; only the clock differs. The dots are the same four on both (one row, so dots per row and per page coincide), and the drawer shows no dots on either, so neither intended change is visible on this layout. Files in `/tmp/claude-1000/eh0y-compare/{before,after}/`.
 - **Home-press latency** (`am start -W` HOME with Settings in front, ten runs after a warm-up, twice): median `TotalTime` before 68.5 and 62.0 ms, after 49.5 and 52.5 ms. Within 10%; the after build was faster both rounds, but the run-to-run spread is wider than the gap.
+- **Home-press latency on the approved code** (evidence lor-r5y3): re-measured with the same method on 4cbf748 (the review fixes and per-cell layers) against 7f94a83, two rounds in rotated order in one session: medians before 67.5 and 58.5 ms, after 64.0 and 61.0 ms (-5.2%, +4.3%). Within 10% both rounds.
 - **Drawer frames** (`gfxinfo` over ten opens and closes by `input swipe`): 90th percentile before 42 ms, after 44 ms (+4.8%), within 10%. Janky share 15.2% before, 10.1% after.
 
 ### Open items
