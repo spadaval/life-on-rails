@@ -224,7 +224,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
     val keyboard = LocalSoftwareKeyboardController.current
     // Opened ready to type, when the file asks (launcher polish 5.5), once the drawer has settled
     // open (7.1), so a swipe that goes back down leaves no keyboard.
-    val settledOpen by remember { derivedStateOf { ui.drawer && !ui.drawerHeld && ui.drawerShown >= 1f } }
+    val settledOpen by remember { derivedStateOf { ui.drawer && !ui.drawerFollow.held && ui.drawerFollow.position >= 1f } }
     LaunchedEffect(settledOpen) {
         if (settledOpen && home.file?.drawer?.keyboard == true) {
             focus.requestFocus()
@@ -232,8 +232,8 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
         }
     }
     // A finger taking the drawer puts the keyboard away, as a drag on the list does.
-    LaunchedEffect(ui.drawerHeld) {
-        if (ui.drawerHeld && focused) {
+    LaunchedEffect(ui.drawerFollow.held) {
+        if (ui.drawerFollow.held && focused) {
             keyboard?.hide()
             focusManager.clearFocus()
         }

@@ -2,14 +2,15 @@ package com.spadaval.lor.home
 
 /*
  * The launcher's motion rules that need no Compose (launcher polish 7.1), so the JVM tests reach
- * them. The drawer follows the finger: one position from 0 (closed) to 1 (open) that a finger sets
- * and a spring finishes, after Launcher3 / Lawnchair's `AllAppsTransitionController` (Apache-2.0)
- * and Kvaesitso's `LauncherScaffold` (GPL-3.0; ideas only: the tick at the commit point).
+ * them. A [Follow] (the drawer; the grid's axes next) is one position from 0 to 1 that a finger
+ * sets and a spring finishes, after Launcher3 / Lawnchair's `AllAppsTransitionController`
+ * (Apache-2.0) and Kvaesitso's `LauncherScaffold` (GPL-3.0; ideas only: the tick at the commit point).
+ * "Open" below is at 1, as the drawer is.
  */
-object DrawerMotion {
+object FollowMotion {
     /**
      * The share of the travel left, from where a gesture started toward the other end, past which
-     * a release commits: 30% of the drawer's height from fully closed or open (see [commitPoint]).
+     * a release commits: 30% of the way from fully closed or open (see [commitPoint]).
      */
     const val COMMIT = 0.3f
 
@@ -18,14 +19,14 @@ object DrawerMotion {
 
     /**
      * Where a gesture that started at [start] commits: 30% of the travel left toward the other
-     * end, so a drawer caught mid-settle near one end still has a point short of the other.
+     * end, so a follow caught mid-settle near one end still has a point short of the other.
      */
     fun commitPoint(fromOpen: Boolean, start: Float): Float =
         if (fromOpen) start - COMMIT * start else start + COMMIT * (1f - start)
 
     /**
-     * Whether the drawer ends open when a finger that started at [start] (open or not: [fromOpen])
-     * lets go at [shown], moving up at [upDpS] dp/s (negative: down).
+     * Whether it ends open (at 1) when a finger that started at [start] (taking it from open or
+     * not: [fromOpen]) lets go at [shown], moving toward 1 at [upDpS] dp/s (negative: toward 0).
      */
     fun settles(fromOpen: Boolean, start: Float, shown: Float, upDpS: Float): Boolean = when {
         upDpS > FLING -> true
