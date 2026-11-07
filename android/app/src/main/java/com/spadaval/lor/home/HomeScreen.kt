@@ -1156,8 +1156,10 @@ private fun FolderName(folder: ResolvedFolder, home: HomeContext, add: () -> Uni
     val keyboard = LocalSoftwareKeyboardController.current
     val latest by rememberUpdatedState(text.text)
     val at by rememberUpdatedState(folder.at)
-    // The last name written from this field, so a Done and the close after it write once.
-    val wrote = remember { arrayOfNulls<String>(1) }
+    // The name written from this field while the folder still has [name], so a Done and the close
+    // after it write once. Keyed by the name: once the write lands (or an Undo puts the name back),
+    // the same text may be written again (review R1, lor-0368).
+    val wrote = remember(name) { arrayOfNulls<String>(1) }
     fun commit() {
         val now = at.item as Folder
         val t = latest.trim()

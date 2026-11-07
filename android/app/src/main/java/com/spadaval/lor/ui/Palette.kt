@@ -27,8 +27,7 @@ object Palette {
     const val VEIL_ALPHA = 0xEB / 255.0
 
     /**
-     * An open folder's glass (lor-gnk0): Deep Space at 72%, DESIGN.md's backdrop value, over the
-     * wallpaper. Starlight on it over white, the worst wallpaper unblurred, reads at about 6.4:1.
+     * An open folder's glass (lor-gnk0): Deep Space at 72% over the wallpaper. Starlight on it over white, the worst wallpaper unblurred, reads at about 6.4:1.
      */
     const val FOLDER_GLASS = 0.72
 
