@@ -43,6 +43,7 @@ The manifest's `HomeActivity` entry, `HomeActivity.kt`, `HomeModel.kt`, `HomeSto
 
 ## Context
 
+- The fold and unfold rules trigger on a change in pairing (the smallest width crossing 600 dp), not on the `start` screen class, which rotating a phone also changes; a phone turned to landscape is neither a fold nor an unfold.
 - lor-j87u holds the rules for where a fold and an unfold land; this item tracks the touched half (a press anywhere on a half makes it the focus, with no motion) and applies the rules when the screen class changes.
 - `HomeUi` (search text, the open folder, edit mode, the grid's place) is a field of `HomeActivity`, and `AgentModel` is remembered by `AgentPage`: handled in place, both survive as they are; nothing new needs `rememberSaveable`. That holds while each panel keeps its composition key across screen classes (lor-el51's Context).
 - A screen-off is `Intent.ACTION_SCREEN_OFF`, registered at runtime by `HomeActivity`; going to the start waits for the screen to come on, when the screen class is known.

@@ -40,6 +40,10 @@ Home feels finished in the two places you touch most. A pressed icon answers the
 - Blurring the wallpaper behind home's own window (`Window.setBackgroundBlurRadius`, API 31 and up, when cross-window blur is enabled): whether the emulator shows it, and what One UI does (the real Fold's answer goes in lor-f6zd, after merge).
 - Where the pressed scale is applied so it covers every tile without a second click handler: each tile keeps its one click node for TalkBack and agent-device (`combinedClickable` on home, dock and folder tiles; `clickable` on search rows).
 
+## Context
+
+- lor-sqfe switches home's `windowSoftInputMode` from `adjustPan` to `adjustResize`, after which the keyboard only reports its height. The open folder's in-place name field must stay above the keyboard under either mode. If this item lands before lor-sqfe, `adjustPan` still applies then, and lor-sqfe's change must keep the field clear.
+
 ## Background
 
 - Increment 7 of Launcher polish built the folder opening from its tile (`folder/FolderAnimationManager.java`'s 200 ms, from Launcher3). Increment 4.1 added `cover`. Increment 6 made the folder panel a framed, chamfered surface.
