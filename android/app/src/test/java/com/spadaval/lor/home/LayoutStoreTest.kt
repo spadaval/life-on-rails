@@ -130,6 +130,26 @@ class LayoutStoreTest {
         assertEquals(1_000_000L, store.file.lastModified())
     }
 
+    /** A t3 set to half beside a stack set to full (lor-j87u): `wide` survives an edit and its Undo. */
+    @Test
+    fun aNonDefaultWideKeepsThroughAnEditAndUndo() {
+        val text = """{"version": 2, "active": "a", "layouts": [{"name": "a", "start": {"narrow": [1, 0]}, "panels": [
+            {"at": [0, 0], "type": "t3", "wide": "half"},
+            {"at": [1, 0], "type": "stack", "wide": "full", "blocks": [{"type": "apps", "items": ["com.whatsapp"]}, {"type": "dock"}]}]}]}"""
+        val store = store()
+        store.file.writeText(text)
+        fun wides(file: LayoutFile) = file.current.panels.map { it.wide }
+        assertEquals(listOf(Wide.HALF, Wide.FULL), wides(store.read(null).layout))
+        val edited = store.edit { it.removeFromHome(AppId("com.whatsapp", "com.whatsapp.Main")) }.getOrThrow()
+        val written = store.file.readText()
+        assertTrue(written.contains("\"wide\": \"half\"") && written.contains("\"wide\": \"full\""))
+        assertEquals(listOf(Wide.HALF, Wide.FULL), wides(LayoutFile.parse(written)))
+        assertEquals(emptyList<LayoutItem>(), LayoutFile.parse(written).current.items(BlockAt(Cell(1, 0), 0)))
+        store.undo(edited.undo!!)
+        assertEquals(text, store.file.readText())
+        assertEquals(listOf(Wide.HALF, Wide.FULL), wides(store.read(null).layout))
+    }
+
     private fun undoFails(store: LayoutStore, undo: LayoutStore.Undo): String = try {
         store.undo(undo)
         fail("undo")

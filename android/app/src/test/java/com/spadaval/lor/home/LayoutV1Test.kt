@@ -132,6 +132,7 @@ class LayoutV1Test {
             val json = f.toJson()
             assertTrue(json.contains("\"version\": 2"))
             assertFalse("no version 1 field is written", Regex("\"(home|pages)\"").containsMatchIn(json))
+            assertFalse("no wide is written: every panel has its type's default", json.contains("\"wide\""))
             assertEquals(f, LayoutFile.parse(json))
         }
     }
