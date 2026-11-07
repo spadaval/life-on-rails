@@ -340,7 +340,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val grid = ui.grid
     val drawn = file?.current ?: remember { com.spadaval.lor.home.Layout.grid("default", emptyList(), emptyList()) }
     // While something is held, an empty page follows the last in the start row, for a drop that makes one (launcher polish 4.5).
-    val newPanel = remember(held?.work) { held?.work?.current?.takeIf { it.roomForPanel }?.withNewPanel(emptyList())?.first?.panels?.last() }
+    val newPanel = remember(held?.work) { held?.work?.current?.let(::heldPanel) }
     val panels = drawn.panels + listOfNotNull(newPanel)
     val config = androidx.compose.ui.platform.LocalConfiguration.current
     val wideScreen = config.screenWidthDp >= 600
@@ -679,13 +679,13 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
             // The platform's flow (lor-j87u): the clock and the first half of the blocks left, the
             // rest with the dock right; a page of apps and a dock is one column.
             Row(Modifier.fillMaxSize()) {
-                StackFlow.wide(all) { it.value is StackBlock.Dock }.forEachIndexed { c, column ->
+                StackFlow.wide(all) { it.value is StackBlock.Dock }.forEach { column ->
                     val clock = column.any { it.value is StackBlock.Clock }
                     blocks(Modifier.weight(1f).fillMaxSize(), column) {
                         when {
                             clock -> header()
                             // A column with no clock starts clear of the Remove bar.
-                            c > 0 || !hasClock -> Spacer(Modifier.height(BarClear))
+                            else -> Spacer(Modifier.height(BarClear))
                         }
                     }
                 }
@@ -1255,7 +1255,6 @@ private fun SettleItem(s: Settle, drag: DragState, progress: () -> Float) {
     }
 }
 
-/** Edit mode's bar, or Remove while something is held. */
 /** The Remove bar's height and margin. */
 private val RemoveBarHeight = 56.dp
 private val TopBarMargin = 12.dp
@@ -1263,6 +1262,7 @@ private val TopBarMargin = 12.dp
 /** How far below the top a stack's first row starts, so the Remove bar covers none of it (6.8's critique). */
 internal val BarClear = RemoveBarHeight + TopBarMargin * 2
 
+/** Edit mode's bar, or Remove while something is held. */
 @Composable
 private fun TopBar(ui: HomeUi, modifier: Modifier) {
     val drag = ui.drag

@@ -181,8 +181,9 @@ class GridPlace {
     /**
      * The panels changed (an edit, a drag's new page, a file read): a move to a cell that went is
      * dropped, and home stays on [cell] while it is there, else on the nearest in its row, else on
-     * [start]. On the inner screen, when the edit changed which panels pair, home's place is built
-     * again on the screen that now holds that cell, with no focus (lor-j87u's review, lor-70hj).
+     * [start]. On the inner screen, when the edit changed the screen home stands on (which panels
+     * pair there), home's place is built again on the screen that now holds that cell, with no
+     * focus (lor-j87u's review, lor-70hj); an edit elsewhere leaves the place and its focus alone.
      */
     fun edited(new: List<Panel>, start: Cell) {
         val before = screens
@@ -190,7 +191,7 @@ class GridPlace {
         val cells = cells
         if (move?.to?.let { it !in cells } == true) goTo(cell, animate = false, focus = focus)
         val stay = GridMoves.stay(cells, cell, start)
-        if (paired && screens != before) InnerScreens.place(screens, stay)?.let { goTo(it.focusCell, animate = false) }
+        if (paired && InnerScreens.holding(screens, stay) != InnerScreens.holding(before, cell)) InnerScreens.place(screens, stay)?.let { goTo(it.focusCell, animate = false) }
         else if (stay != cell) goTo(stay, animate = false)
     }
 
@@ -410,6 +411,14 @@ fun Modifier.cellInsetsPadding(): Modifier = composed {
     }
     windowInsetsPadding(WindowInsets.safeDrawing.only(sides + WindowInsetsSides.Vertical))
 }
+
+/**
+ * The empty page shown while something is held (launcher polish 4.5), after the last in [layout]'s
+ * start row, or null when there's no room. Its own inner screen (lor-aow8): paired with a lone half,
+ * it would turn that half narrow under the finger.
+ */
+fun heldPanel(layout: Layout): Panel? =
+    layout.takeIf { it.roomForPanel }?.withNewPanel(emptyList())?.first?.panels?.last()?.let { (it as Panel.Stack).copy(wide = Wide.FULL) }
 
 /** A panel's type as the file writes it. */
 val Panel.type: String

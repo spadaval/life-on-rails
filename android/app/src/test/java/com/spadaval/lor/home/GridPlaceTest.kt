@@ -172,4 +172,23 @@ class GridPlaceTest {
         g.pair(true)
         assertEquals(InnerPlace(InnerScreen(Cell(3, 0), Cell(4, 0)), Cell(4, 0)), g.inner)
     }
+
+    @Test
+    fun theHeldPageLeavesHomesScreenAndFocusAlone() {
+        // lor-aow8: picking up an app adds an empty page after the start row's last; it is its own
+        // screen, so a lone half beside it stays full and a pair keeps its focus.
+        for (pages in 0..3) {
+            val layout = Layout.grid("d", emptyList(), emptyList(), List(pages) { emptyList() })
+            val held = heldPanel(layout)!!
+            assertEquals(Wide.FULL, held.wide)
+            val last = Cell(1 + pages, 0)
+            val g = inner(pages, last)
+            if (pages % 2 == 1) g.goTo(last, animate = false, focus = last)
+            val before = g.inner
+            g.edited(layout.panels + held, Layout.HOME)
+            assertEquals("$pages pages", before, g.inner)
+            assertEquals("$pages pages", InnerScreen(held.at), g.screenOf(held.at))
+        }
+    }
 }
+
