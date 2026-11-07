@@ -93,3 +93,11 @@ Four decision notes above: one place for both screen classes (cell plus focus, t
 - The agent page's two columns report `scrollsInGrid` in code; the test server's page was too short to scroll, so no swipe inside a column was checked.
 - At font scale 2.0 on the phone, YouTube's label fills its cell with no gap to the next label; nothing overlaps or is cut, but it is tight.
 - While an item is held, the new empty page a drop can make joins the inner screens, so with home alone it pairs with home for the length of the drag (home draws its narrow form until the drop).
+
+### Fixes after review
+
+Commit 94b9edb fixes the review's three findings. Boat's `assembleDebug testDebugUnitTest` passed on it (GridPlaceTest 11 tests, no failures).
+- lor-aow8: the empty page shown while an app is held (`heldPanel` in `GridHost.kt`) is drawn full, as its own inner screen, and `GridPlace.edited` rebuilds home's place only when the screen home stands on changes. So a pickup leaves a lone half full and keeps a pair's focus. `GridPlaceTest.theHeldPageLeavesHomesScreenAndFocusAlone` covers 0 to 3 extra pages, with a focus on the odd ones. Its two assertions fail on the old code (a half page pairs with lone home; any change to the screens cleared the focus). On the unfolded Fold, home alone at full width kept its layout while Gmail was held (receipt on this item, screenshot `r1-strip.png`).
+- lor-r3mr: in the wide form, every column without the clock starts below the Remove bar, wherever the clock is listed. It lives in a composable, so there is no JVM test. The home-only screenshot shows the apps column clear of the bar.
+- lor-su2h: TopBar's comment is back on TopBar.
+
