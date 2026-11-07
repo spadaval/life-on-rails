@@ -4,6 +4,9 @@ id: "lor-gnk0"
 issue_type: "feature"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: lor-gnk0
 priority: "P2"
 relationships:
   blocks: []
@@ -18,9 +21,9 @@ relationships:
     type: "advances"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "Home feels finished: a pressed state, and folders like Smart Launcher's"
-updated_at: "2026-11-07T20:51:17.879884235+00:00"
+updated_at: "2026-11-07T22:58:49.169858702+00:00"
 ---
 
 ## Goal
@@ -35,17 +38,43 @@ Home feels finished in the two places you touch most. A pressed icon answers the
 - [ ] Dragging out of a full-screen folder has a rule that works without space outside the card: the folder closes and the drag goes on over home once the finger has been 400 ms (Launcher3's `ON_EXIT_CLOSE_DELAY`) outside the folder's grid of apps, above its name row or below its last row (a folder too full to leave room below scrolls, keeping a strip free); the rule is written on this item. Checked on the emulator: an app dragged out that way lands on home, and the last one out takes the folder away. Tapping the dimmed space outside the grid closes the folder.
 - [ ] Dragging into a folder, a folder's predictive back, and TalkBack's names on its tiles still work (emulator check).
 
+## Context
+
+- lor-sqfe switches home's `windowSoftInputMode` from `adjustPan` to `adjustResize`, after which the keyboard only reports its height. The open folder's in-place name field must stay above the keyboard under either mode. If this item lands before lor-sqfe, `adjustPan` still applies then, and lor-sqfe's change must keep the field clear.
+
 ## Unknowns
 
 - Blurring the wallpaper behind home's own window (`Window.setBackgroundBlurRadius`, API 31 and up, when cross-window blur is enabled): whether the emulator shows it, and what One UI does (the real Fold's answer goes in lor-f6zd, after merge).
 - Where the pressed scale is applied so it covers every tile without a second click handler: each tile keeps its one click node for TalkBack and agent-device (`combinedClickable` on home, dock and folder tiles; `clickable` on search rows).
-
-## Context
-
-- lor-sqfe switches home's `windowSoftInputMode` from `adjustPan` to `adjustResize`, after which the keyboard only reports its height. The open folder's in-place name field must stay above the keyboard under either mode. If this item lands before lor-sqfe, `adjustPan` still applies then, and lor-sqfe's change must keep the field clear.
 
 ## Background
 
 - Increment 7 of Launcher polish built the folder opening from its tile (`folder/FolderAnimationManager.java`'s 200 ms, from Launcher3). Increment 4.1 added `cover`. Increment 6 made the folder panel a framed, chamfered surface.
 - Smart Launcher, as seen on Sumeet's Pixel: the closed tile is a bare 2×2 of mini icons; the open folder is full-screen over a tinted, blurred wallpaper, with the name editable in place and a + to add apps.
 - Sits after lor-eh0y because it touches the tiles and folder code that lor-qdmy moves onto the grid. It may land before or after lor-ph30; lor-ph30's fold checks keep whichever open folder exists then. lor-f3vn waits for it, so the layout lock covers its folder edits.
+
+## Notes
+
+- 2026-11-07 [decision] The pressed state is the click node's own Indication (ui/Press.kt, PressScale): what the node draws scales to 0.9 about its centre over Motion.QUICK (150 ms) while pressed, back on release or cancel. Tiles (home, dock, folder, drawer, search's apps, the folder tile) pass PressScale.Tile to their existing combinedClickable; search's rows pass PressScale.Row (0.97) to their existing clickable.
+  Reason: An Indication rides the one click node, so no second handler, no extra semantics node, and the tap, long press and drag pickup see the same events. It changes drawing only, so layout bounds (the launch's source rect and drag hit-testing) don't move. Idea from Launcher3's FastBitmapDrawable (Apache-2.0, via Lawnchair): the icon animates its scale on the pressed state; Launcher3 scales up, DESIGN.md's quiet feedback shrinks.
+  Rejected: A graphicsLayer scale driven by collectIsPressedAsState in each tile (state in every tile, and a scaled layer moves what hit-testing sees mid-press)
+- 2026-11-07 [decision] The closed folder tile is a bare 2x2 of mini icons, (icon - 4 dp) / 2 each with a 4 dp gap, in the icon's square, with no backing or edge; the cover app still replaces it. Only the label is drawn in the wallpaper's ink. DESIGN.md's Over the wallpaper list drops 'the folder tile's preview fill'.
+  Reason: It is Smart Launcher's form and DESIGN.md allows it (nothing in it asks for a frame on a tile). The old 9% ink fill and Bulkhead Edge were what made the tile heavy. Labels keep their 4.5:1 (measured 19.4:1 on white, 15.3:1 on #101010).
+  Rejected: Keeping a hairline Edge square without the fill (still reads as a box over a photo)
+- 2026-11-07 [decision] The open folder's glass is Deep Space at 72% (Palette.FOLDER_GLASS, DESIGN.md's backdrop value) over the wallpaper blurred by 24 dp; where cross-window blur is off it lies over black at 50% (FOLDER_DIM) instead. Home's own cells fade out as the folder opens (alpha 1 - shown), so only the wallpaper is behind the glass.
+  Reason: Starlight on 72% Deep Space over white reads 6.4:1 computed and 6.5:1 measured, above 4.5:1 unblurred. Without hiding home, its icons showed through the glass unblurred (window blur only reaches what is behind the window), which read as clutter, not glass; Smart Launcher hides home too. The agent-sorted reason line under the name is drawn in Starlight 13 sp, since Dust needs 82% to reach 4.5:1 over white.
+  Rejected: A face of 82% so Dust asides read (the wallpaper would barely show)
+- 2026-11-07 [decision] Blur uses FLAG_BLUR_BEHIND with blurBehindRadius on home's window, the radius following the folder's motion (0 to 24 dp), cleared when it closes; rememberCrossWindowBlur follows WindowManager's cross-window blur listener.
+  Reason: Window.setBackgroundBlurRadius had no effect on the emulator: Android applies background blur only to translucent windows, and home's window is opaque (windowIsTranslucent false, it shows the wallpaper). Blur-behind is applied by the window manager to what lies behind the window, the wallpaper, and SurfaceFlinger showed backgroundBlurRadius=63 on the phone emulator. Making home's window translucent would change how every app opens over it.
+  Rejected: Window.setBackgroundBlurRadius (no blur on an opaque window)|windowIsTranslucent=true on home
+- 2026-11-07 [decision] The drag-out rule (FolderExit in Drag.kt): the folder's area is its name row and its grid of apps as laid out (the visible part when it scrolls). Once the held finger has been outside that area, above the name row, below the last row or off its sides, for 400 ms together (Launcher3's ON_EXIT_CLOSE_DELAY), the folder closes and the drag goes on over home. The area is centred in the screen above a 96 dp strip that is always kept free; a folder too tall for the rest scrolls inside it.
+  Reason: A full-screen folder has no space outside a card, so the rule needs an edge inside the screen; the name row and the apps are what a finger can be over on purpose, and the strip guarantees room below even for a full folder.
+  Rejected: Closing only on the screen's edges (too far for a thumb)
+- 2026-11-07 [decision] Rename in place: the folder's name is a BasicTextField centred in the name row; Done, a tap away, the + or the folder closing writes it with Undo (blank or unchanged writes nothing). The folder menu's Rename… now opens the folder from its tile with the field focused and the name selected (HomeUi.folderRename). The open folder is matched by its place and by its name or its apps (OpenFolder.isOf), so a rename, an Undo of one, an added app and a drag out keep it open.
+  Reason: One menu way per edit, as Done when asks, without a dialog. Matching by name alone closed the folder on its own rename.
+  Rejected: Keeping the dialog beside the in-place field
+- 2026-11-07 [decision] The + opens a picker (AppPicker) of every visible main-profile app not in the folder, by name, multi-select, added as one edit with Undo (addToFolder). An app already elsewhere on home moves into the folder and its row says where it is now ('On home', 'In Travel'); the dock keeps its own. The open folder follows its place, which moves up when an app ahead of it left (home draws the result at once through drag.landing, as a drop does).
+  Reason: An app is on home once (the drop rule); hiding apps already on home would leave most of them unpickable. One edit for a batch gives one Undo.
+  Rejected: Adding one app per tap and closing
+- 2026-11-07 [decision] The open folder is 4 columns on a narrow screen and 6 where the panel is 600 dp or wider, at most 100 dp a column, centred.
+  Reason: A full-screen folder on the Fold's inner screen at 4 columns spread tiles 200 dp apart.

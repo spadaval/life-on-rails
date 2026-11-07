@@ -203,6 +203,39 @@ fun LayoutFile.setCover(at: From.At, cover: AppRef?): LayoutFile = changeFolder(
     f.copy(cover = cover)
 }
 
+/**
+ * Adds [apps], each with the ref Add writes for it, to the end of the folder [at] holds, in order
+ * (lor-gnk0: the open folder's +). An app is on home once, so one already elsewhere on home (in an
+ * `apps` block or another folder) moves into this folder; a folder that leaves empty goes, and so
+ * does an extra page's panel. The dock keeps its own. Refuses an app this folder already holds.
+ * The result's place is the folder's, which moves up by the items that left ahead of it.
+ */
+fun LayoutFile.addToFolder(at: From.At, apps: List<Pair<AppId, AppRef>>, installed: List<AppId> = emptyList()): Dropped {
+    check(at)
+    val spot = at.spot as? Spot.Apps ?: throw LayoutError("that isn't a folder")
+    val folder = at.item as? Folder ?: throw LayoutError("that isn't a folder")
+    val adding = apps.distinctBy { it.first }
+    if (adding.isEmpty()) throw LayoutError("no apps were picked")
+    if (adding.any { (app, _) -> folder.apps.any { it.names(app, installed) } }) throw LayoutError("it's already in ${folder.name}")
+    val gone = { ref: AppRef -> adding.any { (app, _) -> ref.names(app, installed) } }
+    var layout = current
+    var index = spot.index
+    layout.appsBlocks.forEach { block ->
+        val items = layout.items(block)!!.mapIndexedNotNull { i, item ->
+            if (block == spot.at && i == spot.index) return@mapIndexedNotNull folder.copy(apps = folder.apps + adding.map { it.second }, pinned = true)
+            val kept = when (item) {
+                is AppRef -> item.takeUnless(gone)
+                is Folder -> if (item.apps.any(gone)) item.without(gone) else item
+            }
+            if (kept == null && block == spot.at && i < spot.index) index--
+            kept
+        }
+        layout = layout.withItems(block, items)
+    }
+    // Places are cells, so a panel that goes moves no other item's place.
+    return Dropped(withCurrent(layout.stripEmptyPanels()), spot.copy(index = index))
+}
+
 private fun LayoutFile.changeFolder(at: From.At, change: (Folder) -> Folder): LayoutFile {
     check(at)
     val spot = at.spot as? Spot.Apps ?: throw LayoutError("that isn't a folder")

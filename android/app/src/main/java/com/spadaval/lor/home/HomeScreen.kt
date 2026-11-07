@@ -1,6 +1,24 @@
 package com.spadaval.lor.home
 
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.TextFieldValue
 import com.spadaval.lor.ui.*
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -81,10 +99,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.BoxScope
@@ -133,7 +149,7 @@ import java.time.format.DateTimeFormatter
  * The shape follows Launcher3 / Lawnchair (Apache-2.0): a workspace with the -1 page on its left
  * (there `LauncherOverlay`, here the `t3` panel left of home), a hotseat (`Hotseat.java`) fixed under the grid, a
  * folder icon previewing its first four apps on a 2x2 grid (`FolderIcon`, `ClippedFolderIconLayoutRule`)
- * that opens as a panel over a scrim, and all apps reached by a swipe up with search at its top,
+ * that opens over the wallpaper (full screen and blurred since lor-gnk0, as Smart Launcher's), and all apps reached by a swipe up with search at its top,
  * where the keyboard's action opens the first result (`AllAppsSearchBarController.onEditorAction`).
  * A home press closes whatever is open and returns to home, as `Launcher.onNewIntent` does.
  * Motion is one-shot only: cells slide in and out with the finger, nothing loops (strategy: calm).
@@ -204,6 +220,9 @@ class HomeUi {
     /** The open folder's tile icon, in root coordinates, when it was tapped (launcher polish 7.2). */
     var folderFrom: Rect? = null
 
+    /** Set by the folder menu's Rename…: the folder opens with its name field focused (lor-gnk0). */
+    var folderRename = false
+
     /**
      * How far a back gesture has gone, eased, from 0 to 1 (launcher polish 7.3): the drawer or the
      * open folder is drawn scaled by `1 - 0.1 × back`. Back to 0 when either opens again.
@@ -212,7 +231,7 @@ class HomeUi {
 
     /**
      * The open folder: its place in the file (launcher polish 4.1: by place, since names may
-     * repeat) and its name, so an edit that moves another item into that place closes it.
+     * repeat), its name and its apps, so an edit that moves another item into that place closes it.
      */
     var folder by mutableStateOf<OpenFolder?>(null)
     var query by mutableStateOf("")
@@ -281,9 +300,19 @@ private class BackEase(private val ui: HomeUi, private val scope: CoroutineScope
     }
 }
 
-/** A folder with its installed apps, each with its place in the file; [cover] is its cover app if installed. */
-data class OpenFolder(val spot: Spot.Apps, val name: String)
+/**
+ * The open folder as it was last drawn. A folder at [spot] is still it when its name or its apps
+ * are the same: a rename keeps the apps, and an app added or dragged out keeps the name.
+ */
+data class OpenFolder(val spot: Spot.Apps, val name: String, val apps: List<AppRef>) {
+    fun isOf(f: ResolvedFolder) = f.at.spot == spot && (f.folder.name == name || f.folder.apps == apps)
 
+    companion object {
+        fun of(f: ResolvedFolder) = OpenFolder(f.at.spot as Spot.Apps, f.folder.name, f.folder.apps)
+    }
+}
+
+/** A folder with its installed apps, each with its place in the file; [cover] is its cover app if installed. */
 class ResolvedFolder(val folder: Folder, val at: From.At, val apps: List<Pair<HomeApp, From.At>>, val cover: HomeApp?)
 
 /** A layout item with its installed apps and its place in the file; refs to apps that aren't installed are left out. */
@@ -331,8 +360,10 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val home = remember(actions, file, apps) { HomeContext(actions, file, apps, ui) }
     val placed = remember(apps, file) { file?.let { place(it.current, apps) } }
     val folder = ui.folder?.let { open ->
-        placed?.all?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf { f -> f.at.spot == open.spot && f.folder.name == open.name } }
+        placed?.all?.firstNotNullOfOrNull { (it as? Placed.InFolder)?.folder?.takeIf(open::isOf) }
     }
+    // The open folder as drawn now, so the next edit (a rename, an added app) is matched against it.
+    SideEffect { if (folder != null && ui.folder != OpenFolder.of(folder)) ui.folder = OpenFolder.of(folder) }
     // An edit that empties the open folder removes it, so the panel closes.
     LaunchedEffect(ui.folder, folder, placed) { if (ui.folder != null && folder == null && placed != null) ui.folder = null }
     // The grid drawn (lor-qdmy): the file's, else the default grid with nothing on home yet.
@@ -371,7 +402,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     var heightPx by remember { mutableIntStateOf(0) }
     val barPx = WindowInsets.statusBars.getTop(LocalDensity.current)
     val underBar by remember(heightPx, barPx) { derivedStateOf { grid.panel(grid.underBar(heightPx, barPx)) } }
-    // An open folder, opening or closing, holds the scrim (launcher polish 7.2).
+    // An open folder, opening or closing, holds the glass (launcher polish 7.2).
     var panel by remember { mutableStateOf<ResolvedFolder?>(null) }
     SideEffect { if (folder != null) panel = folder }
     val darkBarIcons = ink.ink == Ink.DARK && underBar is Panel.Stack && folder == null && panel == null
@@ -465,6 +496,9 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     var cardBounds by remember { mutableStateOf<Rect?>(null) }
     var folderFading by remember { mutableStateOf(false) }
     val folderOpen = folder != null
+    // The wallpaper behind an open folder blurs where the window can (lor-gnk0), with the motion.
+    val blurred = rememberCrossWindowBlur()
+    BlurBehind(blurred, view) { folderShown.value }
     LaunchedEffect(folderOpen, ui.homePresses) {
         if (folderOpen) {
             folderFading = false
@@ -530,40 +564,44 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val barTop = rememberUpdatedState(barPx)
     val shownApps = remember(apps, home) { apps.filterNot(home::hidden) }
     Box(Modifier.fillMaxSize().onSizeChanged { heightPx = it.height }.dragging(ui, haptics, { latestHome }, { h, t -> latestDrop(h, t) }).gridFinger(ui, haptics) { barTop.value }) {
-        CompositionLocalProvider(LocalGridScrolls provides ui.scrolls) {
-            GridCells(grid) { p ->
-                when (p) {
-                    is Panel.T3 -> AgentPage()
-                    // The drawer, wherever the finger or its settle has it (launcher polish 7.1).
-                    is Panel.Drawer -> Box(
-                        Modifier.fillMaxSize().graphicsLayer {
-                            // Predictive back (7.3): smaller about its centre as the gesture goes.
-                            val b = if (ui.folder == null && panel == null && grid.cell == p.at) 1f - BACK_SCALE * ui.back else 1f
-                            scaleX = b
-                            scaleY = b
-                        },
-                    ) {
-                        Drawer(shownApps, stats, search, ui, home)
-                    }
-                    is Panel.Stack -> CompositionLocalProvider(LocalWallInk provides ink) {
-                        StackPanel(p, p.at == start, placed, layout, appsLoad, ui, home)
+        // Home gives way to an open folder (lor-gnk0, as Smart Launcher's does): it fades out as the
+        // folder opens, so the glass shows only the wallpaper, and back in as it closes.
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - folderShown.value }) {
+            CompositionLocalProvider(LocalGridScrolls provides ui.scrolls) {
+                GridCells(grid) { p ->
+                    when (p) {
+                        is Panel.T3 -> AgentPage()
+                        // The drawer, wherever the finger or its settle has it (launcher polish 7.1).
+                        is Panel.Drawer -> Box(
+                            Modifier.fillMaxSize().graphicsLayer {
+                                // Predictive back (7.3): smaller about its centre as the gesture goes.
+                                val b = if (ui.folder == null && panel == null && grid.cell == p.at) 1f - BACK_SCALE * ui.back else 1f
+                                scaleX = b
+                                scaleY = b
+                            },
+                        ) {
+                            Drawer(shownApps, stats, search, ui, home)
+                        }
+                        is Panel.Stack -> CompositionLocalProvider(LocalWallInk provides ink) {
+                            StackPanel(p, p.at == start, placed, layout, appsLoad, ui, home)
+                        }
                     }
                 }
             }
+            // The dots of the row on screen, and of the row a vertical move brings (launcher polish 6.8:
+            // on the agent page they sit on its dark veil, not the wallpaper).
+            RowDots(grid, grid.cell, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
+            grid.move?.takeIf { !it.way.horizontal }?.let { RowDots(grid, it.to, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp)) }
         }
-        // The dots of the row on screen, and of the row a vertical move brings (launcher polish 6.8:
-        // on the agent page they sit on its dark veil, not the wallpaper).
-        RowDots(grid, grid.cell, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
-        grid.move?.takeIf { !it.way.horizontal }?.let { RowDots(grid, it.to, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp)) }
         if (folder != null) {
-            FolderPanel(folder, home, onClose = { ui.folder = null }, { folderShown.value }, { 1f - BACK_SCALE * ui.back }, ui.folderFrom, folderLayer) { cardBounds = it }
+            FolderPanel(folder, home, blurred, onClose = { ui.folder = null }, { folderShown.value }, { 1f - BACK_SCALE * ui.back }, ui.folderFrom, folderLayer) { cardBounds = it }
         } else if (panel != null) {
             // Closing, it is a picture of itself: no drop zones, sources or taps, so a drag that left it
             // can't drop into it and a tap reaches home.
             Box(
                 Modifier.fillMaxSize().drawBehind {
                     val p = folderShown.value
-                    drawRect(Scrim, alpha = p)
+                    folderGlass(p, blurred)
                     val c = cardBounds ?: return@drawBehind
                     val f = FolderMotion.at(p, c.toArray(), if (folderFading) null else ui.folderFrom?.toArray(), 1f - BACK_SCALE * ui.back)
                     translate(c.left + f.dx, c.top + f.dy) {
@@ -770,7 +808,7 @@ private fun HomeGrid(items: List<Placed>, columns: Int, ui: HomeUi, home: HomeCo
                         is Placed.App -> MenuTile(item.app, At(LaunchFrom.HOME), home, spot = item.at, label = LocalHomeLook.current.labels)
                         is Placed.InFolder -> FolderTile(item.folder, home) { from ->
                             ui.folderFrom = from
-                            ui.folder = OpenFolder(item.folder.at.spot as Spot.Apps, item.folder.folder.name)
+                            ui.folder = OpenFolder.of(item.folder)
                         }
                     }
                 }
@@ -866,7 +904,7 @@ private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, cell: Ce
                         AppIcon(
                             app, dockIcon,
                             Modifier.iconSpot(icon).semantics { contentDescription = app.label }
-                                .combinedClickable(onLongClickLabel = "Menu", onLongClick = menu) { if (!drag.editing) home.actions.open(app, at, icon) },
+                                .combinedClickable(interactionSource = null, indication = PressScale.Tile, onLongClickLabel = "Menu", onLongClick = menu) { if (!drag.editing) home.actions.open(app, at, icon) },
                         )
                         if (app.dotKey in LocalDots.current) Dot()
                     }
@@ -913,7 +951,8 @@ internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)?
         Modifier.fillMaxWidth().widthIn(max = width)
             // Without a label the tile keeps its name for TalkBack.
             .then(if (label) Modifier else Modifier.semantics { contentDescription = app.label })
-            .combinedClickable(onLongClickLabel = onLongClick?.let { "Menu" }, onLongClick = onLongClick, onClick = onClick)
+            // The pressed state (lor-gnk0) is this click node's indication, so the tile stays one node.
+            .combinedClickable(interactionSource = null, indication = PressScale.Tile, onLongClickLabel = onLongClick?.let { "Menu" }, onLongClick = onLongClick, onClick = onClick)
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -938,12 +977,13 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: (Rect
     val haptics = LocalHapticFeedback.current
     val held = home.drag.held
     LaunchedEffect(held) { if (held != null) menu = false }
-    if (menu) FolderMenu(folder, home) { menu = false }
+    // Rename… opens the folder with its name field focused (lor-gnk0), from its tile like a tap.
+    if (menu) FolderMenu(folder, home, rename = { home.ui.folderRename = true; onClick(icon[0]) }) { menu = false }
     val label = LocalHomeLook.current.labels
     Column(
         Modifier.fillMaxWidth().widthIn(max = 76.dp)
             .then(if (label) Modifier else Modifier.semantics { contentDescription = folder.folder.name })
-            .combinedClickable(onLongClickLabel = "Menu", onLongClick = {
+            .combinedClickable(interactionSource = null, indication = PressScale.Tile, onLongClickLabel = "Menu", onLongClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 menu = true
             }, onClick = { onClick(icon[0]) })
@@ -963,85 +1003,290 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: (Rect
     }
 }
 
-/** A folder's icon: its cover app (launcher polish 4.1), else its first four apps. */
+/**
+ * A folder's icon: its cover app (launcher polish 4.1), else its first four apps as a bare 2×2 of
+ * mini icons in the icon's square, with no backing (lor-gnk0, as Smart Launcher draws it). The
+ * label under it is all that is drawn in the wallpaper's ink.
+ */
 @Composable
 private fun FolderIcon(folder: ResolvedFolder) {
-    if (folder.cover != null) {
-            AppIcon(folder.cover, iconSize)
-        } else Column(
-            Modifier
-                .size(iconSize)
-                .background(LocalWallInk.current.text.copy(alpha = 0.09f)).border(1.dp, Edge)
-                .padding(6.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            folder.apps.take(4).map { it.first }.chunked(2).forEach { pair ->
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { pair.forEach { AppIcon(it, (iconSize - 16.dp) / 2) } }
-            }
+    if (folder.cover != null) return AppIcon(folder.cover, iconSize)
+    val gap = 4.dp
+    val mini = (iconSize - gap) / 2
+    Column(Modifier.size(iconSize), verticalArrangement = Arrangement.spacedBy(gap)) {
+        folder.apps.take(4).map { it.first }.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) { pair.forEach { AppIcon(it, mini) } }
         }
+    }
 }
 
+/** The free strip kept under an open folder's apps, so a held app can leave below them (lor-gnk0). */
+private val FolderStrip = 96.dp
+
+/**
+ * The open folder's glass (lor-gnk0): Deep Space at [Palette.FOLDER_GLASS] over the wallpaper,
+ * which the window blurs behind it where it can ([BlurBehind]); where it can't, the same face over
+ * a dim of black at [Palette.FOLDER_DIM]. Both come in with the folder's motion ([shown]).
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.folderGlass(shown: Float, blurred: Boolean) {
+    if (!blurred) drawRect(Color.Black, alpha = Palette.FOLDER_DIM.toFloat() * shown)
+    drawRect(Bg, alpha = Palette.FOLDER_GLASS.toFloat() * shown)
+}
+
+/**
+ * Blurs the wallpaper behind home's window by [shown] of DESIGN.md's 24 dp while [on], and clears
+ * it when the folder has gone or blur goes off. Home's window is opaque (it shows the wallpaper),
+ * and Android blurs only behind a translucent window's background (`setBackgroundBlurRadius`), so
+ * this asks the window manager to blur what is behind the window (`FLAG_BLUR_BEHIND` with
+ * `blurBehindRadius`, Android 12 and up), with no dim.
+ */
 @Composable
-private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, onClose: () -> Unit, shown: () -> Float, back: () -> Float, from: Rect?, layer: GraphicsLayer, onCard: (Rect) -> Unit) {
+private fun BlurBehind(on: Boolean, view: android.view.View, shown: () -> Float) {
+    val full = with(LocalDensity.current) { 24.dp.toPx() }
+    LaunchedEffect(on, full) {
+        val window = (view.context as? android.app.Activity)?.window
+        if (!on || window == null || android.os.Build.VERSION.SDK_INT < 31) return@LaunchedEffect
+        fun blur(radius: Int) {
+            if (radius > 0) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+            else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+            window.attributes = window.attributes.apply { blurBehindRadius = radius }
+        }
+        var radius = 0
+        try {
+            snapshotFlow { (shown() * full).roundToInt() }.collect {
+                if (it != radius) blur(it)
+                radius = it
+            }
+        } finally {
+            if (radius != 0) blur(0)
+        }
+    }
+}
+
+/**
+ * An open folder (lor-gnk0, after Smart Launcher's): it fills the screen as dark glass, with its
+ * name, which is edited in place, a + to add apps, and its apps under them. The name row and the
+ * apps are the part that opens from the tile (launcher polish 7.2) and takes a drop after the last
+ * app; a held app that stays 400 ms outside them leaves ([FolderExit]). A folder too full for the
+ * screen scrolls, keeping [FolderStrip] free below. A tap on the glass closes it.
+ */
+@Composable
+private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, blurred: Boolean, onClose: () -> Unit, shown: () -> Float, back: () -> Float, from: Rect?, layer: GraphicsLayer, onCard: (Rect) -> Unit) {
     var card by remember { mutableStateOf<Rect?>(null) }
-    Box(
-        Modifier.fillMaxSize().drawBehind { drawRect(Scrim, alpha = shown()) }.pointerInput(onClose) { detectTapGestures { onClose() } },
-        contentAlignment = Alignment.Center,
-    ) {
+    var adding by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxSize().drawBehind { folderGlass(shown(), blurred) }.pointerInput(onClose) { detectTapGestures { onClose() } }) {
         val drag = home.drag
         val icon = rememberTileIcon()
         val spot = folder.at.spot as Spot.Apps
-        Column(
-            Modifier
-                .widthIn(max = 360.dp)
-                .padding(24.dp)
-                // Its bounds as laid out (before the motion's transform), and drawn from its tile (7.2),
-                // recorded each frame so the close can draw it as a picture.
-                .onGloballyPositioned { c -> c.boundsInRoot().let { card = it; onCard(it) } }
-                .graphicsLayer {
-                    val c = card
-                    val f = if (c == null) FolderMotion.Frame(1f, 0f, 0f, shown()) else FolderMotion.at(shown(), c.toArray(), from?.toArray(), back())
-                    scaleX = f.scale
-                    scaleY = f.scale
-                    translationX = f.dx
-                    translationY = f.dy
-                    alpha = f.alpha
-                }
-                .drawWithContent {
-                    layer.record { this@drawWithContent.drawContent() }
-                    // The close's picture fades the layer; drawn live, it is whole (the card's own layer fades it).
-                    layer.alpha = 1f
-                    drawLayer(layer)
-                }
-                .framedPanel(PanelFace.copy(alpha = 0.95f))
-                // The card takes a drop after the folder's last app (launcher polish 4.4).
-                .dropZone(drag, "card") { b -> Zone.Area(Place.InFolder(spot), b) }
-                .swallowTaps()
-                .padding(16.dp),
-        ) {
-            Text(folder.folder.name, style = Type.body.copy(color = Txt, fontSize = 18.sp), modifier = Modifier.padding(start = 6.dp))
-            folder.folder.reason?.let {
-                Text(it, style = Type.body.copy(color = Mute, fontSize = 13.sp), modifier = Modifier.padding(start = 6.dp, top = 4.dp))
-            }
-            Spacer(Modifier.height(14.dp))
-            val keys = remember(folder) { itemKeys(folder.apps.map { it.second.item }) }
-            CellGrid(4, Modifier.fillMaxWidth().padding(bottom = 10.dp), rowGap = 10.dp) {
-                folder.apps.forEachIndexed { i, (app, at) ->
-                    key(keys[i]) {
-                        Box(
-                            Modifier
-                                .dropZone(drag, "folder" to keys[i]) { b -> Zone.Item(at.spot, b, b.top + icon.top, icon.size) }
-                                .dragSource(drag, "folder" to keys[i]) { b -> Source(b, at, 1, app, null) }
-                                .animatePlacement(drag)
-                                .alpha(if (drag.hides(at.spot)) 0f else 1f),
-                            contentAlignment = Alignment.TopCenter,
-                        ) {
-                            MenuTile(app, At(LaunchFrom.FOLDER, folder.folder.name), home, width = 72.dp, spot = at, label = LocalHomeLook.current.labels, beforeOpen = onClose)
+        // Its labels are on the glass, not the wallpaper.
+        if (!adding) CompositionLocalProvider(LocalWallInk provides SurfaceInk) {
+            BoxWithConstraints(
+                Modifier.fillMaxSize().safeDrawingPadding().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = FolderStrip),
+                contentAlignment = Alignment.Center,
+            ) {
+                val columns = if (maxWidth >= 600.dp) 6 else 4
+                Column(
+                    Modifier
+                        .widthIn(max = 100.dp * columns)
+                        .fillMaxWidth()
+                        // Its bounds as laid out (before the motion's transform), and drawn from its tile (7.2),
+                        // recorded each frame so the close can draw it as a picture.
+                        .onGloballyPositioned { c -> c.boundsInRoot().let { card = it; onCard(it) } }
+                        .graphicsLayer {
+                            val c = card
+                            val f = if (c == null) FolderMotion.Frame(1f, 0f, 0f, shown()) else FolderMotion.at(shown(), c.toArray(), from?.toArray(), back())
+                            scaleX = f.scale
+                            scaleY = f.scale
+                            translationX = f.dx
+                            translationY = f.dy
+                            alpha = f.alpha
+                        }
+                        .drawWithContent {
+                            layer.record { this@drawWithContent.drawContent() }
+                            // The close's picture fades the layer; drawn live, it is whole (the card's own layer fades it).
+                            layer.alpha = 1f
+                            drawLayer(layer)
+                        }
+                        // Its name row and apps take a drop after the last app (launcher polish 4.4).
+                        .dropZone(drag, "card") { b -> Zone.Area(Place.InFolder(spot), b) }
+                        .swallowTaps(),
+                ) {
+                    FolderName(folder, home) { adding = true }
+                    folder.folder.reason?.let {
+                        Text(it, style = Type.body.copy(color = Txt, fontSize = 13.sp), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    val keys = remember(folder) { itemKeys(folder.apps.map { it.second.item }) }
+                    Box(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                        CellGrid(columns, Modifier.fillMaxWidth().padding(bottom = 10.dp), rowGap = 10.dp) {
+                            folder.apps.forEachIndexed { i, (app, at) ->
+                                key(keys[i]) {
+                                    Box(
+                                        Modifier
+                                            .dropZone(drag, "folder" to keys[i]) { b -> Zone.Item(at.spot, b, b.top + icon.top, icon.size) }
+                                            .dragSource(drag, "folder" to keys[i]) { b -> Source(b, at, 1, app, null) }
+                                            .animatePlacement(drag)
+                                            .alpha(if (drag.hides(at.spot)) 0f else 1f),
+                                        contentAlignment = Alignment.TopCenter,
+                                    ) {
+                                        MenuTile(app, At(LaunchFrom.FOLDER, folder.folder.name), home, width = 72.dp, spot = at, label = LocalHomeLook.current.labels, beforeOpen = onClose)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+        } else AppPicker(folder, home) { adding = false }
+    }
+}
+
+/**
+ * The open folder's name, edited in place (lor-gnk0), with the + that adds apps beside it. A tap
+ * on the name edits it; Done, a tap away or the folder closing writes it with Undo, unless it is
+ * blank or unchanged. Opened by the folder menu's Rename…, it starts focused with the name selected.
+ */
+@Composable
+private fun FolderName(folder: ResolvedFolder, home: HomeContext, add: () -> Unit) {
+    val name = folder.folder.name
+    var text by remember(name) { mutableStateOf(TextFieldValue(name)) }
+    var focused by remember { mutableStateOf(false) }
+    val focus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val latest by rememberUpdatedState(text.text)
+    val at by rememberUpdatedState(folder.at)
+    // The last name written from this field, so a Done and the close after it write once.
+    val wrote = remember { arrayOfNulls<String>(1) }
+    fun commit() {
+        val now = at.item as Folder
+        val t = latest.trim()
+        if (t.isEmpty() || t == now.name || t == wrote[0]) return
+        wrote[0] = t
+        home.actions.edit("${now.name} is $t now.") { it.renameFolder(at, t) }
+    }
+    DisposableEffect(Unit) { onDispose { commit() } }
+    LaunchedEffect(Unit) {
+        if (!home.ui.folderRename) return@LaunchedEffect
+        home.ui.folderRename = false
+        withFrameNanos {}
+        text = text.copy(selection = TextRange(0, text.text.length))
+        focus.requestFocus()
+        keyboard?.show()
+    }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Spacer(Modifier.size(48.dp))
+        BasicTextField(
+            text,
+            { text = it },
+            Modifier.weight(1f)
+                .focusRequester(focus)
+                .onFocusChanged {
+                    if (focused && !it.isFocused) commit()
+                    focused = it.isFocused
+                }
+                .semantics { contentDescription = "Folder name" },
+            singleLine = true,
+            textStyle = Type.body.copy(color = Txt, fontSize = 20.sp, textAlign = TextAlign.Center),
+            cursorBrush = SolidColor(Or),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+            decorationBox = { inner ->
+                // DESIGN.md's input focus: an amber edge at 70%, here the rule under the name.
+                Box(
+                    Modifier.fillMaxWidth().drawBehind { if (focused) drawRect(Or.copy(alpha = 0.7f), Offset(0f, size.height - 1.dp.toPx()), androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx())) }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) { inner() }
+            },
+        )
+        Box(
+            Modifier.size(48.dp)
+                .clickable(interactionSource = null, indication = PressScale.Tile, role = androidx.compose.ui.semantics.Role.Button, onClickLabel = "Add apps") { focusManager.clearFocus(); add() }
+                .semantics { contentDescription = "Add apps to $name" }
+                .drawBehind {
+                    val arm = 9.dp.toPx()
+                    val w = 1.5.dp.toPx()
+                    drawLine(Txt, center - Offset(arm, 0f), center + Offset(arm, 0f), w)
+                    drawLine(Txt, center - Offset(0f, arm), center + Offset(0f, arm), w)
+                },
+        )
+    }
+}
+
+/**
+ * The + of an open folder (lor-gnk0): the apps not in it, by name, to pick and add as one edit
+ * with Undo. An app already on home elsewhere says where, and moves into the folder ([addToFolder]).
+ * Back or Cancel goes back to the folder.
+ */
+@Composable
+private fun AppPicker(folder: ResolvedFolder, home: HomeContext, done: () -> Unit) {
+    androidx.activity.compose.BackHandler(onBack = done)
+    val name = folder.folder.name
+    val inFolder = remember(folder) { folder.apps.map { it.first.id }.toSet() }
+    val apps = remember(home.apps, inFolder) {
+        home.apps.filter { it.mainProfile && !home.hidden(it) && it.id !in inFolder }.sortedBy { it.label.lowercase() }
+    }
+    var picked by remember { mutableStateOf(listOf<AppId>()) }
+    Column(
+        Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp).framedPanel().swallowTaps().padding(vertical = 16.dp),
+    ) {
+        Text("ADD TO ${name.uppercase()}", style = Type.title, modifier = Modifier.padding(horizontal = 20.dp))
+        LazyColumn(Modifier.weight(1f).padding(top = 12.dp)) {
+            items(apps, key = { it.key }) { app ->
+                val on = app.id in picked
+                val where = remember(home.file, app) {
+                    home.file?.placesOf(app.id, home.installed)?.let { p -> p.folder?.let { "In $it" } ?: if (p.home) "On home" else null }
+                }
+                Row(
+                    Modifier.fillMaxWidth()
+                        .then(if (on) Modifier.selection() else Modifier)
+                        .toggleable(on, role = androidx.compose.ui.semantics.Role.Checkbox) { picked = if (on) picked - app.id else picked + app.id }
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AppIcon(app, 36.dp)
+                    Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                        Text(app.label, style = Type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        where?.let { Text(it, style = Type.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    }
+                }
+            }
         }
+        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
+            TextButton(onClick = done, shape = RectangleShape, colors = DismissColors) { Text("Cancel") }
+            androidx.compose.material3.Button(
+                onClick = {
+                    addToFolder(folder, home, picked)
+                    done()
+                },
+                enabled = picked.isNotEmpty(),
+                shape = RectangleShape,
+            ) { Text(if (picked.isEmpty()) "Add" else "Add ${picked.size}") }
+        }
+    }
+}
+
+/**
+ * Adds [picked] to [folder] with Undo. Home draws the result at once, and the open folder follows
+ * it to its place, which moves up when an app ahead of it on its page went into it.
+ */
+private fun addToFolder(folder: ResolvedFolder, home: HomeContext, picked: List<AppId>) {
+    val file = home.file ?: return
+    val adding = picked.mapNotNull { id -> home.apps.firstOrNull { it.mainProfile && it.id == id }?.let { id to home.refFor(it) } }
+    val d = try {
+        file.addToFolder(folder.at, adding, home.installed)
+    } catch (e: LayoutError) {
+        return home.actions.refused(e.message ?: "they can't go there")
+    }
+    val at = d.at as Spot.Apps
+    val added = adding.size
+    home.drag.landing = d.file
+    home.ui.folder = OpenFolder(at, folder.folder.name, (d.file.itemAt(at) as Folder).apps)
+    val said = if (added == 1) "${home.apps.first { it.id == adding[0].first }.label} is in ${folder.folder.name}." else "$added apps added to ${folder.folder.name}."
+    home.actions.edit(said, after = { home.drag.landing = null }) { now ->
+        if (now != file) throw LayoutError(HOME_CHANGED)
+        d.file
     }
 }
 
@@ -1140,7 +1385,7 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
             }
         }
         val held = drag.held ?: return@awaitEachGesture
-        var outside = 0L
+        val exit = FolderExit()
         while (true) {
             val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id }
             // A home press put it back.
@@ -1165,11 +1410,9 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
                 held.lit = null
                 held.pending = t
             }
-            // Out of an open folder's card for 400 ms closes it (Launcher3's ON_EXIT_CLOSE_DELAY).
-            val card = ui.folder?.let { open -> zones.firstOrNull { (it as? Zone.Area)?.place == Place.InFolder(open.spot) } }
-            if (card != null && !card.box.contains(c.position.x, c.position.y)) {
-                if (outside == 0L) outside = c.uptimeMillis else if (c.uptimeMillis - outside >= 400) ui.folder = null
-            } else outside = 0L
+            // Out of an open folder's name row and apps for 400 ms closes it (lor-gnk0's rule).
+            val area = ui.folder?.let { open -> zones.firstOrNull { (it as? Zone.Area)?.place == Place.InFolder(open.spot) } }
+            if (area != null && exit.closes(area.box, c.position.x, c.position.y, c.uptimeMillis)) ui.folder = null
             held.edge = when {
                 c.position.x < edge -> -1
                 c.position.x > width - edge -> 1
@@ -1280,26 +1523,16 @@ private fun TopBar(ui: HomeUi, modifier: Modifier) {
     }
 }
 
-/** A folder's menu (launcher polish 4.4): Rename…, Cover app…, Remove from home. */
+/**
+ * A folder's menu (launcher polish 4.4): Rename…, Cover app…, Remove from home. Rename… opens the
+ * folder with its name field focused ([rename]; lor-gnk0), where the name is edited in place.
+ */
 @Composable
-private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, close: () -> Unit) {
-    var renaming by remember { mutableStateOf(false) }
+private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, rename: () -> Unit, close: () -> Unit) {
     var covering by remember { mutableStateOf(false) }
     val at = folder.at
     val name = folder.folder.name
     when {
-        renaming -> {
-            var text by remember { mutableStateOf(name) }
-            AlertDialog(
-                onDismissRequest = close,
-                title = { Text("Rename folder") },
-                text = { OutlinedTextField(text, { text = it }, singleLine = true) },
-                confirmButton = {
-                    TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { close(); if (text.trim() != name) home.actions.edit("$name is ${text.trim()} now.") { it.renameFolder(at, text) } }) { Text("Rename") }
-                },
-                dismissButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, colors = DismissColors, onClick = close) { Text("Cancel") } },
-            )
-        }
         covering -> DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
             val cover = folder.folder.cover
             folder.apps.forEach { (app, a) ->
@@ -1313,7 +1546,7 @@ private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, close: () -> U
             }
         }
         else -> DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
-            FolderMenuItem("Rename…") { renaming = true }
+            FolderMenuItem("Rename…") { close(); rename() }
             FolderMenuItem("Cover app…") { covering = true }
             FolderMenuItem("Remove from home") { close(); home.actions.edit("$name is off home.") { it.removeAt(at) } }
         }
