@@ -84,10 +84,17 @@ Home is drawn from the grid: one cell on screen, moved by a swipe that follows t
 - Across, up and down, every page, composition and the Launcher polish checks (4.5's five, 4.6, 7.2, 7.3, 7.4, 7.6, dots, Undo): lor-nafb, from the `LorGrid` and `LorMotion` logcat lines, the file read after each edit, and screenshots. The drawer's top held at 40% sat at the finger's travel exactly (y 1440).
 - Folded and unfolded: lor-okw0. One cell at full width on both; the unfolded stack keeps its wide two-column layout.
 
+### Fixes after review
+
+- lor-glg9: a home press or back from page 2 slid home into the slot where page 1 waited as page 2's neighbour, so page 1 drew over home for the whole slide. During a move only its two cells are placed now (`GridPlace.offsetOf`); the others keep their last, off-screen place. `GridPlaceTest.aStraightMoveDrawsOnlyItsTwoCells` (pass) checks it.
+- lor-ymm9: a home press from a drawer opened by a swipe down slid it out the opposite way to how it came. `GridMoves.wayTo` now sends a straight move back to the row the last vertical move came from the way it came; `GridTest.theWayToACellAndTheWindow` and `GridPlaceTest.aHomePressLeavesTheDrawerTheWayItCame` (pass) check it.
+- On boat after the fix: `assembleDebug testDebugUnitTest`, 232 tests, 0 failures. On `T3_Phone_API35` (evidence lor-chhu), recordings of a home press and back from page 2 and a home press from the drawer opened both ways show no overlap and the right directions.
+
 ### Deviations
 
 - `AgentPage.kt` changed by one line (`scrollsInGrid`), outside the stated Scope: the grid's finger is measured on home's root, so a scrolling page has to say when it can still scroll.
 - `docs/v2-product-engineering-spec.md` and `layout-v2.md` now say how home moves; the stand-in paragraph in `layout-v2.md` is replaced.
+- `DrawerScreen.kt` (the drawer's pull state replaced by `scrollsInGrid`) and `Follow.kt` (the vertical-only slop and follow helpers generalised to `awaitSlop` and `followAlong`) also changed, as the drawer overlay's removal needs; the `Follow` class is unchanged (lor-bi72).
 
 ### Decisions
 
