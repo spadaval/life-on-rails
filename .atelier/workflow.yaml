@@ -10,6 +10,8 @@ issue_types:
     label: Decision
   feature:
     label: Feature
+  loose_end:
+    label: Loose end
   mission:
     label: Mission
   spike:
@@ -26,10 +28,6 @@ statuses:
   todo:
     category: todo
   in_progress:
-    category: active
-  blocked:
-    category: blocked
-  review:
     category: active
   done:
     category: done
@@ -51,32 +49,20 @@ workflows:
         validators:
         - issue.sections_parseable
       start:
-        from: [todo, blocked]
+        from: [todo]
         to: in_progress
         description: Start work.
         validators:
         - blockers.transitive_none_open
-      block:
-        from: [todo, in_progress, review]
-        to: blocked
-        description: Record a blocker.
-      request_review:
-        from: [in_progress]
-        to: review
-        description: Ready for independent review.
-      revise:
-        from: [review]
-        to: in_progress
-        description: Return to active work after review findings.
       close:
-        from: [in_progress, review]
+        from: [in_progress]
         to: done
         required_fields: [close_reason]
-        description: Done claim; commit it on the work branch before review.
+        description: Close the mission once all its work is merged and its validation, if it has one, is done; the Report says what it achieved.
         validators:
         - blockers.none_open
       supersede:
-        from: [draft, todo, blocked, in_progress]
+        from: [draft, todo, in_progress]
         to: superseded
         required_fields: [close_reason]
         description: Retire work that evidence made obsolete.
@@ -86,7 +72,6 @@ workflows:
     - feature
     - spike
     - task
-    - validation
     initial_status: todo
     done_statuses:
     - done
@@ -97,40 +82,20 @@ workflows:
         to: todo
         description: Pull someday work into the near-term plan.
       defer:
-        from: [todo, blocked]
+        from: [todo]
         to: backlog
         description: Park work that is recorded but not near-term.
       start:
-        from: [todo, blocked]
+        from: [todo]
         to: in_progress
         description: Start work.
         validators:
         - blockers.transitive_none_open
-      block:
-        from: [todo, in_progress, review]
-        to: blocked
-        description: Record a blocker.
-      request_review:
-        from: [in_progress]
-        to: review
-        description: Ready for independent review.
-      revise:
-        from: [review]
-        to: in_progress
-        description: Return to active work after review findings.
-      close:
-        from: [in_progress, review]
-        to: done
-        required_fields: [close_reason]
-        description: Done claim; commit it on the work branch before review. A parent closes after its children.
-        validators:
-        - blockers.none_open
-        - work.terminal
       supersede:
-        from: [backlog, todo, blocked, in_progress]
+        from: [backlog, todo, in_progress]
         to: superseded
         required_fields: [close_reason]
-        description: Retire work that is no longer needed.
+        description: Retire work that is no longer needed. Work is done when atelier merge integrates it.
   decision:
     applies_to:
     - decision
@@ -140,23 +105,40 @@ workflows:
     - superseded
     transitions:
       decide:
-        from: [todo, blocked]
+        from: [todo]
         to: done
         required_fields: [close_reason]
-        description: Record the decision. Decisions need no branch and may close on the base branch as a planning change.
+        description: Record the decision. Decisions need no branch and are decided on the base branch as a planning change.
         validators:
         - decision.recorded
         - blockers.none_open
         - work.terminal
-      block:
-        from: [todo]
-        to: blocked
-        description: Record a blocker.
       supersede:
-        from: [todo, blocked]
+        from: [todo]
         to: superseded
         required_fields: [close_reason]
         description: Retire a question that no longer needs deciding.
+  on_base:
+    applies_to:
+    - loose_end
+    - validation
+    initial_status: todo
+    done_statuses:
+    - done
+    - superseded
+    transitions:
+      done:
+        from: [todo]
+        to: done
+        required_fields: [close_reason]
+        description: Record the one-line result in the Report once what it waits on is merged. It needs no branch, review or merge, and is done on the base branch as a planning change; a bad result files a linked bug.
+        validators:
+        - blockers.none_open
+      supersede:
+        from: [todo]
+        to: superseded
+        required_fields: [close_reason]
+        description: Retire it once it is no longer needed.
 merge_checks:
   - shell.check:
       command: "git diff --check HEAD^ HEAD -- . ':!.atelier'"
