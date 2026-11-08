@@ -26,6 +26,7 @@ import { getPin } from "./trmnl/pin.js";
 import { BadInput } from "./errors.js";
 import { recordObservation } from "./observations.js";
 import { BACKUP_FILE, noteUploader } from "./whatsapp/import.js";
+import { type Place, type Weather, type WeatherCache, weatherCache } from "./weather.js";
 
 /** Sources a device may send. Calendar, mail, and the agent's log have their own writers. */
 const DEVICE_SOURCES = new Set(["android", "linux_activity", "windows_activity"]);
@@ -164,6 +165,8 @@ export interface DeviceHome {
   };
   /** The agent's work queue: open tasks given to the agent, queued ones first (oldest first), then the rest (newest change first). */
   agent_queue: { id: string; title: string; queued_at: string | null; thread: string | null }[];
+  /** Current conditions where the phone last was (Celsius); null without a key, a location, or after a failed fetch. */
+  weather: Weather | null;
 }
 
 /** How many of the agent's tasks /device/home carries. */
@@ -178,11 +181,21 @@ async function agentQueue(): Promise<DeviceHome["agent_queue"]> {
   return rows.map((r) => ({ id: r.id, title: r.title, queued_at: r.queued_at?.toISOString() ?? null, thread: r.thread_ref }));
 }
 
+/** Where the phone last was: its latest `location` observation, at any age. */
+async function lastPlace(): Promise<Place | null> {
+  const [row] = await sql<Place[]>`
+    SELECT (payload->>'lat')::float8 AS lat, (payload->>'lon')::float8 AS lon
+    FROM observation WHERE kind = 'location' ORDER BY t_start DESC LIMIT 1`;
+  return row ?? null;
+}
+
+const weather = weatherCache({ key: () => env.GOOGLE_MAPS_KEY, fetch: (...a) => globalThis.fetch(...a), now: Date.now, log: console.log });
+
 /** What the launcher's agent page shows from LoR, in one read. */
-export async function deviceHome(now = new Date()): Promise<DeviceHome> {
+export async function deviceHome(now = new Date(), weatherNow: WeatherCache = weather): Promise<DeviceHome> {
   const date = localYmd(env.LOR_TZ, now);
-  const [today, needs, pin, brief, queue] = await Promise.all([
-    getToday(sql, date, now), needsOwner(sql), getPin(sql), briefLine(sql, date), agentQueue(),
+  const [today, needs, pin, brief, queue, conditions] = await Promise.all([
+    getToday(sql, date, now), needsOwner(sql), getPin(sql), briefLine(sql, date), agentQueue(), weatherNow.read(lastPlace),
   ]);
   const r = today.running;
   return {
@@ -203,6 +216,7 @@ export async function deviceHome(now = new Date()): Promise<DeviceHome> {
         .map((e) => ({ title: e.title ?? "(no title)", start: e.t_start, end: e.t_end })),
     },
     agent_queue: queue,
+    weather: conditions,
   };
 }
 

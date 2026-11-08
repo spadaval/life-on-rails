@@ -8,6 +8,7 @@ import { lastContacts } from "../../src/server/people.js";
 import { env } from "../../src/server/env.js";
 import { dayTimeline } from "../../src/server/memory/timeline.js";
 import { addDays, localTimeOnDay, localYmd } from "../../src/shared/localTime.js";
+import { type Place, weatherCache } from "../../src/server/weather.js";
 import { dbDescribe } from "./helpers.js";
 
 const obs = (id: string, extra: Record<string, unknown> = {}) => ({
@@ -217,6 +218,50 @@ dbDescribe("device home: the agent's queue", () => {
     expect((await deviceHome()).agent_queue).toEqual([]);
     for (let i = 0; i < 12; i++) await createIntent(sql, { type: "task", title: `agent ${i}`, assignee: "agent" }, { via: "ui" });
     expect((await deviceHome()).agent_queue).toHaveLength(10);
+  });
+});
+
+dbDescribe("device home: the weather", () => {
+  const reply = {
+    currentTime: "2026-11-07T22:14:31Z",
+    isDaytime: false,
+    weatherCondition: { description: { text: "Clear" } },
+    temperature: { degrees: 9.5, unit: "CELSIUS" },
+  };
+  /** A cache whose fetch records where it was asked about. */
+  const stubbed = () => {
+    const asked: Place[] = [];
+    const cache = weatherCache({
+      key: () => "test-key",
+      fetch: (async (url: URL) => {
+        asked.push({ lat: Number(url.searchParams.get("location.latitude")), lon: Number(url.searchParams.get("location.longitude")) });
+        return new Response(JSON.stringify(reply), { status: 200 });
+      }) as typeof fetch,
+      now: Date.now,
+      log: () => {},
+    });
+    return { asked, cache };
+  };
+  const fix = (id: string, t: string, lat: number, lon: number) =>
+    obs(id, { t_start: t, t_end: null, app: null, title: null, payload: { kind: "location", lat, lon, accuracy_m: 12 } });
+
+  it("is the weather at the latest location observation", async () => {
+    // The later fix goes in first, so only its time can pick it.
+    await ingest({ device: "pixel-9a", observations: [
+      fix("6f1c2c1e-0000-4000-8000-0000000000a2", "2026-11-07T21:00:00.000Z", 37.4323, -121.8996),
+      fix("6f1c2c1e-0000-4000-8000-0000000000a1", "2026-11-07T20:00:00.000Z", 35.8553, -78.8752),
+    ] });
+    const { asked, cache } = stubbed();
+    const home = await deviceHome(undefined, cache);
+    expect(JSON.parse(JSON.stringify(home))).toEqual(home);
+    expect(home.weather).toEqual({ temp_c: 9.5, condition: "Clear", is_day: false, observed_at: "2026-11-07T22:14:31.000Z" });
+    expect(asked).toEqual([{ lat: 37.4323, lon: -121.8996 }]);
+  });
+
+  it("is null without a location observation, and calls nothing", async () => {
+    const { asked, cache } = stubbed();
+    expect((await deviceHome(undefined, cache)).weather).toBeNull();
+    expect(asked).toEqual([]);
   });
 });
 
