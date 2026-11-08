@@ -14,7 +14,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The minimap: a stack's blocks"
-updated_at: "2026-11-08T03:12:54.249020261+00:00"
+updated_at: "2026-11-08T03:13:21.414966778+00:00"
 ---
 
 ## Goal
@@ -62,6 +62,8 @@ On `T3_Phone_API35` against the test server, with a version 1 `layout.json` with
   Reason: Done when 3 needs home to draw the clock under the apps after the reorder. Until now the file's order was ignored for the clock, so the minimap's reorder would have changed the file and nothing on screen. lor-sbth rewrites the same lambda for widgets, so whichever merges second resolves it.
   Rejected: Leaving home's drawing alone and reporting the line unmet: the change is about ten lines and the line asks for exactly this
 - 2026-11-07 [handoff] Handed off: Done when ticked except the widget line (blocker note); see ## Report. Commits 8684613, 00a613b, receipts lor-vyyb, lor-jmmr, lor-p4xg, lor-ncmj, lor-hd99. Review: none yet.
+- 2026-11-07 [decision] Orchestrator: lor-sbth merges first. Then lor-f3vn merges main in, and lor-9uc1 adds the widget case to MinimapRules.blockTitle/blockDetail, resolves the HomeScreen.kt blocks conflict, and runs Done when 7, reviewed as its own diff before lor-f3vn merges.
+  Reason: Both records handed the widget check to the other; it needs widgets and the block editor on one branch.
 
 ## Report
 
