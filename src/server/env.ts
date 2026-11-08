@@ -61,6 +61,8 @@ const Env = z.object({
   GOOGLE_ACCOUNT: z.string().default(""),
   GOOGLE_OAUTH_CLIENT: z.string().default(path.join(homedir(), ".config/life-on-rails/google-client.json")),
   GOOGLE_TOKEN_FILE: z.string().default(path.join(homedir(), ".config/life-on-rails/google-token.json")),
+  // A Google Maps Platform key with the Weather API on, for the phone's clock (empty: no weather).
+  GOOGLE_MAPS_KEY: z.string().default(""),
 });
 
 export type Env = z.infer<typeof Env>;

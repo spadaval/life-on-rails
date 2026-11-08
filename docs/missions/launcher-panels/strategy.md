@@ -1,6 +1,6 @@
 ---
 status: draft
-last_changed: "2026-11-07: polish from the Smart Launcher comparison added (lor-gnk0, the drawer's thumb reach in lor-ph30, the layout lock in lor-f3vn; Sumeet); weather from Google's Weather API (Sumeet); 2026-11-06: created from Sumeet's direction in the thread 'Launcher usability vs Smart Launcher'; takes over Launcher polish's Fold and widgets outcome"
+last_changed: "2026-11-07: panels may write to LoR's data, through the rules the web's actions use (Sumeet); polish from the Smart Launcher comparison added (lor-gnk0, the drawer's thumb reach in lor-ph30, the layout lock in lor-f3vn; Sumeet); weather from Google's Weather API (Sumeet); 2026-11-06: created from Sumeet's direction in the thread 'Launcher usability vs Smart Launcher'; takes over Launcher polish's Fold and widgets outcome"
 ---
 
 # Why
@@ -30,16 +30,15 @@ Worth shipping on its own: the grid with today's home in it, then the inner scre
 - **The inner screen** is built row by row, left to right: a `full` panel is one inner screen, two neighbouring `half` panels share one, and a `half` with no half beside it uses its full layout. So no grid is invalid and no edit can break the inner screen. Each type has a default (`t3` and `lor` full, `drawer` half) that the file can override. A stack's wide layout flows its blocks into two columns, done once by the platform; `t3`, `lor` and `drawer` design their own.
 - **Folding.** Unfolding shows the inner screen holding the current cell. Folding from a full panel shows that panel's cell; from a pair, the half last touched, else the one unfolded from, else the left. A fold or unfold is handled without recreating the activity, and open folders, search text, scroll positions and edit mode survive it. After any screen-off, home goes to the current screen's `start`.
 - **Only visible cells and their neighbours are composed,** so a home press stays instant however many panels there are.
-- **Native, not web.** LoR's and T3's panels are Compose, drawing from `/device/home` and new read endpoints. No WebView. A panel that would write to LoR's data needs Sumeet's yes first.
+- **Native, not web.** LoR's and T3's panels are Compose, drawing from `/device/home` and new read endpoints. No WebView. Panels may write to LoR's data (Sumeet, 2026-11-07), through `POST` routes under `/device/` (the existing `/device/timer`, and new ones) that call the same server functions the web's actions call, so a write from the phone follows the web's rules.
 - **Phone edits go through the file,** as Launcher polish's P1 says: one `HomeStore`, atomic writes, Undo for every edit.
 - **Launcher polish's rules still hold:** read Lawnchair, Kvaesitso and Neo Launcher before building a launcher basic, and name the source and licence (Kvaesitso's widget column is the nearest design to a stack); motion is one-shot and follows the finger; nothing loops or pulses; native and instant wins.
 
 # Scope
 
-In: the grid and its movement, the pressed state and the folder's look, the drawer's thumb reach, the layout lock, schema version 2, the inner screen, folding, the minimap editor, widget hosting, the clock block, weather for it through LoR's server, LoR's and T3's panels in their narrow and wide forms, and new read endpoints on the LoR server for them.
+In: the grid and its movement, the pressed state and the folder's look, the drawer's thumb reach, the layout lock, schema version 2, the inner screen, folding, the minimap editor, widget hosting, the clock block, weather for it through LoR's server, LoR's and T3's panels in their narrow and wide forms, new read endpoints on the LoR server for them, and writes to LoR's data from a panel (Sumeet, 2026-11-07) through the server rules the web's actions use.
 
 Out:
-- writing to LoR's data from a panel (until Sumeet says yes);
 - generative widgets;
 - the agent-edited layout repository, named and temporary layouts, and agent-sorted folders (handed on from T3 Launcher);
 - Launcher polish's carried robustness items that aren't about folding (lor-kxxz, outside the mission);
@@ -56,7 +55,7 @@ The orchestrator may change the increments, their order and their issues, and ch
 These come back to Sumeet:
 - installing anything on his phone, and any permission he must grant;
 - a weather source that needs an account, a key or money;
-- a panel that writes to LoR's data;
+- a panel write that the web's actions don't already allow, or one with its own rules;
 - a change to `layout.json` that changes a version 2 field's meaning;
 - adding to or dropping from the Outcome.
 

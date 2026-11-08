@@ -17,15 +17,16 @@ import { normalizePhone } from "../shared/phone.js";
 import { fillWindow, pauseRunningBlock, resumeRunningBlock, startManualBlock, stopRunningBlock } from "./attribution/blocks.js";
 import { LOOKBACK_MS, lockBlocks, syncFill } from "./attribution/fill.js";
 import { env } from "./env.js";
-import { type TaskRow, getGraph, openTasks } from "./graph.js";
-import { needsOwner } from "./intents.js";
+import { type TaskRow, doneTodayTasks, getGraph, openTasks } from "./graph.js";
+import { assignTask, completeTask, needsOwner, queueTask, reopenTask, unflagTask } from "./intents.js";
 import { type Channel, listPeople } from "./people.js";
 import { getToday } from "./today.js";
 import { briefLine, oneFrom, runningName } from "./trmnl/device.js";
 import { getPin } from "./trmnl/pin.js";
-import { BadInput } from "./errors.js";
+import { BadInput, NotFound } from "./errors.js";
 import { recordObservation } from "./observations.js";
 import { BACKUP_FILE, noteUploader } from "./whatsapp/import.js";
+import { type Place, type Weather, type WeatherCache, weatherCache } from "./weather.js";
 
 /** Sources a device may send. Calendar, mail, and the agent's log have their own writers. */
 const DEVICE_SOURCES = new Set(["android", "linux_activity", "windows_activity"]);
@@ -151,8 +152,8 @@ export interface DeviceHome {
   one: { kicker: string; text: string; why: string | null } | null;
   /** The first line of today's brief. */
   brief: string | null;
-  /** Flagged tasks, oldest flag first. */
-  needs_you: { id: string; title: string; note: string | null; flagged_at: string }[];
+  /** Flagged tasks, oldest flag first. A Google task is done in Google Tasks, so the phone offers no Done on it. */
+  needs_you: { id: string; title: string; note: string | null; flagged_at: string; google: boolean }[];
   day: {
     wake_start: string;
     wake_end: string;
@@ -164,6 +165,8 @@ export interface DeviceHome {
   };
   /** The agent's work queue: open tasks given to the agent, queued ones first (oldest first), then the rest (newest change first). */
   agent_queue: { id: string; title: string; queued_at: string | null; thread: string | null }[];
+  /** Current conditions where the phone last was (Celsius); null without a key, a location, or after a failed fetch. */
+  weather: Weather | null;
 }
 
 /** How many of the agent's tasks /device/home carries. */
@@ -178,11 +181,21 @@ async function agentQueue(): Promise<DeviceHome["agent_queue"]> {
   return rows.map((r) => ({ id: r.id, title: r.title, queued_at: r.queued_at?.toISOString() ?? null, thread: r.thread_ref }));
 }
 
+/** Where the phone last was: its latest `location` observation, at any age. */
+async function lastPlace(): Promise<Place | null> {
+  const [row] = await sql<Place[]>`
+    SELECT (payload->>'lat')::float8 AS lat, (payload->>'lon')::float8 AS lon
+    FROM observation WHERE kind = 'location' ORDER BY t_start DESC LIMIT 1`;
+  return row ?? null;
+}
+
+const weather = weatherCache({ key: () => env.GOOGLE_MAPS_KEY, fetch: (...a) => globalThis.fetch(...a), now: Date.now, log: console.log });
+
 /** What the launcher's agent page shows from LoR, in one read. */
-export async function deviceHome(now = new Date()): Promise<DeviceHome> {
+export async function deviceHome(now = new Date(), weatherNow: WeatherCache = weather): Promise<DeviceHome> {
   const date = localYmd(env.LOR_TZ, now);
-  const [today, needs, pin, brief, queue] = await Promise.all([
-    getToday(sql, date, now), needsOwner(sql), getPin(sql), briefLine(sql, date), agentQueue(),
+  const [today, needs, pin, brief, queue, conditions] = await Promise.all([
+    getToday(sql, date, now), needsOwner(sql), getPin(sql), briefLine(sql, date), agentQueue(), weatherNow.read(lastPlace),
   ]);
   const r = today.running;
   return {
@@ -190,7 +203,7 @@ export async function deviceHome(now = new Date()): Promise<DeviceHome> {
     timezone: env.LOR_TZ,
     one: oneFrom(now, { today, needs, pin, brief }),
     brief,
-    needs_you: needs.map((n) => ({ id: n.id, title: n.title, note: n.flag_note, flagged_at: n.flagged_at! })),
+    needs_you: needs.map((n) => ({ id: n.id, title: n.title, note: n.flag_note, flagged_at: n.flagged_at!, google: n.google_task_id !== null })),
     day: {
       wake_start: today.wake_start,
       wake_end: today.wake_end,
@@ -203,6 +216,7 @@ export async function deviceHome(now = new Date()): Promise<DeviceHome> {
         .map((e) => ({ title: e.title ?? "(no title)", start: e.t_start, end: e.t_end })),
     },
     agent_queue: queue,
+    weather: conditions,
   };
 }
 
@@ -217,12 +231,17 @@ export interface DeviceTasks {
   open: number;
   /** The open tasks as the web's Today lists them in Due soon, at most TASKS. */
   tasks: TaskRow[];
+  /** The tasks marked done today, as the web's Due soon draws them struck through under the open ones. */
+  done_today: TaskRow[];
 }
 
-/** The phone's Tasks: the open tasks, from the same function as the web's Today. */
+/** The phone's Tasks: the open tasks and those done today, from the same functions as the web's Today. */
 export async function deviceTasks(now = new Date()): Promise<DeviceTasks> {
-  const all = openTasks((await getGraph(sql, now)).nodes);
-  return { now: now.toISOString(), timezone: env.LOR_TZ, today: localYmd(env.LOR_TZ, now), open: all.length, tasks: all.slice(0, TASKS) };
+  const today = localYmd(env.LOR_TZ, now);
+  const { nodes } = await getGraph(sql, now);
+  const all = openTasks(nodes);
+  const done = await doneTodayTasks(sql, nodes, today);
+  return { now: now.toISOString(), timezone: env.LOR_TZ, today, open: all.length, tasks: all.slice(0, TASKS), done_today: done };
 }
 
 /** How many people each list of /device/people carries, and how far ahead a birthday counts. */
@@ -282,6 +301,43 @@ export async function deviceTimer(body: unknown, login: string): Promise<DeviceS
   else if (action === "pause") await pauseRunningBlock(sql);
   else await resumeRunningBlock(sql, who);
   return deviceState(login, d.device ?? null);
+}
+
+const TaskBody = z.object({
+  id: z.string().uuid(),
+  action: z.enum(["done", "reopen", "seen", "queue", "unqueue"]),
+  device: z.string().max(64).nullish(),
+});
+
+export interface DeviceTask {
+  id: string;
+  title: string;
+  status: string;
+  done: boolean;
+  assignee: "owner" | "agent";
+  queued_at: string | null;
+  flagged: boolean;
+}
+
+/**
+ * A panel's write to a task, through the functions the web's own actions call
+ * (taskDoneFn, unflagFn, and Tasks' assign), so their rules and refusals hold.
+ * Replies with the task after the write.
+ */
+export async function deviceTask(body: unknown): Promise<DeviceTask> {
+  const d = TaskBody.parse(body);
+  if (d.action === "done") await completeTask(sql, d.id, { via: "ui", sourceRef: d.device ?? null });
+  else if (d.action === "reopen") await reopenTask(sql, d.id);
+  else if (d.action === "seen") await unflagTask(sql, d.id);
+  else if (d.action === "queue") await queueTask(sql, d.id);
+  else await assignTask(sql, d.id, "owner");
+  const [t] = await sql<{ id: string; title: string; status: string; assignee: "owner" | "agent"; queued_at: Date | null; flagged_at: Date | null }[]>`
+    SELECT id, title, status::text AS status, assignee, queued_at, flagged_at FROM intent WHERE id = ${d.id}`;
+  if (!t) throw new NotFound(`no intent ${d.id}`);
+  return {
+    id: t.id, title: t.title, status: t.status, done: t.status === "done", assignee: t.assignee,
+    queued_at: t.queued_at?.toISOString() ?? null, flagged: t.flagged_at !== null,
+  };
 }
 
 /**
