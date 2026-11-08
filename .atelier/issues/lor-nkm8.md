@@ -25,7 +25,7 @@ relationships:
 schema: "atelier.issue"
 schema_version: 2
 status: "backlog"
-title: "The phone sends LoR what home looks like: icons, wallpaper, screens, font, widgets"
+title: "The phone sends LoR what home looks like: icons, wallpaper, screens, widgets"
 updated_at: "2026-11-08T03:36:23.275521639+00:00"
 ---
 
