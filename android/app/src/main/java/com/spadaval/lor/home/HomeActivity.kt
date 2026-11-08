@@ -56,19 +56,14 @@ class HomeActivity : ComponentActivity() {
     private var slept = false
 
     /**
-     * A screen-off is remembered, and acted on when the screen comes back on, so the start is that
-     * screen's: a fold or unfold while the screen was off has changed it by then (lor-ozj2).
+     * A screen-off is remembered and acted on in [onStart], so the start is that screen's: a fold
+     * or unfold while the screen was off reaches the activity after the screen-on broadcast but
+     * before onStart, so acting on the broadcast went to the folded start (lor-ozj2; found by
+     * lor-f3vn's end-to-end check).
      */
     private val screen = object : BroadcastReceiver() {
         override fun onReceive(c: Context, intent: Intent) {
-            when (intent.action) {
-                Intent.ACTION_SCREEN_OFF -> slept = true
-                Intent.ACTION_SCREEN_ON -> if (slept) {
-                    slept = false
-                    ui.homePressed(animate = false)
-                    Log.i(TAG, "screen on: home goes to its start (${describe(resources.configuration)})")
-                }
-            }
+            if (intent.action == Intent.ACTION_SCREEN_OFF) slept = true
         }
     }
 
@@ -82,7 +77,7 @@ class HomeActivity : ComponentActivity() {
         model = HomeModel((application as LorApp).home)
         val icons = model.icons
         ContextCompat.registerReceiver(
-            this, screen, IntentFilter().apply { addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON) },
+            this, screen, IntentFilter(Intent.ACTION_SCREEN_OFF),
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         // Back on home goes nowhere; HomeScreen's handlers close what is open first.
@@ -103,6 +98,7 @@ class HomeActivity : ComponentActivity() {
                 }
             }
         }
+        if (intent?.getBooleanExtra(EXTRA_MINIMAP, false) == true) ui.openMinimap()
     }
 
     /**
@@ -123,6 +119,14 @@ class HomeActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // Home settings' Panels (lor-6get): home comes to the front with the minimap open.
+        if (intent.getBooleanExtra(EXTRA_MINIMAP, false)) {
+            Log.i(TAG, "the minimap opens from Home settings")
+            // After a screen-off the reset to the start is still to come (onStart and an effect,
+            // in either order with this intent), so the minimap opens after it (lor-5i6p).
+            if (slept || ui.toStart) ui.minimapAfterStart = true else ui.openMinimap()
+            return
+        }
         if (intent.action != Intent.ACTION_MAIN || !intent.hasCategory(Intent.CATEGORY_HOME)) return
         // Launcher3's alreadyOnHome: home had focus and the press didn't bring it to the front.
         val broughtToFront = intent.flags and Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT != 0
@@ -130,7 +134,12 @@ class HomeActivity : ComponentActivity() {
         // Home on screen before the press closes what is open with motion; brought from elsewhere,
         // there is nothing to watch, so it shuts at once (launcher polish 7.1).
         val wasVisible = !broughtToFront && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
-        if (alreadyOnHome && ui.atRest) QuickSend.open(this, QuickSend.From.HOME) else ui.homePressed(animate = wasVisible)
+        when {
+            // A home press closes the minimap and leaves home on its cell, as back and Done do (lor-6get).
+            ui.minimap -> ui.closeMinimap()
+            alreadyOnHome && ui.atRest -> QuickSend.open(this, QuickSend.From.HOME)
+            else -> ui.homePressed(animate = wasVisible)
+        }
     }
 
     /**
@@ -161,6 +170,11 @@ class HomeActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         store.widgets.startListening()
+        if (slept) {
+            slept = false
+            ui.toStart = true
+            Log.i(TAG, "screen on: home goes to its start (${describe(resources.configuration)})")
+        }
     }
 
     override fun onStop() {
@@ -515,19 +529,27 @@ class HomeActivity : ComponentActivity() {
     /** Something that failed: the bar with 3.6's coral dot. */
     private fun fail(text: String) = ui.undo.say(text, failed = true)
 
-    private companion object {
-        const val TAG = "LorHome"
-        const val WIDGETS = "LorWidgets"
-        const val CONFIGURE_WIDGET = 1024
-        const val RECONFIGURE_WIDGET = 1025
+    companion object {
+        private const val TAG = "LorHome"
+        private const val WIDGETS = "LorWidgets"
+        private const val CONFIGURE_WIDGET = 1024
+        private const val RECONFIGURE_WIDGET = 1025
+
+        /** The extra that opens the minimap (lor-6get), from Home settings' Panels row. */
+        private const val EXTRA_MINIMAP = "com.spadaval.lor.home.MINIMAP"
+
+        /** Brings home to the front with the minimap open. */
+        fun openMinimap(context: Context) = context.startActivity(
+            Intent(context, HomeActivity::class.java).putExtra(EXTRA_MINIMAP, true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
 
         /** What a log line needs of [c]: the smallest width, density, night mode and font scale. */
-        fun describe(c: Configuration) =
+        private fun describe(c: Configuration) =
             "sw ${c.smallestScreenWidthDp} dp, ${c.screenWidthDp}x${c.screenHeightDp} dp, ${c.densityDpi} dpi, " +
                 "night ${if (c.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES) "yes" else "no"}, font ${c.fontScale}"
 
         /** The names of the `configChanges` bits in [diff]. */
-        fun configChanges(diff: Int): String = listOf(
+        private fun configChanges(diff: Int): String = listOf(
             ActivityInfo.CONFIG_ORIENTATION to "orientation", ActivityInfo.CONFIG_SCREEN_SIZE to "screenSize",
             ActivityInfo.CONFIG_SMALLEST_SCREEN_SIZE to "smallestScreenSize", ActivityInfo.CONFIG_SCREEN_LAYOUT to "screenLayout",
             ActivityInfo.CONFIG_DENSITY to "density", ActivityInfo.CONFIG_UI_MODE to "uiMode", ActivityInfo.CONFIG_FONT_SCALE to "fontScale",

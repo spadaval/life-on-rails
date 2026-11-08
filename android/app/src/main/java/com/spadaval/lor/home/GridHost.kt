@@ -372,6 +372,8 @@ internal fun Modifier.gridFinger(ui: HomeUi, haptics: HapticFeedback, topPx: () 
     val grid = ui.grid
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        // Over the minimap the grid stays where it is: its drags move tiles, not home (lor-6get).
+        if (ui.minimap) return@awaitEachGesture
         // Any press on a half makes it the one a fold lands on.
         grid.pressed(down.position.x, size.width)?.let { android.util.Log.d("LorGrid", "touched $it on ${grid.inner.screen.cells}") }
         // A widget being resized, and the widget picker over home, have the finger (lor-r0f9); a

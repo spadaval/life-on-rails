@@ -178,6 +178,12 @@ private fun HomeSettings(
         item {
             Text("HOME SETTINGS", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(20.dp, 24.dp, 20.dp, 8.dp))
         }
+        // The minimap (lor-6get): home comes to the front with it open. It is the way in when the grid
+        // holds no stack, whose home menu is the other.
+        item {
+            val context = LocalContext.current
+            Link("Panels", "Arrange home's grid: add, move and remove panels, and lock it") { HomeActivity.openMinimap(context) }
+        }
         // A broken file: its banner and the restore in place of the sections, whose edits would fail (launcher polish 3.1).
         if (layout is LayoutState.Broken) item {
             BrokenBanner(layout, appsLoaded, MaterialTheme.typography.bodyMedium, Modifier.padding(horizontal = 20.dp), restore)

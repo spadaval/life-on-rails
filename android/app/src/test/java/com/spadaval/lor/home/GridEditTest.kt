@@ -151,7 +151,9 @@ class GridEditTest {
         assertEquals(listOf(StackBlock.Clock, StackBlock.Apps(listOf(ref("e.e"))), StackBlock.Dock), clocked.blocks(2, 0))
         roundTrips(clocked)
         val bare = one.removeBlock(BlockAt(Cell(1, 0), 1), one.blocks(1, 0)[1])
-        assertEquals(listOf(StackBlock.Clock, StackBlock.Dock, StackBlock.Apps(emptyList())), bare.addBlock(Cell(1, 0), 2, "apps").blocks(1, 0))
+        assertEquals(listOf(StackBlock.Clock, StackBlock.Apps(emptyList()), StackBlock.Dock), bare.addBlock(Cell(1, 0), 1, "apps").blocks(1, 0))
+        // Nothing goes below a dock (DOCK_LAST).
+        assertEquals(DOCK_LAST, refused { bare.addBlock(Cell(1, 0), 2, "apps") })
         assertEquals("a stack holds one \"clock\" block", refused { one.addBlock(Cell(1, 0), 0, "clock") })
         assertEquals("a widget is added from the home menu", refused { one.addBlock(Cell(2, 0), 0, "widget") })
         assertEquals("there's no block type \"today\"", refused { one.addBlock(Cell(2, 0), 0, "today") })
@@ -166,12 +168,31 @@ class GridEditTest {
     }
 
     @Test
+    fun theDockStaysUnderTheOtherBlocks() {
+        val home = BlockAt(Cell(1, 0), 0)
+        // Within a stack: nothing moves below the dock, and the dock doesn't move up.
+        assertEquals(DOCK_LAST, refused { one.moveBlock(home, StackBlock.Clock, Cell(1, 0), 2) })
+        assertEquals(DOCK_LAST, refused { one.moveBlock(BlockAt(Cell(1, 0), 2), StackBlock.Dock, Cell(1, 0), 1) })
+        // Into another stack: not below its dock; a dock moved to a stack without one goes last.
+        assertEquals(DOCK_LAST, refused { one.moveBlock(home, StackBlock.Clock, Cell(2, 0), 2) })
+        val noDock = one.removeBlock(BlockAt(Cell(2, 0), 1), StackBlock.Dock)
+        assertEquals(DOCK_LAST, refused { noDock.moveBlock(BlockAt(Cell(1, 0), 2), StackBlock.Dock, Cell(2, 0), 0) })
+        assertEquals(listOf(StackBlock.Apps(listOf(ref("e.e"))), StackBlock.Dock), noDock.moveBlock(BlockAt(Cell(1, 0), 2), StackBlock.Dock, Cell(2, 0), 1).blocks(2, 0))
+        // Adding a dock to a stack without one: only last.
+        assertEquals(DOCK_LAST, refused { noDock.addBlock(Cell(2, 0), 0, "dock") })
+        // A hand edit that put the dock elsewhere doesn't lock its stack.
+        val hand = one.withCurrent(one.current.copy(panels = one.current.panels.map {
+            if (it.at == Cell(2, 0)) Panel.Stack(Cell(2, 0), listOf(StackBlock.Dock, StackBlock.Apps(listOf(ref("e.e"))))) else it
+        }))
+        assertEquals(listOf(StackBlock.Dock, StackBlock.Clock, StackBlock.Apps(listOf(ref("e.e")))), hand.addBlock(Cell(2, 0), 1, "clock").blocks(2, 0))
+        assertEquals(listOf(StackBlock.Apps(listOf(ref("e.e"))), StackBlock.Dock), hand.moveBlock(BlockAt(Cell(2, 0), 0), StackBlock.Dock, Cell(2, 0), 1).blocks(2, 0))
+    }
+
+    @Test
     fun moveBlockWithinAStackAndToAnother() {
         val home = BlockAt(Cell(1, 0), 0)
         // Within a stack: the index is where it ends up.
-        assertEquals(listOf(StackBlock.Apps(listOf(ref("a.a"))), StackBlock.Dock, StackBlock.Clock), one.moveBlock(home, StackBlock.Clock, Cell(1, 0), 2).blocks(1, 0))
-        assertEquals(listOf(StackBlock.Clock, StackBlock.Dock, StackBlock.Apps(listOf(ref("a.a")))),
-            one.moveBlock(BlockAt(Cell(1, 0), 2), StackBlock.Dock, Cell(1, 0), 1).blocks(1, 0))
+        assertEquals(listOf(StackBlock.Apps(listOf(ref("a.a"))), StackBlock.Clock, StackBlock.Dock), one.moveBlock(home, StackBlock.Clock, Cell(1, 0), 1).blocks(1, 0))
         assertSame(one, one.moveBlock(home, StackBlock.Clock, Cell(1, 0), 0))
         // To another stack, before its block at the index.
         val moved = one.moveBlock(home, StackBlock.Clock, Cell(2, 0), 0)

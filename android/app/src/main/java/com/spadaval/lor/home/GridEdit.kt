@@ -52,7 +52,7 @@ fun LayoutFile.addPanel(cell: Cell, type: String): LayoutFile {
         "drawer" -> Panel.Drawer(cell)
         else -> throw LayoutError("there's no panel type \"$type\"")
     }
-    ONCE[type]?.let { name -> if (layout.panels.any { it.typeName == type }) throw LayoutError("there's already $name") }
+    layout.alreadyHolds(type)?.let { throw LayoutError(it) }
     return withCurrent(layout.copy(panels = layout.panels + panel).checkRows())
 }
 
@@ -128,7 +128,7 @@ fun LayoutFile.setStart(at: Cell, screen: StartScreen): LayoutFile {
 
 /**
  * Adds a block of [type], one that takes no field ([StackBlock.bare]), to the stack at [at],
- * before its block [index] (its block count to add it last). A stack holds each type once
+ * before its block [index] (its block count to add it last), never below its dock ([DOCK_LAST]). A stack holds each type once
  * ([Panel.Stack.takes]). A `widget` is added on home, through Android's bind flow ([addWidget]).
  */
 fun LayoutFile.addBlock(at: Cell, index: Int, type: String): LayoutFile {
@@ -139,15 +139,15 @@ fun LayoutFile.addBlock(at: Cell, index: Int, type: String): LayoutFile {
         if (type == StackBlock.Widget.TYPE) "a widget is added from the home menu" else "there's no block type \"$type\"",
     )
     if (!stack.takes(type)) throw LayoutError(oneOf(type))
-    val blocks = stack.blocks.toMutableList().apply { add(index, block) }
-    return withCurrent(layout.withPanel(stack.copy(blocks = blocks)).checkRows())
+    val added = stack.copy(blocks = stack.blocks.toMutableList().apply { add(index, block) }).dockStaysLast(stack)
+    return withCurrent(layout.withPanel(added).checkRows())
 }
 
 /**
  * Moves [block], drawn at [from], to the stack at [to], to be its block [index]. Within one stack,
  * [index] is where it ends up (moving it where it is changes nothing); into another, it goes before
  * that stack's block [index] (its block count for last). An `apps` block keeps its items. A stack's
- * last block can't leave it.
+ * last block can't leave it, and a dock stays last ([DOCK_LAST]).
  */
 fun LayoutFile.moveBlock(from: BlockAt, block: StackBlock, to: Cell, index: Int): LayoutFile {
     val layout = current
@@ -156,14 +156,14 @@ fun LayoutFile.moveBlock(from: BlockAt, block: StackBlock, to: Cell, index: Int)
         if (index !in source.blocks.indices) throw LayoutError(HOME_CHANGED)
         if (index == from.block) return this
         val blocks = source.blocks.toMutableList().apply { add(index, removeAt(from.block)) }
-        return withCurrent(layout.withPanel(source.copy(blocks = blocks)))
+        return withCurrent(layout.withPanel(source.copy(blocks = blocks).dockStaysLast(source)))
     }
     val target = layout.panelAt(to) as? Panel.Stack ?: throw LayoutError(HOME_CHANGED)
     if (index !in 0..target.blocks.size) throw LayoutError(HOME_CHANGED)
     if (source.blocks.size == 1) throw LayoutError(LAST_BLOCK)
     if (!target.takes(block.type)) throw LayoutError(oneOf(block.type))
     val left = source.copy(blocks = source.blocks.filterIndexed { i, _ -> i != from.block })
-    val took = target.copy(blocks = target.blocks.toMutableList().apply { add(index, block) })
+    val took = target.copy(blocks = target.blocks.toMutableList().apply { add(index, block) }).dockStaysLast(target)
     return withCurrent(layout.withPanel(left).withPanel(took).checkRows())
 }
 
@@ -175,8 +175,35 @@ fun LayoutFile.removeBlock(at: BlockAt, block: StackBlock): LayoutFile {
     return withCurrent(layout.withPanel(stack.copy(blocks = stack.blocks.filterIndexed { i, _ -> i != at.block })))
 }
 
-/** The panel types a layout holds at most one of, with how a refusal names one. */
-private val ONCE = mapOf("t3" to "an agent page", "drawer" to "a drawer")
+/**
+ * The panel types a layout holds at most one of, with how a refusal names one. The minimap's
+ * palette (lor-6get) dims these when the layout holds one.
+ */
+val ONCE = mapOf("t3" to "an agent page", "drawer" to "a drawer")
+
+/** Why a panel of [type] can't be added to this layout, which holds its one already; null when it can be. */
+fun Layout.alreadyHolds(type: String): String? =
+    ONCE[type]?.takeIf { panels.any { it.typeName == type } }?.let { "there's already $it" }
+
+/**
+ * Home draws a stack's dock under its other blocks wherever the file puts it (layout-v2.md), so
+ * no edit puts a block below a dock or moves a dock up: the file and the screen agree. The rule
+ * is [addBlock]'s and [moveBlock]'s; the minimap's block list pins the dock to match.
+ */
+internal const val DOCK_LAST = "the dock stays under the other blocks"
+
+/** Whether this stack's dock, if it has one, is its last block. */
+internal val Panel.Stack.dockLast: Boolean
+    get() = blocks.indexOfFirst { it is StackBlock.Dock }.let { it < 0 || it == blocks.lastIndex }
+
+/**
+ * This stack, an edit of [before], or a refusal when the edit takes a dock off the end. A stack
+ * a hand edit left with its dock elsewhere can still be edited.
+ */
+private fun Panel.Stack.dockStaysLast(before: Panel.Stack): Panel.Stack {
+    if (before.dockLast && !dockLast) throw LayoutError(DOCK_LAST)
+    return this
+}
 
 internal const val LAST_BLOCK = "a stack needs a block; remove the panel instead"
 
