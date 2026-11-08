@@ -154,6 +154,8 @@ class HomeStore(private val context: Context) {
     val search: StateFlow<SearchSources> = _search
     /** App icons for the process (lor-ozj2), drawn at the size each screen asks for. */
     val icons = Icons(context)
+    /** The process's widget host (lor-r0f9); swept the first time `layout.json` parses. */
+    val widgets = WidgetHost(context)
 
     private val callback = object : LauncherApps.Callback() {
         override fun onPackageRemoved(packageName: String, user: UserHandle) = changed(listOf(packageName), user)
@@ -481,6 +483,8 @@ class HomeStore(private val context: Context) {
             val read = store.read(if (loaded) ::defaultLayout else null)
             stamp = read.stamp
             Log.i(TAG, if (wrote) "wrote and read layout.json (the first run's default)" else "read layout.json")
+            // Ids no layout names go once per process, at the first read that parses (decision lor-9wlx).
+            widgets.sweep(listOfNotNull(read.layout, store.readGood()))
             LayoutState.Ready(read.layout)
         } catch (e: LayoutError) {
             stamp = store.file.lastModified()

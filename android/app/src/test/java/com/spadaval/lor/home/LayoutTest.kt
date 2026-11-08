@@ -200,7 +200,7 @@ class LayoutTest {
             error(panels("""{"at": [0, 0], "type": "stack", "blocks": [{"type": "dock"}], "items": []}""")))
         assertEquals("layouts[0].panels[0].blocks[1]: must be an object", error(stack("""[{"type": "clock"}, "apps"]""")))
         assertEquals("layouts[0].panels[0].blocks[1].type: must be a string", error(stack("""[{"type": "clock"}, {"items": []}]""")))
-        assertEquals("layouts[0].panels[0].blocks[1].type: must be one of clock, apps, dock, got \"widget\"", error(stack("""[{"type": "clock"}, {"type": "widget"}]""")))
+        assertEquals("layouts[0].panels[0].blocks[1].type: must be one of clock, apps, dock, widget, got \"today\"", error(stack("""[{"type": "clock"}, {"type": "today"}]""")))
         assertEquals("layouts[0].panels[0].blocks[1]: unknown field \"items\" (allowed: type)", error(stack("""[{"type": "clock"}, {"type": "dock", "items": []}]""")))
         assertEquals("layouts[0].panels[0].blocks[0]: unknown field \"style\" (allowed: type)", error(stack("""[{"type": "clock", "style": "date"}]""")))
         assertEquals("layouts[0].panels[0].blocks[2]: a stack holds one \"apps\" block", error(stack("""[{"type": "apps"}, {"type": "dock"}, {"type": "apps"}]""")))

@@ -64,7 +64,7 @@ A panel is `{ "at": [column, row], "type": … }`.
 
 - `at`: two whole numbers from 0. The grid is sparse: a cell holds at most one panel, and cells without one are empty. Moving between cells, the inner screen's pairing and the vertical wrap are behaviour, not fields (the strategy's Shape and decision lor-y7qi).
 - `type` is one of:
-  - `stack`: a column of blocks, `"blocks": [block, …]`, at least one, each block type at most once in a stack.
+  - `stack`: a column of blocks, `"blocks": [block, …]`, at least one, each block type at most once in a stack except `widget`, which may repeat.
   - `t3`: the agent page. No other field but `wide`.
   - `drawer`: the app drawer as a panel. No other field but `wide`.
 - `wide` (optional, any type; a version 2 addition, lor-j87u, decision lor-b1dx): how the panel sits on the inner screen, `"full"` or `"half"`. Any other value, or a value that isn't a string, is an error naming its place (`layouts[0].panels[2].wide: "Full" is not "full" or "half"`). Absent, it is the type's default: `stack` half, `t3` full, `drawer` half (and `lor` full, when lor-clgw adds that type). A row's inner screens are built left to right by column: a `full` panel is one inner screen; a `half` shares one with the next panel in the row, past any gap, when that panel is also a `half` not already paired; otherwise it is alone and drawn in its full layout. So no grid is invalid. The rule is `InnerScreens` in `Inner.kt`, which home draws from lor-el51 on. A converted version 1 file has no `wide`, so its inner screens are the agent page; home and page 2; pages 3 and 4; and so on, with the drawer alone on row 1.
@@ -75,12 +75,19 @@ A panel is `{ "at": [column, row], "type": … }`.
 
 A block is `{ "type": … }`.
 
-- `clock`: today's header, drawn in the style `look.header` names (date, clock or none). No other field. lor-sbth adds the next alarm and weather to it.
+- `clock`: today's header: the time and date in the style `look.header` names (date, clock or none), the next event, the next alarm, and the weather (lor-sbth; lor-leh4 draws the last three). No other field.
 - `apps`: `"items": [item, …]` (optional; absent or empty means none), at most 24, in reading order. The block fills its grid row by row with the columns `look.grid` sets. An item is written as version 1's `home` items are:
   - An app is a string: a package name (that package's launchable activity in the main profile that comes first by label, in `Collator` order) or `package/activity` (`package/.Short` expands as `ComponentName.unflattenFromString` does).
   - A folder has `folder` (its name) and `apps` (one or more apps; folders don't nest). Optional: `reason`, one line shown when it opens; `pinned` (default false), meaning Sumeet arranged it and an agent leaves it alone; and `cover`, one of the folder's `apps`, written as it is there, drawn as its tile (while that app isn't installed, the four-app preview shows; an edit that takes the app out of the folder drops `cover`).
 - `dock`: the layout's `dock`. No other field.
-- New block types (`widget`, `today`, `needs-you`, `running`, `t3-queue`) are added by the issues that use them.
+- `widget` (a version 2 addition, lor-sbth, decision lor-9wlx): an Android widget, `{ "type": "widget", "id": 42, "provider": "com.google.android.deskclock/com.android.alarmclock.DigitalAppWidgetProvider", "height": 160 }`. All three fields are required, and no other field is allowed.
+  - `id`: the appWidgetId the phone's widget host bound, a whole number from 1. An `id` is used once in a layout; the error names both places (`layouts[0].panels[2].blocks[0].id: 42 is taken by panels[1].blocks[1]`).
+  - `provider`: the widget provider's component, `package/class` (`package/.Short` expands as `ComponentName.unflattenFromString` does; the phone writes the class in full). A package alone is an error (`layouts[0].panels[1].blocks[1].provider: "com.tesla" is not package/class`).
+  - `height`: the block's height in dp, a whole number from 40 to 2000.
+  - Size: the width is the column the block is drawn in: the panel's width on the narrow screen and as a half, its flow column in the wide flow (lor-j87u). When the provider's `maxResizeWidth` is set and narrower, the widget is that wide, centred. The phone tells the widget its size whenever either changes, so a fold re-lays it. A new widget's height is the provider's `minHeight` in dp. Resizing changes only the height, between `minResizeHeight` (when set and below `minHeight`, else `minHeight`) and the smaller of `maxResizeHeight` (when set) and the panel's height. There are no cell spans.
+  - Gone: when no provider is bound to the `id`, or one other than `provider`, home draws a note in its place, at its height, with Remove. The file is not changed until Sumeet removes it.
+  - Ids no layout names are deleted from the widget host once per process, when `layout.json` first parses: every id the host holds that no layout of `layout.json` or `layout.good.json` names. A file that doesn't parse sweeps nothing. Remove doesn't delete the id, so Undo puts the widget back.
+- New block types (`today`, `needs-you`, `running`, `t3-queue`) are added by the issues that use them.
 
 ### What the phone's edits mean
 
@@ -96,11 +103,15 @@ Launcher polish's rules carry over, with "home" meaning every `apps` block of th
 - The minimap's edits (lor-f3vn; `GridEdit.kt`):
   - A new or moved panel goes in a cell in reach: columns 0 to one past the last panel's, and rows 0 to one past the last panel's, of the active layout. A hand-written far cell still draws; the phone never writes one.
   - A layout holds one `t3` panel and one `drawer` panel.
-  - A new stack is an empty `apps` block and `dock`, as a new page is. A block added to a stack is a type that takes no field (`clock`, an empty `apps`, `dock`), and a stack holds each type once.
+  - A new stack is an empty `apps` block and `dock`, as a new page is. A block added to a stack is a type that takes no field (`clock`, an empty `apps`, `dock`), and a stack holds each type once. A `widget` isn't added here ("a widget is added from the home menu"), but it moves and is removed like any block.
   - A panel moved onto another swaps with it. A `start` that named a moved panel's cell names its new cell. Setting the wide start on the narrow start's cell clears `start.wide`, and so does setting the narrow start on the wide start's cell.
   - A panel a `start` names can't be removed ("home starts there; choose another start first"), and a stack's last block can't be moved out or removed ("a stack needs a block; remove the panel instead"). Removing a stack or an `apps` block takes its apps off home.
   - The row limit holds in the rows an added or moved stack or `apps` block lands in.
   - An edit of a panel or a block names its cell (and the block's index) and what the minimap drew there, and is refused ("Home changed; try again") when the file holds something else there.
+- The widget edits (`WidgetEdit.kt`) address a widget by its `id`, in the active layout, so other edits don't move it:
+  - Add puts a new `widget` block in a stack before its `apps` block, else before its `dock`, else last. It refuses an `id` the layout already holds.
+  - Remove takes the block out; Resize sets its `height`. Each refuses an `id` the active layout doesn't hold ("widget 9 isn't on home"), and Remove refuses a stack's last block, as the minimap's does. Resizing to the height it has changes nothing.
+  - Like the minimap's, these edits don't remove an extra page they empty.
 - The phone writes only fields that differ from their defaults (`start.wide` only when set, a panel's `wide` only when it differs from its type's default, `look` and `drawer` only when not default), and writes `start`, `dock` and `panels` in every layout. So a `wide` the file states that equals the type's default is dropped at the next write; any other is kept.
 
 Home draws the grid (lor-qdmy): one cell on screen, the narrow `start` after a home press. A swipe moves to the nearest cell that way in the row (the ends stop), or up and down by decision lor-y7qi's rule (the next row that way with a panel, wrapping; back to the cell a move came from, else the same column or the nearest, the left one on a tie). Each stack draws its blocks top to bottom: `clock` as home's header, `apps` taking the space between, `dock`; a stack without a `clock` starts where home's grid would.

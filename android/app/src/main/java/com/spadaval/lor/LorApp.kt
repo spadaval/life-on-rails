@@ -1,14 +1,20 @@
 package com.spadaval.lor
 
 import android.app.Application
+import android.os.SystemClock
+import android.util.Log
 import com.spadaval.lor.agent.CardCalls
+import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.home.HomeStore
 import com.spadaval.lor.live.LiveUpdates
+import com.spadaval.lor.net.LorClient
+import com.spadaval.lor.net.LorReads
 import com.spadaval.lor.sync.SyncWorker
 import com.spadaval.lor.t3.T3Connection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withContext
 
 class LorApp : Application() {
     /**
@@ -25,6 +31,22 @@ class LorApp : Application() {
 
     /** The agent page's card calls, held for the process so a page built again sees one under way (lor-0fbs). */
     val cardCalls: CardCalls by lazy { CardCalls(scope) { T3Connection.describe(it) } }
+
+    /**
+     * LoR's `/device/home` for every screen that shows it (the agent page, the clock block), read
+     * once a minute while one holds it (lor-leh4). The server and device name are read at each read,
+     * so a change in settings takes at the next.
+     */
+    val reads: LorReads by lazy {
+        val prefs = Prefs(this)
+        LorReads(
+            scope,
+            fetch = { withContext(Dispatchers.IO) { LorClient(prefs.serverUrl).home(prefs.deviceName) } },
+            describe = { LorClient.describe(it) },
+            clock = SystemClock::elapsedRealtime,
+            log = { Log.i("LorReads", it) },
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()

@@ -129,14 +129,14 @@ fun LayoutFile.setStart(at: Cell, screen: StartScreen): LayoutFile {
 /**
  * Adds a block of [type], one that takes no field ([StackBlock.bare]), to the stack at [at],
  * before its block [index] (its block count to add it last). A stack holds each type once
- * ([Panel.Stack.takes]).
+ * ([Panel.Stack.takes]). A `widget` is added on home, through Android's bind flow ([addWidget]).
  */
 fun LayoutFile.addBlock(at: Cell, index: Int, type: String): LayoutFile {
     val layout = current
     val stack = layout.panelAt(at) as? Panel.Stack ?: throw LayoutError(HOME_CHANGED)
     if (index !in 0..stack.blocks.size) throw LayoutError(HOME_CHANGED)
     val block = StackBlock.bare(type) ?: throw LayoutError(
-        if (type in StackBlock.TYPES) "a \"$type\" block isn't added here" else "there's no block type \"$type\"",
+        if (type == StackBlock.Widget.TYPE) "a widget is added from the home menu" else "there's no block type \"$type\"",
     )
     if (!stack.takes(type)) throw LayoutError(oneOf(type))
     val blocks = stack.blocks.toMutableList().apply { add(index, block) }
@@ -178,7 +178,7 @@ fun LayoutFile.removeBlock(at: BlockAt, block: StackBlock): LayoutFile {
 /** The panel types a layout holds at most one of, with how a refusal names one. */
 private val ONCE = mapOf("t3" to "an agent page", "drawer" to "a drawer")
 
-private const val LAST_BLOCK = "a stack needs a block; remove the panel instead"
+internal const val LAST_BLOCK = "a stack needs a block; remove the panel instead"
 
 private fun oneOf(type: String) = "a stack holds one \"$type\" block"
 
@@ -201,7 +201,7 @@ private fun LayoutFile.checkBlock(at: BlockAt, block: StackBlock): Panel.Stack {
 }
 
 /** This layout with [panel] in place of the one at its cell. */
-private fun Layout.withPanel(panel: Panel): Layout = copy(panels = panels.map { if (it.at == panel.at) panel else it })
+internal fun Layout.withPanel(panel: Panel): Layout = copy(panels = panels.map { if (it.at == panel.at) panel else it })
 
 /** This layout, or a refusal when a row holds more stacks with an `apps` block than the parser takes. */
 private fun Layout.checkRows(): Layout {

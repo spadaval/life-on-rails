@@ -34,6 +34,7 @@ import java.time.format.DateTimeParseException
  *         { "at": [0, 0], "type": "t3" },                 // "wide": "full" or "half"; absent, the type's
  *         { "at": [1, 0], "type": "stack", "blocks": [     // default (stack half, t3 full, drawer half)
  *             { "type": "clock" },
+ *             { "type": "widget", "id": 42, "provider": "com.example/.Clock", "height": 160 },
  *             { "type": "apps", "items": ["com.whatsapp", { "folder": "Dev", "apps": ["com.github.android"] }] },
  *             { "type": "dock" }] },
  *         { "at": [1, 1], "type": "drawer" }] }
@@ -232,6 +233,14 @@ data class LayoutFile(
                 val first = panels.indexOfFirst { it.at == p.at }
                 if (first != i) throw LayoutError("$at.panels[$i].at: ${p.at} is taken by panels[$first]")
             }
+            // A widget's id is unique within a layout (decision lor-9wlx); the error names both places.
+            val widgets = panels.withIndex().flatMap { (i, p) ->
+                (p as? Panel.Stack)?.blocks.orEmpty().withIndex().mapNotNull { (b, block) -> (block as? StackBlock.Widget)?.let { "panels[$i].blocks[$b]" to it.id } }
+            }
+            widgets.forEachIndexed { i, (place, id) ->
+                val first = widgets.indexOfFirst { it.second == id }
+                if (first != i) throw LayoutError("$at.$place.id: $id is taken by ${widgets[first].first}")
+            }
             panels.filter { it.hasApps }.groupBy { it.at.row }.entries.firstOrNull { it.value.size > MAX_APPS_PANELS }?.let { (row, ps) ->
                 throw LayoutError("$at.panels: row $row holds ${ps.size} stacks with an apps block, at most $MAX_APPS_PANELS")
             }
@@ -290,6 +299,18 @@ data class LayoutFile(
                 "clock" -> { v.onlyKeys(at, "type"); StackBlock.Clock }
                 "apps" -> { v.onlyKeys(at, "type", "items"); StackBlock.Apps(parseItems(at, v, "items")) }
                 "dock" -> { v.onlyKeys(at, "type"); StackBlock.Dock }
+                "widget" -> {
+                    v.onlyKeys(at, "type", "id", "provider", "height")
+                    val id = v.opt("id") as? Int
+                    if (id == null || id < 1) throw LayoutError("$at.id: must be a whole number from 1")
+                    val written = v.string(at, "provider")
+                    val provider = StackBlock.Widget.provider(written) ?: throw LayoutError("$at.provider: \"$written\" is not package/class")
+                    val height = v.opt("height") as? Int
+                    if (height == null || height !in StackBlock.Widget.HEIGHTS) {
+                        throw LayoutError("$at.height: must be a whole number from ${StackBlock.Widget.HEIGHTS.first} to ${StackBlock.Widget.HEIGHTS.last}")
+                    }
+                    StackBlock.Widget(id, provider, height)
+                }
                 else -> throw LayoutError("$at.type: must be one of ${StackBlock.TYPES.joinToString()}, got \"$type\"")
             }
         }
@@ -353,6 +374,9 @@ data class Layout(
 
     /** The items of the `apps` block at [at], or null when there is none. */
     fun items(at: BlockAt): List<LayoutItem>? = ((panelAt(at.cell) as? Panel.Stack)?.blocks?.getOrNull(at.block) as? StackBlock.Apps)?.items
+
+    /** Every `widget` block in the grid, in the file's order. */
+    val widgets: List<StackBlock.Widget> get() = panels.flatMap { (it as? Panel.Stack)?.blocks.orEmpty().filterIsInstance<StackBlock.Widget>() }
 
     /** Every `apps` block in the grid, by row, then column. */
     val appsBlocks: List<BlockAt>
@@ -479,10 +503,10 @@ sealed interface Panel {
         override fun toJson(): JSONObject = head("stack").put("blocks", JSONArray(blocks.map { it.toJson() }))
 
         /**
-         * Whether this stack can take another block of [type]: a stack holds each type once. The
-         * parser and the grid edits both ask this, so a type that may repeat is allowed here.
+         * Whether this stack can take another block of [type]: a stack holds each type once, except
+         * `widget`, which may repeat (decision lor-9wlx). The parser and the grid edits both ask this.
          */
-        fun takes(type: String): Boolean = blocks.none { it.type == type }
+        fun takes(type: String): Boolean = type == StackBlock.Widget.TYPE || blocks.none { it.type == type }
     }
 
     /** The agent page. */
@@ -532,7 +556,10 @@ sealed interface StackBlock {
     val type: String
     fun toJson(): JSONObject = JSONObject().put("type", type)
 
-    /** Today's header, drawn in the style `look.header` names. */
+    /**
+     * Today's header: the time and date in the style `look.header` names, then (lor-leh4) the next
+     * event, the next alarm and the weather.
+     */
     data object Clock : StackBlock {
         override val type = "clock"
     }
@@ -548,10 +575,34 @@ sealed interface StackBlock {
         override val type = "dock"
     }
 
-    companion object {
-        val TYPES = listOf("clock", "apps", "dock")
+    /**
+     * An Android widget (decision lor-9wlx): the appWidgetId [id] the phone's host bound, unique
+     * within a layout; its [provider]'s component, `package/class` with the class written in full;
+     * and its [height] in dp. Its width is the column it is drawn in. Edits address it by [id]
+     * (WidgetEdit.kt).
+     */
+    data class Widget(val id: Int, val provider: String, val height: Int) : StackBlock {
+        override val type = TYPE
+        override fun toJson(): JSONObject = super.toJson().put("id", id).put("provider", provider).put("height", height)
 
-        /** A new block of [type], for a type that takes no field (an `apps` block empty); null for any other. */
+        companion object {
+            const val TYPE = "widget"
+
+            /** A widget's heights in dp. */
+            val HEIGHTS = 40..2000
+
+            /**
+             * [s] as a provider, `package/class` with `package/.Short` expanded as
+             * `ComponentName.unflattenFromString` does; null when it isn't one.
+             */
+            fun provider(s: String): String? = AppRef.parse(s)?.takeIf { it.className != null }?.toString()
+        }
+    }
+
+    companion object {
+        val TYPES = listOf("clock", "apps", "dock", Widget.TYPE)
+
+        /** A new block of [type], for a type that takes no field (an `apps` block empty); null for any other, as `widget`. */
         fun bare(type: String): StackBlock? = when (type) {
             "clock" -> Clock
             "apps" -> Apps(emptyList())

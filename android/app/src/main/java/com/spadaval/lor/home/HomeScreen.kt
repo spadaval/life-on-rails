@@ -91,6 +91,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -247,12 +249,18 @@ class HomeUi {
      * the tile it was opened from; at most one (launcher polish 7.3, Increment 1's R5).
      */
     var menu by mutableStateOf<Any?>(null)
+    /** The stack whose home menu chose Add widget: the picker sheet is open for it (lor-r0f9). */
+    var widgetPicker by mutableStateOf<Cell?>(null)
+    /** The widget (by its id) whose resize frame is up; the grid leaves the finger to it (lor-r0f9). */
+    var resizing by mutableStateOf<Int?>(null)
+    /** The resize frame with its handle, in root coordinates: a press outside it closes the frame. */
+    var resizeFrame: Rect? = null
     /** The Undo bar after an edit (launcher polish 4.2). */
     val undo = UndoBarState()
     /** What is held, and edit mode (launcher polish 4.3). */
     val drag = DragState()
     /** Home with nothing open over it: a home press here opens quick send instead. */
-    val atRest: Boolean get() = folder == null && homeMenu == null && menu == null && grid.heading(grid.start) && grid.move == null && !drag.editing && drag.held == null
+    val atRest: Boolean get() = folder == null && homeMenu == null && menu == null && widgetPicker == null && resizing == null && grid.heading(grid.start) && grid.move == null && !drag.editing && drag.held == null
 
     /**
      * A home press ([animate] false when home wasn't on screen before it: then everything shuts
@@ -267,6 +275,8 @@ class HomeUi {
         grid.goTo(grid.start, animate)
         folder = null
         homeMenu = null
+        widgetPicker = null
+        resizing = null
         // Every floating view closes, as Launcher3's onNewIntent closes them (launcher polish 7.3).
         menu = null
         query = ""
@@ -591,7 +601,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     CompositionLocalProvider(LocalHomeLook provides (file?.look ?: HomeLook()), LocalDots provides dots) {
     val barTop = rememberUpdatedState(barPx)
     val shownApps = remember(apps, home) { apps.filterNot(home::hidden) }
-    Box(Modifier.fillMaxSize().onSizeChanged { heightPx = it.height }.dragging(ui, haptics, { latestHome }, { h, t -> latestDrop(h, t) }).gridFinger(ui, haptics) { barTop.value }) {
+    Box(Modifier.fillMaxSize().onSizeChanged { heightPx = it.height }.closeResizeOutside(ui).dragging(ui, haptics, { latestHome }, { h, t -> latestDrop(h, t) }).gridFinger(ui, haptics) { barTop.value }) {
         // Home gives way to an open folder (lor-gnk0, as Smart Launcher's does): it fades out as the
         // folder opens, so the glass shows only the wallpaper, and back in as it closes.
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - folderShown.value }) {
@@ -619,8 +629,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             // The dots of the row on screen, and of the row a vertical move brings (launcher polish 6.8:
             // on the agent page they sit on its dark veil, not the wallpaper). Under the keyboard, as
             // the page they mark is (lor-sqfe), rather than over a field the keyboard pushed up.
-            RowDots(grid, grid.cell, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.bars).padding(bottom = 96.dp))
-            grid.move?.takeIf { !it.way.horizontal }?.let { RowDots(grid, it.to, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.bars).padding(bottom = 96.dp)) }
+            RowDots(grid, grid.cell, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.bars).padding(bottom = DotsAbove))
+            grid.move?.takeIf { !it.way.horizontal }?.let { RowDots(grid, it.to, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.bars).padding(bottom = DotsAbove)) }
         }
         if (folder != null) {
             FolderPanel(folder, home, blurred, onClose = { ui.folder = null }, { folderShown.value }, { 1f - BACK_SCALE * ui.back }, ui.folderFrom, folderLayer) { cardBounds = it }
@@ -642,6 +652,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
                 },
             )
         }
+        // Over home, under the bars and the Undo bar that confirms what it added (lor-r0f9).
+        ui.widgetPicker?.let { WidgetPicker(it, home) { ui.widgetPicker = null } }
         // Edit mode's bar, and Remove while something is held (launcher polish 4.3).
         TopBar(ui, Modifier.align(Alignment.TopCenter).safeDrawingPadding())
         held?.let { HeldItem(it) }
@@ -657,88 +669,108 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
  * drawn by block, not by page). A stack without a `clock` starts where home's grid would, as
  * home's pages after the first did (launcher polish 6.7). Home's notes (the broken file, set-up,
  * empty home) are drawn on the [start] cell's stack.
+ *
+ * Blocks taller than the panel scroll (lor-r0f9): the blocks above the dock scroll together in
+ * [StackScroll], the dock stays at the bottom, and the grid moves at the scroll's edges.
  */
 @Composable
 private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, layout: LayoutState, appsLoad: AppsLoad, ui: HomeUi, home: HomeContext) {
     val haptics = LocalHapticFeedback.current
     val cell = panel.at
-    BoxWithConstraints(Modifier.fillMaxSize().cellInsetsPadding()) {
-        // Under everything: a long press that no app or folder took, on empty home, opens the home
-        // menu, and a double tap opens quick send (launcher polish 7.6), not in edit mode.
-        // Overlapping siblings get a touch only when the ones drawn above it don't, so a tap on an
-        // app is never delayed or taken.
+    // Where the panel's content is, so a press inside the scroll opens the home menu where it was.
+    val panelAt = remember { arrayOfNulls<androidx.compose.ui.layout.LayoutCoordinates>(1) }
+    // A long press that no app, folder or widget took, on empty home, opens the home menu, and a
+    // double tap opens quick send (launcher polish 7.6), not in edit mode. Drawn under what it
+    // serves: overlapping siblings get a touch only when the ones drawn above it don't, so a tap
+    // on an app is never delayed or taken.
+    val emptyHome = @Composable { mod: Modifier ->
+        val at = remember { arrayOfNulls<androidx.compose.ui.layout.LayoutCoordinates>(1) }
         Box(
-            Modifier.matchParentSize().pointerInput(Unit) {
+            mod.onGloballyPositioned { at[0] = it }.pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = { if (!ui.drag.editing) home.actions.quickSend() },
-                    onLongPress = {
+                    onLongPress = { p ->
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        ui.homeMenu = it
+                        val mine = at[0]
+                        val inPanel = panelAt[0]
+                        ui.homeMenu = if (mine != null && inPanel != null && mine.isAttached && inPanel.isAttached) inPanel.localPositionOf(mine, p) else p
                         ui.homeMenuCell = cell
                     },
                 )
             },
         )
+    }
+    BoxWithConstraints(Modifier.fillMaxSize().cellInsetsPadding().onGloballyPositioned { panelAt[0] = it }) {
+        emptyHome(Modifier.matchParentSize())
         val wide = maxWidth >= 600.dp
         val widthDp = maxWidth.value
+        val panelHeight = maxHeight.value
         val headerStyle = LocalHomeLook.current.header
         val hasClock = panel.blocks.any { it is StackBlock.Clock }
         val header = @Composable {
-            if (hasClock && headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar)
+            if (hasClock && headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar, home.actions::alarms)
             // Clear of the Remove bar, so a drop meant for the first row lands there (6.8's critique).
             else Spacer(Modifier.height(if (wide || headerStyle == HomeLook.Header.NONE) BarClear else 104.dp))
         }
         val body = homeBody(appsLoad, home.file, placed?.count ?: 0)
-        val apps: @Composable ColumnScope.(BlockAt) -> Unit = { at ->
+        // The apps block takes the space the other blocks leave ([FillColumn]'s fill), and no less
+        // than it needs when they leave too little, so it scrolls with them.
+        val apps = @Composable { at: BlockAt ->
             val columns = LocalHomeLook.current.columnsFor(widthDp).home
-            if (start && layout is LayoutState.Broken) {
-                BrokenBanner(
-                    layout, appsLoad == AppsLoad.LOADED, Type.body.copy(color = Txt, fontSize = 13.sp),
-                    Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp).fillMaxWidth()
-                        .framedPanel(StateFill)
-                        .padding(horizontal = 14.dp),
-                    home.actions::restore,
-                )
-            }
-            // Until the first run is done (launcher polish 3.5); the default layout is drawn under it.
-            if (start) SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
-            val drops = body == HomeBody.GRID || body == HomeBody.EMPTY
-            // The block's space, from its first row to what follows it, takes a drop after its last item.
-            Box(
-                Modifier.weight(1f).fillMaxWidth()
-                    .dropZone(home.drag, "apps" to at) { b -> if (drops) DropMark.Area(Space.Apps(at), b) else null },
-            ) {
-                when (body) {
-                    HomeBody.NOTHING -> {}
-                    HomeBody.SKELETON -> Skeleton(home.file!!.current.items(at).orEmpty(), columns)
-                    HomeBody.APPS_DIDNT_LOAD -> if (start) HomeNote("Apps didn't load. Trying again.", null)
-                    HomeBody.EMPTY -> if (start) HomeNote("Home is empty.", "Swipe up for your apps, then drag one here, or long-press it and choose Add to home.") { ui.openDrawer() }
-                    HomeBody.GRID -> HomeGrid(placed?.blocks?.get(at).orEmpty(), columns, ui, home)
+            FillColumn(Modifier.layoutId(Fill).fillMaxWidth()) {
+                if (start && layout is LayoutState.Broken) {
+                    BrokenBanner(
+                        layout, appsLoad == AppsLoad.LOADED, Type.body.copy(color = Txt, fontSize = 13.sp),
+                        Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp).fillMaxWidth()
+                            .framedPanel(StateFill)
+                            .padding(horizontal = 14.dp),
+                        home.actions::restore,
+                    )
+                }
+                // Until the first run is done (launcher polish 3.5); the default layout is drawn under it.
+                if (start) SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
+                val drops = body == HomeBody.GRID || body == HomeBody.EMPTY
+                // The block's space, from its first row to what follows it, takes a drop after its last item.
+                Box(
+                    Modifier.layoutId(Fill).fillMaxWidth()
+                        .dropZone(home.drag, "apps" to at) { b -> if (drops) DropMark.Area(Space.Apps(at), b) else null },
+                ) {
+                    when (body) {
+                        HomeBody.NOTHING -> {}
+                        HomeBody.SKELETON -> Skeleton(home.file!!.current.items(at).orEmpty(), columns)
+                        HomeBody.APPS_DIDNT_LOAD -> if (start) HomeNote("Apps didn't load. Trying again.", null)
+                        HomeBody.EMPTY -> if (start) HomeNote("Home is empty.", "Swipe up for your apps, then drag one here, or long-press it and choose Add to home.") { ui.openDrawer() }
+                        HomeBody.GRID -> HomeGrid(placed?.blocks?.get(at).orEmpty(), columns, ui, home)
+                    }
                 }
             }
         }
         val dock = @Composable {
             if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.dock.orEmpty(), home, cell)
         }
-        // Blocks, each with its place in the stack, top to bottom; with no `apps` block, the space
-        // goes before the dock. The clock is the header, drawn where [blocks]' caller puts it.
+        // Blocks, each with its place in the stack, top to bottom, the dock under them all; with no
+        // `apps` block, the space goes after the others, so they sit under the header and the dock
+        // stays at the bottom. The clock is the header, drawn where [blocks]' caller puts it.
         val blocks = @Composable { mod: Modifier, list: List<IndexedValue<StackBlock>>, top: @Composable () -> Unit ->
             Column(mod) {
-                top()
-                if (list.none { it.value is StackBlock.Apps }) Spacer(Modifier.weight(1f))
-                list.forEach { (i, block) ->
-                    when (block) {
-                        StackBlock.Clock -> {}
-                        is StackBlock.Apps -> apps(BlockAt(cell, i))
-                        StackBlock.Dock -> dock()
+                StackScroll(Modifier.weight(1f).fillMaxWidth(), background = emptyHome) {
+                    top()
+                    list.forEach { (i, block) ->
+                        when (block) {
+                            StackBlock.Clock, StackBlock.Dock -> {}
+                            is StackBlock.Apps -> apps(BlockAt(cell, i))
+                            is StackBlock.Widget -> key(block.id) { WidgetBlock(block, panelHeight, ui, home) }
+                        }
                     }
+                    if (list.none { it.value is StackBlock.Apps }) Spacer(Modifier.layoutId(Fill))
                 }
+                if (list.any { it.value is StackBlock.Dock }) dock()
             }
         }
         val all = panel.blocks.withIndex().toList()
         if (wide) {
             // The platform's flow (lor-j87u): the clock and the first half of the blocks left, the
-            // rest with the dock right; a page of apps and a dock is one column.
+            // rest with the dock right; a page of apps and a dock is one column. Each column scrolls on its own.
             Row(Modifier.fillMaxSize()) {
                 StackFlow.wide(all) { it.value is StackBlock.Dock }.forEach { column ->
                     val clock = column.any { it.value is StackBlock.Clock }
@@ -754,7 +786,78 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
         } else {
             blocks(Modifier.fillMaxSize(), all, header)
         }
-        ui.homeMenu?.takeIf { ui.homeMenuCell == cell }?.let { HomeMenu(it, home, onEdit = { ui.drag.editing = true }) { ui.homeMenu = null } }
+        ui.homeMenu?.takeIf { ui.homeMenuCell == cell }?.let { at ->
+            // Not while home is locked (decision lor-73li): a widget is an edit to home.
+            val addWidget = if (home.file?.locked == true) null else ({ ui.widgetPicker = cell })
+            HomeMenu(at, home, onEdit = { ui.drag.editing = true }, addWidget = addWidget) { ui.homeMenu = null }
+        }
+    }
+}
+
+/** Marks the child of a [FillColumn] that takes the space the others leave. */
+internal object Fill
+
+/**
+ * A column whose [Fill] child takes the height the others leave of the column's minimum, and no
+ * less than its own: a `weight(1f)` that still works inside a scroll, where a weight gets nothing
+ * once the others overflow. Without a minimum it is a plain column. Children are as wide as the
+ * column allows at most, placed at its start.
+ */
+@Composable
+internal fun FillColumn(modifier: Modifier = Modifier, endPad: () -> Int = { 0 }, content: @Composable () -> Unit) {
+    androidx.compose.ui.layout.Layout(content, modifier) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val fill = measurables.indexOfFirst { it.layoutId == Fill }
+        val placeables = arrayOfNulls<androidx.compose.ui.layout.Placeable>(measurables.size)
+        measurables.forEachIndexed { i, m -> if (i != fill) placeables[i] = m.measure(loose) }
+        val others = placeables.sumOf { it?.height ?: 0 }
+        if (fill >= 0) {
+            val left = (constraints.minHeight - others).coerceAtLeast(0)
+            val max = if (constraints.hasBoundedHeight) (constraints.maxHeight - others).coerceAtLeast(left) else Constraints.Infinity
+            placeables[fill] = measurables[fill].measure(loose.copy(minHeight = left, maxHeight = max))
+        }
+        // Taller than its minimum (a stack that overflows), it ends [endPad] px lower; one that fits is unchanged.
+        val sum = placeables.sumOf { it!!.height }
+        val height = (if (sum > constraints.minHeight) sum + endPad() else sum).coerceIn(constraints.minHeight, constraints.maxHeight)
+        val width = if (constraints.hasBoundedWidth) constraints.maxWidth else placeables.maxOfOrNull { it!!.width } ?: 0
+        layout(width, height) {
+            var y = 0
+            placeables.forEach {
+                it!!.place(0, y)
+                y += it.height
+            }
+        }
+    }
+}
+
+/**
+ * A stack's blocks above its dock (lor-r0f9, reused by lor-clgw's blocks): a [FillColumn] at least
+ * the space's height, so the `apps` block (or the space before the blocks) fills what is left as
+ * before; taller than the space, it scrolls, reporting [scrollsInGrid] so the grid moves at its
+ * edges. Scrolling is off while it fits, so a swipe on a page that fits is the grid's as before.
+ * [background] is drawn under the blocks, at their full height, to take presses on empty home.
+ *
+ * Scrolling, its content ends with room for home's page dots, so the last row scrolls clear of
+ * them (lor-leh4): the dots stand [DotsAbove] above the panel's bottom, which is its parent's
+ * (the stack's column), and what lies below the scroll (the dock) already covers part of that.
+ */
+@Composable
+internal fun StackScroll(modifier: Modifier, background: @Composable (Modifier) -> Unit, content: @Composable () -> Unit) {
+    val dotsTop = with(LocalDensity.current) { (DotsAbove + DotSize + DotsGap).roundToPx() }
+    // The scroll's height above the parent's bottom, in px: what lies under it there.
+    var below by remember { mutableIntStateOf(0) }
+    BoxWithConstraints(
+        modifier.onGloballyPositioned { c ->
+            val parent = c.parentLayoutCoordinates ?: return@onGloballyPositioned
+            below = (parent.size.height - c.positionInParent().y.roundToInt() - c.size.height).coerceAtLeast(0)
+        },
+    ) {
+        val scroll = rememberScrollState()
+        val space = maxHeight
+        Box(Modifier.fillMaxWidth().scrollsInGrid(scroll).verticalScroll(scroll, enabled = scroll.maxValue > 0)) {
+            background(Modifier.matchParentSize())
+            FillColumn(Modifier.fillMaxWidth().heightIn(min = space), endPad = { (dotsTop - below).coerceAtLeast(0) }, content = content)
+        }
     }
 }
 
@@ -969,10 +1072,16 @@ private fun RowDots(grid: GridPlace, of: Cell, ink: WallInk, heightPx: () -> Int
     Row(modifier.offset { IntOffset(0, grid.offsetOf(of, 0, heightPx())?.y ?: 0) }, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         row.forEach { s ->
             val color = if (s == lit) mark.copy(alpha = 0.8f) else mark.copy(alpha = 0.5f)
-            Box(Modifier.size(6.dp).background(color, if (grid.panel(s.left) is Panel.T3) RectangleShape else CircleShape))
+            Box(Modifier.size(DotSize).background(color, if (grid.panel(s.left) is Panel.T3) RectangleShape else CircleShape))
         }
     }
 }
+
+/** Home's page dots: [DotSize] tall, [DotsAbove] above the bars, as a panel's content ends. */
+internal val DotsAbove = 96.dp
+internal val DotSize = 6.dp
+/** The room an overflowing stack leaves between its last row and the dots. */
+private val DotsGap = 8.dp
 
 /** An app tile whose tap opens it from [at] and whose long press opens its menu. */
 @Composable

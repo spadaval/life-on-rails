@@ -13,6 +13,8 @@ data class DeviceHome(
     val one: One?,
     val needsYou: List<Need>,
     val day: Day,
+    /** Current conditions where the phone last was (decision lor-g4ta); null without a key, a place, or after a failed fetch, and from an older server. */
+    val weather: Weather?,
 ) {
     data class One(val kicker: String, val text: String, val why: String?) {
         /** `pickOne` names the running timer this way; the page draws the timer from [Day.running] instead. */
@@ -32,6 +34,8 @@ data class DeviceHome(
 
     data class Running(val title: String, val start: Instant, val paused: Boolean)
     data class Event(val title: String, val start: Instant, val end: Instant)
+    /** [tempC] in Celsius; [condition] is Google's words ("Partly cloudy"); [observedAt] is when Google measured it. */
+    data class Weather(val tempC: Double, val condition: String, val isDay: Boolean, val observedAt: Instant)
 
     companion object {
         fun parse(o: JSONObject): DeviceHome {
@@ -52,6 +56,7 @@ data class DeviceHome(
                         events.getJSONObject(i).let { Event(it.getString("title"), time(it.getString("start")), time(it.getString("end"))) }
                     },
                 ),
+                weather = o.optJSONObject("weather")?.let { Weather(it.getDouble("temp_c"), it.getString("condition"), it.getBoolean("is_day"), time(it.getString("observed_at"))) },
             )
         }
 
