@@ -88,6 +88,11 @@ function dbOf(url) {
 
 function guardDb(url = TEST_DB_URL) {
   const db = dbOf(url);
+  // libpq takes the database from a dbname parameter over the path, so only host may follow.
+  const extra = [...new URL(url).searchParams.keys()].filter((k) => k !== "host");
+  if (extra.length) {
+    throw new Refused(`${url} sets ${extra.join(", ")}, which can name another database. Instead: give only ?host=, or leave LOR_VERIFY_DATABASE_URL unset to use ${TEST_DB}.`);
+  }
   const real = dbOf(REAL_DB_URL);
   if (db.database === real.database && db.host === real.host) {
     throw new Refused(`${url} is the real database (DATABASE_URL in ${ENV_FILE}). Instead: leave LOR_VERIFY_DATABASE_URL unset to use ${TEST_DB}.`);
@@ -291,8 +296,8 @@ const commands = {
     add("node_modules", ["api", "web"], existsSync(nm), nm, `pnpm install in ${ROOT}, or ln -s ~/projects/life-on-rails/node_modules ${nm} in a worktree`);
 
     try {
-      guardDb();
-      const r = run("psql", [TEST_DB_URL, "-Atc", "SELECT created_at FROM drizzle.__drizzle_migrations"], { quiet: true });
+      const db = dbOf(guardDb());
+      const r = run("psql", ["-h", db.host, "-d", db.database, "-Atc", "SELECT created_at FROM drizzle.__drizzle_migrations"], { quiet: true });
       if (r.status !== 0) {
         add("test database", ["api", "web", "launcher"], false, r.stderr.trim() || "psql failed", `createdb ${TEST_DB}, then verify-lor up (it migrates)`);
       } else {
