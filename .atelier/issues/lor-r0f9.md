@@ -15,9 +15,9 @@ relationships:
     type: "implements"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "Widgets on home: add, draw, resize, remove"
-updated_at: "2026-11-07T23:37:54.439911595+00:00"
+updated_at: "2026-11-08T01:12:24.214509449+00:00"
 ---
 
 ## Goal

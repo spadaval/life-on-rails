@@ -197,4 +197,34 @@ class WidgetTest {
         assertEquals(emptyList<Int>(), widgetIdsToDelete(listOf(7, 42, 8), emptyList()))
         assertEquals(emptyList<Int>(), widgetIdsToDelete(emptyList(), listOf(file)))
     }
+
+    @Test
+    fun aNewWidgetIsItsProvidersMinimumHeightHeldInTheFilesLimits() {
+        assertEquals(110, WidgetSize.newHeight(110.4f))
+        // A provider with no minimum, or one taller than the file holds, still makes a block the file takes.
+        assertEquals(40, WidgetSize.newHeight(0f))
+        assertEquals(2000, WidgetSize.newHeight(2400f))
+    }
+
+    @Test
+    fun aResizeRunsFromTheMinimumResizeHeightToTheSmallerOfTheMaximumAndThePanel() {
+        // minResizeHeight below minHeight is the floor; no maxResizeHeight caps at the panel.
+        assertEquals(60..700, WidgetSize.resizeRange(110f, 60f, 0f, 700.6f))
+        // minResizeHeight unset, or above minHeight: minHeight is the floor.
+        assertEquals(110..700, WidgetSize.resizeRange(110f, 0f, 0f, 700f))
+        assertEquals(110..700, WidgetSize.resizeRange(110f, 150f, 0f, 700f))
+        // maxResizeHeight below the panel caps it; above the panel the panel does.
+        assertEquals(110..300, WidgetSize.resizeRange(110f, 0f, 300f, 700f))
+        assertEquals(110..700, WidgetSize.resizeRange(110f, 0f, 900f, 700f))
+        // A cap below the floor leaves the floor alone, and the file's limits hold at both ends.
+        assertEquals(400..400, WidgetSize.resizeRange(400f, 0f, 0f, 300f))
+        assertEquals(40..2000, WidgetSize.resizeRange(10f, 0f, 0f, 2600f))
+    }
+
+    @Test
+    fun aWidgetIsItsColumnsWidthUnlessItsMaximumIsNarrower() {
+        assertEquals(380f, WidgetSize.width(380f, 0f))
+        assertEquals(300f, WidgetSize.width(380f, 300f))
+        assertEquals(380f, WidgetSize.width(380f, 500f))
+    }
 }

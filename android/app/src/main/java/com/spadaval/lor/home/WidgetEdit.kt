@@ -1,5 +1,8 @@
 package com.spadaval.lor.home
 
+import kotlin.math.floor
+import kotlin.math.roundToInt
+
 /*
  * The `widget` block's edits (decision lor-9wlx) and the sweep of ids no layout names, for the
  * widget host (lor-r0f9). Each edit is a pure function from the parsed file to the edited one on
@@ -75,4 +78,28 @@ private fun LayoutFile.widget(id: Int): Triple<Layout, Panel.Stack, Int> {
 private fun checkHeight(height: Int) {
     val h = StackBlock.Widget.HEIGHTS
     if (height !in h) throw LayoutError("a widget's height is ${h.first} to ${h.last} dp, got $height")
+}
+
+/**
+ * A widget's sizes in dp (decision lor-9wlx), from its provider's sizes, which the caller turns
+ * from px into dp. Pure, so the JVM tests reach it; a provider leaves a size it doesn't set at 0.
+ */
+object WidgetSize {
+    /** A new widget's height: the provider's `minHeight`, held in the file's limits (40 to 2000 dp). */
+    fun newHeight(minHeight: Float): Int = minHeight.roundToInt().coerceIn(StackBlock.Widget.HEIGHTS)
+
+    /**
+     * The heights a resize reaches: from `minResizeHeight` when it is set and below `minHeight`,
+     * else `minHeight`, to the smaller of `maxResizeHeight` (when set) and the [panel]'s height,
+     * each held in the file's limits. A cap below the floor gives the floor alone.
+     */
+    fun resizeRange(minHeight: Float, minResizeHeight: Float, maxResizeHeight: Float, panel: Float): IntRange {
+        val h = StackBlock.Widget.HEIGHTS
+        val low = (if (minResizeHeight > 0f && minResizeHeight < minHeight) minResizeHeight else minHeight).roundToInt().coerceIn(h)
+        val cap = if (maxResizeHeight > 0f) minOf(maxResizeHeight, panel) else panel
+        return low..floor(cap).toInt().coerceIn(h).coerceAtLeast(low)
+    }
+
+    /** How wide a widget is drawn in a [column] dp wide: the column, or `maxResizeWidth` when it is set and narrower. */
+    fun width(column: Float, maxResizeWidth: Float): Float = if (maxResizeWidth > 0f && maxResizeWidth < column) maxResizeWidth else column
 }

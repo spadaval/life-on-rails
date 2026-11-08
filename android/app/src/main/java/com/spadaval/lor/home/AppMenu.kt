@@ -109,6 +109,16 @@ interface HomeActions {
 
     /** Opens quick send, as a home press on home does (launcher polish 7.6: double tap on empty home). */
     fun quickSend()
+
+    /**
+     * Adds a widget of [provider] to the stack at [at] (lor-r0f9): an id bound through Android's
+     * bind dialog when it asks, then the widget's own configure screen when it has one, then the
+     * block with Undo. A cancel at either step deletes the id and changes nothing.
+     */
+    fun addWidget(at: Cell, provider: android.appwidget.AppWidgetProviderInfo)
+
+    /** Opens the widget [id]'s configure screen again (its menu's Settings); a cancel changes nothing. */
+    fun widgetSettings(id: Int)
 }
 
 /**
@@ -257,12 +267,16 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
     }
 }
 
-/** The menu for a long press on empty home, at [at] within home's content (launcher polish 1.3). */
+/**
+ * The menu for a long press on empty home, at [at] within home's content (launcher polish 1.3).
+ * [addWidget] is null where the menu offers no Add widget: while home is locked (decision lor-73li).
+ */
 @Composable
-fun HomeMenu(at: Offset, home: HomeContext, onEdit: () -> Unit, close: () -> Unit) {
+fun HomeMenu(at: Offset, home: HomeContext, onEdit: () -> Unit, addWidget: (() -> Unit)?, close: () -> Unit) {
     Box(Modifier.offset { IntOffset(at.x.roundToInt(), at.y.roundToInt()) }) {
         DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
             Item("Edit home") { close(); onEdit() }
+            if (addWidget != null) Item("Add widget") { close(); addWidget() }
             Item("Wallpaper") { close(); home.actions.wallpaper() }
             Item("Home settings") { close(); home.actions.settings() }
         }
@@ -270,7 +284,7 @@ fun HomeMenu(at: Offset, home: HomeContext, onEdit: () -> Unit, close: () -> Uni
 }
 
 @Composable
-private fun Item(text: String, icon: ImageBitmap? = null, onClick: () -> Unit) {
+internal fun Item(text: String, icon: ImageBitmap? = null, onClick: () -> Unit) {
     DropdownMenuItem(
         text = { Text(text, style = Type.body.copy(color = Txt, fontSize = 15.sp)) },
         onClick = onClick,
