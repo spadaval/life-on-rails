@@ -15,21 +15,21 @@ import com.spadaval.lor.collect.Launches
 import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.net.DeviceHome
 import com.spadaval.lor.net.LorClient
+import com.spadaval.lor.net.LorReads
 import com.spadaval.lor.t3.PendingRequest
 import com.spadaval.lor.t3.T3Connection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
- * The agent page's state: LoR's `/device/home`, the shared [T3Connection], and what the cards are
- * doing. [whileVisible] runs while home is on screen: it holds the connection and reads LoR every
- * minute. When home leaves the screen the hold is let go [RELEASE_AFTER_MS] later, so a quick trip
- * to another app doesn't drop and rebuild the socket. [scope] is the page's; [dispose] lets go at once.
+ * The agent page's state: LoR's `/device/home` from the process's reader ([LorApp.reads]), the
+ * shared [T3Connection], and what the cards are doing. [whileVisible] runs while home is on screen:
+ * it holds the connection and the reader, which reads LoR every minute. When home leaves the screen
+ * the connection is let go [RELEASE_AFTER_MS] later, so a quick trip to another app doesn't drop
+ * and rebuild the socket. [scope] is the page's; [dispose] lets go at once.
  *
  * Each card action runs at most once at a time: its key is in [busy] until the call ends, and the
  * card's buttons are disabled meanwhile, since a command sent twice could act twice. The calls run
@@ -39,18 +39,15 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     val connection = T3Connection.get(context)
     private val prefs = Prefs(context)
 
-    /** LoR's last good reply; kept for the process, so a recreated page starts with it (greyed until a read succeeds). */
-    var lor by mutableStateOf(last.value)
-        private set
+    private val reads = (context.applicationContext as LorApp).reads
+    /** LoR's last good reply; kept for the process, so a recreated page starts with it (greyed until it is current). */
+    val lor: DeviceHome? get() = reads.home
     /** Why the last read of LoR failed, in plain words ([LorClient.describe]); the last good [lor] stays shown. */
-    var lorError by mutableStateOf<String?>(null)
-        private set
+    val lorError: String? get() = reads.error
     /** A read asked for by Retry is under way. */
-    var retrying by mutableStateOf(false)
-        private set
-    /** At least one read has ended since the page opened; until then a kept [lor] is shown greyed. */
-    var lorRead by mutableStateOf(false)
-        private set
+    val retrying: Boolean get() = reads.retrying
+    /** [lor] is current ([LorReads.current]); until then a kept [lor] is shown greyed. */
+    val lorRead: Boolean get() = reads.current
     /** The cards' calls, one for the process (F4, lor-0fbs): a page built again sees a call still under way. */
     private val calls = (context.applicationContext as LorApp).cardCalls
     /** Requests answered from this page, hidden before the shell catches up. */
@@ -72,10 +69,7 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
             holding = true
         }
         try {
-            while (true) {
-                readLor()
-                delay(LOR_EVERY_MS)
-            }
+            reads.hold()
         } finally {
             release = scope.launch {
                 delay(RELEASE_AFTER_MS)
@@ -94,33 +88,8 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
         holding = false
     }
 
-    private suspend fun readLor() {
-        val url = prefs.serverUrl
-        val device = prefs.deviceName
-        try {
-            lor = withContext(Dispatchers.IO) { LorClient(url).home(device) }.also { _last.value = it }
-            lorError = null
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            lorError = LorClient.describe(e)
-        } finally {
-            lorRead = true
-        }
-    }
-
     /** Reads LoR now instead of at the next minute. */
-    fun retry() {
-        if (retrying) return
-        retrying = true
-        scope.launch {
-            try {
-                readLor()
-            } finally {
-                retrying = false
-            }
-        }
-    }
+    fun retry() = reads.retry()
 
     /** Runs a card's call once; on success the request is hidden, on failure the card says why. */
     fun act(key: String, request: PendingRequest?, call: suspend () -> Unit) {
@@ -170,11 +139,6 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     }
 
     companion object {
-        /** The last good `/device/home` in this process (not on disk). */
-        private val _last = kotlinx.coroutines.flow.MutableStateFlow<DeviceHome?>(null)
-        /** The last good `/device/home` in this process (not on disk); home's header reads its events (launcher polish 6.7). */
-        val last: kotlinx.coroutines.flow.StateFlow<DeviceHome?> = _last
-        private const val LOR_EVERY_MS = 60_000L
         private const val RELEASE_AFTER_MS = 30_000L
     }
 }

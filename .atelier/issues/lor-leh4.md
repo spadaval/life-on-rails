@@ -18,9 +18,9 @@ relationships:
     type: "blocked_by"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "The clock block: next alarm and weather"
-updated_at: "2026-11-08T00:11:41.250260445+00:00"
+updated_at: "2026-11-08T02:37:17.388724830+00:00"
 ---
 
 ## Goal

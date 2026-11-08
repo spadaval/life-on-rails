@@ -49,4 +49,23 @@ class DeviceHomeTest {
         assertNull(home.one)
         assertEquals(Instant.parse("2026-11-05T21:03:03Z"), home.now)
     }
+
+    private fun first() = JSONObject(javaClass.classLoader!!.getResource("lor/home.ndjson")!!.readText().lines().first())
+
+    @Test
+    fun readsTheWeather() {
+        val o = first().put("weather", JSONObject("""{"temp_c":17.6,"condition":"Partly cloudy","is_day":true,"observed_at":"2026-11-07T22:15:00.000Z"}"""))
+        assertEquals(DeviceHome.Weather(17.6, "Partly cloudy", true, Instant.parse("2026-11-07T22:15:00Z")), DeviceHome.parse(o).weather)
+        // A whole number comes as an integer in the JSON.
+        assertEquals(18.0, DeviceHome.parse(first().put("weather", JSONObject("""{"temp_c":18,"condition":"Clear","is_day":false,"observed_at":"2026-11-07T22:15:00Z"}"""))).weather!!.tempC, 0.0)
+    }
+
+    @Test
+    fun noWeatherIsNull() {
+        assertNull(DeviceHome.parse(first().put("weather", JSONObject.NULL)).weather)
+        // An older server sends no field at all.
+        val older = first().also { it.remove("weather") }
+        assertFalse(older.has("weather"))
+        assertNull(DeviceHome.parse(older).weather)
+    }
 }

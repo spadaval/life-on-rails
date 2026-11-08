@@ -77,6 +77,9 @@ interface HomeActions {
     /** The calendar at today, from home's header (launcher polish 6.7). */
     fun calendar()
 
+    /** The clock app's alarm list, from the clock block's alarm line (lor-leh4). */
+    fun alarms()
+
     /**
      * Applies [change] to `layout.json`; a refusal shows as a toast. On success the Undo bar says
      * [done], or "Home changed." (launcher polish 4.2).

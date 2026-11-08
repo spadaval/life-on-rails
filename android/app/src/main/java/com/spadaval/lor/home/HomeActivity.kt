@@ -345,6 +345,17 @@ class HomeActivity : ComponentActivity() {
             }
         }
 
+        override fun alarms() {
+            val intent = Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS)
+            try {
+                startActivity(Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                val pkg = takenBy(packageManager, intent)
+                Launches.record(this@HomeActivity, Launch(LaunchFrom.HOME, pkg, label = pkg?.let { Launches.label(this@HomeActivity, it) }))
+            } catch (e: RuntimeException) {
+                fail("No clock app can show your alarms.")
+            }
+        }
+
         override fun wallpaper() {
             try {
                 startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Wallpaper"))

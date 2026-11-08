@@ -708,7 +708,7 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
         val headerStyle = LocalHomeLook.current.header
         val hasClock = panel.blocks.any { it is StackBlock.Clock }
         val header = @Composable {
-            if (hasClock && headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar)
+            if (hasClock && headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar, home.actions::alarms)
             // Clear of the Remove bar, so a drop meant for the first row lands there (6.8's critique).
             else Spacer(Modifier.height(if (wide || headerStyle == HomeLook.Header.NONE) BarClear else 104.dp))
         }
