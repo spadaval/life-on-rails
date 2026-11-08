@@ -80,6 +80,10 @@ The phone's home (`android/app/src/main/java/com/spadaval/lor/home/`, `net/Devic
 - 2026-11-07 The child line is ticked on the children's records: lor-q18v is done, and every Done when line of lor-vtmn, lor-r0f9 and lor-leh4 is ticked. It is fully met when lor-sbth merges.
 - 2026-11-07 [note] Handoff (evidence slice): end to end holds (lor-sj8h). Home-press line not met: round 2 +12.1% (lor-55b4); pooled +2.4%. See ## Report
 
+- 2026-11-07 [note] Handoff (latency rerun): line 3 holds on six rounds, pooled 61.5 ms base vs 53.5 ms head (lor-a0rq); see ## Report. No code changed; not reviewed.
+
+## Report
+
 All three lines hold. Line 1 is fully met when lor-sbth merges. The end to end is evidence lor-sj8h, and the home-press latency is lor-a0rq, judged by the decision note of c431a78.
 
 - **End to end** on `T3_Fold_API35`, in one session against the test server, starting from a version 1 file. Folded, the home menu added Clock's Digital (id 6) and Markor's todo list (id 7) through Android's bind dialog. Home's stack showed the clock block (the event, "Alarm 7:00", "63° Clear"), both widgets, then the apps. An unfold told both widgets 402 dp, and a fold back told them 419 dp again, with the same ids. After `am force-stop`, home came back in a new process with both widgets, and the sweep deleted nothing. The file at the end holds clock, widget 6, widget 7, apps and dock. Screenshots `01` to `11` and the final file are in `/tmp/claude-1000/sbth-emu/fold/`.
@@ -101,4 +105,3 @@ All three lines hold. Line 1 is fully met when lor-sbth merges. The end to end i
 
 - Unfolded, home with a page beside it is a half of the pair (lor-ph30), so the widgets sit in its narrow column. The decision note of c431a78 accepts this as home's flow. lor-ctox showed the full-width flow with `wide` full.
 - Markor isn't on the Fold. I installed it from F-Droid for the check and removed it afterwards.
-- 2026-11-07 [note] Handoff (latency rerun): line 3 holds on six rounds, pooled 61.5 ms base vs 53.5 ms head (lor-a0rq); see ## Report. No code changed; not reviewed.
