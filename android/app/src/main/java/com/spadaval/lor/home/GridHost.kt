@@ -479,4 +479,5 @@ val Panel.type: String
         is Panel.Stack -> "stack"
         is Panel.T3 -> "t3"
         is Panel.Drawer -> "drawer"
+        is Panel.Lor -> "lor"
     }

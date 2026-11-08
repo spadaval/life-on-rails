@@ -33,15 +33,18 @@ class LorApp : Application() {
     val cardCalls: CardCalls by lazy { CardCalls(scope) { T3Connection.describe(it) } }
 
     /**
-     * LoR's `/device/home` for every screen that shows it (the agent page, the clock block), read
-     * once a minute while one holds it (lor-leh4). The server and device name are read at each read,
-     * so a change in settings takes at the next.
+     * LoR's `/device/home` for every screen that shows it (the agent page, the clock block, LoR's
+     * blocks), read once a minute while one holds it (lor-leh4), and `/device/tasks` and
+     * `/device/people` while a `lor` panel holds it (lor-lz97). The server and device name are read
+     * at each read, so a change in settings takes at the next.
      */
     val reads: LorReads by lazy {
         val prefs = Prefs(this)
         LorReads(
             scope,
-            fetch = { withContext(Dispatchers.IO) { LorClient(prefs.serverUrl).home(prefs.deviceName) } },
+            fetchHome = { withContext(Dispatchers.IO) { LorClient(prefs.serverUrl).home(prefs.deviceName) } },
+            fetchTasks = { withContext(Dispatchers.IO) { LorClient(prefs.serverUrl).tasks() } },
+            fetchPeople = { withContext(Dispatchers.IO) { LorClient(prefs.serverUrl).people() } },
             describe = { LorClient.describe(it) },
             clock = SystemClock::elapsedRealtime,
             log = { Log.i("LorReads", it) },

@@ -17,6 +17,12 @@ class LorClient(baseUrl: String) {
     /** What the agent page shows from LoR ([DeviceHome]). */
     fun home(device: String): DeviceHome = DeviceHome.parse(request("GET", "/device/home?device=${URLEncoder.encode(device, "UTF-8")}"))
 
+    /** The open tasks and those done today, for the `lor` panel ([DeviceTasks]). */
+    fun tasks(): DeviceTasks = DeviceTasks.parse(request("GET", "/device/tasks"))
+
+    /** Who to be in touch with, for the `lor` panel's People ([DevicePeople]). */
+    fun people(): DevicePeople = DevicePeople.parse(request("GET", "/device/people"))
+
     fun timer(action: String, device: String, intentId: String? = null, title: String? = null): JSONObject {
         val body = JSONObject().put("action", action).put("device", device)
         if (intentId != null) body.put("intent_id", intentId)

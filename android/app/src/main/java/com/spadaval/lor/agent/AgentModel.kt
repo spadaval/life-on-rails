@@ -14,6 +14,8 @@ import com.spadaval.lor.collect.LaunchFrom
 import com.spadaval.lor.collect.Launches
 import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.net.DeviceHome
+import com.spadaval.lor.net.DevicePeople
+import com.spadaval.lor.net.DeviceTasks
 import com.spadaval.lor.net.LorClient
 import com.spadaval.lor.net.LorReads
 import com.spadaval.lor.t3.PendingRequest
@@ -25,8 +27,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * The agent page's state: LoR's `/device/home` from the process's reader ([LorApp.reads]), the
- * shared [T3Connection], and what the cards are doing. [whileVisible] runs while home is on screen:
+ * The agent page's state, and that of LoR's blocks and the `lor` panel (lor-lz97), one per screen
+ * that shows it: LoR's replies from the process's reader ([LorApp.reads]), the shared
+ * [T3Connection], and what the cards are doing. [whileVisible] runs while home is on screen:
  * it holds the connection and the reader, which reads LoR every minute. When home leaves the screen
  * the connection is let go [RELEASE_AFTER_MS] later, so a quick trip to another app doesn't drop
  * and rebuild the socket. [scope] is the page's; [dispose] lets go at once.
@@ -59,17 +62,26 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     /** One line about the last thing the page couldn't do outside a card, such as opening T3; the next action clears it. */
     var notice by mutableStateOf<String?>(null)
 
+    /** The open tasks and those done today, while a holder asks for the lists ([whileVisible]'s `lists`). */
+    val tasks: LorReads.Kept<DeviceTasks> get() = reads.tasks
+    /** Who to be in touch with, read with [tasks]. */
+    val people: LorReads.Kept<DevicePeople> get() = reads.people
+
     private var holding = false
     private var release: Job? = null
 
-    suspend fun whileVisible() {
+    /**
+     * Holds what this screen shows while it is started: LoR's reader, with `/device/tasks` and
+     * `/device/people` too when [lists] (the `lor` panel), and the T3 connection when [t3].
+     */
+    suspend fun whileVisible(t3: Boolean = true, lists: Boolean = false) {
         release?.cancel()
-        if (!holding) {
+        if (t3 && !holding) {
             connection.start()
             holding = true
         }
         try {
-            reads.hold()
+            reads.hold(lists)
         } finally {
             release = scope.launch {
                 delay(RELEASE_AFTER_MS)

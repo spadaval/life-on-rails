@@ -69,6 +69,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.spadaval.lor.collect.LaunchFrom
+import com.spadaval.lor.lor.LorRows
+import androidx.compose.runtime.key
 import com.spadaval.lor.net.DeviceHome
 import com.spadaval.lor.quicksend.QuickSend
 import com.spadaval.lor.t3.Question
@@ -98,73 +100,17 @@ private val Heading = Type.title
 @Composable
 fun AgentPage() {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val model = remember { AgentModel(context, scope) }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { model.whileVisible() } }
-    DisposableEffect(model) { onDispose { model.dispose() } }
-
+    val model = rememberAgentModel(t3 = true)
     val status by model.connection.status.collectAsState()
     val shell by model.connection.shell.collectAsState()
-    val live = status == T3Connection.Status.Live
-    val now = model.lor?.now ?: Instant.now()
-    val cards = AgentQueue.cards(shell.threads, model.answered, now)
-    val running = AgentQueue.running(shell.threads)
 
     // The queue: T3's state, what is running, and what needs Sumeet, with the notes on what can't be seen.
     val queue = @Composable {
         model.notice?.let { Text(it, style = Small.copy(color = Bad), modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
         if (status == T3Connection.Status.NotPaired || status is T3Connection.Status.Rejected) PairCard(model.connection, status, Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
         else T3State(status, shell.loaded)
-        if (running.isNotEmpty()) {
-            Header("Running", running.size.toString())
-            running.forEach { RunningRow(it) { model.openThread(it.id, LaunchFrom.AGENT_CARD) } }
-        }
-        val needs = model.lor?.needsYou.orEmpty()
-        val lorSource = when {
-            model.lorError != null -> AgentStates.Source.UNSEEN
-            model.lor != null && model.lorRead -> AgentStates.Source.SEEN
-            else -> AgentStates.Source.READING
-        }
-        val t3Source = when {
-            live && shell.loaded -> AgentStates.Source.SEEN
-            status == T3Connection.Status.Connecting || status == T3Connection.Status.Stopped -> AgentStates.Source.READING
-            else -> AgentStates.Source.UNSEEN
-        }
-        // A number once both sources are read, or whenever something is listed; with nothing
-        // listed and a source not yet seen, none: "0" would claim what the page can't know.
-        val count = cards.size + needs.size
-        val whole = lorSource == AgentStates.Source.SEEN && t3Source == AgentStates.Source.SEEN
-        Header("Needs you", if (whole || count > 0) count.toString() else null)
-        cards.forEach { T3QueueCard(it, model, live) }
-        needs.forEach { need ->
-            QueueCard(
-                tile = "LoR", tileColor = Raised, tileLabel = "Open in LoR", onTile = { model.openLor(taskPath(need.id), LaunchFrom.AGENT_ICON) },
-                kind = "LoR", kindColor = Mute, where = "flagged", title = need.title, detail = need.note,
-            ) { Pill("Open", primary = true) { model.openLor(taskPath(need.id), LaunchFrom.AGENT_CARD) } }
-        }
-        AgentStates.notes(lorSource, t3Source, cards.size, needs.size)
-            // T3State's line above already says T3 is disconnected and its approvals with it.
-            .filterNot { it == AgentStates.Note.T3_UNSEEN && status is T3Connection.Status.Retrying }
-            .forEach { note ->
-            when (note) {
-                AgentStates.Note.ALL_CLEAR -> {
-                    val lor = model.lor!!
-                    Column(
-                        Modifier
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                            .fillMaxWidth()
-                            .border(1.dp, Line, RectangleShape)
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                    ) {
-                        Text("All clear.", style = Body.copy(fontSize = 13.sp))
-                        Text(AgentStates.next(lor.day.events, lor.now, lor.zone), style = Small.copy(fontSize = 12.5.sp), modifier = Modifier.padding(top = 2.dp))
-                    }
-                }
-                AgentStates.Note.LOR_UNSEEN -> Unseen("LoR can't be read, so its flags aren't here.")
-                AgentStates.Note.T3_UNSEEN -> Unseen("T3 isn't connected, so its approvals aren't here.")
-            }
-        }
+        Running(model)
+        NeedsYou(model)
     }
 
     // Held here, so a fold, which changes the form, keeps the page's scroll: the single column takes
@@ -216,14 +162,140 @@ fun AgentPage() {
 
 /** A column of the page that scrolls on its own; its scroll takes a vertical swipe until its edge, then home's grid moves (lor-qdmy). */
 @Composable
-private fun ScrollColumn(scroll: ScrollState, modifier: Modifier, bottom: androidx.compose.ui.unit.Dp, content: @Composable () -> Unit) {
+internal fun ScrollColumn(scroll: ScrollState, modifier: Modifier, bottom: androidx.compose.ui.unit.Dp, content: @Composable () -> Unit) {
     Column(modifier.fillMaxHeight().scrollsInGrid(scroll).verticalScroll(scroll).padding(top = 12.dp, bottom = bottom)) { content() }
 }
 
-private fun taskPath(id: String) = "/tasks?id=$id"
-
+/**
+ * The model of a screen showing the agent page's sections: the page, LoR's blocks and the `lor`
+ * panel (lor-lz97). While the screen is composed and home is started it holds LoR's reader (with
+ * the lists when [lists]) and, when [t3], the T3 connection.
+ */
 @Composable
-private fun Header(title: String, right: String? = null) {
+internal fun rememberAgentModel(t3: Boolean, lists: Boolean = false): AgentModel {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val model = remember { AgentModel(context, scope) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle, t3, lists) { lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { model.whileVisible(t3, lists) } }
+    DisposableEffect(model) { onDispose { model.dispose() } }
+    return model
+}
+
+/**
+ * T3's turns running now, at most [max] then "N more" ([More]): the agent page's Running section,
+ * where it shows only with something running, and the `running` block ([block]), which always
+ * shows and says why it is empty.
+ */
+@Composable
+internal fun Running(model: AgentModel, max: Int? = null, more: (() -> Unit)? = null, block: Boolean = false) {
+    val status by model.connection.status.collectAsState()
+    val shell by model.connection.shell.collectAsState()
+    val running = AgentQueue.running(shell.threads)
+    if (running.isEmpty() && !block) return
+    val seen = status == T3Connection.Status.Live && shell.loaded
+    SectionHeader("Running", if (seen || running.isNotEmpty()) running.size.toString() else null)
+    val (shown, hidden) = LorRows.cap(running, max)
+    shown.forEach { key(it.id) { RunningRow(it) { model.openThread(it.id, LaunchFrom.AGENT_CARD) } } }
+    if (hidden > 0) More(hidden, more)
+    if (running.isEmpty()) {
+        Unseen(
+            when {
+                seen -> "Nothing is running on T3."
+                status == T3Connection.Status.NotPaired || status is T3Connection.Status.Rejected -> "T3 isn't paired. Pair it on the agent page."
+                status == T3Connection.Status.Connecting || status == T3Connection.Status.Stopped -> "Connecting to T3…"
+                else -> "T3 isn't connected, so its turns aren't here."
+            },
+        )
+    }
+}
+
+/**
+ * The agent page's Needs you queue: T3's approvals, questions and failures, then LoR's flags, with
+ * its count, all-clear and unseen notes ([AgentStates]); at most [max] cards, then "N more"
+ * ([More]). The agent page shows it whole; the `needs-you` block ([block]) shows three.
+ */
+@Composable
+internal fun NeedsYou(model: AgentModel, max: Int? = null, more: (() -> Unit)? = null, block: Boolean = false) {
+    val status by model.connection.status.collectAsState()
+    val shell by model.connection.shell.collectAsState()
+    val live = status == T3Connection.Status.Live
+    val now = model.lor?.now ?: Instant.now()
+    val cards = AgentQueue.cards(shell.threads, model.answered, now)
+    val needs = model.lor?.needsYou.orEmpty()
+    val lorSource = when {
+        model.lorError != null -> AgentStates.Source.UNSEEN
+        model.lor != null && model.lorRead -> AgentStates.Source.SEEN
+        else -> AgentStates.Source.READING
+    }
+    val t3Source = when {
+        live && shell.loaded -> AgentStates.Source.SEEN
+        status == T3Connection.Status.Connecting || status == T3Connection.Status.Stopped -> AgentStates.Source.READING
+        else -> AgentStates.Source.UNSEEN
+    }
+    // A number once both sources are read, or whenever something is listed; with nothing
+    // listed and a source not yet seen, none: "0" would claim what the page can't know.
+    val count = cards.size + needs.size
+    val whole = lorSource == AgentStates.Source.SEEN && t3Source == AgentStates.Source.SEEN
+    SectionHeader("Needs you", if (whole || count > 0) count.toString() else null)
+    val items = cards.map { it.key to @Composable { T3QueueCard(it, model, live) } } +
+        needs.map { "lor:${it.id}" to @Composable { LorFlagCard(model, it) } }
+    val (shown, hidden) = LorRows.cap(items, max)
+    shown.forEach { (k, card) -> key(k) { card() } }
+    if (hidden > 0) More(hidden, more)
+    AgentStates.notes(lorSource, t3Source, cards.size, needs.size)
+        // On the page, T3State's line above already says T3 is disconnected and its approvals with it.
+        .filterNot { it == AgentStates.Note.T3_UNSEEN && status is T3Connection.Status.Retrying && !block }
+        .forEach { note ->
+            when (note) {
+                AgentStates.Note.ALL_CLEAR -> {
+                    val lor = model.lor!!
+                    Column(
+                        Modifier
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .fillMaxWidth()
+                            .border(1.dp, Line, RectangleShape)
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                    ) {
+                        Text("All clear.", style = Body.copy(fontSize = 13.sp))
+                        Text(AgentStates.next(lor.day.events, lor.now, lor.zone), style = Small.copy(fontSize = 12.5.sp), modifier = Modifier.padding(top = 2.dp))
+                    }
+                }
+                AgentStates.Note.LOR_UNSEEN -> Unseen("LoR can't be read, so its flags aren't here.")
+                AgentStates.Note.T3_UNSEEN -> Unseen("T3 isn't connected, so its approvals aren't here.")
+            }
+        }
+}
+
+/** A LoR flag in a Needs you list: its tile and its text open the task in the dashboard, as its Open does. */
+@Composable
+internal fun LorFlagCard(model: AgentModel, need: DeviceHome.Need) {
+    val path = LorRows.taskPath(need.id)
+    QueueCard(
+        tile = "LoR", tileColor = Raised, tileLabel = "Open in LoR", onTile = { model.openLor(path, LaunchFrom.AGENT_ICON) },
+        kind = "LoR", kindColor = Mute, where = "flagged", title = need.title, detail = need.note,
+        onText = { model.openLor(path, LaunchFrom.AGENT_CARD) },
+    ) { Pill("Open", primary = true) { model.openLor(path, LaunchFrom.AGENT_CARD) } }
+}
+
+/** "N more" under a block's rows; a tap moves the grid to the panel that shows them all, when the layout has one. */
+@Composable
+internal fun More(count: Int, onClick: (() -> Unit)?) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+            .padding(horizontal = 18.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("$count more", style = Small.copy(color = if (onClick != null) Txt else Mute, fontSize = 13.sp))
+    }
+}
+
+/** A section's head: DESIGN.md's title, condensed caps, with a count or date at its end. */
+@Composable
+internal fun SectionHeader(title: String, right: String? = null) {
     Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 8.dp)) {
         Text(title.uppercase(), style = Heading.copy(color = Txt, fontWeight = FontWeight.SemiBold), modifier = Modifier.weight(1f))
         right?.let { Text(it, style = Heading) }
@@ -232,7 +304,7 @@ private fun Header(title: String, right: String? = null) {
 
 // ---- Today ----
 
-private val Clock = DateTimeFormatter.ofPattern("H:mm")
+internal val Clock = DateTimeFormatter.ofPattern("H:mm")
 private val Day = DateTimeFormatter.ofPattern("EEE d MMM")
 
 /**
@@ -240,11 +312,11 @@ private val Day = DateTimeFormatter.ofPattern("EEE d MMM")
  * Retry; what LoR said last stays, greyed, with the time it said it.
  */
 @Composable
-private fun Today(model: AgentModel) {
+internal fun Today(model: AgentModel) {
     val lor = model.lor
     val error = model.lorError
     val zone = lor?.zone ?: ZoneId.systemDefault()
-    Header("Today", (lor?.now ?: Instant.now()).atZone(zone).format(Day))
+    SectionHeader("Today", (lor?.now ?: Instant.now()).atZone(zone).format(Day))
     if (lor == null) {
         if (error == null) Text("Reading LoR…", style = Small, modifier = Modifier.padding(horizontal = 18.dp))
         else Unreachable(error, model)
@@ -257,7 +329,7 @@ private fun Today(model: AgentModel) {
 
 /** Why LoR can't be read, with a Retry that reads at once. */
 @Composable
-private fun Unreachable(text: String, model: AgentModel) {
+internal fun Unreachable(text: String, model: AgentModel) {
     Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(6.dp).background(Bad, CircleShape))
         Text(text, style = Small, modifier = Modifier.weight(1f).padding(start = 8.dp, end = 10.dp))
@@ -267,7 +339,7 @@ private fun Unreachable(text: String, model: AgentModel) {
 
 /** A source the queue can't see, in place of an all-clear. */
 @Composable
-private fun Unseen(text: String) {
+internal fun Unseen(text: String) {
     Text(text, style = Small, modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
 }
 
@@ -470,6 +542,7 @@ private fun QueueCard(
     detail: String?,
     detailColor: Color = Mute,
     below: (@Composable () -> Unit)? = null,
+    onText: (() -> Unit)? = null,
     actions: @Composable () -> Unit,
 ) {
     Column(
@@ -490,7 +563,11 @@ private fun QueueCard(
                     .semantics { contentDescription = tileLabel },
                 contentAlignment = Alignment.Center,
             ) { Text(tile, style = Type.label.copy(color = Txt)) }
-            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+            Column(
+                Modifier.weight(1f)
+                    .then(if (onText != null) Modifier.clickable(onClickLabel = tileLabel, onClick = onText) else Modifier)
+                    .padding(horizontal = 10.dp),
+            ) {
                 Text(
                     buildString { append(kind); append(" · "); append(where) },
                     style = Small.copy(color = kindColor),

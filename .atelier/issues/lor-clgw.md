@@ -4,6 +4,9 @@ id: "lor-clgw"
 issue_type: "feature"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: lor-clgw
 priority: "P2"
 relationships:
   blocks: []
@@ -35,7 +38,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "LoR and T3 panels"
-updated_at: "2026-11-08T02:09:40.991336306+00:00"
+updated_at: "2026-11-08T03:46:49.780707219+00:00"
 ---
 
 ## Goal

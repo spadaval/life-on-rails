@@ -39,7 +39,7 @@ fun LayoutFile.setLocked(on: Boolean): LayoutFile {
 
 /**
  * Adds a panel of [type] at [cell], an empty cell in reach. A `stack` is an empty `apps` block and
- * `dock`, as a new page is. A layout holds one `t3` and one `drawer` panel, and a row at most
+ * `dock`, as a new page is. A layout holds one `t3`, one `drawer` and one `lor` panel, and a row at most
  * [LayoutFile.MAX_APPS_PANELS] stacks with an `apps` block.
  */
 fun LayoutFile.addPanel(cell: Cell, type: String): LayoutFile {
@@ -50,6 +50,7 @@ fun LayoutFile.addPanel(cell: Cell, type: String): LayoutFile {
         "stack" -> Panel.Stack(cell, listOf(StackBlock.Apps(emptyList()), StackBlock.Dock))
         "t3" -> Panel.T3(cell)
         "drawer" -> Panel.Drawer(cell)
+        "lor" -> Panel.Lor(cell)
         else -> throw LayoutError("there's no panel type \"$type\"")
     }
     ONCE[type]?.let { name -> if (layout.panels.any { it.typeName == type }) throw LayoutError("there's already $name") }
@@ -100,6 +101,7 @@ fun LayoutFile.setWide(at: Cell, panel: Panel, wide: Wide): LayoutFile {
         is Panel.Stack -> panel.copy(wide = wide)
         is Panel.T3 -> panel.copy(wide = wide)
         is Panel.Drawer -> panel.copy(wide = wide)
+        is Panel.Lor -> panel.copy(wide = wide)
     }
     return withCurrent(layout.copy(panels = layout.panels.map { if (it.at == at) changed else it }))
 }
@@ -176,7 +178,7 @@ fun LayoutFile.removeBlock(at: BlockAt, block: StackBlock): LayoutFile {
 }
 
 /** The panel types a layout holds at most one of, with how a refusal names one. */
-private val ONCE = mapOf("t3" to "an agent page", "drawer" to "a drawer")
+private val ONCE = mapOf("t3" to "an agent page", "drawer" to "a drawer", "lor" to "a LoR panel")
 
 internal const val LAST_BLOCK = "a stack needs a block; remove the panel instead"
 
@@ -187,6 +189,7 @@ private val Panel.typeName: String
         is Panel.Stack -> "stack"
         is Panel.T3 -> "t3"
         is Panel.Drawer -> "drawer"
+        is Panel.Lor -> "lor"
     }
 
 private fun LayoutFile.checkPanel(at: Cell, panel: Panel) {

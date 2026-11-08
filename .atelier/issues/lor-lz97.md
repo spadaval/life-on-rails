@@ -18,9 +18,9 @@ relationships:
     type: "implements"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "The lor panel and LoR's blocks on home"
-updated_at: "2026-11-07T23:37:54.452349906+00:00"
+updated_at: "2026-11-08T03:46:49.780719221+00:00"
 ---
 
 ## Goal

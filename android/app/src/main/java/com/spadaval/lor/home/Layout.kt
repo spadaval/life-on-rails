@@ -32,11 +32,13 @@ import java.time.format.DateTimeParseException
  *       "dock": ["com.google.android.dialer"],             // the one dock every `dock` block draws
  *       "panels": [
  *         { "at": [0, 0], "type": "t3" },                 // "wide": "full" or "half"; absent, the type's
- *         { "at": [1, 0], "type": "stack", "blocks": [     // default (stack half, t3 full, drawer half)
+ *         { "at": [1, 0], "type": "stack", "blocks": [     // default (stack half, t3 full, drawer half, lor full)
  *             { "type": "clock" },
+ *             { "type": "today" },                         // also "needs-you", "running", "t3-queue"
  *             { "type": "widget", "id": 42, "provider": "com.example/.Clock", "height": 160 },
  *             { "type": "apps", "items": ["com.whatsapp", { "folder": "Dev", "apps": ["com.github.android"] }] },
  *             { "type": "dock" }] },
+ *         { "at": [2, 0], "type": "lor" },
  *         { "at": [1, 1], "type": "drawer" }] }
  *   ]
  * }
@@ -284,6 +286,7 @@ data class LayoutFile(
                 }
                 "t3" -> { v.onlyKeys(at, "at", "type", "wide"); Panel.T3(cell).let { it.copy(wide = wide ?: it.wide) } }
                 "drawer" -> { v.onlyKeys(at, "at", "type", "wide"); Panel.Drawer(cell).let { it.copy(wide = wide ?: it.wide) } }
+                "lor" -> { v.onlyKeys(at, "at", "type", "wide"); Panel.Lor(cell).let { it.copy(wide = wide ?: it.wide) } }
                 else -> throw LayoutError("$at.type: must be one of ${Panel.TYPES.joinToString()}, got \"$type\"")
             }
         }
@@ -299,6 +302,7 @@ data class LayoutFile(
                 "clock" -> { v.onlyKeys(at, "type"); StackBlock.Clock }
                 "apps" -> { v.onlyKeys(at, "type", "items"); StackBlock.Apps(parseItems(at, v, "items")) }
                 "dock" -> { v.onlyKeys(at, "type"); StackBlock.Dock }
+                in StackBlock.LOR -> { v.onlyKeys(at, "type"); StackBlock.bare(type)!! }
                 "widget" -> {
                     v.onlyKeys(at, "type", "id", "provider", "height")
                     val id = v.opt("id") as? Int
@@ -519,12 +523,21 @@ sealed interface Panel {
         override fun toJson(): JSONObject = head("drawer")
     }
 
+    /**
+     * LoR's dashboard shaped for the phone (decision lor-p86v): narrow, Today, Needs you with the
+     * agent's queue, and Due soon; wide, that beside the Tasks or People tab.
+     */
+    data class Lor(override val at: Cell, override val wide: Wide = Wide.FULL) : Panel {
+        override fun toJson(): JSONObject = head("lor")
+    }
+
     /** The type's `wide` when the file says none. */
     val defaultWide: Wide
         get() = when (this) {
             is Stack -> Wide.HALF
             is T3 -> Wide.FULL
             is Drawer -> Wide.HALF
+            is Lor -> Wide.FULL
         }
 
     /** Whether this is a stack with an `apps` block. */
@@ -540,10 +553,11 @@ sealed interface Panel {
         is Stack -> copy(at = cell)
         is T3 -> copy(at = cell)
         is Drawer -> copy(at = cell)
+        is Lor -> copy(at = cell)
     }
 
     companion object {
-        val TYPES = listOf("stack", "t3", "drawer")
+        val TYPES = listOf("stack", "t3", "drawer", "lor")
     }
 }
 
@@ -599,14 +613,40 @@ sealed interface StackBlock {
         }
     }
 
+    /** The agent page's Today: the day arc, the running timer, the one thing, the next events (decision lor-p86v). */
+    data object Today : StackBlock {
+        override val type = "today"
+    }
+
+    /** The agent page's Needs you queue: T3's approvals, questions and failures, then LoR's flags. */
+    data object NeedsYou : StackBlock {
+        override val type = "needs-you"
+    }
+
+    /** T3's turns running now, as the agent page's Running section. */
+    data object Running : StackBlock {
+        override val type = "running"
+    }
+
+    /** LoR's work queue for the agent: open tasks given to it, queued first, then those being worked in a T3 thread. */
+    data object T3Queue : StackBlock {
+        override val type = "t3-queue"
+    }
+
     companion object {
-        val TYPES = listOf("clock", "apps", "dock", Widget.TYPE)
+        /** LoR's blocks (lor-lz97), none with a field of its own. */
+        val LOR = listOf("today", "needs-you", "running", "t3-queue")
+        val TYPES = listOf("clock", "apps", "dock", Widget.TYPE) + LOR
 
         /** A new block of [type], for a type that takes no field (an `apps` block empty); null for any other, as `widget`. */
         fun bare(type: String): StackBlock? = when (type) {
             "clock" -> Clock
             "apps" -> Apps(emptyList())
             "dock" -> Dock
+            "today" -> Today
+            "needs-you" -> NeedsYou
+            "running" -> Running
+            "t3-queue" -> T3Queue
             else -> null
         }
     }
