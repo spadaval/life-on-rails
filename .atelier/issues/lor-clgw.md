@@ -48,7 +48,7 @@ LoR and T3 get panels that use the space, in native Compose with no WebView. The
 ## Done when
 
 - [ ] The server's standalone items are merged (lor-odtk, the reads; lor-2mh2, the writes), and each child is done, with its proof, in this order on this item's branch: lor-lz97 (the `lor` panel and the blocks), lor-rz50 (the panels' writes), lor-iabt (the T3 panel's wide form).
-- [ ] End to end on `T3_Fold_API35` against the test server and a scratch T3 server, in one session, with a layout of the `t3` panel, home with a `today` and a `needs-you` block above its apps, and a `lor` panel beside it: folded, each cell drawn; unfolded, the `t3` panel's wide form, home and the `lor` panel's wide form; an approval made on the T3 panel clears from the `needs-you` block and the agent page; a flag marked Done on the `needs-you` block leaves the `lor` panel and the agent page at once, and its Undo reopens the task without its flag, so it shows under the `lor` panel's Due soon and in none of the three Needs you lists; a task flagged in the test database (by SQL on `life_on_rails_test`, never with the `lor` CLI, which reaches the real server) shows in the `lor` panel and the block within a minute. Screenshots of each step, recorded as an evidence receipt on this item.
+- [x] End to end on `T3_Fold_API35` against the test server and a scratch T3 server, in one session, with a layout of the `t3` panel, home with a `today` and a `needs-you` block above its apps, and a `lor` panel beside it: folded, each cell drawn; unfolded, the `t3` panel's wide form, home and the `lor` panel's wide form; an approval made on the T3 panel clears from the `needs-you` block and the agent page; a flag marked Done on the `needs-you` block leaves the `lor` panel and the agent page at once, and its Undo reopens the task without its flag, so it shows under the `lor` panel's Due soon and in none of the three Needs you lists; a task flagged in the test database (by SQL on `life_on_rails_test`, never with the `lor` CLI, which reaches the real server) shows in the `lor` panel and the block within a minute. Screenshots of each step, recorded as an evidence receipt on this item.
 - [ ] Launcher polish 7.8's home-press measurement on `T3_Phone_API35` and the unfolded `T3_Fold_API35`, with the layout above, on this branch and on `main` at the commit it branched from: the median `TotalTime` on this branch is within 10% of the base. In the same receipt or one beside it.
 
 ## Scope
@@ -77,3 +77,51 @@ The server's `/device/*` reads and writes, the phone's `home/` (layout and stack
   Reason: The server part needs no phone and can merge while lor-lz97 is built; the phone writes are their own reviewable slice rather than six more Done when lines in lor-lz97, which already draws and reads every panel and block. Siblings are ordered by this note, not by blocked_by.
   Rejected: Writes folded into lor-lz97: one slice too large to review in one pass
 - 2026-11-07 [note] Question for Sumeet: Seen on a flag has no Undo (decision lor-dofd), because taking it back would re-flag the task and re-send the WhatsApp message, and the flag's time and note would be lost; a mis-tap loses the flag. Is that acceptable, or should Seen get an Undo that restores the flag exactly (a server rule the web doesn't have)?
+
+## Report
+
+Line 2 holds and line 3 fails. Line 1, the children done, is the orchestrator's and stays unticked.
+
+- **Line 2 (pass, receipt lor-myhe).** This was the end-to-end check on `T3_Fold_API35` in one
+  session, on 5e9c703 against the test server and a scratch T3 server. Every step held. Each cell was
+  drawn folded, and the three wide forms unfolded. An approval made on the `t3` panel cleared from
+  the `needs-you` block and the agent page; the scratch server recorded `decision: accept`. A flag
+  set by SQL showed on the block 47 s later and in the `lor` panel from the same read. Done on the
+  block removed the flag from the `lor` panel and the agent page. Undo reopened the task unflagged,
+  under Due soon and in none of the three Needs you lists. The receipt's README names the file
+  behind each claim.
+- **Line 3 (fail, receipt lor-79s1).** With line 2's layout, the branch's median home press is 27%
+  slower than the base on `T3_Phone_API35` (65.5 ms against 51.5 ms). On the unfolded Fold it is
+  18.7% slower (120.5 against 101.5). Each median pools two rounds of ten presses. The base is
+  266f3c3, whose android/ tree matches 9c8a470's, and it can't parse `lor`, `today` or
+  `needs-you`, so its layout leaves them out. With that same layout on both builds, the branch is
+  +6.8% on the phone and +4.9% on the Fold, so the code alone is within 10%. The extra time comes
+  with drawing the full layout's blocks; no press triggered a read.
+- **Builds.** The branch APK was built on boat from 5e9c703: `assembleDebug testDebugUnitTest`
+  passed, 384 tests. It is byte-identical to lor-iabt's `iabt-b3`. The base build passed 345 tests.
+
+### Deviations
+
+- **Undo in a second pass.** The Undo bar shows for 4 s (`SHOWN_MS` in `home/Undo.kt`), which is
+  too short to visit the `lor` panel and the agent page first. So "leaves at once" was checked on one
+  SQL-flagged task ("Return the library books"). Undo was checked on a second ("Approve the dentist
+  reschedule"): Done, then Undo 2 s later.
+- **The SQL flag doubles as the Done flag.** The test database's existing flag, "Renew the car
+  insurance", is a Google task, which has no Done. The task flagged by SQL was therefore also the one
+  marked Done.
+- **Line 3 had to compare different layouts.** The line's own comparison, branch with the full
+  layout against base with a parseable one, mixes the code's cost with the layout's. The third
+  configuration (both builds, parseable layout) separates the two.
+
+### Open items
+
+- **Line 3 needs a decision.** It fails as written, and nothing on this branch was changed. The
+  measurements say the cost is drawing `today`, `needs-you` and the `lor` panel, not a regression
+  at an equal layout. Either the line is restated as the code's cost at an equal layout (+6.8% and
+  +4.9%, which pass), or the blocks' first frame is made cheaper. That choice is the plan owner's.
+- **Both checks predate 6f946a8.** That commit, from lor-iabt's review, changes when
+  `agent/ThreadColumn.kt` reads. Line 2's `t3` wide-form steps ran before it. The home press doesn't
+  draw the `t3` panel.
+- **Test data afterwards.** "Return the library books" was set back to active by SQL. "Approve the
+  dentist reschedule" is active and unflagged, as before, through the app's own Undo. The
+  scratch-server approval thread "Approve the clgw e2e check" is completed.
