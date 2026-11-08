@@ -39,6 +39,8 @@ do instead) when pointed elsewhere:
   to, drive or change them.
 - **App data:** `install` uses `adb install -r` and never `pm clear`. Clearing
   data brings back `Prefs.DEFAULT_SERVER`, the real server.
+- **Dependencies:** the copy's `node_modules` is a symlink to the checkout's
+  (in a worktree, the main checkout's). Never run `pnpm install` in the copy.
 - **Builds:** `build` runs `android/boat-build.sh` on the boat VM. Never run
   `./gradlew` on this machine.
 
@@ -74,8 +76,9 @@ so: `boat resume bx_fxc6p2bw` (it stops itself 30 minutes after use).
 For the launcher, start or open the emulator with T3 Code's device tools, not a
 shell: load them with ToolSearch
 `select:mcp__t3-code__device_list,mcp__t3-code__device_open,mcp__t3-code__device_screenshot,mcp__t3-code__device_close`,
-then `device_open` with hostId `local` and id `T3_Phone_API35`. Run `install`
-once it is booted.
+then `device_list`, and `device_open` with hostId `local` and the id
+`device_list` shows for T3_Phone_API35 (`T3_Phone_API35` while it is off,
+`emulator-5554` once booted). Run `install` once it is booted.
 
 ## Drive
 
@@ -91,8 +94,13 @@ once it is booted.
   `screen /` and the API for Today.
 - **Launcher:** drive only through the `agent-device` command that `device_open`
   returned: `open com.spadaval.lor`, `snapshot -i`, `press @eN --settle`,
-  `fill`, `screenshot <file>`. Use `device_screenshot` to look. Never raw
-  `adb shell input`. adb is only for what the CLI does: install, prefs, logs.
+  `fill`, `home`, `back`, `screenshot <file>` (`agent-device help` lists the
+  rest). Home draws placeholder icons for a second or two after `home`, so wait
+  for a label (`wait text "<app name>"`) before a screenshot. Use
+  `device_screenshot` to look. Never raw `adb shell input`. adb is only for
+  what the CLI does: install, prefs, logs. If `open` says another session holds
+  the device (an earlier thread's), follow its advice once
+  (`open com.spadaval.lor --wait 30000`); never reuse or close that session.
   Close the device with `device_close` when you finish.
 
 Drive the behaviour your change is about, including the motion or state change
@@ -110,10 +118,13 @@ inside it):
 - Web: the PNGs and `<flow>.log` that `screen` writes.
 - Launcher: `agent-device screenshot <dir>/<name>.png`, the snapshot text, and
   `node $V logs <dir>` (the app's logcat, the crash buffer and the server log).
+  The server log holds startup and errors, not requests: logcat's `LorReads`
+  line ("read /device/home: ok") is what shows the app reached the server.
 - `node $V evidence <dir>` lists every file with its size and sha256.
 
 Record one receipt per surface you checked, naming the commit, the device or
-server and what each file shows. Don't record `pnpm test` or a boat build
+server and what each file shows. `--path` is accepted once, so point it at the
+surface's directory and name the files in the summary. Don't record `pnpm test` or a boat build
 passing; name those tests in the handoff instead:
 
 ```
