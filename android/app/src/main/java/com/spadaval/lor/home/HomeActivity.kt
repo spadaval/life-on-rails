@@ -122,7 +122,10 @@ class HomeActivity : ComponentActivity() {
         // Home settings' Panels (lor-6get): home comes to the front with the minimap open.
         if (intent.getBooleanExtra(EXTRA_MINIMAP, false)) {
             Log.i(TAG, "the minimap opens from Home settings")
-            return ui.openMinimap()
+            // After a screen-off the reset to the start is still to come (onStart and an effect,
+            // in either order with this intent), so the minimap opens after it (lor-5i6p).
+            if (slept || ui.toStart) ui.minimapAfterStart = true else ui.openMinimap()
+            return
         }
         if (intent.action != Intent.ACTION_MAIN || !intent.hasCategory(Intent.CATEGORY_HOME)) return
         // Launcher3's alreadyOnHome: home had focus and the press didn't bring it to the front.

@@ -245,6 +245,8 @@ class HomeUi {
      * back on, so the start is read for that screen's width.
      */
     var toStart by mutableStateOf(false)
+    /** Home settings' Panels arrived while [toStart] waits: the minimap opens after that home press. */
+    var minimapAfterStart = false
     /** Where on home a long press on empty space opened the home menu. */
     var homeMenu by mutableStateOf<Offset?>(null)
     /** The cell that long press was on, so only that cell draws the menu. */
@@ -454,6 +456,10 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         if (ui.toStart) {
             ui.toStart = false
             ui.homePressed(animate = false)
+            if (ui.minimapAfterStart) {
+                ui.minimapAfterStart = false
+                ui.openMinimap()
+            }
         }
     }
     if (grid.panels != panels) grid.edited(panels, start)
