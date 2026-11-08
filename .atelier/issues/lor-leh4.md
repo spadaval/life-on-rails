@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The clock block: next alarm and weather"
-updated_at: "2026-11-08T03:02:29.807064020+00:00"
+updated_at: "2026-11-08T03:14:19.125623051+00:00"
 ---
 
 ## Goal
@@ -65,6 +65,7 @@ On `T3_Phone_API35` against the test server, unless a line says otherwise:
 - 2026-11-07 [decision] Edges of the lines: an alarm exactly 24 hours away shows and one already past does not; a reading exactly 2 hours old shows. Degrees round half up (Math.round), Fahrenheit computed from the Celsius the server sends. The unit follows LocaleData.getMeasurementSystem of the default FORMAT locale, read once per composition of the block.
   Reason: 'Within the next 24 hours' read as inclusive; the JVM tests in HeaderTest pin each edge.
 - 2026-11-07 [handoff] Implemented on lor-sbth (44252ef code, f72df4c records); every Done when line ticked, see ## Report. Review: none yet. lor-lz97 extends LorApp.reads (LorReads: hold(), retry(), home/error/current/retrying).
+- 2026-11-07 [handoff] Page-dot fix added at the coordinator's request: 8d301b6 (HomeScreen.kt StackScroll/FillColumn), receipt lor-moup, Report's Surprises updated. Review: none yet; the slice to review is now e9d358a..8d301b6.
 
 ## Report
 
@@ -76,7 +77,7 @@ Three decision notes above: the reader's shape (`LorReads`, `hold()`, `current`)
 
 ### Surprises
 
-- At font scale 2.0 with the stack scrolled to its foot, home's page dots are drawn over the `Settings` label of the last app row (14-font2-tall-scrolled.png). The dots are placed at a fixed 96 dp above the bottom, over whatever the stack draws there; it is lor-r0f9's scroll and the dots, not the clock. Not filed; the orchestrator may want an item.
+- At font scale 2.0 with the stack scrolled to its foot, home's page dots were drawn over the `Settings` label of the last app row (14-font2-tall-scrolled.png): lor-r0f9's scroll ran under the dots, which sit 96 dp above the bars. Fixed here at the coordinator's request (8d301b6): `StackScroll` ends overflowing content with the room the dots need beyond what lies below it (the dock), plus 8 dp, so the last row scrolls clear; a stack that fits measures as before (`FillColumn` adds the pad only when its content exceeds its minimum). Receipt lor-moup: at 2.0 the label ends clear of the dots, and at 1.0 the dots and dock sit on the same pixel rows as before the fix. Proof is the emulator only; `FillColumn`'s measure has no JVM test.
 - On the emulator two clock apps (Google Clock, Fossify Clock) both answer `ACTION_SHOW_ALARMS`, so the alarm line's tap opens Android's chooser first. A phone with one clock app goes straight to its list.
 - `DISMISS_ALARM` by label removed an alarm within 24 hours but not the Monday one; that one was switched off by hand in Clock.
 
