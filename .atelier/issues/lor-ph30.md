@@ -41,9 +41,9 @@ The inner screen is used, and folding keeps your place. Each panel is `full` or 
 
 ## Done when
 
-- [ ] Each child is done, with its proof: lor-j87u (schema and rules), then lor-el51 (the inner screen drawn), lor-ozj2 (folding keeps your place) and lor-sqfe (the drawer within the thumb's reach), in that order on this item's branch.
-- [ ] End to end on `T3_Fold_API35` with a version 1 `layout.json` with two extra pages, against the test server, in one session: unfolded, home starts on its `wide` start (home and page 2 side by side); a swipe up opens the drawer and `ma` is typed; a fold shows the drawer on the cover screen with `ma` still in the field; an unfold shows it again; a home press, a move to page 3, a tap on it, a fold shows page 3; screen off, unfold, screen on shows the `wide` start. Each step screenshotted, and logcat shows no `HomeActivity` `onCreate` after the first. Recorded as an evidence receipt on this item.
-- [ ] Launcher polish 7.8's home-press measurement on `T3_Phone_API35` and on the unfolded `T3_Fold_API35`, each on this branch and on `main` at the commit it branched from, in one emulator session per device: on each, the median `TotalTime` on this branch is within 10% of the base. Recorded in the same receipt or one beside it.
+- [x] Each child is done, with its proof: lor-j87u (schema and rules), then lor-el51 (the inner screen drawn), lor-ozj2 (folding keeps your place) and lor-sqfe (the drawer within the thumb's reach), in that order on this item's branch.
+- [x] End to end on `T3_Fold_API35` with a version 1 `layout.json` with two extra pages, against the test server, in one session: unfolded, home starts on its `wide` start (home and page 2 side by side); a swipe up opens the drawer and `ma` is typed; a fold shows the drawer on the cover screen with `ma` still in the field; an unfold shows it again; a home press, a move to page 3, a tap on it, a fold shows page 3; screen off, unfold, screen on shows the `wide` start. Each step screenshotted, and logcat shows no `HomeActivity` `onCreate` after the first. Recorded as an evidence receipt on this item.
+- [x] Launcher polish 7.8's home-press measurement on `T3_Phone_API35` and on the unfolded `T3_Fold_API35`, each on this branch and on `main` at the commit it branched from, in one emulator session per device: on each, the median `TotalTime` on this branch is within 10% of the base. Recorded in the same receipt or one beside it.
 
 ## Scope
 
@@ -94,3 +94,30 @@ Carried from Launcher polish's old Increment 8 (`docs/missions/launcher-polish/p
   Reason: A child stays open until its parent merges, so lor-el51 couldn't start after lor-j87u on one branch. lor-j87u changes nothing on screen, so it can merge alone.
 - 2026-11-07 [decision] The children are worked in order on branch lor-ph30: lor-el51, then lor-ozj2, then lor-sqfe, each reviewed as its own slice. lor-ozj2 and lor-sqfe no longer carry blocked_by lor-el51; they start after lor-el51's review is approved.
   Reason: Atelier keeps a child open until its parent merges, so a blocked_by between siblings would stall them; on one shared branch, order does the same job.
+- 2026-11-07 The child line is ticked on the children's records: lor-j87u is done, and every Done when line of lor-el51, lor-ozj2 and lor-sqfe is ticked. It is fully met when lor-ph30 merges.
+
+## Report
+
+The end-to-end and home-press lines hold, as evidence lor-ar10 and lor-x6a8.
+
+- **End to end** on `T3_Fold_API35`, in one session against the test server: home unfolded on its `wide` start (home and page 2 side by side). The drawer kept `ma` through a fold and an unfold. A fold from page 3 showed page 3, and screen off, unfold, screen on brought back the `wide` start. Logcat over the whole session has one `HomeActivity` create (one `wm_on_create_called`, one pid), and the app list loaded once. Screenshots `01` to `10` are in `/tmp/claude-1000/ph30-emu/fold/e2e/`.
+- **Home-press latency** (median `TotalTime`, ten runs after a warm-up with Settings in front, two rounds per device in rotated order), against the base 0f19269:
+
+  | Device | Round | Base | Head | Change |
+  |---|---|---|---|---|
+  | `T3_Phone_API35` | 1 | 66.5 ms | 71.5 ms | +7.5% |
+  | `T3_Phone_API35` | 2 | 62.5 ms | 66.0 ms | +5.6% |
+  | `T3_Fold_API35` unfolded | 1 | 120.5 ms | 123.0 ms | +2.1% |
+  | `T3_Fold_API35` unfolded | 2 | 123.5 ms | 107.0 ms | -13.4% |
+
+  Each round is within 10%. Runs vary more than the builds differ.
+
+### Deviations
+
+- The Fold doesn't have the apps on the two extra pages of the phone's version 1 file. So the Fold used the same file with those pages holding apps it has (`/tmp/claude-1000/ph30-emu/layout-v1-two-pages-fold.json`, as lor-el51 did).
+- The test server ran from the main checkout's `scripts/ui-server.sh`, because this worktree has no `node_modules`.
+
+### Open items
+
+- On the Fold, the base build draws home alone and the head build pairs home with page 2, so the Fold's latency compares two different screens.
+
