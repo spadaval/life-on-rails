@@ -5,6 +5,7 @@ Single-user self-hosted personal OS. What LoR is, what it is not, and how it sit
 ## Rules
 
 - Personal project, one box, no users: no staged rollout. Work is tracked in Atelier (`.atelier/`), worked the Agent Factory way (see "How work lands").
+- Development and iteration tools run on this host (tests, typechecks, dev servers, the local emulator, the shared module's capped browser build); anything heavier runs on boat or in CI.
 - Prefer the simplest shape: no fallbacks, watchdogs, retention, or permission layers until their absence is felt.
 - Add a table when the code that uses it is written.
 - Never import from `archive/2023/` (frozen 2023 draft).
@@ -24,7 +25,7 @@ Single-user self-hosted personal OS. What LoR is, what it is not, and how it sit
 
 Since 2026-11-06 LoR uses Atelier, with records under `.atelier/`.
 
-- Start a session with `atelier status`; before handoff commit the records and run `atelier land`. Active work may remain open, with unfinished code handed off honestly. The Claude Code hooks run both.
+- Start a session with `atelier status`; before handoff commit the records and run `atelier land --push`, which pushes the current branch when land passes. Whether a change goes out is decided at review and merge, not at sync: don't ask before pushing landed work, and stop only if land refuses or a commit holds a secret or personal details. Active work may remain open, with unfinished code handed off honestly. The Claude Code hooks run `atelier status` and `atelier land`; pushing is the agent's.
 - One issue, in order: `atelier start <id>` (an item with a recorded branch switches to it; otherwise on `main` it creates a branch named `<id>`, and on another branch it takes that branch), implement, tick every Done when line and write the `## Report`, `atelier review request <id>`, fix and re-review, approve, then `atelier merge <id>`, which marks the work done. Work has no close step. Only a code change makes an approval stale, though a rewritten Done when line still gets a fresh one. Work that changes no code and can only happen after a merge or release is a loose end, unless it is an independent validation; a change with no issue takes the light path. Agent Factory's Atelier reference has the detail and defines check, review, land, done and close.
 - **A non-trivial change goes on a work branch**, one worktree per agent working in parallel. A fresh agent that didn't write it reviews it before `atelier merge` puts it on `main`. A fix made after review is reviewed again, but only the fix's diff. Sumeet reviews after merge.
 - **Straight to `main`:** planning records and mission strategies (`docs/missions/<slug>/strategy.md`, linked from the mission), and trivial changes, recorded with `atelier review trivial --base <commit>`. A non-trivial planning change is still reviewed by a fresh agent before the work it defines starts, and a mission moves to ready only after Sumeet approves it (`atelier review approve <mission>`).
@@ -52,7 +53,7 @@ Use the verify skill, `.claude/skills/verify-lor/SKILL.md`. Its CLI (`node .clau
 
 ## The phone app
 
-`android/` is a Kotlin + Compose app (the phone's sensors, the timer tile, settings, the home screen). Gradle runs only on the boat VM, through `android/boat-build.sh` (default tasks `assembleDebug testDebugUnitTest`), never `./gradlew` on this machine. Check a change on the emulator with the verify skill (`.claude/skills/verify-lor/SKILL.md`): it builds on boat, installs on `T3_Phone_API35` pointed at the test server (`http://10.0.2.2:3857`), never the real one, and has the device driven through T3 Code's device tools. Sumeet's phone (wireless adb, `~/Android/Sdk/platform-tools/adb`, at `100.83.51.27` over Tailscale; find the port with `nmap -p 30000-50000`) gets a build only when he says so. The server side is `src/server/device.ts`.
+`android/` is a Kotlin + Compose app (the phone's sensors, the timer tile, settings, the home screen). Android builds and tests run only on the boat VM, through `android/boat-build.sh` (default tasks `assembleDebug testDebugUnitTest`), never on this machine. The one Gradle build allowed here is iteration on the shared Kotlin module's browser target: `:homecore`'s wasm development tasks (compile, development bundle, Node tests), in a scope capped at 4 GB of memory and 512 MB of swap, one at a time and never beside an emulator (decision lor-0v68, measured in spike lor-8a7n). `~/.gradle/init.d/no-local-builds.gradle` refuses every other Gradle build here, Android Studio's sync included, and the production bundle for deploy is built in GitHub Actions (lor-kbog). Check a change on the emulator with the verify skill (`.claude/skills/verify-lor/SKILL.md`): it builds on boat, installs on `T3_Phone_API35` pointed at the test server (`http://10.0.2.2:3857`), never the real one, and has the device driven through T3 Code's device tools. Sumeet's phone (wireless adb, `~/Android/Sdk/platform-tools/adb`, at `100.83.51.27` over Tailscale; find the port with `nmap -p 30000-50000`) gets a build only when he says so. The server side is `src/server/device.ts`.
 
 ## Talking to the running service
 

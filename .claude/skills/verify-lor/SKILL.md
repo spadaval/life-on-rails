@@ -42,7 +42,8 @@ do instead) when pointed elsewhere:
 - **Dependencies:** the copy's `node_modules` is a symlink to the checkout's
   (in a worktree, the main checkout's). Never run `pnpm install` in the copy.
 - **Builds:** `build` runs `android/boat-build.sh` on the boat VM. Never run
-  `./gradlew` on this machine.
+  an Android Gradle task on this machine; only `:homecore`'s wasm development
+  tasks run here, capped (AGENTS.md, "The phone app").
 
 `tests/verify-lor.test.ts` (in `pnpm test`) shows each refusal. Never weaken a
 guard to test it with a real target: every case there is a `--dry-run`.

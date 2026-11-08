@@ -4,7 +4,6 @@ id: "lor-0v68"
 issue_type: "decision"
 labels:
 - "launcher"
-- "needs-human"
 priority: "P2"
 relationships:
   blocks: []
@@ -16,9 +15,10 @@ relationships:
     type: "related"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+closed_at: "2026-11-08T18:10:47.266381057+00:00"
+status: "done"
 title: "Whether the shared module's browser build may run on this host"
-updated_at: "2026-11-08T17:49:55.955161885+00:00"
+updated_at: "2026-11-08T18:10:47.266381057+00:00"
 ---
 
 ## Context
@@ -38,4 +38,8 @@ May the shared module's browser build run on this host for fast UI iteration?
 
 ## Decision
 
-Open: Sumeet's call (asked 2026-11-08).
+The second (Sumeet, 2026-11-08: "yes, let's run the browser build on this host... development/iteration tools can run on this host, but anything heavier should run on boat"). AGENTS.md ("Rules" and "The phone app") and Sumeet's CLAUDE.md say so. `~/.gradle/init.d/no-local-builds.gradle` now allows a build only when every task is one of `:homecore`'s wasm development tasks (`compileKotlinWasmJs`, `compileDevelopmentExecutableKotlinWasmJs`, `wasmJsBrowserDevelopment*`, `wasmJsNodeTest`) and the Gradle process's own cgroup is capped at 4 GB of memory and 512 MB of swap or less (task options such as `--tests` pass); it refuses everything else, the production bundle and Android tasks included. Checked by dry runs in the spike worktree on 2026-11-08. `wasmJsBrowserDevelopmentRun` (a webpack dev server that stays up) and `wasmJsNodeTest` are allowed but weren't measured: the spike has no Node test target yet, and lor-xdoi measures both. The script that runs the build with the measured settings is lor-xdoi's.
+
+## Report
+
+Allowed: `:homecore` wasm development tasks on this host, capped at 4 GB of memory and 512 MB of swap, enforced by the Gradle guard (Sumeet, 2026-11-08).
