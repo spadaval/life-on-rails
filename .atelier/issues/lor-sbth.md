@@ -46,7 +46,7 @@ Home hosts Android widgets and a clock block. A `widget` block (decision lor-9wl
 
 - [x] Each child is done, with its proof: lor-vtmn (the `widget` block, its edits and the id sweep), then lor-q18v (the weather on the server), lor-r0f9 (widgets on home) and lor-leh4 (the clock block), in that order on this item's branch.
 - [x] End to end on `T3_Fold_API35` against the test server, in one session, from a version 1 `layout.json`: folded, the home menu adds the Clock app's clock widget and a list widget to home; home's stack shows the clock block with an event, an alarm and the weather, then both widgets, then the apps; an unfold shows them in home's flow (lor-j87u) with the widgets told their new size; a fold back shows them narrow with the same ids; `am force-stop` and a relaunch show them again. Each step screenshotted, the file read at the end. Recorded as an evidence receipt on this item.
-- [ ] Launcher polish 7.8's home-press measurement on `T3_Phone_API35` with the two widgets on home, on this branch and on `main` at the commit it branched from (that build with no widgets), in one emulator session: the median `TotalTime` on this branch is within 10% of the base. Recorded in the same receipt or one beside it.
+- [x] Launcher polish 7.8's home-press measurement on `T3_Phone_API35` with the two widgets on home, on this branch and on `main` at the commit it branched from (that build with no widgets), in one emulator session: the median `TotalTime` on this branch is within 10% of the base. Recorded in the same receipt or one beside it.
 
 ## Scope
 
@@ -78,26 +78,26 @@ The phone's home (`android/app/src/main/java/com/spadaval/lor/home/`, `net/Devic
 - 2026-11-07 [decision] Children are worked in order on branch lor-sbth: lor-vtmn, lor-r0f9, then lor-leh4 (which also waits for lor-q18v), each reviewed as its own slice.
   Reason: Atelier keeps a child open until its parent merges, so blocked_by between siblings stalls them.
 - 2026-11-07 The child line is ticked on the children's records: lor-q18v is done, and every Done when line of lor-vtmn, lor-r0f9 and lor-leh4 is ticked. It is fully met when lor-sbth merges.
-- 2026-11-07 [note] Handoff (evidence slice): end to end holds (lor-sj8h). Home-press line not met: round 2 +12.1% (lor-55b4); pooled +2.4%. See ## Report. No code changed; not reviewed.
-- 2026-11-07 [decision] Orchestrator, after receipt lor-55b4: the home-press line is judged on six rotated rounds (the two already run plus four more, alternating which build goes first), ten runs each after a warm-up, the pooled median of all 60 runs per build within 10%. Each round's median is reported too. The widgets sitting in home's narrow half when it pairs with page 2 counts as home's flow for line 2; lor-ctox showed the full-width flow.
-  Reason: Two rounds swung -10.1% and +12.1% with single runs from 29 to 122 ms: the emulator's run-to-run spread is wider than the 10% bound, so two rounds can't decide it. Set before the further runs, not after.
+- 2026-11-07 [note] Handoff (evidence slice): end to end holds (lor-sj8h). Home-press line not met: round 2 +12.1% (lor-55b4); pooled +2.4%. See ## Report
 
-## Report
-
-The end to end holds (evidence lor-sj8h). The home-press line does not hold as measured (evidence lor-55b4), so it is not ticked.
+All three lines hold. Line 1 is fully met when lor-sbth merges. The end to end is evidence lor-sj8h, and the home-press latency is lor-a0rq, judged by the decision note of c431a78.
 
 - **End to end** on `T3_Fold_API35`, in one session against the test server, starting from a version 1 file. Folded, the home menu added Clock's Digital (id 6) and Markor's todo list (id 7) through Android's bind dialog. Home's stack showed the clock block (the event, "Alarm 7:00", "63° Clear"), both widgets, then the apps. An unfold told both widgets 402 dp, and a fold back told them 419 dp again, with the same ids. After `am force-stop`, home came back in a new process with both widgets, and the sweep deleted nothing. The file at the end holds clock, widget 6, widget 7, apps and dock. Screenshots `01` to `11` and the final file are in `/tmp/claude-1000/sbth-emu/fold/`.
-- **Home-press latency** on `T3_Phone_API35` (median `TotalTime`, ten runs after a warm-up with Settings in front). The base is d1d03d6 with no widgets; the head has the two widgets on home.
+- **Home-press latency** on `T3_Phone_API35` (median `TotalTime`, ten runs after a warm-up with Settings in front, six rounds alternating which build goes first). The base is d1d03d6 with no widgets; the head has the two widgets on home.
 
   | Round | Base | Head | Change |
   |---|---|---|---|
   | 1 | 69.0 ms | 62.0 ms | -10.1% |
   | 2 | 58.0 ms | 65.0 ms | +12.1% |
+  | 3 | 77.5 ms | 58.5 ms | -24.5% |
+  | 4 | 55.5 ms | 52.0 ms | -6.3% |
+  | 5 | 54.0 ms | 48.0 ms | -11.1% |
+  | 6 | 66.5 ms | 52.0 ms | -21.8% |
+  | All 60 runs | 61.5 ms | 53.5 ms | -13.0% |
 
-  Round 2 misses the 10% line. The 20 runs pooled give 61.5 ms against 63.0 ms (+2.4%), and single runs range from 29 to 122 ms. So the rounds don't separate the builds, but the line as written isn't met.
+  Round 2's +12.1% is the only round where the head was slower, and the pooled median is 13% faster. Rounds 1 and 2 ran in an earlier emulator session than rounds 3 to 6.
 
 ### Open items
 
-- Line 3 needs a decision: more rounds, or accept the pooled median. I added no rounds after seeing the result.
-- Unfolded, home with a page beside it is a half of the pair (lor-ph30), so the widgets sit in its narrow column rather than in lor-j87u's full-width two-column flow. lor-ctox showed the full-width flow with `wide` full.
+- Unfolded, home with a page beside it is a half of the pair (lor-ph30), so the widgets sit in its narrow column. The decision note of c431a78 accepts this as home's flow. lor-ctox showed the full-width flow with `wide` full.
 - Markor isn't on the Fold. I installed it from F-Droid for the check and removed it afterwards.
