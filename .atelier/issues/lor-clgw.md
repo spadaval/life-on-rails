@@ -30,7 +30,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "LoR and T3 panels"
-updated_at: "2026-11-07T23:55:01.660124986+00:00"
+updated_at: "2026-11-08T01:05:08.682066146+00:00"
 ---
 
 ## Goal
@@ -63,3 +63,5 @@ The server's `/device/*` reads, the phone's `home/` (layout and stack), `agent/`
 - 2026-11-07 [plan] Planned 2026-11-07: children lor-odtk (server reads), lor-lz97 (lor panel and blocks), lor-iabt (T3 panel's wide form), in that order on this item's branch; decision lor-p86v (the lor panel and block types in layout.json); real-Fold validation lor-l2zj after merge, outside the mission. A fresh agent reviews this plan before lor-odtk starts, and lor-ph30 must merge first.
 - 2026-11-07 [decision] lor-odtk is a standalone blocker of lor-clgw on its own branch, merging alone (it adds read endpoints and a field to /device/home, nothing on the phone's screen).
   Reason: lor-odtk is server-only and doesn't depend on the inner screen or widgets, so it can run while lor-ph30 is built; as a child it would wait for lor-sbth and lor-ph30.
+- 2026-11-07 [decision] Children are worked in order on branch lor-clgw: lor-lz97, then lor-iabt, each reviewed as its own slice.
+  Reason: Atelier keeps a child open until its parent merges, so blocked_by between siblings stalls them.

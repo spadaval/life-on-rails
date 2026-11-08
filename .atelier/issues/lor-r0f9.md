@@ -13,9 +13,6 @@ relationships:
   - kind: "issue"
     id: "lor-9wlx"
     type: "implements"
-  - kind: "issue"
-    id: "lor-vtmn"
-    type: "blocked_by"
 schema: "atelier.issue"
 schema_version: 2
 status: "todo"

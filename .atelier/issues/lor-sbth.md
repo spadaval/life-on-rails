@@ -32,7 +32,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Widget and clock blocks"
-updated_at: "2026-11-08T01:04:59.487307267+00:00"
+updated_at: "2026-11-08T01:05:08.657712698+00:00"
 ---
 
 ## Goal
@@ -72,3 +72,5 @@ The phone's home (`android/app/src/main/java/com/spadaval/lor/home/`, `net/Devic
   Reason: lor-q18v is server-only and doesn't depend on the inner screen, so it can run while lor-ph30 is built; as a child it would wait for lor-ph30.
 - 2026-11-07 [decision] lor-leh4 is blocked_by lor-q18v instead of the whole increment. lor-vtmn and lor-r0f9 go first on lor-sbth's branch.
   Reason: lor-q18v waits for Sumeet's GOOGLE_MAPS_KEY; only the clock's weather line (lor-leh4) needs it, so the widget work shouldn't wait.
+- 2026-11-07 [decision] Children are worked in order on branch lor-sbth: lor-vtmn, lor-r0f9, then lor-leh4 (which also waits for lor-q18v), each reviewed as its own slice.
+  Reason: Atelier keeps a child open until its parent merges, so blocked_by between siblings stalls them.
