@@ -35,7 +35,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Widget and clock blocks"
-updated_at: "2026-11-08T01:05:14.399174791+00:00"
+updated_at: "2026-11-08T03:35:10.850510759+00:00"
 ---
 
 ## Goal
@@ -78,6 +78,7 @@ The phone's home (`android/app/src/main/java/com/spadaval/lor/home/`, `net/Devic
 - 2026-11-07 [decision] Children are worked in order on branch lor-sbth: lor-vtmn, lor-r0f9, then lor-leh4 (which also waits for lor-q18v), each reviewed as its own slice.
   Reason: Atelier keeps a child open until its parent merges, so blocked_by between siblings stalls them.
 - 2026-11-07 The child line is ticked on the children's records: lor-q18v is done, and every Done when line of lor-vtmn, lor-r0f9 and lor-leh4 is ticked. It is fully met when lor-sbth merges.
+- 2026-11-07 [note] Handoff (evidence slice): end to end holds (lor-sj8h). Home-press line not met: round 2 +12.1% (lor-55b4); pooled +2.4%. See ## Report. No code changed; not reviewed.
 
 ## Report
 
@@ -98,4 +99,3 @@ The end to end holds (evidence lor-sj8h). The home-press line does not hold as m
 - Line 3 needs a decision: more rounds, or accept the pooled median. I added no rounds after seeing the result.
 - Unfolded, home with a page beside it is a half of the pair (lor-ph30), so the widgets sit in its narrow column rather than in lor-j87u's full-width two-column flow. lor-ctox showed the full-width flow with `wide` full.
 - Markor isn't on the Fold. I installed it from F-Droid for the check and removed it afterwards.
-
