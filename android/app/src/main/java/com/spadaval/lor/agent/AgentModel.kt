@@ -51,8 +51,8 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     /** At least one read has ended since the page opened; until then a kept [lor] is shown greyed. */
     var lorRead by mutableStateOf(false)
         private set
-    /** The cards' calls, run in the process's scope (F4). */
-    private val calls = CardCalls((context.applicationContext as LorApp).scope) { T3Connection.describe(it) }
+    /** The cards' calls, one for the process (F4, lor-0fbs): a page built again sees a call still under way. */
+    private val calls = (context.applicationContext as LorApp).cardCalls
     /** Requests answered from this page, hidden before the shell catches up. */
     val answered: Set<String> get() = calls.answered
     /** Card keys with a call under way. */
@@ -183,7 +183,9 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
  * The cards' calls (approve, answer) and what the cards show of them. Each runs at most once at a
  * time, and in [work], the process's scope ([LorApp.scope]) rather than the page's, so leaving the
  * agent page (a move two cells away, a recreated home) never cancels a call under way (F4 from T3
- * Launcher 3.3, as quick send's send already runs). [describe] puts a failure in plain words.
+ * Launcher 3.3, as quick send's send already runs). One is held for the process
+ * ([LorApp.cardCalls]), so an agent page built again while a call runs shows it busy and won't
+ * send it twice (lor-0fbs). [describe] puts a failure in plain words.
  */
 class CardCalls(private val work: CoroutineScope, private val describe: (Exception) -> String) {
     /** Requests answered, hidden before the shell catches up. */

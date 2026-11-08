@@ -61,4 +61,27 @@ class CardCallsTest {
         assertEquals(emptySet<String>(), calls.answered)
         process.cancel()
     }
+
+    @Test
+    fun aPageBuiltAgainSeesTheCallUnderWayAndDoesNotSendItTwice() = runBlocking {
+        // lor-0fbs: the process holds one CardCalls; the page left (a move two cells away) and the
+        // page built on return both read it.
+        val process = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val held = CardCalls(process) { it.message ?: "failed" }
+        val release = CompletableDeferred<Unit>()
+        var sends = 0
+        val first = held.act("card", "req-1") {
+            sends++
+            release.await()
+        }
+        // The second page, built while the first page's call is in flight.
+        val again = held
+        assertTrue("card" in again.busy)
+        assertEquals("a second tap sends nothing", null, again.act("card", "req-1") { sends++ })
+        release.complete(Unit)
+        withTimeout(5_000) { first!!.join() }
+        assertEquals(1, sends)
+        assertEquals(setOf("req-1"), again.answered)
+        process.cancel()
+    }
 }
