@@ -21,7 +21,7 @@ schema_version: 2
 closed_at: "2026-11-08T02:04:20.688586556+00:00"
 status: "done"
 title: "What LoR's panels may change, and through which route"
-updated_at: "2026-11-08T02:04:20.688586556+00:00"
+updated_at: "2026-11-08T15:52:55.173902435+00:00"
 ---
 
 ## Context
@@ -50,6 +50,11 @@ The asked set, through one route, with Undo where the web's own inverse write re
 - **Route:** `POST /device/task` `{ id, action: done | reopen | seen | queue | unqueue, device? }`, replying with the task after the write; the timer keeps `POST /device/timer`. Both call the functions the web's server functions call, with `via: "ui"` and the device as `sourceRef`.
 - **Undo:** done and reopen undo each other on a task row. Done on a flag card also clears the flag (`completeTask`), which `reopenTask` doesn't restore, so its Undo reopens the task without the flag and says so. Queue and unqueue undo each other, except that Take back on a task a run has already claimed (with a thread) has no Undo, since queueing it again would start a second run. Seen has no Undo; the timer has none (as on the web).
 - **lor-p86v's clauses change:** `needs-you`'s LoR flag cards get Done and Seen, and `t3-queue` gets Take back, so neither is read-only any more. Everything else in lor-p86v stands.
+
+## Notes
+
+- 2026-11-08 [decision] Seen on a flag stays without Undo; the question on lor-clgw is answered.
+  Reason: Sumeet, 2026-11-08: a mis-tapped Seen only loses a flag, which isn't worth an Undo flow.
 
 ## Report
 
