@@ -35,6 +35,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -121,10 +122,10 @@ object MinimapRules {
     }
 
     /**
-     * A stack's blocks, top to bottom: "Clock · 12 apps · Dock". Each name holds together with a
-     * no-break space, so a narrow tile wraps only between blocks.
+     * A stack's blocks, top to bottom: "Clock · 12 apps · Dock". Each name, and the dot after it,
+     * hold together with no-break spaces, so a narrow tile wraps only after a dot.
      */
-    fun blocks(stack: Panel.Stack): String = stack.blocks.joinToString(" · ") { blockName(it).replace(' ', ' ') }
+    fun blocks(stack: Panel.Stack): String = stack.blocks.joinToString("\u00A0· ") { blockName(it).replace(' ', '\u00A0') }
 
     /** Where the inner screen starts: `start.wide`, else the narrow start. */
     fun innerStart(layout: Layout): Cell = layout.start.wide ?: layout.start.narrow
@@ -144,7 +145,7 @@ object MinimapRules {
         val description: String
             get() = if (panel == null) "Empty cell $cell" else listOfNotNull(
                 "$name at $cell",
-                blocks?.replace(' ', ' '),
+                blocks?.replace('\u00A0', ' '),
                 wide,
                 "Phone start".takeIf { phoneStart },
                 "Inner start".takeIf { innerStart },
@@ -206,6 +207,9 @@ private class Lifted(val panel: Panel?, val type: String?, val home: Rect, val g
 private const val FIT_COLUMNS = 6
 private const val FIT_ROWS = 4
 private val GAP = 6.dp
+
+/** A tile's narrowest at font scale 1: six fit across a 411 dp phone. Scaled with the font. */
+private val TILE_MIN = 56.dp
 
 /**
  * The minimap over home: its padlock and Done, the map, the selected panel's actions and the
@@ -360,7 +364,7 @@ private fun Header(locked: Boolean, onPadlock: () -> Unit, onDone: () -> Unit) {
 
 /**
  * The map: a cell for each column from 0 to one past the last panel's and each row from 0 to one
- * past the last ([Layout.reach]). Up to [FIT_COLUMNS] by [FIT_ROWS] fit the width and half the
+ * past the last ([Layout.reach]). Up to [FIT_COLUMNS] (fewer at a large font) by [FIT_ROWS] fit the width and half the
  * height; a wider map scrolls sideways, and a taller one with the page. Halves sharing an inner
  * screen are joined by a band across the gap between them.
  */
@@ -379,7 +383,10 @@ private fun MapGrid(
     val rows = remember(layout) { MinimapRules.rows(layout) }
     val pairs = remember(layout) { MinimapRules.pairs(layout) }
     val columns = rows.first().size
-    val fitColumns = columns.coerceAtMost(FIT_COLUMNS)
+    // A tile is at least TILE_MIN wide at the font's scale, so a large font shows fewer columns
+    // and scrolls rather than breaking a word across lines.
+    val minW = TILE_MIN * LocalDensity.current.fontScale
+    val fitColumns = columns.coerceAtMost(FIT_COLUMNS).coerceAtMost(((width + GAP) / (minW + GAP)).toInt().coerceAtLeast(1))
     val fitRows = rows.size.coerceAtMost(FIT_ROWS)
     val cellW = (width - GAP * (fitColumns - 1)) / fitColumns
     val cellH = min(cellW * 1.3f, (height * 0.5f - GAP * (fitRows - 1)) / fitRows).coerceAtLeast(56.dp)
@@ -387,7 +394,7 @@ private fun MapGrid(
     // The cell a held tile would drop on, outlined as the selection is.
     val over = lifted?.takeIf { !it.settling }?.finger?.let { f -> bounds.entries.firstOrNull { (k, r) -> k is Cell && r.contains(f) }?.key as Cell? }
     val scroll = rememberScrollState()
-    Box(if (columns > FIT_COLUMNS) Modifier.horizontalScroll(scroll) else Modifier) {
+    Box(if (columns > fitColumns) Modifier.horizontalScroll(scroll) else Modifier) {
         Column(
             Modifier
                 .onGloballyPositioned { origin = it.positionInRoot() }
@@ -412,6 +419,9 @@ private fun MapGrid(
             rows.forEach { row ->
                 Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(GAP)) {
                     row.forEach { tile ->
+                        // A cell that leaves the map (an edit shrank the reach) takes its bounds with it,
+                        // so a drop never finds a cell that isn't drawn.
+                        DisposableEffect(tile.cell) { onDispose { bounds.remove(tile.cell) } }
                         CellTile(
                             tile,
                             selected = tile.panel != null && tile.cell == selected,

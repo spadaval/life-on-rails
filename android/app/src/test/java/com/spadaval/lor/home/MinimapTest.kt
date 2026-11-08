@@ -31,9 +31,9 @@ class MinimapTest {
     @Test
     fun aStackListsItsBlocksWithEveryAppCounted() {
         // Two apps and a folder of two: four apps.
-        assertEquals("Clock · 4 apps · Dock", tile(grid, 1, 0).blocks)
-        assertEquals("1 app · Dock", tile(grid, 2, 0).blocks)
-        assertEquals("0 apps · Dock", tile(grid, 3, 0).blocks)
+        assertEquals("Clock\u00A0· 4\u00A0apps\u00A0· Dock", tile(grid, 1, 0).blocks)
+        assertEquals("1\u00A0app\u00A0· Dock", tile(grid, 2, 0).blocks)
+        assertEquals("0\u00A0apps\u00A0· Dock", tile(grid, 3, 0).blocks)
         assertNull(tile(grid, 0, 0).blocks)
         assertEquals("Stack at [1, 0]. Clock · 4 apps · Dock. Half. Phone start. Inner start", tile(grid, 1, 0).description)
         assertEquals("Empty cell [4, 0]", tile(grid, 4, 0).description)
