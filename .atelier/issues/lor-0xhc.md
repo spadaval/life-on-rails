@@ -27,5 +27,5 @@ Home's Undo bar shows a LoR write's line only once, right after the write. Today
 ## Done when
 
 - [ ] Once home has shown a write's line, the bar is cleared (or a line older than its 4 s is never shown); a JVM test covers it.
-- [ ] On T3_Phone_API35, a tick, then an activity rebuild (`adb shell cmd uimode night yes` and back), shows no Undo bar (screenshot).
+- [ ] On T3_Phone_API35, a tick, then an activity rebuild, shows no Undo bar (screenshot). Rebuild with Developer options' "Don't keep activities" (`adb shell settings put global always_finish_activities 1`, then another app and back) or a locale change; not `cmd uimode`, which HomeActivity handles without a rebuild (finding lor-j0hi). Show the rebuild in logcat ('HomeActivity created').
 - [ ] `assembleDebug testDebugUnitTest` passes on boat.
