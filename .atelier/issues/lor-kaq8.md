@@ -33,9 +33,10 @@ A dashboard page draws the phone's home through the shared module, from the late
 ## Done when
 
 Provisional:
-- [ ] The page draws each cell of a version 2 layout on both screens; an overlay against the emulator's screenshot of the same cell is within 2 px (the mission's same-pixels criterion, measured here per cell).
+- [ ] The page draws each cell of a version 2 layout on both screens; the author's own overlay of a few cells against the emulator stays within 2 px (the full criterion is checked independently by lor-nnn5).
 - [ ] Calibration: the page shows the phone's outline at a guessed scale; a slider sets it; the scale is kept in that browser and the drawn phone's size in mm follows the phone's reported size, by a test of the arithmetic.
 - [ ] The bundle is built and shipped as the decision record from lor-llmf says, and the page's first load and size are measured.
+- [ ] The spec's Stack line in "Settled choices" names the Compose Multiplatform bundle and how it is built and shipped.
 
 ## Unknowns
 

@@ -14,6 +14,9 @@ relationships:
     id: "lor-clgw"
     type: "blocked_by"
   - kind: "issue"
+    id: "lor-dkut"
+    type: "blocked_by"
+  - kind: "issue"
     id: "lor-f3vn"
     type: "blocked_by"
   - kind: "issue"
@@ -47,4 +50,4 @@ Provisional, to be made concrete once the spike and Panels have landed:
 
 - The module's boundary in `HomeScreen.kt` and how platform services are passed in; settled by the spike's findings.
 - Whether the Compose Multiplatform version needs the app's Compose BOM to move.
-- Waits for the spike lor-llmf and for no Panels branch on `home/` (`lor-f3vn`, `lor-sbth`, `lor-clgw`).
+- Waits for the spike lor-llmf, the phone's sync lor-dkut, and for no Panels branch on `home/` (`lor-f3vn`, `lor-sbth`, `lor-clgw`).

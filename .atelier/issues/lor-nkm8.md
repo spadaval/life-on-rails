@@ -19,6 +19,9 @@ relationships:
   - kind: "issue"
     id: "lor-sbth"
     type: "blocked_by"
+  - kind: "issue"
+    id: "lor-xdoi"
+    type: "blocked_by"
 schema: "atelier.issue"
 schema_version: 2
 status: "backlog"
@@ -28,7 +31,7 @@ updated_at: "2026-11-08T03:36:23.275521639+00:00"
 
 ## Goal
 
-The phone sends LoR what home looks like, so the web can draw it: each launchable app's icon as home draws it (icon pack, themed icons, shape), the wallpaper (both of the Fold's screens if they differ), each screen's size in pixels, dp and physical dpi with its insets and cutout, the font, and each placed widget's last snapshot and its preview image. Sent when they change, not on every resume.
+The phone sends LoR what home looks like, so the web can draw it: each launchable app's icon as home draws it (icon pack, themed icons, shape), the wallpaper (both of the Fold's screens if they differ), each screen's size in pixels, dp and physical dpi with its insets and cutout, and each placed widget's last snapshot and its preview image. Sent when they change, not on every resume.
 
 ## Done when
 
@@ -38,6 +41,6 @@ Provisional:
 
 ## Unknowns
 
-- Whether `WallpaperManager` gives the cover and inner wallpapers apart on One UI, and whether All files access is granted on the phone (Sumeet's to grant).
+- Whether `WallpaperManager` gives the cover and inner wallpapers apart on One UI. (Whether All files access is granted on the phone is asked of Sumeet at the plan's walk-through and recorded here.)
 - A widget that has never been on screen has no snapshot; whether to draw it off screen once or use its preview.
-- Waits for the sync on `main` and for `lor-sbth` (widget hosting).
+- Waits for the split (lor-xdoi), so the icons and widget snapshots come from the platform services it defines.

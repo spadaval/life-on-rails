@@ -1,6 +1,6 @@
 ---
 status: draft
-last_changed: "2026-11-07: panels may write to LoR's data, through the rules the web's actions use (Sumeet); polish from the Smart Launcher comparison added (lor-gnk0, the drawer's thumb reach in lor-ph30, the layout lock in lor-f3vn; Sumeet); weather from Google's Weather API (Sumeet); 2026-11-06: created from Sumeet's direction in the thread 'Launcher usability vs Smart Launcher'; takes over Launcher polish's Fold and widgets outcome"
+last_changed: "2026-11-07: the agent-edited layout repository named as handed to lor-ncpw; panels may write to LoR's data, through the rules the web's actions use (Sumeet); polish from the Smart Launcher comparison added (lor-gnk0, the drawer's thumb reach in lor-ph30, the layout lock in lor-f3vn; Sumeet); weather from Google's Weather API (Sumeet); 2026-11-06: created from Sumeet's direction in the thread 'Launcher usability vs Smart Launcher'; takes over Launcher polish's Fold and widgets outcome"
 ---
 
 # Why
