@@ -47,7 +47,7 @@ A throwaway worktree, a boat VM for the Gradle builds, the emulator. No change t
 
 ## Report
 
-Answered by a throwaway spike outside the merge path (Sumeet, 2026-11-08: "a slop spike that will never merge - disregard normal atelier process"). Worktree `/home/supadava/projects/lor-kmp-spike`, branch `spike/kmp-browser`, uncommitted, not to be merged. Result: Kotlin Multiplatform draws home in the browser from the phone's own code, to the pixel once text is unhinted. Decision lor-djn2 stands.
+Answered by a throwaway spike outside the merge path (Sumeet, 2026-11-08: "a slop spike that will never merge - disregard normal atelier process"). Worktree `/home/supadava/projects/lor-kmp-spike`, branch `spike/kmp-browser`, committed as `cb91b53` on 2026-11-08 to keep it as a reference, not to be merged. Result: Kotlin Multiplatform draws home in the browser from the phone's own code, to the pixel once text is unhinted. Decision lor-djn2 stands.
 
 What was built: `android/homecore`, a Kotlin Multiplatform module (Android target and `wasmJs`), holding the real `Layout.kt`, `HomeLook.kt`, `Drawer.kt`, `Grid.kt`, `Inner.kt`, `GridHost.kt` (less `gridFinger`), `Follow.kt`, `Motion.kt`, `GridEdit.kt`, `HomeEdit.kt`, `ui/Look.kt` and `ui/Palette.kt`, moved out of the app. The app builds on it (`assembleDebug` on boat); `testDebugUnitTest` passes 322 of 323 (the failure is the spike's stand-in JSON reader being stricter than `org.json` on bare non-JSON text). The stack drawing (`SpikeHome.kt`) is a copy of `HomeScreen.kt`'s narrow drawing without touch or menus; splitting the real `HomeScreen.kt` is still lor-xdoi's.
 

@@ -39,7 +39,7 @@ LoR keeps every version of the phone's `layout.json` again, now at schema versio
 
 ## Context
 
-- Port by reading `agent-layout`'s diff (`git diff main...agent-layout -- src tests cli skill`), not by merging the branch: it is 224 commits behind and its docs changes are stale. Its review history is in its `docs/missions/t3-launcher/plan.md`, Increment 7.
+- Port by reading `agent-layout`'s diff (`git diff main...agent-layout -- src tests cli skill`), not by merging the branch: it is 371 commits behind `main` (2026-11-08) and its docs changes are stale. Its review history is in its `docs/missions/t3-launcher/plan.md`, Increment 7.
 - The author list grows to `agent | phone | web`. What the phone shows for a web version is the next item's choice.
 - An agent's or a hand edit isn't stopped by the layout lock (`layout-v2.md`, `locked`); neither is a web edit, since it is the owner's.
 - The page's look follows `DESIGN.md`; the notes page's CodeMirror (`src/components/NoteEditor.tsx`) shows how CodeMirror is set up here.

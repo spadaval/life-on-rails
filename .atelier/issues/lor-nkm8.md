@@ -17,9 +17,6 @@ relationships:
     id: "lor-ncpw"
     type: "advances"
   - kind: "issue"
-    id: "lor-sbth"
-    type: "blocked_by"
-  - kind: "issue"
     id: "lor-xdoi"
     type: "blocked_by"
 schema: "atelier.issue"
@@ -41,6 +38,7 @@ Provisional:
 
 ## Unknowns
 
-- Whether `WallpaperManager` gives the cover and inner wallpapers apart on One UI. (Whether All files access is granted on the phone is asked of Sumeet at the plan's walk-through and recorded here.)
+- Whether `WallpaperManager` gives the cover and inner wallpapers apart on One UI; moot if Sumeet uses one wallpaper for both (asked 2026-11-08).
+- Whether All files access is granted to LoR on the phone, which reading the wallpaper needs (asked of Sumeet at the plan's walk-through, 2026-11-08; the answer goes here).
 - A widget that has never been on screen has no snapshot; whether to draw it off screen once or use its preview.
-- Waits for the split (lor-xdoi), so the icons and widget snapshots come from the platform services it defines.
+- Waits for the split (lor-xdoi), so the icons and widget snapshots come from the platform interface it defines.
