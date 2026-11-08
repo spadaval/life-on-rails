@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,6 +55,7 @@ import com.spadaval.lor.net.DeviceTasks
 import com.spadaval.lor.net.LorReads
 import com.spadaval.lor.ui.Bad
 import com.spadaval.lor.ui.Cy
+import com.spadaval.lor.ui.Dim
 import com.spadaval.lor.ui.Edge
 import com.spadaval.lor.ui.Mute
 import com.spadaval.lor.ui.Or
@@ -199,8 +201,9 @@ internal fun AgentTasks(model: AgentModel, max: Int? = null, more: (() -> Unit)?
 private fun DueSoon(model: AgentModel) {
     SectionHeader("Due soon")
     Lists(model, model.tasks) { t ->
-        if (t.tasks.isEmpty()) Unseen("No open tasks.")
-        t.tasks.take(DUE_SOON).forEach { key(it.id) { TaskRow(model, it, LorRows.dueSoonLine(it)) } }
+        val rows = LorRows.dueSoon(t)
+        if (rows.isEmpty()) Unseen("No open tasks.")
+        rows.forEach { (task, done) -> key(task.id) { TaskRow(model, task, LorRows.dueSoonLine(task, done), done) } }
         Link("All ${t.open} tasks") { model.openLor("/tasks", LaunchFrom.AGENT_CARD) }
     }
 }
@@ -257,8 +260,8 @@ private fun <T> Lists(model: AgentModel, kept: LorReads.Kept<T>, content: @Compo
 }
 
 @Composable
-private fun TaskRow(model: AgentModel, t: DeviceTasks.Task, line: String) {
-    LorRow(t.title, line.ifEmpty { null }, mark = if (t.flagged) Or else null, label = "Open in LoR") {
+private fun TaskRow(model: AgentModel, t: DeviceTasks.Task, line: String, done: Boolean = false) {
+    LorRow(t.title, line.ifEmpty { null }, mark = if (t.flagged) Or else null, label = "Open in LoR", done = done) {
         model.openLor(LorRows.taskPath(t.id), LaunchFrom.AGENT_CARD)
     }
 }
@@ -268,9 +271,12 @@ private fun PersonRow(model: AgentModel, name: String, kind: String, line: Strin
     LorRow(if (kind == "person") name else "$name · $kind", line, label = "Open in LoR") { model.openLor(LorRows.personPath(id), LaunchFrom.AGENT_CARD) }
 }
 
-/** A row of a list: its title and the line under it, both opening its place. [mark] is a small dot before it (amber for a flag, cyan for the agent). */
+/**
+ * A row of a list: its title and the line under it, both opening its place. [mark] is a small dot
+ * before it (amber for a flag, cyan for the agent); a [done] task's title is dim and struck through, as the web's.
+ */
 @Composable
-internal fun LorRow(title: String, line: String?, mark: Color? = null, label: String, onClick: () -> Unit) {
+internal fun LorRow(title: String, line: String?, mark: Color? = null, label: String, done: Boolean = false, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -283,7 +289,7 @@ internal fun LorRow(title: String, line: String?, mark: Color? = null, label: St
         Column(Modifier.weight(1f).padding(start = 10.dp)) {
             Text(
                 title,
-                style = Body.copy(fontSize = 13.5.sp, color = Txt),
+                style = Body.copy(fontSize = 13.5.sp, color = if (done) Dim else Txt, textDecoration = if (done) TextDecoration.LineThrough else null),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -311,6 +317,3 @@ private fun Link(text: String, onClick: () -> Unit) {
         Text(text, style = TextStyle(fontFamily = Type.button.fontFamily, fontSize = 13.sp, color = Or))
     }
 }
-
-/** How many open tasks Due soon shows, as the web's. */
-private const val DUE_SOON = 6

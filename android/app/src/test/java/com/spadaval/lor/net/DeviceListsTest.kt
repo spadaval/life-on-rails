@@ -11,9 +11,10 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /**
- * Replies recorded from the server's `pnpm test:db` fixtures in `tests/db/device.test.ts` (lor-lz97):
- * `lor/home-queue.json` (the agent's queue and two flags, one a Google task), `lor/tasks.json`
- * (Due soon's five open tasks and one done today) and `lor/people.json` (one past the cadence, one birthday).
+ * Replies recorded from the server's `pnpm test:db` fixtures in `tests/db/device.test.ts` (lor-lz97;
+ * `LOR_RECORD_REPLIES=1 pnpm test:db tests/db/device.test.ts` writes them again): `lor/home-queue.json`
+ * (the agent's queue and two flags, one a Google task), `lor/tasks.json` (Due soon's five open tasks),
+ * `lor/tasks-done.json` (one open, one done today) and `lor/people.json` (one past the cadence, one birthday).
  */
 class DeviceListsTest {
     private fun json(name: String) = JSONObject(javaClass.classLoader!!.getResource("lor/$name")!!.readText())
@@ -26,7 +27,8 @@ class DeviceListsTest {
         assertNull(home.agentQueue[0].thread)
         assertNull(home.agentQueue[2].queuedAt)
         assertEquals("thread-42", home.agentQueue[2].thread)
-        assertEquals(listOf(false, true), home.needsYou.map { it.google })
+        assertEquals(listOf("Call mum" to false, "Sign the form" to true), home.needsYou.map { it.title to it.google })
+        assertEquals("they need a yes", home.needsYou[0].note)
         assertNull(home.needsYou[1].note)
     }
 
@@ -52,7 +54,16 @@ class DeviceListsTest {
         assertEquals("House move", t.tasks[3].parent)
         assertNull(t.tasks[4].due)
         assertNull(t.tasks[4].parent)
+        assertEquals(emptyList<DeviceTasks.Task>(), t.doneToday)
+    }
+
+    @Test
+    fun readsTheTasksDoneToday() {
+        val t = DeviceTasks.parse(json("tasks-done.json"))
+        assertEquals(1, t.open)
+        assertEquals(listOf("Pack books"), t.tasks.map { it.title })
         assertEquals(listOf("Post the notice"), t.doneToday.map { it.title })
+        assertFalse(t.doneToday[0].flagged)
     }
 
     @Test

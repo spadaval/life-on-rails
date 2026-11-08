@@ -29,17 +29,17 @@ LoR shows on home in native Compose: the `lor` panel (LoR's dashboard shaped for
 
 ## Done when
 
-- [ ] `Layout.kt` parses the `lor` panel type (`at`, `wide` with default `full`, no other field) and the four block types (`type` alone), with the same errors as the other types (an unknown field names its place). JVM tests: each parses and round-trips through an edit and Undo; an extra field on each is an error naming its place; `lor` with no `wide` is full in lor-j87u's inner-screen rule, and `"wide": "half"` pairs with a half beside it. `Panel.TYPES` lists `lor`.
-- [ ] `layout-v2.md` documents `lor` under Panels and the four blocks under Blocks as version 2 additions, as the decision states them; "New block types (…) are added by the issues that use them" no longer lists a type that exists (lor-sbth has added `widget`).
-- [ ] The phone reads `/device/home`'s `agent_queue`, `/device/tasks` and `/device/people` (`LorClient`, `DeviceHome` and two new parsed types beside it), with JVM tests parsing a recorded reply of each, made from the server's `pnpm test:db` fixtures.
+- [x] `Layout.kt` parses the `lor` panel type (`at`, `wide` with default `full`, no other field) and the four block types (`type` alone), with the same errors as the other types (an unknown field names its place). JVM tests: each parses and round-trips through an edit and Undo; an extra field on each is an error naming its place; `lor` with no `wide` is full in lor-j87u's inner-screen rule, and `"wide": "half"` pairs with a half beside it. `Panel.TYPES` lists `lor`.
+- [x] `layout-v2.md` documents `lor` under Panels and the four blocks under Blocks as version 2 additions, as the decision states them; "New block types (…) are added by the issues that use them" no longer lists a type that exists (lor-sbth has added `widget`).
+- [x] The phone reads `/device/home`'s `agent_queue`, `/device/tasks` and `/device/people` (`LorClient`, `DeviceHome` and two new parsed types beside it), with JVM tests parsing a recorded reply of each, made from the server's `pnpm test:db` fixtures.
 - [ ] The agent page, the blocks and the `lor` panel read LoR through the one process-scoped `/device/home` reader that lor-leh4 builds, with no second reader: this item extends it to read `/device/tasks` and `/device/people` only while a `lor` panel is composed and home is started, every minute. All of them draw from it and keep the last good reply greyed with its time when LoR can't be read (launcher polish 3.3's rule). A block or panel showing T3 holds the T3 connection while composed, as the agent page does. Shown by the reader's log line per read: with the agent page, a `today` block and a `lor` panel all composed, one `/device/home` read a minute, and one `/device/tasks` and one `/device/people` read a minute only while the `lor` panel is composed.
 - [ ] The four blocks, on `T3_Phone_API35` against the test server and the scratch T3 server, in a stack of `clock`, `today`, `running`, `needs-you`, `t3-queue`, `apps` and `dock`: each draws what the decision says, with test data put in `life_on_rails_test` (by SQL or the test server's own screens, never the `lor` CLI, which reaches the real server) that gives each something to show (a running timer, two running T3 turns, an approval and a question in T3 and two flagged tasks in LoR, a queued and a claimed agent task). `needs-you` shows 3 cards and "2 more", whose tap moves the grid to the `t3` panel; its approve acts as the agent page's does. The stack overflows into lor-r0f9's scroll (the blocks above the dock scroll together, the dock stays at the bottom, `scrollsInGrid` at the edges), reused as it is. Screenshots.
 - [ ] The `lor` panel's narrow form on `T3_Phone_API35`: Today, Needs you with the agent's queue under it, and Due soon (six tasks and "All N tasks", which opens the dashboard's Tasks). Its wide form on the unfolded `T3_Fold_API35`: that column without Due soon on the left; on the right the Tasks and People tabs, starting on Tasks, each column scrolling on its own and reporting `scrollsInGrid`. A tab switch writes nothing to `layout.json` (its modified time is unchanged) and survives a fold and unfold. Screenshots of each form and tab.
 - [ ] Against the web, on the same data the emulator shows: plain page screenshots of the running test server (`scripts/ui-server.sh` at `:3857`) of `/`, `/tasks`, `/people?filter=overdue` and `/people?filter=birthdays`, taken in the system Chrome (for example `playwright-core` or Chrome's `--headless --screenshot`), without running `scripts/ui-check.mjs`'s flows, which wipe and reseed the test database and click through edits. Beside the emulator's screenshots of the `lor` panel: the same flagged tasks, open tasks in the same order with the same due, waiting and project lines, and the same people past their cadence and birthdays show on both; the handoff lists every difference with its reason.
 - [ ] A tap on a row's text opens its place: a task or flag opens the dashboard at `/tasks?id=`, a person at `/people?id=`, an agent task with a thread opens the T3 app at that thread and one without opens the dashboard at `/tasks?id=` (the launch line in logcat each time). Rows have no write controls yet (lor-rz50 adds them).
-- [ ] The spec's "The phone" section describes the `lor` panel and the four blocks, and that the agent page shares its LoR read with them.
+- [x] The spec's "The phone" section describes the `lor` panel and the four blocks, and that the agent page shares its LoR read with them.
 - [ ] At font scale 2.0 on `T3_Phone_API35`, the blocks' stack and the `lor` panel cut no text mid-line and overlap nothing (screenshots).
-- [ ] `assembleDebug testDebugUnitTest` passes on boat.
+- [x] `assembleDebug testDebugUnitTest` passes on boat.
 
 ## Scope
 
@@ -76,3 +76,17 @@ LoR shows on home in native Compose: the `lor` panel (LoR's dashboard shaped for
   Reason: The agent page's sections assume a dark surface; on a bright wallpaper the blocks' text would not read without one.
 - 2026-11-07 [decision] A LoR flag card's text opens its task in the dashboard, as its tile and Open do; T3 cards' text taps are left for lor-iabt, which makes them choose the thread on the wide form.
   Reason: The Done when line asks a flag's text to open /tasks?id=; giving T3 cards a text tap now would be undone by lor-iabt.
+
+## Report
+
+Status at the end of the off-emulator phase (2026-11-08): five of eleven Done when lines hold. `LorLayoutTest` (each type parses, round-trips through an edit and Undo, refuses an extra field by its place, and the `lor` panel's full and half on the inner screen) and `GridEditTest` prove the parsing; `DeviceListsTest` parses replies recorded from the server's `pnpm test:db` fixtures; `assembleDebug testDebugUnitTest` passed on boat (346 tests, 0 failures). The shared reader's code and JVM tests are done (`LorReadsTest.oneReadOfEachAMinuteWhateverHoldsIt`: with two holders, one `/device/home` read a minute; a `lor` panel's hold reads `/device/tasks` and `/device/people` at once and then each minute, and they stop when it lets go; it fails with the wake-up removed). That line stays open for its logcat proof on the emulator, as do the five lines checked on `T3_Phone_API35` and `T3_Fold_API35`.
+
+### Deviations
+
+- The recorded replies were hand-assembled in the first commit (one flag, "Sign the form", came from no fixture). They are now written by `tests/db/device.test.ts` itself: `LOR_RECORD_REPLIES=1 pnpm test:db tests/db/device.test.ts` rewrites `android/app/src/test/resources/lor/*.json`. The agent's queue fixture gained two flags, the second a Google task, so `home-queue.json` carries both, and `tasks-done.json` is new (the done-today fixture runs on the real date, the Due soon fixture on 2026-10-14).
+- The panel's Due soon now also lists the tasks done today, struck through with "done today", as the web's Due soon does (`LorRows.dueSoon`). The first commit parsed `done_today` but never drew it.
+
+### Open items
+
+- Unproven until the emulator phase: everything drawn (blocks, panel forms, tabs, text taps, font scale 2.0) and the reader's log lines on a device.
+

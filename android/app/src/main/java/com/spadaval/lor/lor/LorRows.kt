@@ -36,9 +36,20 @@ object LorRows {
         }
     }
 
-    /** The line under a task in Due soon, as the web's: "due 15 Oct · waiting on Priya · House move · Google Tasks". */
-    fun dueSoonLine(t: DeviceTasks.Task): String =
-        listOfNotNull(t.due?.let { "due ${shortDate(it)}" }, t.waitingOn?.let { "waiting on $it" }, t.parent, "Google Tasks".takeIf { t.google }).joinToString(" · ")
+    /** Due soon's rows, as the web's Today: the first six open tasks, then those done today (drawn struck through), each with whether it is done. */
+    fun dueSoon(t: DeviceTasks): List<Pair<DeviceTasks.Task, Boolean>> = t.tasks.take(DUE_SOON).map { it to false } + t.doneToday.map { it to true }
+
+    /** How many open tasks Due soon shows, as the web's. */
+    const val DUE_SOON = 6
+
+    /** The line under a task in Due soon, as the web's: "due 15 Oct · waiting on Priya · House move · Google Tasks", or "done today" in place of the due date. */
+    fun dueSoonLine(t: DeviceTasks.Task, done: Boolean = false): String =
+        listOfNotNull(
+            if (done) "done today" else t.due?.let { "due ${shortDate(it)}" },
+            t.waitingOn?.let { "waiting on $it" },
+            t.parent,
+            "Google Tasks".takeIf { t.google },
+        ).joinToString(" · ")
 
     /** The line under a task in the Tasks tab: what the web's Tasks row shows beside the title, its due date as [dueLabel]. */
     fun taskLine(t: DeviceTasks.Task, today: LocalDate): String =

@@ -43,6 +43,16 @@ class LorRowsTest {
     fun dueSoonsLineIsTheWebs() {
         assertEquals(listOf("due 12 Oct", "due 16 Oct · waiting on Priya", "due 20 Oct", "due 20 Oct · House move", ""), tasks.tasks.map(LorRows::dueSoonLine))
         assertEquals("Google Tasks", LorRows.dueSoonLine(task("g", null).copy(google = true)))
+        assertEquals("done today · House move", LorRows.dueSoonLine(tasks.tasks[3], done = true))
+    }
+
+    /** As the web's Due soon: six open tasks, then today's done ones. */
+    @Test
+    fun dueSoonShowsSixOpenThenTheDoneToday() {
+        val done = DeviceTasks.parse(JSONObject(javaClass.classLoader!!.getResource("lor/tasks-done.json")!!.readText()))
+        assertEquals(listOf("Pack books" to false, "Post the notice" to true), LorRows.dueSoon(done).map { (t, d) -> t.title to d })
+        val many = tasks.copy(tasks = List(8) { task("t$it", null) })
+        assertEquals(List(6) { "t$it" }, LorRows.dueSoon(many).map { it.first.title })
     }
 
     @Test
