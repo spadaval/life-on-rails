@@ -158,6 +158,30 @@ class MinimapTest {
     }
 
     @Test
+    fun aDockLastIsPinnedAndNothingMovesPastIt() {
+        val home = stack(grid, 1)
+        assertEquals(2, MinimapRules.movable(home))
+        assertEquals(listOf(false, false, true), home.blocks.indices.map { MinimapRules.pinned(home, it) })
+        // A drop below the dock lands above it.
+        assertEquals(2, MinimapRules.dropIndex(listOf(50f, 150f, 250f), 400f, MinimapRules.movable(home)))
+        // A drag stops above the dock.
+        val h = listOf(100f, 100f, 100f)
+        val dragged = MinimapRules.Reorder.start(0, 3, MinimapRules.movable(home)).dragged(500f) { h[it] }
+        assertEquals(listOf(1, 0, 2), dragged.order)
+        assertEquals(1, dragged.at)
+        // What the list leaves movable, moveBlock takes; one more place is refused.
+        grid.moveBlock(BlockAt(Cell(1, 0), 0), StackBlock.Clock, Cell(1, 0), MinimapRules.movable(home) - 1)
+        assertEquals(DOCK_LAST, try { grid.moveBlock(BlockAt(Cell(1, 0), 0), StackBlock.Clock, Cell(1, 0), MinimapRules.movable(home)); null } catch (e: LayoutError) { e.message })
+        // Without a dock, or with one a hand edit put elsewhere, every block moves.
+        val noDock = grid.removeBlock(BlockAt(Cell(2, 0), 1), StackBlock.Dock)
+        assertEquals(1, MinimapRules.movable(stack(noDock, 2)))
+        val hand = grid.withCurrent(grid.current.copy(panels = grid.current.panels.map {
+            if (it.at == Cell(2, 0)) (it as Panel.Stack).copy(blocks = it.blocks.reversed()) else it
+        }))
+        assertEquals(2, MinimapRules.movable(stack(hand, 2)))
+    }
+
+    @Test
     fun aDropGoesBetweenTheRowsMiddles() {
         val middles = listOf(50f, 150f, 250f)
         assertEquals(0, MinimapRules.dropIndex(middles, 10f))

@@ -14,7 +14,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The minimap: a stack's blocks"
-updated_at: "2026-11-08T03:56:29.778965536+00:00"
+updated_at: "2026-11-08T04:02:08.384297995+00:00"
 ---
 
 ## Goal
@@ -66,6 +66,9 @@ On `T3_Phone_API35` against the test server, with a version 1 `layout.json` with
   Reason: Both records handed the widget check to the other; it needs widgets and the block editor on one branch.
 - 2026-11-07 [resolution] Done when 7 ran on the merged build (receipt lor-yfpy) after main with lor-sbth was merged in (30b984b) and the widget case added (2905d0b); the blocker note is resolved.
 - 2026-11-07 [handoff] Handed off the widget follow-up: merge 30b984b, fix 2905d0b, receipts lor-yfpy and lor-b0we; see the Report's 'After lor-sbth merged'. Review: the merge resolution and 2905d0b need a fresh review.
+- 2026-11-07 [decision] The dock stays last in its stack, and GridEdit owns the rule: addBlock and moveBlock refuse an edit that takes a stack's dock off the end ('the dock stays under the other blocks', DOCK_LAST). The minimap's block list follows from the same predicate (Panel.Stack.dockLast). A dock pinned last gets no handle and no Move up. Move down and a drag stop above it, and a palette drop below it lands above it (MinimapRules.movable and pinned). A stack a hand edit left with its dock elsewhere isn't locked: only an edit that breaks a dock-last stack is refused.
+  Reason: Home always draws the dock last (lor-sbth; orchestrator's ruling on lor-zdsk), so the file's order must not drift from the screen. One refusal in the edits covers the minimap and any later caller, as LAST_BLOCK does, and the list's pins are that refusal made visible rather than a second rule. Refusing only edits that break a dock-last stack keeps a hand-written file editable.
+  Rejected: The rule only in the minimap: another caller of moveBlock could still write a dock that moves up; Normalising (moving the dock to the end on every edit): an edit that changes what it wasn't asked to
 
 ## Report
 
