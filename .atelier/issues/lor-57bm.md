@@ -17,7 +17,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Spike: LoR's emulators on its boat VM, reached over Tailscale"
-updated_at: "2026-11-08T17:49:55.917951736+00:00"
+updated_at: "2026-11-08T18:31:14.862726511+00:00"
 ---
 
 ## Goal
@@ -43,3 +43,7 @@ Find out whether LoR's emulator checks can move off this host onto LoR's boat VM
 - The `tailscale` CLI joins a machine but can't create keys, tag devices or edit the policy; the Tailscale API does all three. On 2026-11-08 the tailnet had no tagged devices.
 - Minting a short-lived single-use key, not passing the OAuth client secret to `tailscale up` (which the API allows, `tskey-client-…?preauthorized=true`), keeps a credential that never expires off a cloud VM that holds Sumeet's logins (orchestrator's choice under the mission's Authority).
 - Boat is x86_64 only; ARM emulators would need another host (an Apple Silicon Mac), out of scope.
+
+## Notes
+
+- 2026-11-08 [note] Tailscale OAuth client received from Sumeet (2026-11-08) through request_secret and stored in ~/.config/homelab/tailscale-oauth (mode 0600); its token reads the policy (HTTP 200). The policy today: one allow-all grant (src *, dst *, ip *), tagOwners {tag:Buildbot: [autogroup:admin]} (no device carries it), and an ssh check rule for autogroup:member to autogroup:self. So the allow-all grant must be narrowed (for example src autogroup:member) for tag:boat to reach nothing; no tagged device exists today, so nothing else loses access. Not yet checked: the auth-keys and devices scopes (first key mint).
