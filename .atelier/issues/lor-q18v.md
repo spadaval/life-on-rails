@@ -16,11 +16,14 @@ relationships:
   - kind: "issue"
     id: "lor-ph30"
     type: "blocked_by"
+  - kind: "issue"
+    id: "lor-uj0r"
+    type: "advances"
 schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Weather from LoR's server in /device/home"
-updated_at: "2026-11-07T22:17:52.279459165+00:00"
+updated_at: "2026-11-08T00:05:48.985753341+00:00"
 ---
 
 ## Goal
