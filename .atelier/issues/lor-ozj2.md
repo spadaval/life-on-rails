@@ -14,7 +14,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Folding keeps your place: no recreation, no reloads"
-updated_at: "2026-11-08T00:00:59.300068126+00:00"
+updated_at: "2026-11-08T00:01:24.891731007+00:00"
 ---
 
 ## Goal
@@ -64,6 +64,7 @@ The manifest's `HomeActivity` entry, `HomeActivity.kt`, `HomeModel.kt`, `HomeSto
 - 2026-11-07 [decision] The agent page's fold keeps the place read last: FormScroll maps the full form's two columns (Today, the queue) to the single column and back: the queue scrolled q means Today's height plus q in the single column, else Today's own scroll; a column at its end stays at the other form's end. A third ScrollState holds the single column, so an unfold gives both columns back as they were. This is in AgentPage.kt, outside the item's listed Scope (lor-ph30's Scope holds it).
   Reason: The emulator check of the Done when line 'the agent page scrolled down' failed on 309485f: the single column took Today's scroll, and Today rarely scrolls, so a scrolled queue came back at the top after a fold. Text wraps differently in the two forms, so the place is kept approximately; the ends are exact.
   Rejected: Leave lor-el51's rule (the single column takes the left column's scroll): fails the line whenever the queue is what was scrolled
+- 2026-11-07 [handoff] Implemented on lor-ph30 (code 309485f, 677524c); see ## Report. Review: none yet. Receipts lor-ax8p, lor-v9wu, lor-f0c5, lor-b6x9, lor-ultr.
 
 ## Report
 
