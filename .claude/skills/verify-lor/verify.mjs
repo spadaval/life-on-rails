@@ -188,8 +188,9 @@ function testServerPids(port = TEST_PORT) {
 
 function run(cmd, args, { cwd = ROOT, env = {}, input, quiet = false, inherit = false } = {}) {
   // A second line behind guardDb: no child starts with a database other than the test one,
-  // and none inherits a DATABASE_URL from the caller's shell.
-  const { DATABASE_URL: _inherited, ...base } = process.env;
+  // and none inherits a DATABASE_URL or LOR_URL from the caller's shell (cli/lor.mjs prefers
+  // LOR_URL to LOR_PORT, so an inherited one would send a flow's writes to whatever it names).
+  const { DATABASE_URL: _inherited, LOR_URL: _lorUrl, ...base } = process.env;
   if (env.DATABASE_URL !== undefined && dbOf(env.DATABASE_URL).database !== TEST_DB) {
     throw new Refused(`refusing to start ${cmd} with DATABASE_URL=${env.DATABASE_URL}. Instead: use ${TEST_DB}.`);
   }
