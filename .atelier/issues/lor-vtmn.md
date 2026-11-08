@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Schema widget block, its edits and the id sweep, tested"
-updated_at: "2026-11-08T01:09:36.973073862+00:00"
+updated_at: "2026-11-08T01:10:11.718221238+00:00"
 ---
 
 ## Goal
@@ -61,6 +61,7 @@ The file can hold widgets, and the edits and the id sweep that the widget host n
   Rejected: Refusing an unchanged height as setWide does ('it's already full'): it would show an error after an ordinary drag
 - 2026-11-07 [decision] addBlock refuses 'widget' with 'a widget is added from the home menu' (StackBlock.bare returns null for it); moveBlock and removeBlock take widgets like any block. Until lor-r0f9, HomeScreen's StackPanel draws a widget block as nothing.
   Reason: A widget needs an id from Android's bind flow, so the minimap can't make one; moving it keeps its id, which is unique within the layout. The drawing branch is the least that keeps the exhaustive when compiling, and no file holds a widget until lor-r0f9 adds one.
+- 2026-11-07 [handoff] Implemented in 0bc0a45 on lor-sbth: every Done when line ticked, outcome and proof in ## Report. Proof: boat assembleDebug testDebugUnitTest after the last code change, 43 suites, no failures (WidgetTest 9/9). Review: none yet; the slice is ready for a fresh reviewer. API for lor-r0f9: StackBlock.Widget(id, provider, height) with Widget.TYPE, HEIGHTS (40..2000) and provider(s); Layout.widgets; LayoutFile.addWidget(cell, id, provider, height), removeWidget(id), setWidgetHeight(id, height) in WidgetEdit.kt; widgetIdsToDelete(hostIds, files).
 
 ## Report
 
