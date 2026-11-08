@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The server's reads for LoR's panels: the agent's queue, tasks, people"
-updated_at: "2026-11-08T00:00:22.332493131+00:00"
+updated_at: "2026-11-08T00:00:41.693760516+00:00"
 ---
 
 ## Goal
@@ -58,6 +58,7 @@ LoR's server gives the phone's `lor` panel and `t3-queue` block what `/device/ho
   Rejected: getGraph for agent_queue: a full graph read every minute for at most 10 rows
 - 2026-11-07 [decision] agent in /device/tasks means what the web's Today row's agent means: the task was made by the agent (via = 'agent'), not assigned to it; agent_queue is the assigned set.
   Reason: The Done when line requires the fields to come from the one function the web uses; the web's tag is made-by-agent.
+- 2026-11-07 [handoff] Implemented on branch lor-odtk at bf5d6a3; every Done when line ticked, see ## Report. Proof: tests/db/device.test.ts (device home: the agent's queue; device tasks; device people; device routes) pass, as do pnpm test, pnpm test:db and pnpm typecheck. Review: none yet; a fresh agent should review before atelier merge. Open: not exercised on the running service or the phone.
 
 ## Report
 
