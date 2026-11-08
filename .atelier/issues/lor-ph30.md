@@ -32,7 +32,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "The inner screen, and folding that keeps your place"
-updated_at: "2026-11-07T22:49:49.288702017+00:00"
+updated_at: "2026-11-08T01:03:53.821572509+00:00"
 ---
 
 ## Goal
@@ -95,6 +95,7 @@ Carried from Launcher polish's old Increment 8 (`docs/missions/launcher-polish/p
 - 2026-11-07 [decision] The children are worked in order on branch lor-ph30: lor-el51, then lor-ozj2, then lor-sqfe, each reviewed as its own slice. lor-ozj2 and lor-sqfe no longer carry blocked_by lor-el51; they start after lor-el51's review is approved.
   Reason: Atelier keeps a child open until its parent merges, so a blocked_by between siblings would stall them; on one shared branch, order does the same job.
 - 2026-11-07 The child line is ticked on the children's records: lor-j87u is done, and every Done when line of lor-el51, lor-ozj2 and lor-sqfe is ticked. It is fully met when lor-ph30 merges.
+- 2026-11-07 [note] Handoff (evidence slice): lines 2 and 3 hold, evidence lor-ar10 (end to end) and lor-x6a8 (latency); see ## Report. No code changed; not reviewed.
 
 ## Report
 
@@ -120,4 +121,3 @@ The end-to-end and home-press lines hold, as evidence lor-ar10 and lor-x6a8.
 ### Open items
 
 - On the Fold, the base build draws home alone and the head build pairs home with page 2, so the Fold's latency compares two different screens.
-
