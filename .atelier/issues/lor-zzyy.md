@@ -24,15 +24,15 @@ Locking home from the home menu stops every edit on home, as Lawnchair's "Lock h
 ## Done when
 
 On `T3_Phone_API35` against the test server, unless a line says otherwise:
-- [ ] The home menu has "Lock home", which writes `"locked": true` with Undo ("Home is locked."). While home is locked, "Unlock home" takes its place and writes the field away ("Home is unlocked."). Undo after either puts the file back. "Edit home" is hidden while locked, and locking leaves edit mode. The file is read after each step, and both menus are screenshotted.
-- [ ] Locked, an app's menu (on home, in the dock, in a folder, in the drawer, in search) shows its shortcuts, App info, Uninstall and Move to section…, and none of Add to home, Remove from home, Add to dock, Remove from dock and Remove from folder. Hide shows only for an app that is on none of home, a folder and the dock. Unlocked, the menu is as today. Shown by a uiautomator dump of the entries for an app on home and an app only in the drawer, locked and unlocked.
-- [ ] Locked, a long press then a move on an app on home, in the dock, in an open folder and in the drawer, and on a folder tile, picks nothing up: no Remove bar shows and nothing moves. The Undo bar says "Home is locked. Unlock it from the home menu." once per gesture, and the file's modified time is unchanged (`stat` before and after). Driven with `input motionevent`, with a screenshot of each.
-- [ ] Locked, a long press on a folder tile opens no folder menu and the bar says the same. An open folder shows its name as text, not a field, and no +. Unlocked again, the folder menu's Rename… and the + work (the file read after each).
-- [ ] Unlocked again, a drag from the drawer onto home adds the app, and Remove from home in a menu takes it off (the file read after each).
-- [ ] The store's refusal reaches the screen: with home open and unlocked, `"locked": true` written into the file through `adb shell run-as`, then a drop on home is refused with "Can't: home is locked; unlock it from the home menu.", and the file's bytes are unchanged (`sha256sum`).
-- [ ] What the lock leaves alone still writes while locked: the drawer's view switch, a Home settings look change, a section's Move up, and Unhide (the file read after each).
-- [ ] TalkBack reads "Lock home" and "Unlock home" by those words (uiautomator dump).
-- [ ] `assembleDebug testDebugUnitTest` passes on boat.
+- [x] The home menu has "Lock home", which writes `"locked": true` with Undo ("Home is locked."). While home is locked, "Unlock home" takes its place and writes the field away ("Home is unlocked."). Undo after either puts the file back. "Edit home" is hidden while locked, and locking leaves edit mode. The file is read after each step, and both menus are screenshotted.
+- [x] Locked, an app's menu (on home, in the dock, in a folder, in the drawer, in search) shows its shortcuts, App info, Uninstall and Move to section…, and none of Add to home, Remove from home, Add to dock, Remove from dock and Remove from folder. Hide shows only for an app that is on none of home, a folder and the dock. Unlocked, the menu is as today. Shown by a uiautomator dump of the entries for an app on home and an app only in the drawer, locked and unlocked.
+- [x] Locked, a long press then a move on an app on home, in the dock, in an open folder and in the drawer, and on a folder tile, picks nothing up: no Remove bar shows and nothing moves. The Undo bar says "Home is locked. Unlock it from the home menu." once per gesture, and the file's modified time is unchanged (`stat` before and after). Driven with `input motionevent`, with a screenshot of each.
+- [x] Locked, a long press on a folder tile opens no folder menu and the bar says the same. An open folder shows its name as text, not a field, and no +. Unlocked again, the folder menu's Rename… and the + work (the file read after each).
+- [x] Unlocked again, a drag from the drawer onto home adds the app, and Remove from home in a menu takes it off (the file read after each).
+- [x] The store's refusal reaches the screen: with home open and unlocked, `"locked": true` written into the file through `adb shell run-as`, then a drop on home is refused with "Can't: home is locked; unlock it from the home menu.", and the file's bytes are unchanged (`sha256sum`).
+- [x] What the lock leaves alone still writes while locked: the drawer's view switch, a Home settings look change, a section's Move up, and Unhide (the file read after each).
+- [x] TalkBack reads "Lock home" and "Unlock home" by those words (uiautomator dump).
+- [x] `assembleDebug testDebugUnitTest` passes on boat.
 
 ## Scope
 
@@ -56,3 +56,24 @@ On `T3_Phone_API35` against the test server, unless a line says otherwise:
   Rejected: A check in each dragSource (dock, tiles, folder, drawer): four places to keep in step
 - 2026-11-07 [decision] The home menu shows 'Lock home' last, and locked, 'Unlock home' in its place with 'Edit home' hidden. Edit mode is left by HomeScreen whenever the file it draws is locked, not by the menu entry, so a lock from outside leaves it too. lor-r0f9's 'Add widget' goes behind the same !locked test (comment in HomeMenu).
   Reason: Lawnchair drops edit mode and Widgets from its options popup while locked. One owner for 'no edit mode while locked' covers both ways a lock arrives.
+
+## Report
+
+Home locks and unlocks from the home menu, and every Done when line holds on `T3_Phone_API35` (commit 7407de5, receipts lor-m57k, lor-mx16, lor-wirn, lor-zqal, lor-nyht, lor-z7m4, screenshots in `/tmp/claude-1000/zzyy-emu/`). Locked, an app's menu keeps only shortcuts, App info, Uninstall, Move to section… and Hide for an unplaced app; a long press and move in any of the five places picks nothing up, says "Home is locked. Unlock it from the home menu." and leaves layout.json's mtime alone; a folder's long press opens no menu and an open folder shows its name as text with no +. What the lock leaves alone (Hide of a drawer-only app, the view switch, Move to section, Unhide, a section's Move up, a look change) still writes. A drop over a lock written from outside now shows the store's LOCKED words with the file's bytes unchanged. JVM tests: `HomeLockTest` (5 tests: the menu's entries locked and unlocked, `landOver`'s three cases including a LayoutStore refusing with LOCKED and leaving the bytes); boat `assembleDebug testDebugUnitTest` passed after the last code change. Unlocked, the only on-screen change is the home menu's new last entry, "Lock home".
+
+### Deviations
+
+- Lines 2 and 8 ask for a uiautomator dump. `uiautomator dump` fails while agent-device's helper holds UiAutomation, so the accessibility tree came from `agent-device snapshot` (saved as `d*.txt` beside the screenshots). It is the same tree TalkBack reads.
+- The menus and drags were driven through agent-device (taps, long presses, screenshots) and `adb input motionevent` (drags, as the lines ask). The launcher reaches no LoR server, so the test server wasn't started.
+- `DrawerScreen.kt`, named in Scope, is unchanged: the drawer's pickup goes through the same handler in `HomeScreen.kt`.
+- The spec's one paragraph on the home menu (`docs/v2-product-engineering-spec.md`) now names Lock home and what a locked home does.
+
+### Decisions
+
+The three decision notes above: `landOver` carries an outside lock so the store says LOCKED (instead of using an app-menu edit, as the lor-69ai note proposed); one pickup check that says the words once per gesture; edit mode left by HomeScreen whenever the file is locked. lor-r0f9's "Add widget" goes behind HomeMenu's `!locked` test, which a comment there names.
+
+### Open items
+
+- "Once per gesture" rests on the code (one `sayLocked` per press, skipped for a folder whose long press already said it); the screenshot can't show a count.
+- Not tried on the Fold or a real phone; the lock adds no layout, only hides entries.
+- `HomeLockTest` was never seen failing before the change: `landOver` and `appEdits` are new, so the old code doesn't compile against it. The LOCKED-vs-HOME_CHANGED case it tests is the one the emulator showed failing in lor-v692's review (lor-69ai).
