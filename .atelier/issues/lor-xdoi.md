@@ -41,13 +41,14 @@ Home's drawing, its parser and its edits live in one Kotlin Multiplatform module
 
 ## Done when
 
-Provisional, to be made concrete once the spike and Panels have landed:
+Provisional, to be made concrete once Panels has landed. The spike (lor-llmf, its Report) shows the way: its worktree `/home/supadava/projects/lor-kmp-spike` is a reference, not a base.
+- [ ] First, on its own: Kotlin and the Compose compiler plugin move from 2.2.21 to 2.3.20, with no other change, and `assembleDebug testDebugUnitTest` passes.
 - [ ] The module builds for Android and `wasmJs` on boat; the app uses it; `testDebugUnitTest`, moved where the code moved, passes.
 - [ ] Home on `T3_Phone_API35` and `T3_Fold_API35` looks and behaves as before: screenshots of each cell before and after, pixel-identical, and the home press still instant (cold and warm start times before and after).
 - [ ] A minimal page draws a version 2 layout from JSON with placeholder icons.
 
 ## Unknowns
 
-- The module's boundary in `HomeScreen.kt` and how platform services are passed in; settled by the spike's findings.
-- Whether the Compose Multiplatform version needs the app's Compose BOM to move.
-- Waits for the spike lor-llmf, the phone's sync lor-dkut, and for no Panels branch on `home/` (`lor-f3vn`, `lor-sbth`, `lor-clgw`).
+- The module's boundary in `HomeScreen.kt` and how platform services (icons, widgets, wallpaper, launching, fonts) are passed in. The spike moved everything but `HomeScreen.kt`'s drawing.
+- How `org.json` is replaced: kotlinx.serialization, or a common reader with `org.json`'s leniency (the spike's strict stand-in failed one `LayoutTest` case).
+- Waits for the phone's sync lor-dkut, and for no Panels branch on `home/` (`lor-f3vn`, `lor-sbth`, `lor-clgw`).
