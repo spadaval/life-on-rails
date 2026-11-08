@@ -8,7 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.Instant
 
-/** The wide form's choice of thread and its Threads section (lor-iabt). */
+/** The wide form's choice of thread, its Threads section, and what the reply box says on failure (lor-iabt). */
 class ThreadChoiceTest {
     private fun thread(id: String, state: ThreadState = ThreadState.IDLE, at: String = "2026-11-08T09:00:00Z", requests: List<PendingRequest> = emptyList()) =
         T3Thread(id, "Thread $id", "p", "project", state, at, null, requests)
@@ -44,5 +44,13 @@ class ThreadChoiceTest {
         assertEquals(listOf("idle-newest", "idle-1", "idle-2"), others.take(3).map { it.id })
         // Not the card's thread nor the running one, which the sections above list.
         assertEquals(emptyList<String>(), others.map { it.id }.filter { it == "approval" || it == "running" })
+    }
+
+    @Test
+    fun aReplyIsCalledNotSentOnlyWhenNoSocketWasOpen() {
+        assertEquals("Not sent: Not connected to T3.", Replies.failure("Not connected to T3."))
+        // A timeout or a drop: T3 may still take it (seen on the scratch server), so not "Not sent".
+        val timeout = Replies.failure("T3 did not answer within 30 s.")
+        assertEquals("Not confirmed: T3 did not answer within 30 s. It may still reach the thread, so check it before sending again.", timeout)
     }
 }

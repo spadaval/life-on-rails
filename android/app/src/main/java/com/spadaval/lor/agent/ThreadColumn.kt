@@ -85,7 +85,7 @@ object ThreadChoice {
  * Replies typed in the thread column, by thread, held for the process so a fold or a trip away
  * keeps a draft. A send runs in the process's scope, so leaving the panel doesn't cancel it; at
  * most one runs per thread. On success the draft clears (unless it was edited meanwhile); on
- * failure it stays, with the reason.
+ * failure it stays, with the reason ([failure]).
  */
 object Replies {
     var drafts by mutableStateOf(emptyMap<String, String>())
@@ -94,6 +94,19 @@ object Replies {
         private set
     var failures by mutableStateOf(emptyMap<String, String>())
         private set
+
+    /**
+     * What the box says when a send fails. Only with no open socket is it known not to have gone;
+     * after a timeout or a dropped connection T3 may still take it (seen on the scratch server: a
+     * reply timed out while the server was paused and arrived when it resumed), so the box says
+     * so rather than inviting a second copy.
+     */
+    fun failure(reason: String): String =
+        if (reason == NOT_CONNECTED) "Not sent: $reason"
+        else "Not confirmed: $reason It may still reach the thread, so check it before sending again."
+
+    /** [T3Connection.call]'s refusal when no socket is open: nothing was sent. */
+    private const val NOT_CONNECTED = "Not connected to T3."
 
     fun edit(threadId: String, text: String) {
         drafts = drafts + (threadId to text)
@@ -113,8 +126,9 @@ object Replies {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                failures = failures + (threadId to "Not sent: ${T3Connection.describe(e)}")
-                Log.i(TAG, "reply to $threadId failed: ${T3Connection.describe(e)}")
+                val reason = T3Connection.describe(e)
+                failures = failures + (threadId to failure(reason))
+                Log.i(TAG, "reply to $threadId failed: $reason")
             } finally {
                 sending = sending - threadId
             }
@@ -269,7 +283,8 @@ private fun Message(m: ThreadMessage) {
             },
             style = Type.label.copy(color = if (m.fromUser) Txt.copy(alpha = 0.7f) else Cy),
         )
-        Text(m.text, style = Body.copy(lineHeight = 20.sp), modifier = Modifier.padding(top = 2.dp))
+        // Trailing blank lines, which a provider's message often ends with, would leave a gap.
+        Text(m.text.trimEnd(), style = Body.copy(lineHeight = 20.sp), modifier = Modifier.padding(top = 2.dp))
     }
 }
 
