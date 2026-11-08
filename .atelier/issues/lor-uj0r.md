@@ -14,9 +14,10 @@ relationships:
   relates: []
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+closed_at: "2026-11-08T15:38:50.198698936+00:00"
+status: "done"
 title: "Home as a grid of panels"
-updated_at: "2026-11-08T15:02:17.134180423+00:00"
+updated_at: "2026-11-08T15:38:50.198698936+00:00"
 ---
 
 ## Outcome
@@ -42,3 +43,7 @@ Home becomes a grid of panels in `layout.json` (schema version 2): stacks of blo
 - 2026-11-08 [note] 2026-11-08: merged lor-f3vn (the minimap editor and the layout lock) as 9c8a470, with lor-zzyy, lor-6get and lor-9uc1. Its end-to-end check on T3_Fold_API35 found that unfolding after a screen-off showed the folded start (lor-ozj2's reset ran before the unfold's configuration arrived); fixed on the branch, and four fresh reviews later approved (lor-2dlz). Deferred review finding lor-v9t7 is backlog bug lor-slux, outside the mission. lor-clgw has main merged in (1339c0b, the LoR panel and blocks named in the minimap's palettes); lor-lz97's emulator checks are running, then lor-rz50 and lor-iabt.
 - 2026-11-08 [decision] 2026-11-08 (Sumeet): lor-clgw's home-press line is judged at an equal layout on the emulators (the branch's code against main's), and the cost of drawing LoR's blocks is measured on the real Fold in lor-l2zj.
   Reason: On the emulators the extra time is the blocks' drawing on SwiftShader, a CPU renderer (lor-6p0h); the branch's code at an equal layout is within 10% of main (lor-79s1); a real GPU answers whether the blocks cost a perceptible amount.
+
+## Report
+
+Home is a grid of panels, on main at 94e6d4b. All 34 issues merged: schema version 2, finger-following movement on both axes with a wrapping vertical, the inner screen with full and half panels, folding that keeps your place and a start after screen-off, the minimap editor with Undo and the layout lock, widgets and the clock block with weather, the pressed state, Smart Launcher folders and the thumb-reach drawer, the lor panel and LoR's blocks with writes through POST /device/task and /device/timer, and the T3 panel's wide form with a reply box. An independent validator passed all eight Outcome bullets fresh on T3_Fold_API35 against main (receipts lor-ac85, lor-clzt, lor-6qgp, lor-uy7q, lor-aehi, lor-w4nx, lor-qjyl, lor-7slq). Agreed exception (Sumeet, 2026-11-08): LoR's blocks add 13-19% to a home press on the emulators' CPU renderer; the real-GPU measurement is in lor-l2zj. Real-device checks are needs-human items outside the mission: lor-mlx6, lor-znfb, lor-92o7, lor-13c1, lor-f6zd, lor-l2zj. Deferred review findings are backlog bugs outside it: lor-slux, lor-0xhc, lor-gfow, lor-y32o, lor-85ct.
