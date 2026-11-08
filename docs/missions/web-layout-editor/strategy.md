@@ -1,6 +1,6 @@
 ---
 status: draft
-last_changed: "2026-11-07: live panels compared by frame, and what the web draws in them (review lor-3fxs); fixes from the planning review (Saira not uploaded, the code inventory, AGP 9, the spec's Stack, the split after the sync); created from Sumeet's direction in the thread about a cloud layout editor"
+last_changed: "2026-11-08: the spike answered (lor-llmf): Kotlin 2.3.20, Animated text (lor-mc37), the bundle built in GitHub Actions (lor-kbog); 2026-11-07: live panels compared by frame, and what the web draws in them (review lor-3fxs); fixes from the planning review (Saira not uploaded, the code inventory, AGP 9, the spec's Stack, the split after the sync); created from Sumeet's direction in the thread about a cloud layout editor"
 ---
 
 # Why
@@ -29,6 +29,8 @@ Worth shipping on its own: the sync with a plain history page (the agent can edi
 - **A mirror, not a live view.** The web draws from what the phone last uploaded: launchable apps, each app's icon as home draws it, the wallpaper, each screen's size in pixels, dp and physical dpi with its insets, and widget snapshots. The fonts need no upload: home draws in Saira, which the app ships (`ui/Look.kt`), and the shared module carries it. A widget is drawn from its last snapshot, else its preview image (`AppWidgetProviderInfo.previewImage`), else a box with the app's icon, as Launcher3's `PendingAppWidgetHostView` draws a widget still loading. The `t3` panel is drawn from its last snapshot the same way, else a frame with its name. LoR's own panel and blocks draw from LoR's data directly, since the web is LoR, and the clock from the browser's time.
 - **Real size by the phone itself.** The browser cannot know a monitor's pixel size, so the page asks once: hold the phone against the screen and drag until the drawn one matches. The phone's physical size comes from its own report. The scale is kept in that browser.
 - **Saving is pushing.** A save writes a version. The phone takes it on home's next resume, as it takes the agent's. No push channel.
+- **Text is laid out unhinted** (`TextMotion.Animated`, decision lor-mc37), on the phone as in the browser, so the two match and scaled text doesn't shimmer.
+- **The bundle is built in GitHub Actions** on each push to `main` and fetched at deploy when the shared module changed (decision lor-kbog). Nothing built is committed.
 - **Native wins where they disagree.** The shared module must not make the phone slower, bigger or less native; if a choice favours the web's fidelity over the phone, the phone wins.
 
 # Scope
@@ -41,7 +43,7 @@ Out:
 - named and temporary layouts, and agent-sorted folders (T3 Launcher's Increments 9 and 10, still later);
 - a live stream of the phone's screen.
 
-Environment: the dashboard in desktop Chrome; `T3_Phone_API35` and `T3_Fold_API35` against the LoR test server (`scripts/ui-server.sh`, `http://10.0.2.2:3857`); Gradle builds, Android and wasm, on boat. The real phone and Fold only when Sumeet says so, in `needs-human` validation items after merge, outside the mission, each with an emulator stand-in run before merge.
+Environment: the dashboard in desktop Chrome; `T3_Phone_API35` and `T3_Fold_API35` against the LoR test server (`scripts/ui-server.sh`, `http://10.0.2.2:3857`); Android Gradle builds on boat; the browser bundle in GitHub Actions (decision lor-kbog). The real phone and Fold only when Sumeet says so, in `needs-human` validation items after merge, outside the mission, each with an emulator stand-in run before merge.
 
 # Authority
 
@@ -56,9 +58,9 @@ These come back to Sumeet:
 
 # Risks and Unknowns
 
-- **Compose Multiplatform against the app's build.** The app uses AndroidX Compose (BOM `2026.09.00`), the Compose compiler plugin 2.2.21, and Android Gradle Plugin 9.2.1 with its built-in Kotlin on Gradle 9.4.1. AGP 9 changed how a Multiplatform module declares its Android side. A Compose Multiplatform release and plugin setup must fit all of these, or the app's build moves. The spike, lor-llmf, finds out first.
+- **Kotlin moves to 2.3.20** (settled by spike lor-llmf). Compose Multiplatform 1.12.2 matches the app's AndroidX Compose, and AGP 9.2.1 takes a Multiplatform module, but Compose's browser libraries need Kotlin 2.3.20. The split's first step is that upgrade, on its own.
 - **The split touches every home file,** so it waits until no Panels branch is open on `home/` (`lor-f3vn`, `lor-sbth`, `lor-clgw`) and the phone's sync (lor-dkut) has merged, and is done in one go. `HomeScreen.kt` (1,612 lines) uses a `Context` only twice, but ties into Android through window flags for the blur, `PredictiveBackHandler`, `AgentPage`, `LaunchFrom`, `Log`, lifecycle and `java.time`, and it holds `HomeUi`, which `GridHost.kt` needs. `Layout.kt` uses `java.io` and `java.time` as well as `org.json`. `ui/Look.kt` reads the app's resources (`R`) for its fonts.
-- **The wasm build's cost:** bundle size and first load in the dashboard, Gradle time on boat for each deploy, and whether the built bundle is committed or fetched from boat at deploy. The spike measures and settles it in a decision record; it also crosses the spec's settled Stack (TanStack Start, React 19, Tailwind), which lor-kaq8 updates when it ships.
-- **Text.** The same layout code and the same Saira files draw text through a different engine in the browser (Skia). The 2 px criterion assumes glyphs differ only inside their boxes; the spike checks it.
+- **The bundle's weight:** 4.2 MB gzipped on a first visit (spike lor-llmf), most of it Skia, which our changes never touch. Fine on a desktop dashboard; the real-size view measures first load in place.
+- **The real `HomeScreen.kt`.** The spike shared the grid, parser, edits and look, but drew stacks from a copy of `HomeScreen.kt`'s drawing. Separating its drawing from its touch, menus and Android services is the split's real work.
 - **The Fold's two wallpapers.** One UI can set the cover and the inner screen apart; whether `WallpaperManager` gives both is untested.
 - **Reading the wallpaper** needs All files access on Android 13 and later. The app already declares it for WhatsApp backups (`collect/WhatsAppBackup.kt`). Whether it is granted on the phone is asked of Sumeet at the plan's walk-through and recorded on lor-nkm8.

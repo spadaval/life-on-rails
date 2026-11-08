@@ -112,6 +112,7 @@ Launcher polish's rules carry over, with "home" meaning every `apps` block of th
   - A new stack is an empty `apps` block and `dock`, as a new page is. A block added to a stack is a type that takes no field (`clock`, an empty `apps`, `dock`, and LoR's four), and a stack holds each type once. A `widget` isn't added here ("a widget is added from the home menu"), but it moves and is removed like any block.
   - A panel moved onto another swaps with it. A `start` that named a moved panel's cell names its new cell. Setting the wide start on the narrow start's cell clears `start.wide`, and so does setting the narrow start on the wide start's cell.
   - A panel a `start` names can't be removed ("home starts there; choose another start first"), and a stack's last block can't be moved out or removed ("a stack needs a block; remove the panel instead"). Removing a stack or an `apps` block takes its apps off home.
+  - No edit puts a block below a stack's `dock` or moves a `dock` up ("the dock stays under the other blocks"), so the file's order matches what home draws. A stack a hand edit left with its dock elsewhere can still be edited.
   - The row limit holds in the rows an added or moved stack or `apps` block lands in.
   - An edit of a panel or a block names its cell (and the block's index) and what the minimap drew there, and is refused ("Home changed; try again") when the file holds something else there.
 - The widget edits (`WidgetEdit.kt`) address a widget by its `id`, in the active layout, so other edits don't move it:
@@ -120,7 +121,7 @@ Launcher polish's rules carry over, with "home" meaning every `apps` block of th
   - Like the minimap's, these edits don't remove an extra page they empty.
 - The phone writes only fields that differ from their defaults (`start.wide` only when set, a panel's `wide` only when it differs from its type's default, `look` and `drawer` only when not default), and writes `start`, `dock` and `panels` in every layout. So a `wide` the file states that equals the type's default is dropped at the next write; any other is kept.
 
-Home draws the grid (lor-qdmy): one cell on screen, the narrow `start` after a home press. A swipe moves to the nearest cell that way in the row (the ends stop), or up and down by decision lor-y7qi's rule (the next row that way with a panel, wrapping; back to the cell a move came from, else the same column or the nearest, the left one on a tie). Each stack draws its blocks top to bottom: `clock` as home's header, `apps` taking the space between, `dock`; a stack without a `clock` starts where home's grid would.
+Home draws the grid (lor-qdmy): one cell on screen, the narrow `start` after a home press. A swipe moves to the nearest cell that way in the row (the ends stop), or up and down by decision lor-y7qi's rule (the next row that way with a panel, wrapping; back to the cell a move came from, else the same column or the nearest, the left one on a tie). Each stack draws its `dock` last, under its other blocks, wherever the file puts it; the other blocks are drawn top to bottom in the file's order: `clock` as home's header wherever it stands, `apps` taking the space between. A stack whose first block other than the dock isn't a `clock` starts where home's grid would.
 
 ## Reading a version 1 file
 

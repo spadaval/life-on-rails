@@ -4,6 +4,9 @@ id: "lor-f3vn"
 issue_type: "feature"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: lor-f3vn
 priority: "P2"
 relationships:
   blocks: []
@@ -33,9 +36,10 @@ relationships:
     type: "blocked_by"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+closed_at: "2026-11-08T07:45:39.263785615+00:00"
+status: "done"
 title: "The minimap editor"
-updated_at: "2026-11-07T23:37:54.479576453+00:00"
+updated_at: "2026-11-08T07:45:39.263785615+00:00"
 ---
 
 ## Goal
@@ -44,9 +48,9 @@ The grid is edited on the phone, in a minimap like Smart Launcher's page manager
 
 ## Done when
 
-- [ ] lor-v692 (the lock's field and refusal, and the grid edits as tested rules) has merged, on its own branch, before this item starts.
-- [ ] Each child is done, with its proof, in this order on this item's branch: lor-zzyy (lock home), lor-6get (the minimap's panels), lor-9uc1 (a stack's blocks).
-- [ ] End to end on `T3_Fold_API35` against the test server, in one session, from a version 1 `layout.json` with two extra pages. Folded: open the minimap from the home menu; add a stack in the empty cell after page 3, [4, 0]; move home's clock block into it; swap it with page 2; set it Full and make it the inner screen's start. Unfolded after a screen-off: home starts on that stack alone at full width, with the clock in it. Lock from the minimap's padlock: a drag on home picks nothing up and the Undo bar says why. Unlock from the home menu, and Undo the unlock. Each step is screenshotted and the file read after it, recorded as an evidence receipt on this item.
+- [x] lor-v692 (the lock's field and refusal, and the grid edits as tested rules) has merged, on its own branch, before this item starts.
+- [x] Each child is done, with its proof, in this order on this item's branch: lor-zzyy (lock home), lor-6get (the minimap's panels), lor-9uc1 (a stack's blocks).
+- [x] End to end on `T3_Fold_API35` against the test server, in one session, from a version 1 `layout.json` with two extra pages. Folded: open the minimap from the home menu; add a stack in the empty cell after page 3, [4, 0]; move home's clock block into it; swap it with page 2; set it Full and make it the inner screen's start. Unfolded after a screen-off: home starts on that stack alone at full width, with the clock in it. Lock from the minimap's padlock: a drag on home picks nothing up and the Undo bar says why. Unlock from the home menu, and Undo the unlock. Each step is screenshotted and the file read after it, recorded as an evidence receipt on this item.
 
 ## Scope
 
@@ -79,3 +83,27 @@ The phone's home (`android/app/src/main/java/com/spadaval/lor/home/`: a new `Min
   Rejected: One item: one review over parsing, a store rule, ten edit functions and three screens
   Rejected: The lock as its own item outside lor-f3vn: the lock's padlock is in the minimap, and the Outcome names them together
 - 2026-11-07 [plan] Planned 2026-11-07: blocker lor-v692 (rules, no screen); children lor-zzyy, lor-6get, lor-9uc1 in that order on this item's branch; decision lor-73li (the lock's field and what it stops); real-Fold validation lor-92o7 after merge, outside the mission. Unknowns resolved by the decision notes above. Set to todo; a fresh agent reviews this plan before lor-v692 starts, and lor-ph30 must merge before lor-zzyy starts.
+- 2026-11-08 [note] 2026-11-08: the end-to-end check on T3_Fold_API35 found that after a screen-off, unfolding showed the folded start ([1, 0]) instead of start.wide. The screen-on broadcast came before the unfold's configuration (events log: SCREEN_ON 02:18:39.335, configuration changed .371, onRestart/onStart .372), so lor-ozj2's reset read the folded start. Fixed on this branch: the screen-off is acted on in onStart, after the configuration, through HomeUi.toStart, which an effect turns into a home press once composed for that screen. Evidence of the failure: /tmp/lor-verify/lor-wt-f3vn/e2e-fold-2/first-run-bug/11-unfolded-after-screen-off.png.
+- 2026-11-08 [note] 2026-11-08: correction (finding lor-z6dc). Receipt lor-fwn8 cites the 'configuration changed' and 'screen on' lines of its step 11, but its saved logs (e2e-fold-2/logs) were taken after a logcat clear at 02:22 and don't hold them; they were read live. Receipt lor-op8w (on lor-9uc1) cites 'block 1 dragged to place 1' for the Apps drag, also read live and not in r1-dock/logs, which hold only the Clock drag's 'block 0 dragged to place 1'. Receipt lor-ex2u replaces lor-fwn8 with the whole run's logcat saved.
+- 2026-11-08 [note] 2026-11-08: correction (findings lor-l6ry, lor-tsr5). Receipt lor-ex2u's step 15 is wrong: a home press on home opened quick send, and the drag ran over it, so 15-16 show quick send and no bar; its 02:36:10.808 mtime is in no saved file. lor-slsy replaces that step, run on home. Receipt lor-lyfj's step 01 is wrong: home never left [1, 0], so it shows the minimap staying open but not the reset moving home. lor-8ios replaces it, from [3, 0] with the move logged. The rest of lor-ex2u holds.
+
+## Report
+
+**Outcome.** The grid is edited on the phone in the minimap, and home can be locked. lor-v692 merged first, on its own branch (0b47653). The three children are built on this branch, in order: lor-zzyy (lock home), lor-6get (the minimap's panels) and lor-9uc1 (a stack's blocks). Each has its Done when lines ticked, emulator receipts and a Report. The parent's end-to-end check on `T3_Fold_API35` passed on the second run. The first run found a bug in lor-ozj2's screen-on reset (merged with lor-ph30), which this branch fixes in 7e2badd.
+
+**Changes.**
+- After main's widgets and clock block came in (merges 30b984b and 8d1597c), the minimap lists a widget block by its provider's label and height (2905d0b).
+- A stack's dock stays last, as home draws it. The edits refuse to move it and the block list pins it (76cf4b6, the fix for findings lor-rj7u and lor-zdsk).
+- Unfolding after a screen-off now starts on `start.wide` (7e2badd). The unfold's configuration reaches the activity after `ACTION_SCREEN_ON` but before `onStart`, so the reset runs in `onStart` and is carried out by an effect (`HomeUi.toStart`) once home is composed for that screen. The note of 2026-11-08 above has the timings.
+- Home settings' Panels after a screen-off opens the minimap after that reset, not before it (7c190c2, finding lor-5i6p): the intent leaves `minimapAfterStart`, which the reset's effect carries out after its home press.
+
+**Proof.**
+- `android/boat-build.sh`, `assembleDebug testDebugUnitTest`: 345 tests, 0 failures, at 76cf4b6, with 7e2badd's change, and with 7c190c2's change (APK 07aac4f3).
+- End to end on `T3_Fold_API35` against the test server at main 3e17179, from the v1 file with two extra pages, on 7c190c2's code: receipt lor-ex2u (`/tmp/lor-verify/lor-wt-f3vn/e2e-fold-3`), with the whole run's logcat and a screen-off with no fold that comes back to the inner start. Its locked drag (step 15) ran over quick send, not home, so receipt lor-slsy replaces that step. The earlier runs: lor-hvlq (fail, on 76cf4b6) and lor-fwn8 (pass, on 7e2badd's code). The notes above, dated 2026-11-08, say which claims in lor-fwn8, lor-op8w, lor-ex2u and lor-lyfj their saved files don't hold.
+- Panels from Home settings after a screen-off: receipt lor-8ios on the Fold, from [3, 0], replacing lor-lyfj.
+- The pinned dock in the block list (finding lor-1hbc): receipt lor-op8w on lor-9uc1.
+- The children's own receipts are on lor-zzyy, lor-6get and lor-9uc1.
+
+**Open items.**
+- The real Fold's check is lor-92o7 (`needs-human`, after merge). The emulator had no keyguard. On a phone with a lock screen, home is started after unlock, so the reset is unchanged, but only the real Fold shows it.
+- Unfolded, a `full` stack flows its blocks into two columns, so the dock sits in the right column at half width (11-unfolded-after-screen-off.png). That is lor-ph30's wide flow, not this item's. It is noted for Sumeet's look at lor-92o7.

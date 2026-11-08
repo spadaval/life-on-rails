@@ -242,6 +242,13 @@ class HomeUi {
     var folder by mutableStateOf<OpenFolder?>(null)
     var query by mutableStateOf("")
     var homePresses by mutableStateOf(0)
+    /**
+     * Home goes to its start after a screen-off (lor-ozj2), once composed with the screen it came
+     * back on, so the start is read for that screen's width.
+     */
+    var toStart by mutableStateOf(false)
+    /** Home settings' Panels arrived while [toStart] waits: the minimap opens after that home press. */
+    var minimapAfterStart = false
     /** Where on home a long press on empty space opened the home menu. */
     var homeMenu by mutableStateOf<Offset?>(null)
     /** The cell that long press was on, so only that cell draws the menu. */
@@ -261,8 +268,31 @@ class HomeUi {
     val undo = UndoBarState()
     /** What is held, and edit mode (launcher polish 4.3). */
     val drag = DragState()
+    /**
+     * The minimap is open over home (lor-6get): from the home menu's Panels, or Home settings'.
+     * Home stays on its cell under it.
+     */
+    var minimap by mutableStateOf(false)
+        private set
+
+    /** Opens the minimap, closing what floats over home and putting a held item back. */
+    fun openMinimap() {
+        drag.held = null
+        drag.settling = null
+        drag.editing = false
+        folder = null
+        homeMenu = null
+        menu = null
+        minimap = true
+    }
+
+    /** Closes the minimap: home stays on the cell it is on (an edit that removed it moved home already). */
+    fun closeMinimap() {
+        minimap = false
+    }
+
     /** Home with nothing open over it: a home press here opens quick send instead. */
-    val atRest: Boolean get() = folder == null && homeMenu == null && menu == null && widgetPicker == null && resizing == null && grid.heading(grid.start) && grid.move == null && !drag.editing && drag.held == null
+    val atRest: Boolean get() = !minimap && folder == null && homeMenu == null && menu == null && widgetPicker == null && resizing == null && grid.heading(grid.start) && grid.move == null && !drag.editing && drag.held == null
 
     /**
      * A home press ([animate] false when home wasn't on screen before it: then everything shuts
@@ -277,6 +307,7 @@ class HomeUi {
         grid.goTo(grid.start, animate)
         folder = null
         homeMenu = null
+        minimap = false
         widgetPicker = null
         resizing = null
         // Every floating view closes, as Launcher3's onNewIntent closes them (launcher polish 7.3).
@@ -423,6 +454,16 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // only when it changes something, so composition settles).
     val first = remember { booleanArrayOf(true) }
     if (grid.start != start) grid.start = start
+    LaunchedEffect(ui.toStart) {
+        if (ui.toStart) {
+            ui.toStart = false
+            ui.homePressed(animate = false)
+            if (ui.minimapAfterStart) {
+                ui.minimapAfterStart = false
+                ui.openMinimap()
+            }
+        }
+    }
     if (grid.panels != panels) grid.edited(panels, start)
     if (first[0] && file != null) {
         first[0] = false
@@ -445,7 +486,10 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // An open folder, opening or closing, holds the glass (launcher polish 7.2).
     var panel by remember { mutableStateOf<ResolvedFolder?>(null) }
     SideEffect { if (folder != null) panel = folder }
-    val darkBarIcons = ink.ink == Ink.DARK && underBar is Panel.Stack && folder == null && panel == null
+    // The minimap's glass comes in and goes as a folder's does, home fading under it (lor-6get).
+    val mapShown = remember { Animatable(0f) }
+    LaunchedEffect(ui.minimap) { mapShown.animateTo(if (ui.minimap) 1f else 0f, if (ui.minimap) Motion.move() else Motion.quick()) }
+    val darkBarIcons = ink.ink == Ink.DARK && underBar is Panel.Stack && folder == null && panel == null && !ui.minimap && mapShown.value == 0f
     val view = androidx.compose.ui.platform.LocalView.current
     var barsDark by remember { mutableStateOf<Boolean?>(null) }
     SideEffect {
@@ -516,10 +560,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         }
         if (final == h.original) return
         drag.landing = final
-        actions.edit(said ?: "Added.", after = { drag.landing = null }) { now ->
-            if (now != h.original) throw LayoutError(HOME_CHANGED)
-            final
-        }
+        actions.edit(said ?: "Added.", after = { drag.landing = null }) { now -> landOver(now, h.original, final) }
     }
     // The icon let go goes to where it went, then is gone (launcher polish 7.5).
     LaunchedEffect(drag.settling) {
@@ -527,6 +568,9 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         s.progress.animateTo(1f, if (s.kind == Settle.Kind.FADE) Motion.quick() else Motion.move())
         if (drag.settling === s) drag.settling = null
     }
+    // A locked home has no edit mode (lor-zzyy): locking from the home menu, or from outside, leaves it.
+    val locked = file?.locked == true
+    LaunchedEffect(locked) { if (locked) drag.editing = false }
     // What is left of a back gesture's scale eases to 0 in one job (7's third review).
     val backScope = rememberCoroutineScope()
     val backEase = remember(backScope) { BackEase(ui, backScope) }
@@ -538,7 +582,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val folderOpen = folder != null
     // The wallpaper behind an open folder blurs where the window can (lor-gnk0), with the motion.
     val blurred = rememberCrossWindowBlur()
-    BlurBehind(blurred, view) { folderShown.value }
+    BlurBehind(blurred, view) { maxOf(folderShown.value, mapShown.value) }
     LaunchedEffect(folderOpen, ui.homePresses) {
         if (folderOpen) {
             folderFading = false
@@ -606,7 +650,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     Box(Modifier.fillMaxSize().onSizeChanged { heightPx = it.height }.closeResizeOutside(ui).dragging(ui, haptics, { latestHome }, { h, t -> latestDrop(h, t) }).gridFinger(ui, haptics) { barTop.value }) {
         // Home gives way to an open folder (lor-gnk0, as Smart Launcher's does): it fades out as the
         // folder opens, so the glass shows only the wallpaper, and back in as it closes.
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - folderShown.value }) {
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - maxOf(folderShown.value, mapShown.value) }) {
             CompositionLocalProvider(LocalGridScrolls provides ui.scrolls) {
                 GridCells(grid) { p ->
                     when (p) {
@@ -655,6 +699,9 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
                 },
             )
         }
+        // The minimap over home (lor-6get), on the open folder's glass.
+        if (ui.minimap || mapShown.value > 0f) Box(Modifier.fillMaxSize().drawBehind { folderGlass(mapShown.value, blurred) })
+        if (ui.minimap) Minimap(file, ui, home)
         // Over home, under the bars and the Undo bar that confirms what it added (lor-r0f9).
         ui.widgetPicker?.let { WidgetPicker(it, home) { ui.widgetPicker = null } }
         // Edit mode's bar, and Remove while something is held (launcher polish 4.3).
@@ -709,11 +756,10 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
         val widthDp = maxWidth.value
         val panelHeight = maxHeight.value
         val headerStyle = LocalHomeLook.current.header
-        val hasClock = panel.blocks.any { it is StackBlock.Clock }
+        // Clear of the Remove bar, so a drop meant for the first row lands there (6.8's critique).
+        val clear = @Composable { Spacer(Modifier.height(if (wide || headerStyle == HomeLook.Header.NONE) BarClear else 104.dp)) }
         val header = @Composable {
-            if (hasClock && headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar, home.actions::alarms)
-            // Clear of the Remove bar, so a drop meant for the first row lands there (6.8's critique).
-            else Spacer(Modifier.height(if (wide || headerStyle == HomeLook.Header.NONE) BarClear else 104.dp))
+            if (headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar, home.actions::alarms) else clear()
         }
         val body = homeBody(appsLoad, home.file, placed?.count ?: 0)
         // The apps block takes the space the other blocks leave ([FillColumn]'s fill), and no less
@@ -753,14 +799,16 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
         }
         // Blocks, each with its place in the stack, top to bottom, the dock under them all; with no
         // `apps` block, the space goes after the others, so they sit under the header and the dock
-        // stays at the bottom. The clock is the header, drawn where [blocks]' caller puts it.
-        val blocks = @Composable { mod: Modifier, list: List<IndexedValue<StackBlock>>, top: @Composable () -> Unit ->
+        // stays at the bottom. The clock is home's header, drawn where it stands in the stack
+        // (lor-9uc1 orders it); a column that starts with anything else starts clear of the Remove bar.
+        val blocks = @Composable { mod: Modifier, list: List<IndexedValue<StackBlock>> ->
             Column(mod) {
                 StackScroll(Modifier.weight(1f).fillMaxWidth(), background = emptyHome) {
-                    top()
+                    if (list.firstOrNull { it.value !is StackBlock.Dock }?.value !is StackBlock.Clock) clear()
                     list.forEach { (i, block) ->
                         when (block) {
-                            StackBlock.Clock, StackBlock.Dock -> {}
+                            StackBlock.Clock -> header()
+                            StackBlock.Dock -> {}
                             is StackBlock.Apps -> apps(BlockAt(cell, i))
                             is StackBlock.Widget -> key(block.id) { WidgetBlock(block, panelHeight, ui, home) }
                             StackBlock.Today, StackBlock.NeedsYou, StackBlock.Running, StackBlock.T3Queue -> key(block.type) { LorBlock(block, ui.grid) }
@@ -777,23 +825,16 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
             // rest with the dock right; a page of apps and a dock is one column. Each column scrolls on its own.
             Row(Modifier.fillMaxSize()) {
                 StackFlow.wide(all) { it.value is StackBlock.Dock }.forEach { column ->
-                    val clock = column.any { it.value is StackBlock.Clock }
-                    blocks(Modifier.weight(1f).fillMaxSize(), column) {
-                        when {
-                            clock -> header()
-                            // A column with no clock starts clear of the Remove bar.
-                            else -> Spacer(Modifier.height(BarClear))
-                        }
-                    }
+                    blocks(Modifier.weight(1f).fillMaxSize(), column)
                 }
             }
         } else {
-            blocks(Modifier.fillMaxSize(), all, header)
+            blocks(Modifier.fillMaxSize(), all)
         }
         ui.homeMenu?.takeIf { ui.homeMenuCell == cell }?.let { at ->
             // Not while home is locked (decision lor-73li): a widget is an edit to home.
             val addWidget = if (home.file?.locked == true) null else ({ ui.widgetPicker = cell })
-            HomeMenu(at, home, onEdit = { ui.drag.editing = true }, addWidget = addWidget) { ui.homeMenu = null }
+            HomeMenu(at, home, onEdit = { ui.drag.editing = true }, onPanels = ui::openMinimap, addWidget = addWidget) { ui.homeMenu = null }
         }
     }
 }
@@ -864,6 +905,7 @@ internal fun StackScroll(modifier: Modifier, background: @Composable (Modifier) 
         }
     }
 }
+
 
 /**
  * Home while the app list loads (launcher polish 3.2): a still slot where each of the file's items
@@ -1135,9 +1177,10 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: (Rect
     Column(
         Modifier.fillMaxWidth().widthIn(max = 76.dp)
             .then(if (label) Modifier else Modifier.semantics { contentDescription = folder.folder.name })
-            .combinedClickable(interactionSource = null, indication = PressScale.Tile, onLongClickLabel = "Menu", onLongClick = {
+            .combinedClickable(interactionSource = null, indication = PressScale.Tile, onLongClickLabel = if (home.locked) null else "Menu", onLongClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                menu = true
+                // Every entry of a folder's menu edits home, so a locked home opens none (lor-zzyy).
+                if (home.locked) home.sayLocked() else menu = true
             }, onClick = { onClick(icon[0]) })
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1303,6 +1346,16 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, blurred: Bool
 @Composable
 private fun FolderName(folder: ResolvedFolder, home: HomeContext, add: () -> Unit) {
     val name = folder.folder.name
+    // Locked, the name is text and there is no + (lor-zzyy), as Lawnchair's `FolderNameEditText`
+    // takes no touch while locked (Apache-2.0). The spacers keep it where the field would be.
+    if (home.locked) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.size(48.dp))
+            Text(name, style = Type.body.copy(color = Txt, fontSize = 20.sp, textAlign = TextAlign.Center), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(vertical = 8.dp))
+            Spacer(Modifier.size(48.dp))
+        }
+        return
+    }
     var text by remember(name) { mutableStateOf(TextFieldValue(name)) }
     var focused by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
@@ -1442,10 +1495,7 @@ private fun addToFolder(folder: ResolvedFolder, home: HomeContext, picked: List<
     home.drag.landing = d.file
     home.ui.folder = OpenFolder(at, folder.folder.name, (d.file.itemAt(at) as Folder).apps)
     val said = if (added == 1) "${home.apps.first { it.id == adding[0].first }.label} is in ${folder.folder.name}." else "$added apps added to ${folder.folder.name}."
-    home.actions.edit(said, after = { home.drag.landing = null }) { now ->
-        if (now != file) throw LayoutError(HOME_CHANGED)
-        d.file
-    }
+    home.actions.edit(said, after = { home.drag.landing = null }) { now -> landOver(now, file, d.file) }
 }
 
 /**
@@ -1503,6 +1553,8 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
     val edge = 24.dp.toPx()
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        // The minimap's own drags aren't home's (lor-6get).
+        if (ui.minimap) return@awaitEachGesture
         val layer = when {
             ui.drawer -> 2
             ui.folder != null -> 1
@@ -1530,6 +1582,18 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
                 val now = home()
                 val file = now.file ?: return@awaitEachGesture
                 val picked = now.pick(source.slot) ?: return@awaitEachGesture
+                if (file.locked) {
+                    // Locked, nothing is picked up (lor-zzyy), as Lawnchair's `Workspace.beginDragShared`
+                    // starts no drag (Apache-2.0); here the bar says why, once. A folder's long press said it.
+                    if (picked.item !is Folder) now.sayLocked()
+                    haptics.performHapticFeedback(HapticFeedbackType.Reject)
+                    // The rest of the press is taken, so the grid doesn't move under it either.
+                    while (true) {
+                        val m = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+                        if (!m.pressed) return@awaitEachGesture
+                        m.consume()
+                    }
+                }
                 // A new pickup ends a settle at once, and ticks (launcher polish 7.5).
                 drag.settling = null
                 drag.held = Held(file, picked.from, picked.item, picked.app, picked.folder, now).also { it.finger = c.position }
