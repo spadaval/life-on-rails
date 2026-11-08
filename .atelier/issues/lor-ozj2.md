@@ -14,7 +14,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Folding keeps your place: no recreation, no reloads"
-updated_at: "2026-11-08T00:01:24.891731007+00:00"
+updated_at: "2026-11-08T00:10:24.997329429+00:00"
 ---
 
 ## Goal
@@ -66,6 +66,7 @@ The manifest's `HomeActivity` entry, `HomeActivity.kt`, `HomeModel.kt`, `HomeSto
   Reason: The emulator check of the Done when line 'the agent page scrolled down' failed on 309485f: the single column took Today's scroll, and Today rarely scrolls, so a scrolled queue came back at the top after a fold. Text wraps differently in the two forms, so the place is kept approximately; the ends are exact.
   Rejected: Leave lor-el51's rule (the single column takes the left column's scroll): fails the line whenever the queue is what was scrolled
 - 2026-11-07 [handoff] Implemented on lor-ph30 (code 309485f, 677524c); see ## Report. Review: none yet. Receipts lor-ax8p, lor-v9wu, lor-f0c5, lor-b6x9, lor-ultr.
+- 2026-11-07 [handoff] Fix for lor-0fbs in dd1eb62; merge of main in 0c1d07b (FolderPanel ported to slots); see ## Report, Fixes after review. Receipt lor-s96u. Review of both outstanding.
 
 ## Report
 
@@ -97,4 +98,3 @@ Six decision notes above: where the touched half is recorded, when a screen-off 
 
 - lor-0fbs (fix_now), fixed in dd1eb62: card calls lived in a CardCalls per AgentModel, which AgentPage keeps only while the page is composed, so a move two cells away and back built an empty one and a second tap could send again. One CardCalls is now held for the process (`LorApp.cardCalls`) and every AgentModel reads it; the F4 decision note is corrected. `CardCallsTest.aPageBuiltAgainSeesTheCallUnderWayAndDoesNotSendItTwice` drives the shared instance (busy seen, a second act sends nothing, answered after). It tests CardCalls itself, since AgentModel needs a Context; that the model takes LorApp's instance is shown by the code.
 - Merge of main (0c1d07b, lor-gnk0, lor-v692, lor-odtk): lor-gnk0's full-screen FolderPanel is ported to Slot, DropMark and `Source(b, slot, 1)`, keeping its FolderExit rule and strip; DragTest keeps both sides' tests; lor-v692's `stripEmptyPanels(h.original.current)` in `dropHeld` is kept. Boat's `assembleDebug testDebugUnitTest` on the merged tree: 297 tests, 0 failures. On T3_Phone_API35 (receipt lor-s96u): apps dragged out of a folder above and below land on home, the last app out of a two-app folder takes the folder away, a drag onto a folder adds to it, and the unpinned folder dragged away and back is picked up again as itself with no refusal.
-
