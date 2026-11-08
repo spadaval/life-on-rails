@@ -47,9 +47,9 @@ The grid is edited on the phone, in a minimap like Smart Launcher's page manager
 
 ## Done when
 
-- [ ] lor-v692 (the lock's field and refusal, and the grid edits as tested rules) has merged, on its own branch, before this item starts.
-- [ ] Each child is done, with its proof, in this order on this item's branch: lor-zzyy (lock home), lor-6get (the minimap's panels), lor-9uc1 (a stack's blocks).
-- [ ] End to end on `T3_Fold_API35` against the test server, in one session, from a version 1 `layout.json` with two extra pages. Folded: open the minimap from the home menu; add a stack in the empty cell after page 3, [4, 0]; move home's clock block into it; swap it with page 2; set it Full and make it the inner screen's start. Unfolded after a screen-off: home starts on that stack alone at full width, with the clock in it. Lock from the minimap's padlock: a drag on home picks nothing up and the Undo bar says why. Unlock from the home menu, and Undo the unlock. Each step is screenshotted and the file read after it, recorded as an evidence receipt on this item.
+- [x] lor-v692 (the lock's field and refusal, and the grid edits as tested rules) has merged, on its own branch, before this item starts.
+- [x] Each child is done, with its proof, in this order on this item's branch: lor-zzyy (lock home), lor-6get (the minimap's panels), lor-9uc1 (a stack's blocks).
+- [x] End to end on `T3_Fold_API35` against the test server, in one session, from a version 1 `layout.json` with two extra pages. Folded: open the minimap from the home menu; add a stack in the empty cell after page 3, [4, 0]; move home's clock block into it; swap it with page 2; set it Full and make it the inner screen's start. Unfolded after a screen-off: home starts on that stack alone at full width, with the clock in it. Lock from the minimap's padlock: a drag on home picks nothing up and the Undo bar says why. Unlock from the home menu, and Undo the unlock. Each step is screenshotted and the file read after it, recorded as an evidence receipt on this item.
 
 ## Scope
 
@@ -61,6 +61,25 @@ The phone's home (`android/app/src/main/java/com/spadaval/lor/home/`: a new `Min
 - lor-sbth and lor-clgw may land before or after this item. Whichever lands second fits its types to the other; the notes on lor-vtmn, lor-r0f9 and lor-lz97, and the Context of lor-v692, lor-zzyy, lor-6get and lor-9uc1, say what that is.
 - The real Fold's check is the `needs-human` validation item lor-92o7, after merge; the end-to-end check above and the children's emulator checks are its stand-in.
 - Environment: `T3_Phone_API35` and `T3_Fold_API35` against `scripts/ui-server.sh` (`http://10.0.2.2:3857`), one emulator at a time; builds on boat (`android/boat-build.sh`).
+
+
+## Report
+
+**Outcome.** The grid is edited on the phone in the minimap, and home can be locked. lor-v692 merged first, on its own branch (0b47653). The three children are built on this branch, in order: lor-zzyy (lock home), lor-6get (the minimap's panels) and lor-9uc1 (a stack's blocks). Each has its Done when lines ticked, emulator receipts and a Report. The parent's end-to-end check on `T3_Fold_API35` passed on the second run. The first run found a bug in lor-ozj2's screen-on reset (merged with lor-ph30), which this branch fixes in 7e2badd.
+
+**Changes.**
+- After main's widgets and clock block came in (merges 30b984b and 8d1597c), the minimap lists a widget block by its provider's label and height (2905d0b).
+- A stack's dock stays last, as home draws it. The edits refuse to move it and the block list pins it (76cf4b6, the fix for findings lor-rj7u and lor-zdsk).
+- Unfolding after a screen-off now starts on `start.wide` (7e2badd). The unfold's configuration reaches the activity after `ACTION_SCREEN_ON` but before `onStart`, so the reset runs in `onStart` and is carried out by an effect (`HomeUi.toStart`) once home is composed for that screen. The note of 2026-11-08 above has the timings.
+
+**Proof.**
+- `android/boat-build.sh`, `assembleDebug testDebugUnitTest` at 76cf4b6: 345 tests, 0 failures. With 7e2badd's change: 345 tests, 0 failures.
+- End to end on `T3_Fold_API35` against the test server at main 3e17179, from the v1 file with two extra pages: receipt lor-hvlq (pass, `/tmp/lor-verify/lor-wt-f3vn/e2e-fold-2`). The first run's failure is receipt lor-fwn8.
+- The children's own receipts are on lor-zzyy, lor-6get and lor-9uc1.
+
+**Open items.**
+- The real Fold's check is lor-92o7 (`needs-human`, after merge). The emulator had no keyguard. On a phone with a lock screen, home is started after unlock, so the reset is unchanged, but only the real Fold shows it.
+- Unfolded, a `full` stack flows its blocks into two columns, so the dock sits in the right column at half width (11-unfolded-after-screen-off.png). That is lor-ph30's wide flow, not this item's. It is noted for Sumeet's look at lor-92o7.
 
 ## Notes
 
