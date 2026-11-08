@@ -38,6 +38,7 @@ On the unfolded `T3_Fold_API35`, with the `t3` panel full, against the test serv
 
 ## Context
 
+- The left column's LoR flag cards and Today's timer carry lor-rz50's writes (Done, Seen, the timer) from the shared composables; this item adds no write of its own to LoR.
 - lor-el51 draws the interim full layout (Today left, the rest right). This item replaces it; the narrow column it keeps is what the left column reuses.
 - `T3Connection.send(threadId, text)` and `Commands.message` exist (used today only by the debug screen); `Commands.questions` already reads `getThreadProjection`. T3's `OrchestrationV2ConversationMessage` (`packages/contracts/src/orchestrationV2.ts` in `/home/supadava/projects/t3code`, read only) has `role`, `text`, `streaming` and `createdAt`.
 - Messages are plain text: Markdown marks show as written. The T3 app, a tap away, renders them in full.
