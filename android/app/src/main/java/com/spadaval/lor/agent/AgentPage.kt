@@ -39,6 +39,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -164,12 +167,30 @@ fun AgentPage() {
     }
 
     // Held here, so a fold, which changes the form, keeps the page's scroll: the single column takes
-    // the left column's.
+    // the place read last ([FormScroll], lor-ozj2), and an unfold gives it back.
     val scroll = rememberScrollState()
     val queueScroll = rememberScrollState()
+    val narrowScroll = rememberScrollState()
+    // Today's height in the single column, from its last layout.
+    var todayPx by remember { mutableIntStateOf(0) }
     // A dark veil over the wallpaper, as the mockup's page has, so the text reads on any wallpaper.
     BoxWithConstraints(Modifier.fillMaxSize().background(Veil).cellInsetsPadding()) {
-        if (maxWidth >= 600.dp) {
+        val full = maxWidth >= 600.dp
+        val was = remember { booleanArrayOf(full) }
+        LaunchedEffect(full) {
+            if (was[0] == full) return@LaunchedEffect
+            was[0] = full
+            // After the new form's first layout, so each column knows how far it can scroll.
+            withFrameNanos {}
+            if (full) {
+                val (left, queue) = FormScroll.full(narrowScroll.value, todayPx, narrowScroll.value == narrowScroll.maxValue)
+                scroll.scrollTo(left)
+                queueScroll.scrollTo(queue)
+            } else {
+                narrowScroll.scrollTo(FormScroll.narrow(scroll.value, queueScroll.value, todayPx, queueScroll.value == queueScroll.maxValue))
+            }
+        }
+        if (full) {
             // The full layout (decision note on lor-ph30, until lor-clgw): Today left, the queue right,
             // each scrolling on its own and taking a vertical swipe until its edge (lor-qdmy).
             Row(Modifier.fillMaxSize()) {
@@ -177,8 +198,8 @@ fun AgentPage() {
                 ScrollColumn(queueScroll, Modifier.weight(1f), bottom = 120.dp) { queue() }
             }
         } else {
-            ScrollColumn(scroll, Modifier.fillMaxWidth(), bottom = 120.dp) {
-                Today(model)
+            ScrollColumn(narrowScroll, Modifier.fillMaxWidth(), bottom = 120.dp) {
+                Column(Modifier.onSizeChanged { todayPx = it.height }) { Today(model) }
                 queue()
             }
         }

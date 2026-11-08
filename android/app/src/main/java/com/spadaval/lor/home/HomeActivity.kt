@@ -137,7 +137,7 @@ class HomeActivity : ComponentActivity() {
      * A drag cut off by home pausing or losing window focus puts the item back, as Launcher3 does
      * on cancel. Shown for the notification shade. Compose turns a cancelled press into a release,
      * so a cut-off whose cancel reaches Compose before this (screen off, a call, gesture navigation
-     * taking the touch: not tried) may still drop where the finger was; Increment 8 holds that.
+     * taking the touch: not tried) may still drop where the finger was; lor-kxxz holds that.
      */
     override fun onPause() {
         super.onPause()

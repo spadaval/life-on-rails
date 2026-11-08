@@ -47,4 +47,18 @@ class AgentStatesTest {
         assertEquals("Nothing else on the calendar today.", AgentStates.next(listOf(tomorrow), now, zone))
         assertEquals("Nothing else on the calendar today.", AgentStates.next(emptyList(), now, zone))
     }
+
+    @Test
+    fun aFoldKeepsThePlaceReadLastAndAnUnfoldGivesItBack() {
+        // lor-ozj2: the queue scrolled 900 px, Today 400 px tall in the single column.
+        assertEquals(1300, FormScroll.narrow(left = 0, queue = 900, today = 400))
+        assertEquals(0 to 900, FormScroll.full(1300, 400))
+        // Only Today scrolled: the single column takes its scroll, and gives it back.
+        assertEquals(150, FormScroll.narrow(left = 150, queue = 0, today = 400))
+        assertEquals(150 to 0, FormScroll.full(150, 400))
+        // At the queue's end, the other form's end, whose length differs.
+        assertEquals(Int.MAX_VALUE, FormScroll.narrow(left = 0, queue = 900, today = 400, atEnd = true))
+        assertEquals(0 to Int.MAX_VALUE, FormScroll.full(1100, 400, atEnd = true))
+        assertEquals("Today alone at the end is Today's", 150 to 0, FormScroll.full(150, 400, atEnd = true))
+    }
 }

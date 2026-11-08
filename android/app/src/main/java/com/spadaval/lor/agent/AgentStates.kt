@@ -41,3 +41,26 @@ object AgentStates {
         return "Nothing else on the calendar today."
     }
 }
+
+/**
+ * Where the agent page's scroll goes when its form changes (lor-ozj2), in px. The full form has
+ * two columns, Today ([left]) and the queue ([queue]); the narrow form one column, Today then the
+ * queue, Today [today] px tall in it. A fold keeps the place read last: down the queue when it was
+ * scrolled, else Today's; an unfold puts it back, so a fold and an unfold return where they were.
+ * A column at its end ([atEnd]) stays at the end of the other form, whose lengths differ.
+ * [Int.MAX_VALUE] means the end (a scroll stops there).
+ */
+object FormScroll {
+    fun narrow(left: Int, queue: Int, today: Int, atEnd: Boolean = false): Int = when {
+        queue > 0 && atEnd -> Int.MAX_VALUE
+        queue > 0 -> today + queue
+        else -> left
+    }
+
+    /** The full form's (left, queue) from the narrow form's [narrow]. */
+    fun full(narrow: Int, today: Int, atEnd: Boolean = false): Pair<Int, Int> = when {
+        narrow <= today -> narrow to 0
+        atEnd -> 0 to Int.MAX_VALUE
+        else -> 0 to narrow - today
+    }
+}
