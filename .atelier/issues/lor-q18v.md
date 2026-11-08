@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Weather from LoR's server in /device/home"
-updated_at: "2026-11-08T00:08:39.422056768+00:00"
+updated_at: "2026-11-08T00:11:41.330367606+00:00"
 ---
 
 ## Goal
@@ -54,6 +54,7 @@ LoR's server gives the phone the weather where it last was, through `/device/hom
 ## Notes
 
 - 2026-11-07 [note] Handoff (author, 6eac5c7 on lor-q18v): five of six Done when lines hold, see ## Report. The live curl line waits on GOOGLE_MAPS_KEY in the env file (not set on 2026-11-07). Review: none yet.
+- 2026-11-07 [note] 2026-11-07 orchestrator: code approved (lor-frlt). Waits only for GOOGLE_MAPS_KEY in the env file (Sumeet), then the live curl on the test server and atelier merge.
 
 ## Report
 
