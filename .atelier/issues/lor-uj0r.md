@@ -16,7 +16,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Home as a grid of panels"
-updated_at: "2026-11-08T03:47:11.113086132+00:00"
+updated_at: "2026-11-08T07:48:58.242318533+00:00"
 ---
 
 ## Outcome
@@ -39,3 +39,4 @@ Home becomes a grid of panels in `layout.json` (schema version 2): stacks of blo
 - 2026-11-07 [note] 2026-11-07 (evening): merged lor-gnk0 (pressed state, folders), lor-v692 (lock field, minimap edits), lor-odtk (server reads), and lor-ph30 (inner screen and folding) as 2a497d9. lor-q18v approved, waiting for GOOGLE_MAPS_KEY. Now building lor-vtmn (lor-sbth) and lor-zzyy (lor-f3vn).
 - 2026-11-07 [note] Strategy revised on Sumeet's direction (2026-11-07: 'I don't really see why we're making the panels read-only'): writes to LoR's data from a panel move from Scope's Out to In; Shape says they go through POST routes under /device/ that call the server functions the web's actions call; Authority now keeps for Sumeet only a panel write the web doesn't already allow, or one with its own rules. Planned in lor-clgw: decision lor-dofd, server item lor-2mh2, phone child lor-rz50. Items still valid; lor-p86v's read-only clauses replaced by lor-dofd.
 - 2026-11-07 [note] 2026-11-08: merged lor-2mh2 (panel write route, deployed), lor-q18v (weather, live with Sumeet's key) and lor-sbth (widgets and the clock block). Fold updated to main. In progress: lor-f3vn (minimap; lor-9uc1's widget part after merging main) and lor-clgw (lor-lz97 first). Panel writes are in scope by Sumeet's yes (2026-11-07).
+- 2026-11-08 [note] 2026-11-08: merged lor-f3vn (the minimap editor and the layout lock) as 9c8a470, with lor-zzyy, lor-6get and lor-9uc1. Its end-to-end check on T3_Fold_API35 found that unfolding after a screen-off showed the folded start (lor-ozj2's reset ran before the unfold's configuration arrived); fixed on the branch, and four fresh reviews later approved (lor-2dlz). Deferred review finding lor-v9t7 is backlog bug lor-slux, outside the mission. lor-clgw has main merged in (1339c0b, the LoR panel and blocks named in the minimap's palettes); lor-lz97's emulator checks are running, then lor-rz50 and lor-iabt.
