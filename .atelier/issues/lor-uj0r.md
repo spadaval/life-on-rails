@@ -16,7 +16,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Home as a grid of panels"
-updated_at: "2026-11-07T23:37:54.465168016+00:00"
+updated_at: "2026-11-08T01:05:44.088777632+00:00"
 ---
 
 ## Outcome
@@ -36,3 +36,4 @@ Home becomes a grid of panels in `layout.json` (schema version 2): stacks of blo
 - 2026-11-07 [note] Polish items (1b0776e) reviewed by a fresh agent: 8 findings (R1 to R8). R1 and R2 were fix_now: blur behind an open folder broke DESIGN.md, so the wallpaper is dimmed; a full-screen folder needed a new drag-out rule. All 8 fixed in 2c4dc20, and a second fresh agent re-checked that diff: pass. Its minor note about a full folder's drag-out strip went into lor-gnk0.
 - 2026-11-07 [note] 2026-11-07: lor-eh0y (today's home on the grid) merged as f3bf3d1, with lor-euec, lor-eo1g and lor-qdmy. Plans for lor-ph30, lor-sbth and lor-clgw written and approved by fresh reviewers. Next: lor-gnk0 and lor-j87u in parallel.
 - 2026-11-07 [note] 2026-11-07: lor-f3vn planned: blocker lor-v692 (the lock's field and refusal, and the minimap's edits as tested rules; no screen change, can run beside lor-ph30), then children lor-zzyy, lor-6get, lor-9uc1 on lor-f3vn's branch after lor-ph30 merges. Decision lor-73li (a top-level locked; LayoutStore.edit refuses phone edits that change active or layouts). Real-Fold validation lor-92o7, outside the mission. Awaiting a fresh agent's review of the plan.
+- 2026-11-07 [note] 2026-11-07 (evening): merged lor-gnk0 (pressed state, folders), lor-v692 (lock field, minimap edits), lor-odtk (server reads), and lor-ph30 (inner screen and folding) as 2a497d9. lor-q18v approved, waiting for GOOGLE_MAPS_KEY. Now building lor-vtmn (lor-sbth) and lor-zzyy (lor-f3vn).
