@@ -35,7 +35,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Widget and clock blocks"
-updated_at: "2026-11-08T03:35:10.850510759+00:00"
+updated_at: "2026-11-08T03:35:39.130435937+00:00"
 ---
 
 ## Goal
@@ -79,6 +79,8 @@ The phone's home (`android/app/src/main/java/com/spadaval/lor/home/`, `net/Devic
   Reason: Atelier keeps a child open until its parent merges, so blocked_by between siblings stalls them.
 - 2026-11-07 The child line is ticked on the children's records: lor-q18v is done, and every Done when line of lor-vtmn, lor-r0f9 and lor-leh4 is ticked. It is fully met when lor-sbth merges.
 - 2026-11-07 [note] Handoff (evidence slice): end to end holds (lor-sj8h). Home-press line not met: round 2 +12.1% (lor-55b4); pooled +2.4%. See ## Report. No code changed; not reviewed.
+- 2026-11-07 [decision] Orchestrator, after receipt lor-55b4: the home-press line is judged on six rotated rounds (the two already run plus four more, alternating which build goes first), ten runs each after a warm-up, the pooled median of all 60 runs per build within 10%. Each round's median is reported too. The widgets sitting in home's narrow half when it pairs with page 2 counts as home's flow for line 2; lor-ctox showed the full-width flow.
+  Reason: Two rounds swung -10.1% and +12.1% with single runs from 29 to 122 ms: the emulator's run-to-run spread is wider than the 10% bound, so two rounds can't decide it. Set before the further runs, not after.
 
 ## Report
 
