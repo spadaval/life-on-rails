@@ -33,7 +33,7 @@ schema_version: 2
 closed_at: "2026-11-08T01:04:17.895816126+00:00"
 status: "done"
 title: "The inner screen, and folding that keeps your place"
-updated_at: "2026-11-08T01:04:17.895816126+00:00"
+updated_at: "2026-11-08T09:41:44.942318166+00:00"
 ---
 
 ## Goal
@@ -97,6 +97,7 @@ Carried from Launcher polish's old Increment 8 (`docs/missions/launcher-polish/p
   Reason: Atelier keeps a child open until its parent merges, so a blocked_by between siblings would stall them; on one shared branch, order does the same job.
 - 2026-11-07 The child line is ticked on the children's records: lor-j87u is done, and every Done when line of lor-el51, lor-ozj2 and lor-sqfe is ticked. It is fully met when lor-ph30 merges.
 - 2026-11-07 [note] Handoff (evidence slice): lines 2 and 3 hold, evidence lor-ar10 (end to end) and lor-x6a8 (latency); see ## Report. No code changed; not reviewed.
+- 2026-11-08 [note] The agent page's interim full layout (decision note of 2026-11-07, Today left and the queue right) is replaced by lor-iabt's wide form: the agent page's column with a Threads section on the left, at most 420 dp, and the chosen thread on the right. As a half and on the phone the page stays the single column.
 
 ## Report
 

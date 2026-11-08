@@ -66,7 +66,12 @@ class GridEditTest {
         assertEquals(HOME_CHANGED, refused { one.addPanel(Cell(1, 0), "stack") })
         assertEquals("there's already an agent page", refused { one.addPanel(Cell(3, 0), "t3") })
         assertEquals("there's already a drawer", refused { one.addPanel(Cell(3, 0), "drawer") })
-        assertEquals("there's no panel type \"lor\"", refused { one.addPanel(Cell(3, 0), "lor") })
+        // One lor panel a layout (lor-lz97), as t3 and drawer.
+        val lor = one.addPanel(Cell(3, 0), "lor")
+        assertEquals(Panel.Lor(Cell(3, 0)), lor.panel(3, 0))
+        roundTrips(lor)
+        assertEquals("there's already a LoR panel", refused { lor.addPanel(Cell(3, 1), "lor") })
+        assertEquals("there's no panel type \"notes\"", refused { one.addPanel(Cell(3, 0), "notes") })
         assertEquals("row 0 holds 5 stacks with apps already", refused { five.addPanel(Cell(6, 0), "stack") })
         assertEquals(Cell(6, 1), five.addPanel(Cell(6, 1), "stack").panel(6, 1).at)
     }
@@ -156,7 +161,13 @@ class GridEditTest {
         assertEquals(DOCK_LAST, refused { bare.addBlock(Cell(1, 0), 2, "apps") })
         assertEquals("a stack holds one \"clock\" block", refused { one.addBlock(Cell(1, 0), 0, "clock") })
         assertEquals("a widget is added from the home menu", refused { one.addBlock(Cell(2, 0), 0, "widget") })
-        assertEquals("there's no block type \"today\"", refused { one.addBlock(Cell(2, 0), 0, "today") })
+        // LoR's blocks take no field (lor-lz97).
+        val today = one.addBlock(Cell(2, 0), 0, "today")
+        assertEquals(listOf(StackBlock.Today, StackBlock.Apps(listOf(ref("e.e"))), StackBlock.Dock), today.blocks(2, 0))
+        roundTrips(today)
+        for (type in listOf("needs-you", "running", "t3-queue")) assertEquals(StackBlock.bare(type), today.addBlock(Cell(2, 0), 1, type).blocks(2, 0)[1])
+        assertEquals("a stack holds one \"today\" block", refused { today.addBlock(Cell(2, 0), 0, "today") })
+        assertEquals("there's no block type \"weather\"", refused { one.addBlock(Cell(2, 0), 0, "weather") })
         assertEquals(HOME_CHANGED, refused { one.addBlock(Cell(0, 0), 0, "clock") })
         assertEquals(HOME_CHANGED, refused { one.addBlock(Cell(3, 0), 0, "clock") })
         assertEquals(HOME_CHANGED, refused { one.addBlock(Cell(2, 0), 3, "clock") })
@@ -291,9 +302,9 @@ class GridEditTest {
             fun size(c: Cell) = (layout.panelAt(c) as? Panel.Stack)?.blocks?.size ?: 0
             for (on in listOf(true, false)) attempt { f.setLocked(on) }
             for (c in cells) {
-                for (type in Panel.TYPES + "lor") attempt { f.addPanel(c, type) }
+                for (type in Panel.TYPES + "notes") attempt { f.addPanel(c, type) }
                 for (screen in StartScreen.entries) attempt { f.setStart(c, screen) }
-                for (i in -1..size(c) + 1) for (type in StackBlock.TYPES + "today") attempt { f.addBlock(c, i, type) }
+                for (i in -1..size(c) + 1) for (type in StackBlock.TYPES + "weather") attempt { f.addBlock(c, i, type) }
                 for (id in listOf(0, 3, 99)) attempt { f.addWidget(c, id, "w.w/.W", 100) }
             }
             // The widget edits (WidgetEdit.kt), by id: each widget the layouts hold, and one they don't.

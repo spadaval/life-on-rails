@@ -77,8 +77,8 @@ class MinimapTest {
     fun thePaletteDimsATypeTheLayoutHoldsItsOneOfWithAddPanelsReason() {
         val kinds = MinimapRules.palette(grid.current)
         assertEquals(Panel.TYPES, kinds.map { it.type })
-        assertEquals(listOf("Stack", "Agent page", "Drawer"), kinds.map { it.name })
-        assertEquals(listOf(null, "there's already an agent page", "there's already a drawer"), kinds.map { it.taken })
+        assertEquals(listOf("Stack", "Agent page", "Drawer", "LoR panel"), kinds.map { it.name })
+        assertEquals(listOf(null, "there's already an agent page", "there's already a drawer", null), kinds.map { it.taken })
         // The palette's reason is the edit's own refusal.
         val refusal = try {
             grid.addPanel(Cell(4, 0), "drawer")
@@ -86,10 +86,10 @@ class MinimapTest {
         } catch (e: LayoutError) {
             e.message
         }
-        assertEquals(kinds.last().taken, refusal)
+        assertEquals(kinds.single { it.type == "drawer" }.taken, refusal)
         // Without a drawer, it can be added.
         val noDrawer = grid.removePanel(Cell(1, 1), grid.current.panelAt(Cell(1, 1))!!)
-        assertNull(MinimapRules.palette(noDrawer.current).last().taken)
+        assertNull(MinimapRules.palette(noDrawer.current).single { it.type == "drawer" }.taken)
     }
 
     @Test
@@ -125,10 +125,11 @@ class MinimapTest {
 
     @Test
     fun thePaletteOffersTheTypesTheStackDoesntHold() {
-        assertEquals(emptyList<String>(), MinimapRules.blockPalette(stack(grid, 1)))
-        assertEquals(listOf("clock"), MinimapRules.blockPalette(stack(grid, 2)))
+        // LoR's blocks (lor-lz97) are offered to every stack that lacks them.
+        assertEquals(StackBlock.LOR, MinimapRules.blockPalette(stack(grid, 1)))
+        assertEquals(listOf("clock") + StackBlock.LOR, MinimapRules.blockPalette(stack(grid, 2)))
         val bare = grid.removeBlock(BlockAt(Cell(2, 0), 1), StackBlock.Dock)
-        assertEquals(listOf("clock", "dock"), MinimapRules.blockPalette(stack(bare, 2)))
+        assertEquals(listOf("clock", "dock") + StackBlock.LOR, MinimapRules.blockPalette(stack(bare, 2)))
         // Each one the palette offers, addBlock takes.
         MinimapRules.blockPalette(stack(bare, 2)).forEach { bare.addBlock(Cell(2, 0), MinimapRules.tapIndex(stack(bare, 2)), it) }
     }
@@ -144,8 +145,8 @@ class MinimapTest {
         val two = grid.withCurrent(grid.current.copy(panels = grid.current.panels.map {
             if (it.at == Cell(1, 0)) (it as Panel.Stack).copy(blocks = listOf(StackBlock.Clock, w, StackBlock.Widget(8, "com.example/.Notes", 120)) + it.blocks.drop(1)) else it
         }))
-        assertEquals(emptyList<String>(), MinimapRules.blockPalette(stack(two, 1)))
-        assertEquals(listOf("clock"), MinimapRules.blockPalette(stack(two, 2)))
+        assertEquals(StackBlock.LOR, MinimapRules.blockPalette(stack(two, 1)))
+        assertEquals(listOf("clock") + StackBlock.LOR, MinimapRules.blockPalette(stack(two, 2)))
         assertFalse(MinimapRules.blockPalette(stack(grid.removeBlock(BlockAt(Cell(2, 0), 1), StackBlock.Dock), 2)).contains(StackBlock.Widget.TYPE))
         // The Undo bar names it by its label.
         assertEquals("Analog clock moved under Notes.", MinimapRules.movedWithin(stack(two, 1).blocks, 1, 2) { if (it.id == 7) "Analog clock" else "Notes" })
@@ -228,5 +229,15 @@ class MinimapTest {
     fun aMoveSaysWhereOrWhatSwapped() {
         assertEquals("Drawer moved to [3, 1].", MinimapRules.moved("Drawer", Cell(1, 1), Cell(3, 1), swapped = false))
         assertEquals("Swapped [1, 0] and [2, 0].", MinimapRules.moved("Stack", Cell(1, 0), Cell(2, 0), swapped = true))
+    }
+
+    @Test
+    fun loRsPanelAndBlocksAreNamed() {
+        assertEquals("LoR panel", MinimapRules.name("lor"))
+        assertEquals("LoR panel", MinimapRules.lowerName("lor"))
+        assertEquals("agent page", MinimapRules.lowerName("t3"))
+        val names = StackBlock.LOR.map { MinimapRules.blockTitle(StackBlock.bare(it)!!) }
+        assertEquals(listOf("Today", "Needs you", "Running", "Agent queue"), names)
+        assertEquals(names, StackBlock.LOR.map { MinimapRules.blockName(StackBlock.bare(it)!!) })
     }
 }

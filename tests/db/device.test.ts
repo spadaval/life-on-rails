@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { sql } from "../../src/db/client.js";
 import { deviceHome, devicePeople, deviceState, deviceTask, deviceTasks, deviceTimer, ingest } from "../../src/server/device.js";
@@ -10,6 +11,15 @@ import { dayTimeline } from "../../src/server/memory/timeline.js";
 import { addDays, localTimeOnDay, localYmd } from "../../src/shared/localTime.js";
 import { type Place, weatherCache } from "../../src/server/weather.js";
 import { dbDescribe } from "./helpers.js";
+
+/**
+ * Writes [reply] as one of the phone's recorded replies (`android/app/src/test/resources/lor/<name>`,
+ * read by its JVM tests) when LOR_RECORD_REPLIES is set:
+ * `LOR_RECORD_REPLIES=1 pnpm test:db tests/db/device.test.ts`.
+ */
+const record = (name: string, reply: unknown) => {
+  if (process.env.LOR_RECORD_REPLIES) writeFileSync(new URL(`../../android/app/src/test/resources/lor/${name}`, import.meta.url), JSON.stringify(reply) + "\n");
+};
 
 const obs = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -219,9 +229,15 @@ dbDescribe("device home: the agent's queue", () => {
     await queueTask(sql, claimed.id);
     await claimTask(sql, claimed.id, "thread-42");
     await completeTask(sql, done.id, { via: "agent" });
+    // Two flags beside the queue, the second a Google task, for the phone's recorded reply.
+    const form = await createIntent(sql, { type: "task", title: "Sign the form" }, ui);
+    await sql`UPDATE intent SET flagged_at = ${new Date("2026-10-14T15:00:00Z")}, flag_note = 'they need a yes' WHERE id = ${owners.id}`;
+    await sql`UPDATE intent SET flagged_at = ${new Date("2026-10-14T16:00:00Z")}, google_task_id = 'g-form' WHERE id = ${form.id}`;
 
     const home = await deviceHome();
     expect(JSON.parse(JSON.stringify(home))).toEqual(home);
+    record("home-queue.json", home);
+    expect(home.needs_you.map((n) => [n.title, n.google])).toEqual([["Call mum", false], ["Sign the form", true]]);
     // The claimed task changed last, yet the queued ones come first.
     expect(home.agent_queue).toEqual([
       { id: older.id, title: "Renew the passport", queued_at: "2026-10-14T10:00:00.000Z", thread: null },
@@ -305,6 +321,7 @@ dbDescribe("device tasks", () => {
 
     const r = await deviceTasks(now);
     expect(JSON.parse(JSON.stringify(r))).toEqual(r);
+    record("tasks.json", r);
     expect(r).toMatchObject({ now: now.toISOString(), timezone: "America/Los_Angeles", today: "2026-10-14", open: 5 });
     expect(r.tasks.map((t) => t.title)).toEqual(["Pay rent", "Hear back on the lease", "Order boxes", "Pack books", "Undated"]);
     expect(r.tasks[0]).toEqual({
@@ -326,6 +343,7 @@ dbDescribe("device tasks", () => {
 
     const r = await deviceTasks();
     expect(JSON.parse(JSON.stringify(r))).toEqual(r);
+    record("tasks-done.json", r);
     expect(r.tasks.map((t) => t.id)).toEqual([open.id]);
     expect(r.done_today).toEqual([
       { id: today.id, title: "Post the notice", due: null, overdue: false, waiting_on: null, parent: null, flagged: false, agent: false, google: false },
@@ -364,6 +382,7 @@ dbDescribe("device people", () => {
 
     const r = await devicePeople();
     expect(JSON.parse(JSON.stringify(r))).toEqual(r);
+    record("people.json", r);
     expect(r.today).toBe(today);
     expect(r.overdue).toEqual([
       { id: late.id, name: "Priya", kind: "person", last_at: daysAgo(40), last_via: "phone", overdue_by: 10, keep_in_touch_days: 30, birthday_in: null, turning: null },

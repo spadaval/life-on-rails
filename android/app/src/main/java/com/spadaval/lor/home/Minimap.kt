@@ -119,8 +119,13 @@ object MinimapRules {
         "stack" -> "Stack"
         "t3" -> "Agent page"
         "drawer" -> "Drawer"
+        "lor" -> "LoR panel"
         else -> type.replaceFirstChar { it.uppercase() }
     }
+
+    /** [name] inside a sentence: "agent page", but "LoR panel" keeps its capitals. */
+    fun lowerName(type: String): String = name(type).let { if (it.startsWith("LoR")) it else it.lowercase() }
+
 
     /** The apps an `apps` block holds, a folder's counted one by one. */
     fun appCount(items: List<LayoutItem>): Int = items.sumOf { if (it is Folder) it.apps.size else 1 }
@@ -131,6 +136,11 @@ object MinimapRules {
         is StackBlock.Apps -> appCount(block.items).let { if (it == 1) "1 app" else "$it apps" }
         is StackBlock.Dock -> "Dock"
         is StackBlock.Widget -> "Widget"
+        // LoR's blocks (lor-lz97), by the names the agent page gives their sections.
+        is StackBlock.Today -> "Today"
+        is StackBlock.NeedsYou -> "Needs you"
+        is StackBlock.Running -> "Running"
+        is StackBlock.T3Queue -> "Agent queue"
     }
 
     /**
@@ -206,6 +216,7 @@ object MinimapRules {
         is StackBlock.Apps -> "Apps"
         is StackBlock.Dock -> "Dock"
         is StackBlock.Widget -> label(block)
+        is StackBlock.Today, StackBlock.NeedsYou, StackBlock.Running, StackBlock.T3Queue -> blockName(block)
     }
 
     /** What the block list says under a block's name: an `apps` block's count ("12 apps"), a widget's height ("Widget, 180 dp"). */
@@ -628,8 +639,8 @@ private fun TileFace(tile: MinimapRules.Tile) {
 private fun Hint(locked: Boolean, mode: MapMode, layout: Layout, cancel: () -> Unit) {
     val text = when {
         locked -> "Home is locked. Unlock it to change the grid."
-        mode is MapMode.Adding -> "Tap an empty cell to add a ${MinimapRules.name(mode.type).lowercase()}."
-        mode is MapMode.Moving -> "Tap a cell to move the ${layout.panelAt(mode.from)?.let { MinimapRules.name(it.type).lowercase() } ?: "panel"} there. A panel there swaps with it."
+        mode is MapMode.Adding -> "Tap an empty cell to add a ${MinimapRules.lowerName(mode.type)}."
+        mode is MapMode.Moving -> "Tap a cell to move the ${layout.panelAt(mode.from)?.let { MinimapRules.lowerName(it.type) } ?: "panel"} there. A panel there swaps with it."
         else -> "Tap a panel for its actions. Hold one to move it."
     }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

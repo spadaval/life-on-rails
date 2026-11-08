@@ -38,9 +38,10 @@ import kotlinx.coroutines.delay
 /**
  * What the bar says; a new one (even with the same words) restarts its time. Without [undoable]
  * it is a refusal or a notice (launcher polish 6.2: the launcher shows no toasts), and [failed]
- * draws 3.6's coral dot for machinery that failed.
+ * draws 3.6's coral dot for machinery that failed. [undo] is what its Undo does when it isn't the
+ * screen's own (a layout edit's): a LoR write's inverse write (lor-rz50).
  */
-class UndoMessage(val text: String, val undoable: Boolean = true, val failed: Boolean = false)
+class UndoMessage(val text: String, val undoable: Boolean = true, val failed: Boolean = false, val undo: (() -> Unit)? = null)
 
 /** The bar's state, held by the screen that shows it. */
 class UndoBarState {
@@ -83,7 +84,7 @@ fun UndoBar(state: UndoBarState, onUndo: () -> Unit, modifier: Modifier = Modifi
             modifier = Modifier
                 .clickable {
                     state.message = null
-                    onUndo()
+                    message.undo?.invoke() ?: onUndo()
                 }
                 .padding(horizontal = 16.dp, vertical = 14.dp),
         )

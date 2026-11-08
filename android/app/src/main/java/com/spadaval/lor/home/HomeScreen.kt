@@ -140,6 +140,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.spadaval.lor.agent.AgentPage
+import com.spadaval.lor.lor.LorBlock
+import com.spadaval.lor.lor.LorPanel
 import com.spadaval.lor.collect.LaunchFrom
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -429,6 +431,15 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     }
     // The open folder as drawn now, so the next edit (a rename, an added app) is matched against it.
     SideEffect { if (folder != null && ui.folder != OpenFolder.of(folder)) ui.folder = OpenFolder.of(folder) }
+    // A LoR write from a panel or block takes home's one Undo bar, as a layout edit does (lor-rz50).
+    val lorBar = (LocalContext.current.applicationContext as com.spadaval.lor.LorApp).writes.bar
+    // A write that failed takes its line back, unless something else has the bar by now.
+    val lastLorBar = remember { arrayOfNulls<UndoMessage>(1) }
+    LaunchedEffect(lorBar) {
+        if (lorBar != null) ui.undo.message = lorBar
+        else if (ui.undo.message === lastLorBar[0]) ui.undo.message = null
+        lastLorBar[0] = lorBar
+    }
     // An edit that empties the open folder removes it, so the panel closes.
     LaunchedEffect(ui.folder, folder, placed) { if (ui.folder != null && folder == null && placed != null) ui.folder = null }
     // The grid drawn (lor-qdmy): the file's, else the default grid with nothing on home yet.
@@ -653,6 +664,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
                 GridCells(grid) { p ->
                     when (p) {
                         is Panel.T3 -> AgentPage()
+                        is Panel.Lor -> LorPanel()
                         // The drawer, wherever the finger or its settle has it (launcher polish 7.1).
                         is Panel.Drawer -> Box(
                             Modifier.fillMaxSize().graphicsLayer {
@@ -808,6 +820,7 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
                             StackBlock.Dock -> {}
                             is StackBlock.Apps -> apps(BlockAt(cell, i))
                             is StackBlock.Widget -> key(block.id) { WidgetBlock(block, panelHeight, ui, home) }
+                            StackBlock.Today, StackBlock.NeedsYou, StackBlock.Running, StackBlock.T3Queue -> key(block.type) { LorBlock(block, ui.grid) }
                         }
                     }
                     if (list.none { it.value is StackBlock.Apps }) Spacer(Modifier.layoutId(Fill))
@@ -1109,8 +1122,8 @@ private fun RowDots(grid: GridPlace, of: Cell, ink: WallInk, heightPx: () -> Int
     val lit by remember(grid, of) {
         derivedStateOf { grid.screenOf(grid.move?.takeIf { it.way.horizontal && grid.follow.position >= 0.5f }?.to ?: of) }
     }
-    // On the agent page the dots sit on its dark veil, not the wallpaper (6.8: dark ink vanished there).
-    val mark = if (grid.panel(lit.left) is Panel.T3) SurfaceInk.mark else ink.mark
+    // On the agent page and the lor panel the dots sit on their dark veil, not the wallpaper (6.8: dark ink vanished there).
+    val mark = grid.panel(lit.left).let { if (it is Panel.T3 || it is Panel.Lor) SurfaceInk.mark else ink.mark }
     Row(modifier.offset { IntOffset(0, grid.offsetOf(of, 0, heightPx())?.y ?: 0) }, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         row.forEach { s ->
             val color = if (s == lit) mark.copy(alpha = 0.8f) else mark.copy(alpha = 0.5f)

@@ -15,13 +15,19 @@ data class DeviceHome(
     val day: Day,
     /** Current conditions where the phone last was (decision lor-g4ta); null without a key, a place, or after a failed fetch, and from an older server. */
     val weather: Weather?,
+    /** LoR's work queue for the agent (`agent_queue`): queued tasks first, oldest first, then those being worked; at most 10. Empty from an older server. */
+    val agentQueue: List<AgentTask> = emptyList(),
 ) {
     data class One(val kicker: String, val text: String, val why: String?) {
         /** `pickOne` names the running timer this way; the page draws the timer from [Day.running] instead. */
         val isTimer: Boolean get() = kicker.startsWith("Running since")
     }
 
-    data class Need(val id: String, val title: String, val note: String?)
+    /** A flagged task; [google] when it lives in Google Tasks, where it is done. */
+    data class Need(val id: String, val title: String, val note: String?, val google: Boolean = false)
+
+    /** A task given to the agent: [queuedAt] while it waits for the next run, [thread] once a run works it in T3. */
+    data class AgentTask(val id: String, val title: String, val queuedAt: Instant?, val thread: String?)
 
     data class Day(
         val wakeStart: Instant,
@@ -46,7 +52,7 @@ data class DeviceHome(
                 now = time(o.getString("now")),
                 zone = ZoneId.of(o.getString("timezone")),
                 one = o.optJSONObject("one")?.let { One(it.getString("kicker"), it.getString("text"), str(it, "why")) },
-                needsYou = List(needs.length()) { i -> needs.getJSONObject(i).let { Need(it.getString("id"), it.getString("title"), str(it, "note")) } },
+                needsYou = List(needs.length()) { i -> needs.getJSONObject(i).let { Need(it.getString("id"), it.getString("title"), str(it, "note"), it.optBoolean("google")) } },
                 day = Day(
                     wakeStart = time(day.getString("wake_start")),
                     wakeEnd = time(day.getString("wake_end")),
@@ -57,12 +63,17 @@ data class DeviceHome(
                     },
                 ),
                 weather = o.optJSONObject("weather")?.let { Weather(it.getDouble("temp_c"), it.getString("condition"), it.getBoolean("is_day"), time(it.getString("observed_at"))) },
+                agentQueue = o.optJSONArray("agent_queue")?.let { q ->
+                    List(q.length()) { i ->
+                        q.getJSONObject(i).let { AgentTask(it.getString("id"), it.getString("title"), str(it, "queued_at")?.let(::time), str(it, "thread")) }
+                    }
+                }.orEmpty(),
             )
         }
 
         /** An ISO time with `Z` or an offset. */
-        private fun time(s: String): Instant = OffsetDateTime.parse(s).toInstant()
+        internal fun time(s: String): Instant = OffsetDateTime.parse(s).toInstant()
 
-        private fun str(o: JSONObject, key: String): String? = if (o.isNull(key)) null else o.optString(key)
+        internal fun str(o: JSONObject, key: String): String? = if (o.isNull(key)) null else o.optString(key)
     }
 }
