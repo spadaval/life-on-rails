@@ -40,10 +40,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -112,61 +109,42 @@ fun AgentPage() {
     val status by model.connection.status.collectAsState()
     val shell by model.connection.shell.collectAsState()
 
-    // The queue: T3's state, what is running, and what needs Sumeet, with the notes on what can't be seen.
-    val queue = @Composable {
-        model.notice?.let { Text(it, style = Small.copy(color = Bad), modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
-        if (status == T3Connection.Status.NotPaired || status is T3Connection.Status.Rejected) PairCard(model.connection, status, Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
-        else T3State(status, shell.loaded)
-        Running(model)
-        NeedsYou(model)
-    }
-
-    // Held here, so a fold, which changes the form, keeps the page's scroll: the single column takes
-    // the place read last ([FormScroll], lor-ozj2), and an unfold gives it back.
+    // One column for both forms: the narrow page, and the wide form's left column, which adds the
+    // Threads section under it. Held here, so a fold (which changes the form in place) keeps its place.
     val scroll = rememberScrollState()
-    val queueScroll = rememberScrollState()
-    val narrowScroll = rememberScrollState()
-    // Today's height in the single column, from its last layout.
-    var todayPx by remember { mutableIntStateOf(0) }
     // A dark veil over the wallpaper, as the mockup's page has, so the text reads on any wallpaper.
     BoxWithConstraints(Modifier.fillMaxSize().background(Veil).cellInsetsPadding()) {
-        val full = maxWidth >= 600.dp
-        val was = remember { booleanArrayOf(full) }
-        LaunchedEffect(full) {
-            if (was[0] == full) return@LaunchedEffect
-            was[0] = full
-            // After the new form's first layout, so each column knows how far it can scroll.
-            withFrameNanos {}
-            if (full) {
-                val (left, queue) = FormScroll.full(narrowScroll.value, todayPx, narrowScroll.value == narrowScroll.maxValue)
-                scroll.scrollTo(left)
-                queueScroll.scrollTo(queue)
-            } else {
-                narrowScroll.scrollTo(FormScroll.narrow(scroll.value, queueScroll.value, todayPx, queueScroll.value == queueScroll.maxValue))
-            }
-        }
-        // The columns end at the keyboard (lor-sqfe: home's window doesn't pan), so a focused field,
-        // an answer on a queue card or the pairing link, scrolls into view above it.
-        Box(Modifier.fillMaxSize().imePadding()) {
-            if (full) {
-                // The full layout (decision note on lor-ph30, until lor-clgw): Today left, the queue right,
-                // each scrolling on its own and taking a vertical swipe until its edge (lor-qdmy).
-                Row(Modifier.fillMaxSize()) {
-                    ScrollColumn(scroll, Modifier.weight(1f), bottom = 24.dp) { Today(model) }
-                    ScrollColumn(queueScroll, Modifier.weight(1f), bottom = 120.dp) { queue() }
+        val wide = maxWidth >= 600.dp
+        val leftWidth = minOf(LEFT_MAX, maxWidth / 2)
+        // The thread the wide form's right column shows (lor-iabt): the one chosen, else the first
+        // T3 card's, else the most recently updated.
+        val cards = AgentQueue.cards(shell.threads, model.answered, model.lor?.now ?: Instant.now())
+        val shown = if (wide) ThreadChoice.shown(shell.threads, cards) else null
+        val choose: ((T3Thread) -> Unit)? = if (wide) ({ ThreadChoice.chosen = it.id }) else null
+        // The column ends at the keyboard (lor-sqfe: home's window doesn't pan), so a focused field,
+        // an answer on a queue card, the pairing link or the reply box, sits above it.
+        Row(Modifier.fillMaxSize().imePadding()) {
+            Box(if (wide) Modifier.width(leftWidth).fillMaxHeight() else Modifier.fillMaxSize()) {
+                ScrollColumn(scroll, Modifier.fillMaxWidth(), bottom = 120.dp) {
+                    Today(model)
+                    model.notice?.let { Text(it, style = Small.copy(color = Bad), modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
+                    if (status == T3Connection.Status.NotPaired || status is T3Connection.Status.Rejected) PairCard(model.connection, status, Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
+                    else T3State(status, shell.loaded)
+                    Running(model, choose = choose, chosen = shown?.id)
+                    NeedsYou(model, choose = choose, chosen = shown?.id)
+                    if (wide) Threads(ThreadChoice.others(shell.threads, cards), shown?.id, choose!!)
                 }
-            } else {
-                ScrollColumn(narrowScroll, Modifier.fillMaxWidth(), bottom = 120.dp) {
-                    Column(Modifier.onSizeChanged { todayPx = it.height }) { Today(model) }
-                    queue()
-                }
+                // At the column's bottom-end corner (6.8: it floated mid-screen on the Fold), and
+                // under the keyboard rather than over the field being typed in.
+                SendButton(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 18.dp)) { QuickSend.open(context, QuickSend.From.AGENT) }
             }
+            if (wide) ThreadColumn(model, shown, cards.firstOrNull { it.thread.id == shown?.id }, Modifier.weight(1f).fillMaxHeight())
         }
-        // At the panel's bottom-end corner, whatever its width (6.8: it floated mid-screen on the Fold),
-        // and under the keyboard rather than over the field being typed in.
-        SendButton(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 18.dp)) { QuickSend.open(context, QuickSend.From.AGENT) }
     }
 }
+
+/** The wide form's left column is at most this wide; the chosen thread takes the rest. */
+private val LEFT_MAX = 420.dp
 
 /** A column of the page that scrolls on its own; its scroll takes a vertical swipe until its edge, then home's grid moves (lor-qdmy). */
 @Composable
@@ -193,10 +171,18 @@ internal fun rememberAgentModel(t3: Boolean, lists: Boolean = false): AgentModel
 /**
  * T3's turns running now, at most [max] then "N more" ([More]): the agent page's Running section,
  * where it shows only with something running, and the `running` block ([block]), which always
- * shows and says why it is empty.
+ * shows and says why it is empty. In the wide form a row's tap [choose]s its thread for the right
+ * column, and the [chosen] one carries the selection.
  */
 @Composable
-internal fun Running(model: AgentModel, max: Int? = null, more: (() -> Unit)? = null, block: Boolean = false) {
+internal fun Running(
+    model: AgentModel,
+    max: Int? = null,
+    more: (() -> Unit)? = null,
+    block: Boolean = false,
+    choose: ((T3Thread) -> Unit)? = null,
+    chosen: String? = null,
+) {
     val status by model.connection.status.collectAsState()
     val shell by model.connection.shell.collectAsState()
     val running = AgentQueue.running(shell.threads)
@@ -204,7 +190,12 @@ internal fun Running(model: AgentModel, max: Int? = null, more: (() -> Unit)? = 
     val seen = status == T3Connection.Status.Live && shell.loaded
     SectionHeader("Running", if (seen || running.isNotEmpty()) running.size.toString() else null)
     val (shown, hidden) = LorRows.cap(running, max)
-    shown.forEach { key(it.id) { RunningRow(it) { model.openThread(it.id, LaunchFrom.AGENT_CARD) } } }
+    shown.forEach { t ->
+        key(t.id) {
+            if (choose != null) ThreadRow(t, t.id == chosen) { choose(t) }
+            else RunningRow(t) { model.openThread(t.id, LaunchFrom.AGENT_CARD) }
+        }
+    }
     if (hidden > 0) More(hidden, more)
     if (running.isEmpty()) {
         Unseen(
@@ -221,10 +212,19 @@ internal fun Running(model: AgentModel, max: Int? = null, more: (() -> Unit)? = 
 /**
  * The agent page's Needs you queue: T3's approvals, questions and failures, then LoR's flags, with
  * its count, all-clear and unseen notes ([AgentStates]); at most [max] cards, then "N more"
- * ([More]). The agent page shows it whole; the `needs-you` block ([block]) shows three.
+ * ([More]). The agent page shows it whole; the `needs-you` block ([block]) shows three. In the wide
+ * form a T3 card's text [choose]s its thread, and the [chosen] one's card carries the selection; a
+ * LoR flag has no thread, so its text still opens the dashboard.
  */
 @Composable
-internal fun NeedsYou(model: AgentModel, max: Int? = null, more: (() -> Unit)? = null, block: Boolean = false) {
+internal fun NeedsYou(
+    model: AgentModel,
+    max: Int? = null,
+    more: (() -> Unit)? = null,
+    block: Boolean = false,
+    choose: ((T3Thread) -> Unit)? = null,
+    chosen: String? = null,
+) {
     val status by model.connection.status.collectAsState()
     val shell by model.connection.shell.collectAsState()
     val live = status == T3Connection.Status.Live
@@ -246,7 +246,11 @@ internal fun NeedsYou(model: AgentModel, max: Int? = null, more: (() -> Unit)? =
     val count = cards.size + needs.size
     val whole = lorSource == AgentStates.Source.SEEN && t3Source == AgentStates.Source.SEEN
     SectionHeader("Needs you", if (whole || count > 0) count.toString() else null)
-    val items = cards.map { it.key to @Composable { T3QueueCard(it, model, live) } } +
+    val items = cards.map { c ->
+        c.key to @Composable {
+            T3QueueCard(c, model, live, selected = c.thread.id == chosen, onText = choose?.let { f -> { f(c.thread) } })
+        }
+    } +
         // LoR's flags greyed while they aren't current (launcher polish 3.3's rule); T3's cards are live.
         needs.map { "lor:${it.id}" to @Composable { Box(Modifier.alpha(if (lorSource == AgentStates.Source.SEEN) 1f else 0.6f)) { LorFlagCard(model, it) } } }
     val (shown, hidden) = LorRows.cap(items, max)
@@ -543,11 +547,16 @@ private fun RunningRow(thread: T3Thread, open: () -> Unit) {
     }
 }
 
+/**
+ * A T3 card. [onText] is what a tap on its text does (the wide form chooses the thread; elsewhere
+ * nothing); [selected] draws the selection; [expanded] opens a question's choices from the start
+ * (the thread column, which shows what the thread waits on in full).
+ */
 @Composable
-private fun T3QueueCard(card: T3Card, model: AgentModel, live: Boolean) {
+internal fun T3QueueCard(card: T3Card, model: AgentModel, live: Boolean, selected: Boolean = false, onText: (() -> Unit)? = null, expanded: Boolean = false) {
     val busy = card.key in model.busy
     val ready = live && !busy
-    var open by remember(card.key) { mutableStateOf(false) }
+    var open by remember(card.key) { mutableStateOf(expanded) }
     val color = if (card.kind == T3Card.Kind.FAILED) Bad else Or
     val detail = model.failures[card.key]
         ?: when (card.kind) {
@@ -560,6 +569,7 @@ private fun T3QueueCard(card: T3Card, model: AgentModel, live: Boolean) {
         kind = card.kind.label, kindColor = color, where = card.thread.projectTitle, title = card.thread.title,
         detail = detail, detailColor = if (card.key in model.failures) Bad else Mute,
         below = if (card.kind == T3Card.Kind.QUESTION && open) ({ Choices(card, model, live, busy) }) else null,
+        onText = onText, textLabel = "Show the thread", selected = selected,
     ) {
         when (card.kind) {
             T3Card.Kind.APPROVAL -> {
@@ -638,6 +648,8 @@ private fun QueueCard(
     detailColor: Color = Mute,
     below: (@Composable () -> Unit)? = null,
     onText: (() -> Unit)? = null,
+    textLabel: String = tileLabel,
+    selected: Boolean = false,
     actions: @Composable () -> Unit,
 ) {
     Column(
@@ -645,6 +657,7 @@ private fun QueueCard(
             .padding(horizontal = 10.dp, vertical = 3.dp)
             .fillMaxWidth()
             .framedPanel(StateFill)
+            .then(if (selected) Modifier.selection(Chamfer) else Modifier)
             .padding(start = 8.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -664,7 +677,7 @@ private fun QueueCard(
             BesideOrUnder(Modifier.weight(1f)) {
                 Column(
                     Modifier
-                        .then(if (onText != null) Modifier.clickable(onClickLabel = tileLabel, onClick = onText) else Modifier)
+                        .then(if (onText != null) Modifier.clickable(onClickLabel = textLabel, onClick = onText) else Modifier)
                         .padding(horizontal = 10.dp),
                 ) {
                     Text(

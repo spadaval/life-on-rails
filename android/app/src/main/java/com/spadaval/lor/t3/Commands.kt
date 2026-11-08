@@ -39,6 +39,12 @@ data class Question(
 }
 
 /**
+ * A user or assistant message of a thread (T3's `OrchestrationV2ConversationMessage`), as the T3
+ * panel's thread column shows it: plain text, with who wrote it ([fromUser]) and when ([createdAt], ISO).
+ */
+data class ThreadMessage(val id: String, val fromUser: Boolean, val text: String, val createdAt: String, val streaming: Boolean)
+
+/**
  * What a launch uses when the caller names no model or runtime mode: the project's settings, then the server's.
  * [envMode] is `local` or `worktree` as the project override or the server sets it, or null when neither does
  * (T3 then reads the project's `.t3` file, which the launcher can't see, and falls back to `local`).
@@ -193,6 +199,21 @@ object Commands {
             }
         }
         return emptyList()
+    }
+
+    /**
+     * The last [last] messages of a `getThreadProjection` reply, oldest first: the user's and the
+     * assistant's, leaving out system messages and those with no text yet (an assistant message
+     * just opened for streaming). A streaming message with text is kept, as far as it has come.
+     */
+    fun messages(projection: Any?, last: Int = 6): List<ThreadMessage> {
+        val list = (projection as JSONObject).optJSONArray("messages") ?: return emptyList()
+        val kept = (0 until list.length()).map { list.getJSONObject(it) }
+            .filter { it.optString("role") in setOf("user", "assistant") && it.optString("text").isNotBlank() }
+            .map { ThreadMessage(it.getString("id"), it.getString("role") == "user", it.getString("text"), it.getString("createdAt"), it.optBoolean("streaming")) }
+            // ISO times in UTC sort as text; the sort is stable for messages made in the same instant.
+            .sortedBy { it.createdAt }
+        return kept.takeLast(last)
     }
 
     /**

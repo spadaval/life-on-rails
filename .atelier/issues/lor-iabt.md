@@ -12,9 +12,9 @@ relationships:
   relates: []
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "The T3 panel's wide form: every thread beside the chosen one, with a reply box"
-updated_at: "2026-11-07T22:17:51.043850209+00:00"
+updated_at: "2026-11-08T09:41:51.185371833+00:00"
 ---
 
 ## Goal
@@ -29,8 +29,8 @@ On the unfolded `T3_Fold_API35`, with the `t3` panel full, against the test serv
 - [ ] The right column shows the thread's title, project and state; its last 6 messages, user and assistant, from `orchestration.getThreadProjection`'s `messages` (not system ones), oldest at top, each as plain text with who wrote it and when; and what the thread waits on, with the card's actions (Approve and Deny, or the question's choices). An approval approved there clears from the left column too. A JVM test decodes a recorded projection reply into those messages, leaving out system and streaming-empty ones.
 - [ ] The thread is read again when its shell row's `updatedAt` changes, one read at a time (a change during a read gives one more read after it), and not otherwise. Shown by a `T3Thread` log line per read while the Replay thread runs. The handoff names the size of the projection reply for the longest thread on the scratch server.
 - [ ] The reply box at the right column's bottom sends to the chosen thread with `T3Connection.send` (`message.dispatch`), in the process scope, so leaving the panel doesn't cancel it: a reply typed to an idle thread starts its turn, and the scratch server's web UI shows the message. While sending, the box can't send again; a failure shows its reason under the box and keeps the text. With the keyboard up, the box rests on it and the thread's end stays visible above (lor-sqfe's `adjustResize`). Screenshots.
-- [ ] The decision note on lor-ph30 about the agent page's interim full layout is marked as replaced by this item, and the spec's agent page paragraph describes the wide form.
-- [ ] `assembleDebug testDebugUnitTest` passes on boat.
+- [x] The decision note on lor-ph30 about the agent page's interim full layout is marked as replaced by this item, and the spec's agent page paragraph describes the wide form.
+- [x] `assembleDebug testDebugUnitTest` passes on boat.
 
 ## Scope
 
@@ -52,3 +52,27 @@ On the unfolded `T3_Fold_API35`, with the `t3` panel full, against the test serv
 - 2026-11-07 [decision] The chosen thread's end is read with orchestration.getThreadProjection when the thread is chosen and again when its shell row's updatedAt changes, not by orchestration.subscribeThread; messages are shown as plain text.
   Reason: The app already calls getThreadProjection for questions and already receives each thread's updatedAt in the shell, so no new subscription or stream decoding is needed. Plain text keeps a Markdown renderer out of the launcher; the T3 app, a tap away, renders the thread in full. If a long thread's projection proves slow on the real Fold (lor-l2zj measures it), subscribeThread or a smaller read is the follow-up.
   Rejected: orchestration.subscribeThread: a second live stream per chosen thread and its event decoding, before a read on change is shown to be too slow
+- 2026-11-08 [decision] The Threads section lists the listed threads not already shown above it (not a T3 card's thread in Needs you, not in Running), so each thread is on the left once. In the wide form a Running row's tap chooses its thread like a card's text; the T3 app is reached from the thread column's Open in T3 and from a card's icon.
+  Reason: The Done when line asks for 'the other listed threads' and for a row's text to choose; a Running row is all text with no icon, so Open in T3 moves to the chosen thread's head, where it opens the thread being read.
+  Rejected: Every listed thread in Threads: the approval and running threads twice on one screen
+- 2026-11-08 [decision] The narrow page and the wide form's left column share one scroll state, and FormScroll (lor-ozj2's mapping between the two forms' scrolls) is deleted with its test.
+  Reason: The left column is now the narrow column plus Threads, so the same offset means the same place in both forms; a fold keeps the place with no mapping. FormScroll mapped between Today-left/queue-right columns that no longer exist.
+  Rejected: Keep FormScroll and map the old two-column offsets: maps a layout this item removes
+
+## Report
+
+Built, not yet checked on an emulator: two of seven Done when lines hold. The code is complete for every line and `assembleDebug testDebugUnitTest` passed on boat (383 tests, 0 failures; APK at `/tmp/lor-verify/lor-wt-clgw/iabt-b2/`). `CommandsTest.theThreadColumnReadsTheLastMessagesOldestFirst` decodes a recorded projection (`projection-messages.ndjson`) into the user's and the assistant's last messages, oldest first. `ThreadChoiceTest` covers which thread is shown and what Threads lists. The lor-ph30 note and the spec's agent page paragraph are done. The five emulator lines are unticked: `T3_Phone_API35` was held by another agent-device session (`t3-76f76f26ce68ff3d5042cda3`, idle since 03:56), which the rules forbid reusing or closing, and the Fold can't be started while that emulator runs. No receipts are recorded yet.
+
+### Decisions
+
+- Two decision notes of 2026-11-08: what Threads lists (threads not already in Running or Needs you, with a Running row's tap choosing and Open in T3 in the thread's head), and one shared scroll for the narrow page and the left column, which deletes `FormScroll` and its test (outside the listed Scope, in `AgentStates.kt`).
+
+### Surprises
+
+- The recorded projection holds no system message and no streaming-empty one; none exist on the scratch server and T3 creates system messages rarely. The JVM test adds one of each, plus a part-streamed message, in a recorded message's shape, and says so.
+- The longest thread on the scratch server (47 listed threads) is "Back up the notes", 5 messages: its `getThreadProjection` reply is 134,979 characters of JSON (about 135 KB), measured by a recorder script on this machine, not on the device. The next largest are about 58 KB.
+
+### Open items
+
+- The emulator checks for the first five lines, on `T3_Fold_API35` and `T3_Phone_API35`, with the scratch T3 server (port 16021, PID in `/tmp/lor-verify/lor-wt-clgw/t3/dev.pid`) and the Claude Haiku thread "iabt running turn".
+

@@ -14,6 +14,8 @@ import org.junit.Test
  *   a follow-up message to that idle thread, then approving the already answered question (refused).
  * - `launch.ndjson`: launching a Replay `approval` thread in `approval-required` mode.
  * - `projection-question.ndjson`: `getThreadProjection` of a thread waiting on a `question`.
+ * - `projection-messages.ndjson`: `getThreadProjection` of a Claude Haiku thread with five messages, the
+ *   user's first, then the assistant's (lor-iabt).
  * - `server-config.ndjson`: `server.getConfig`, its reply cut to `settings`, with a server default
  *   model and one project override set.
  */
@@ -121,6 +123,36 @@ class CommandsTest {
         assertEquals("New thread", Commands.title("   "))
         val long = "a".repeat(49) + "😀" + "tail"
         assertEquals("a".repeat(49) + "😀...", Commands.title(long))
+    }
+
+    @Test
+    fun theThreadColumnReadsTheLastMessagesOldestFirst() {
+        val reply = exchanges("projection-messages.ndjson").single().second.value as JSONObject
+        val messages = Commands.messages(reply)
+        assertEquals(listOf(true, false, false, false, false), messages.map { it.fromUser })
+        assertEquals("I'll run the sleep command 8 times sequentially.", messages[1].text)
+        assertEquals("2026-11-08T07:54:52.536Z", messages[0].createdAt)
+        assertEquals(messages.map { it.createdAt }.sorted(), messages.map { it.createdAt })
+        assertTrue(messages.none { it.streaming })
+        // The last few, still oldest first.
+        assertEquals(messages.takeLast(3), Commands.messages(reply, last = 3))
+
+        // The recording holds no system message and none still empty while streaming, so add one of
+        // each, and a streaming message with some text, in the shape of a recorded message; and list
+        // them newest first, as order on the wire isn't promised.
+        val more = JSONObject(reply.toString())
+        val list = more.getJSONArray("messages")
+        val shape = list.getJSONObject(1).toString()
+        fun extra(id: String, at: String) = JSONObject(shape).put("id", id).put("createdAt", at)
+        list.put(extra("system", "2026-11-08T09:40:00.000Z").put("role", "system").put("text", "Context compacted."))
+        list.put(extra("opening", "2026-11-08T09:41:00.000Z").put("text", "").put("streaming", true))
+        list.put(extra("partial", "2026-11-08T09:42:00.000Z").put("text", "Half wri").put("streaming", true))
+        val reversed = JSONArray(List(list.length()) { list.get(list.length() - 1 - it) })
+        more.put("messages", reversed)
+        val decoded = Commands.messages(more)
+        assertEquals(messages.map { it.id } + "partial", decoded.map { it.id })
+        assertTrue(decoded.last().streaming)
+        assertEquals("Half wri", decoded.last().text)
     }
 
     @Test
