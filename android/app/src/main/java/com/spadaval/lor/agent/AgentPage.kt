@@ -241,7 +241,8 @@ internal fun NeedsYou(model: AgentModel, max: Int? = null, more: (() -> Unit)? =
     val whole = lorSource == AgentStates.Source.SEEN && t3Source == AgentStates.Source.SEEN
     SectionHeader("Needs you", if (whole || count > 0) count.toString() else null)
     val items = cards.map { it.key to @Composable { T3QueueCard(it, model, live) } } +
-        needs.map { "lor:${it.id}" to @Composable { LorFlagCard(model, it) } }
+        // LoR's flags greyed while they aren't current (launcher polish 3.3's rule); T3's cards are live.
+        needs.map { "lor:${it.id}" to @Composable { Box(Modifier.alpha(if (lorSource == AgentStates.Source.SEEN) 1f else 0.6f)) { LorFlagCard(model, it) } } }
     val (shown, hidden) = LorRows.cap(items, max)
     shown.forEach { (k, card) -> key(k) { card() } }
     if (hidden > 0) More(hidden, more)

@@ -8,10 +8,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.spadaval.lor.agent.AgentModel
+import com.spadaval.lor.agent.Clock
 import com.spadaval.lor.agent.NeedsYou
 import com.spadaval.lor.agent.Running
 import com.spadaval.lor.agent.Small
 import com.spadaval.lor.agent.Today
+import com.spadaval.lor.agent.Unreachable
 import com.spadaval.lor.agent.rememberAgentModel
 import com.spadaval.lor.home.GridPlace
 import com.spadaval.lor.home.Panel
@@ -32,9 +34,9 @@ internal fun LorBlock(block: StackBlock, grid: GridPlace) {
     Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp).fillMaxWidth().framedPanel(StateFill).padding(bottom = 10.dp)) {
         when (block) {
             StackBlock.Today -> rememberAgentModel(t3 = false).let { Today(it); Notice(it) }
-            StackBlock.NeedsYou -> rememberAgentModel(t3 = true).let { NeedsYou(it, max = 3, more = goTo<Panel.T3>(grid), block = true); Notice(it) }
+            StackBlock.NeedsYou -> rememberAgentModel(t3 = true).let { NeedsYou(it, max = 3, more = goTo<Panel.T3>(grid), block = true); Stale(it); Notice(it) }
             StackBlock.Running -> rememberAgentModel(t3 = true).let { Running(it, max = 3, more = goTo<Panel.T3>(grid), block = true); Notice(it) }
-            StackBlock.T3Queue -> rememberAgentModel(t3 = false).let { AgentTasks(it, max = 5, more = goTo<Panel.Lor>(grid)); Notice(it) }
+            StackBlock.T3Queue -> rememberAgentModel(t3 = false).let { AgentTasks(it, max = 5, more = goTo<Panel.Lor>(grid)); Stale(it); Notice(it) }
             else -> {}
         }
     }
@@ -43,6 +45,18 @@ internal fun LorBlock(block: StackBlock, grid: GridPlace) {
 /** A move to the layout's panel of type [P], or null when it has none. */
 private inline fun <reified P : Panel> goTo(grid: GridPlace): (() -> Unit)? =
     grid.panels.firstOrNull { it is P }?.let { p -> { grid.goTo(p.at, animate = true) } }
+
+/**
+ * Why LoR can't be read and the time of what the block still shows, with Retry, as `today` says it
+ * (launcher polish 3.3's rule): each block may stand alone in a stack, so each says it. Nothing
+ * when LoR was read, or when nothing was ever read (the block's own line says so then).
+ */
+@Composable
+private fun Stale(model: AgentModel) {
+    val lor = model.lor ?: return
+    val error = model.lorError ?: return
+    Unreachable("$error Showing what it said at ${lor.now.atZone(lor.zone).format(Clock)}.", model)
+}
 
 /** What the block couldn't do outside a row, such as open T3. */
 @Composable
