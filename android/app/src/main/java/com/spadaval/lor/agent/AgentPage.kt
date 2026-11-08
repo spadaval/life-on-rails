@@ -42,6 +42,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +57,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -557,29 +559,64 @@ private fun QueueCard(
                 Modifier
                     // A 48 dp touch target around the 32 dp tile (3.6's critique).
                     .minimumInteractiveComponentSize()
-                    .size(32.dp)
+                    // 32 dp, wider and taller when a large font needs it, so "LoR" is never clipped.
+                    .widthIn(min = 32.dp)
+                    .heightIn(min = 32.dp)
                     .background(tileColor, RectangleShape)
                     .clickable(role = Role.Button, onClickLabel = tileLabel, onClick = onTile)
-                    .semantics { contentDescription = tileLabel },
+                    .semantics { contentDescription = tileLabel }
+                    .padding(horizontal = 4.dp),
                 contentAlignment = Alignment.Center,
-            ) { Text(tile, style = Type.label.copy(color = Txt)) }
-            Column(
-                Modifier.weight(1f)
-                    .then(if (onText != null) Modifier.clickable(onClickLabel = tileLabel, onClick = onText) else Modifier)
-                    .padding(horizontal = 10.dp),
-            ) {
-                Text(
-                    buildString { append(kind); append(" · "); append(where) },
-                    style = Small.copy(color = kindColor),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(title, style = Body.copy(fontSize = 13.5.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                detail?.let { Text(it, style = Small.copy(color = detailColor), maxLines = 2, overflow = TextOverflow.Ellipsis) }
+            ) { Text(tile, style = Type.label.copy(color = Txt), maxLines = 1, softWrap = false) }
+            BesideOrUnder(Modifier.weight(1f)) {
+                Column(
+                    Modifier
+                        .then(if (onText != null) Modifier.clickable(onClickLabel = tileLabel, onClick = onText) else Modifier)
+                        .padding(horizontal = 10.dp),
+                ) {
+                    Text(
+                        buildString { append(kind); append(" · "); append(where) },
+                        style = Small.copy(color = kindColor),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(title, style = Body.copy(fontSize = 13.5.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    detail?.let { Text(it, style = Small.copy(color = detailColor), maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) { actions() }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) { actions() }
         }
         below?.invoke()
+    }
+}
+
+/**
+ * A card's text and its actions: side by side while that leaves the text at least 100 dp times the
+ * font scale, else the actions under the text at its end, so a large font or a narrow cell
+ * (a block in a stack) never squeezes the text into a column a word wide.
+ */
+@Composable
+private fun BesideOrUnder(modifier: Modifier, content: @Composable () -> Unit) {
+    val minText = 100.dp * LocalDensity.current.fontScale
+    Layout(content, modifier) { measurables, constraints ->
+        val (text, actions) = measurables
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val a = actions.measure(loose)
+        val width = constraints.maxWidth
+        if (width - a.width >= minText.roundToPx()) {
+            val t = text.measure(loose.copy(minWidth = width - a.width, maxWidth = width - a.width))
+            val h = maxOf(t.height, a.height)
+            layout(width, h) {
+                t.placeRelative(0, (h - t.height) / 2)
+                a.placeRelative(width - a.width, (h - a.height) / 2)
+            }
+        } else {
+            val t = text.measure(loose.copy(minWidth = width, maxWidth = width))
+            layout(width, t.height + a.height) {
+                t.placeRelative(0, 0)
+                a.placeRelative(width - a.width, t.height)
+            }
+        }
     }
 }
 
