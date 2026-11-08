@@ -30,7 +30,9 @@ class LorClient(baseUrl: String) {
         return request("POST", "/device/timer", body)
     }
 
-    /** Tasks flagged for you that this call hands over; each comes back once. */
+    /** A panel's write to a task ([TaskAction]), through the web's rules on the server; the task after it. A refusal throws with the server's message. */
+    fun task(id: String, action: TaskAction, device: String): DeviceTask =
+        DeviceTask.parse(request("POST", "/device/task", JSONObject().put("id", id).put("action", action.wire).put("device", device)))
 
     fun ingest(device: String, observations: List<String>): JSONObject {
         val array = JSONArray()
@@ -72,11 +74,7 @@ class LorClient(baseUrl: String) {
             }
             val code = conn.responseCode
             val text = (if (code in 200..299) conn.inputStream else conn.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
-            if (code !in 200..299) {
-                val message = runCatching { JSONObject(text).getJSONObject("error").getString("message") }.getOrNull()
-                    ?: if (code == 403) "the server did not recognise you: is Tailscale on?" else text.take(200)
-                throw IOException("$code: $message")
-            }
+            if (code !in 200..299) throw IOException(refusal(code, text))
             return JSONObject(text)
         } finally {
             conn.disconnect()
@@ -84,6 +82,13 @@ class LorClient(baseUrl: String) {
     }
 
     companion object {
+        /** A reply that refused, as the exception's message: its code and the server's own message (`{"error": {"message": …}}`) when it sent one. */
+        fun refusal(code: Int, text: String): String {
+            val message = runCatching { JSONObject(text).getJSONObject("error").getString("message") }.getOrNull()
+                ?: if (code == 403) "the server did not recognise you: is Tailscale on?" else text.take(200)
+            return "$code: $message"
+        }
+
         /**
          * Why a call to LoR failed, in plain words (launcher polish 3.3): no answer at all is most
          * often Tailscale being off; an answer that refused says what the server said.

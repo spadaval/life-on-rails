@@ -72,6 +72,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.spadaval.lor.collect.LaunchFrom
 import com.spadaval.lor.lor.LorRows
+import com.spadaval.lor.lor.LorWrites
+import com.spadaval.lor.net.DeviceState
+import com.spadaval.lor.net.LorClient
+import com.spadaval.lor.net.TaskAction
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.key
 import com.spadaval.lor.net.DeviceHome
 import com.spadaval.lor.quicksend.QuickSend
@@ -270,15 +276,31 @@ internal fun NeedsYou(model: AgentModel, max: Int? = null, more: (() -> Unit)? =
         }
 }
 
-/** A LoR flag in a Needs you list: its tile and its text open the task in the dashboard, as its Open does. */
+/**
+ * A LoR flag in a Needs you list, the same card in the `lor` panel, the `needs-you` block and the
+ * agent page: its tile and its text open the task in the dashboard; Done and Seen write to LoR
+ * (lor-rz50) as the web's Needs you does. Done also clears the flag, which its Undo doesn't put
+ * back; Seen has no Undo (decision lor-dofd). A Google task has no Done: it is done in Google Tasks.
+ * While a write is under way both are disabled; when one fails, the card is back with the reason.
+ */
 @Composable
 internal fun LorFlagCard(model: AgentModel, need: DeviceHome.Need) {
     val path = LorRows.taskPath(need.id)
+    val writes = model.writes
+    val busy = need.id in writes.busy
+    val failure = writes.failures[need.id]
     QueueCard(
         tile = "LoR", tileColor = Raised, tileLabel = "Open in LoR", onTile = { model.openLor(path, LaunchFrom.AGENT_ICON) },
-        kind = "LoR", kindColor = Mute, where = "flagged", title = need.title, detail = need.note,
+        kind = "LoR", kindColor = Mute, where = "flagged", title = need.title, detail = failure ?: need.note,
+        detailColor = if (failure != null) Bad else Mute,
         onText = { model.openLor(path, LaunchFrom.AGENT_CARD) },
-    ) { Pill("Open", primary = true) { model.openLor(path, LaunchFrom.AGENT_CARD) } }
+    ) {
+        Pill("Seen", enabled = !busy) { writes.task(need.id, need.title, TaskAction.SEEN, say = "Seen: ${need.title}") }
+        if (need.google) Text("Google Tasks", style = Small, modifier = Modifier.padding(horizontal = 4.dp))
+        else Pill("Done", primary = true, enabled = !busy) {
+            writes.task(need.id, need.title, TaskAction.DONE, say = "Done: ${need.title}. Undo reopens it, without the flag.", undo = TaskAction.REOPEN)
+        }
+    }
 }
 
 /** "N more" under a block's rows; a tap moves the grid to the panel that shows them all, when the layout has one. */
@@ -327,7 +349,77 @@ internal fun Today(model: AgentModel) {
     }
     // Greyed while it isn't fresh: LoR can't be reached, or no read has ended since the page opened.
     Column(Modifier.alpha(if (error != null || !model.lorRead) 0.6f else 1f)) { TodayBody(lor, zone) }
+    TimerControls(model, lor.day.running)
     if (error != null) Unreachable("$error Showing what it said at ${lor.now.atZone(zone).format(Clock)}.", model)
+}
+
+/**
+ * The timer's controls under Today (lor-rz50), as the web's timer card: with one running, Pause
+ * (Resume while paused) and Stop; with none, Start, whose menu offers "Untitled" (no intent) and
+ * the intents timed most recently, read from `/device/state` each time it opens. Each sends
+ * `POST /device/timer` and shows what its reply says is running ([LorWrites.timer]); no Undo, as
+ * on the web. Disabled while a call is under way; a failure says why under them.
+ */
+@Composable
+private fun TimerControls(model: AgentModel, running: DeviceHome.Running?) {
+    val writes = model.writes
+    val busy = LorWrites.TIMER in writes.busy
+    var menu by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 12.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (running == null) Text("No timer running.", style = Small, modifier = Modifier.weight(1f))
+        else Spacer(Modifier.weight(1f))
+        if (running != null) {
+            Pill(if (running.paused) "Resume" else "Pause", enabled = !busy) { writes.timer(if (running.paused) "resume" else "pause") }
+            Spacer(Modifier.width(5.dp))
+            Pill("Stop", enabled = !busy) { writes.timer("stop") }
+        } else {
+            Box {
+                Pill("Start", enabled = !busy) { menu = true }
+                if (menu) StartMenu(model) { intentId ->
+                    menu = false
+                    if (intentId != null) writes.timer("start", intentId.ifEmpty { null })
+                }
+            }
+        }
+    }
+    writes.failures[LorWrites.TIMER]?.let { Failed(it, Modifier.padding(start = 18.dp, end = 18.dp, top = 4.dp)) }
+}
+
+/**
+ * The Start menu: "Untitled" at once, then "Reading…" until `/device/state`'s recent intents come,
+ * or why they couldn't be read. [chosen] gets the intent's id, "" for Untitled, or null when the
+ * menu closes with nothing chosen.
+ */
+@Composable
+private fun StartMenu(model: AgentModel, chosen: (String?) -> Unit) {
+    var recent by remember { mutableStateOf<Result<List<DeviceState.Intent>>?>(null) }
+    LaunchedEffect(Unit) {
+        recent = try {
+            Result.success(model.recentIntents())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    DropdownMenu(true, { chosen(null) }, containerColor = Raised, shape = RectangleShape) {
+        MenuItem("Untitled") { chosen("") }
+        val r = recent
+        when {
+            r == null -> Text("Reading…", style = Small, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp))
+            r.isFailure -> Text(
+                LorClient.describe(r.exceptionOrNull() as? Exception ?: Exception(r.exceptionOrNull())),
+                style = Small,
+                modifier = Modifier.widthIn(max = 260.dp).padding(horizontal = 12.dp, vertical = 10.dp),
+            )
+            else -> r.getOrThrow().forEach { i -> MenuItem(i.title) { chosen(i.id) } }
+        }
+    }
+}
+
+@Composable
+internal fun MenuItem(text: String, onClick: () -> Unit) {
+    DropdownMenuItem(text = { Text(text, style = Type.body.copy(color = Txt, fontSize = 15.sp), maxLines = 1, overflow = TextOverflow.Ellipsis) }, onClick = onClick)
 }
 
 /** Why LoR can't be read, with a Retry that reads at once. */
@@ -584,7 +676,7 @@ private fun QueueCard(
                     Text(title, style = Body.copy(fontSize = 13.5.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     detail?.let { Text(it, style = Small.copy(color = detailColor), maxLines = 2, overflow = TextOverflow.Ellipsis) }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) { actions() }
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) { actions() }
             }
         }
         below?.invoke()

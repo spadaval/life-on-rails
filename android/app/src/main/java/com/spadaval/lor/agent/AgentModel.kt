@@ -13,7 +13,9 @@ import com.spadaval.lor.collect.Launch
 import com.spadaval.lor.collect.LaunchFrom
 import com.spadaval.lor.collect.Launches
 import com.spadaval.lor.data.Prefs
+import com.spadaval.lor.lor.LorWrites
 import com.spadaval.lor.net.DeviceHome
+import com.spadaval.lor.net.DeviceState
 import com.spadaval.lor.net.DevicePeople
 import com.spadaval.lor.net.DeviceTasks
 import com.spadaval.lor.net.LorClient
@@ -22,9 +24,11 @@ import com.spadaval.lor.t3.PendingRequest
 import com.spadaval.lor.t3.T3Connection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The agent page's state, and that of LoR's blocks and the `lor` panel (lor-lz97), one per screen
@@ -43,8 +47,13 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     private val prefs = Prefs(context)
 
     private val reads = (context.applicationContext as LorApp).reads
-    /** LoR's last good reply; kept for the process, so a recreated page starts with it (greyed until it is current). */
-    val lor: DeviceHome? get() = reads.home
+    /** The panels' writes to LoR (lor-rz50), held over the reader's replies until a read has them. */
+    val writes: LorWrites = (context.applicationContext as LorApp).writes
+    /**
+     * LoR's last good reply, with the writes it doesn't have yet ([LorWrites.home]); kept for the
+     * process, so a recreated page starts with it (greyed until it is current).
+     */
+    val lor: DeviceHome? get() = writes.home(reads.home)
     /** Why the last read of LoR failed, in plain words ([LorClient.describe]); the last good [lor] stays shown. */
     val lorError: String? get() = reads.error
     /** A read asked for by Retry is under way. */
@@ -102,6 +111,10 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
 
     /** Reads LoR now instead of at the next minute. */
     fun retry() = reads.retry()
+
+    /** The intents timed most recently (`GET /device/state`'s `recent`), for the timer's Start menu. Throws when LoR can't be read. */
+    suspend fun recentIntents(): List<DeviceState.Intent> =
+        withContext(Dispatchers.IO) { DeviceState.parse(LorClient(prefs.serverUrl).state(prefs.deviceName)).recent }
 
     /** Runs a card's call once; on success the request is hidden, on failure the card says why. */
     fun act(key: String, request: PendingRequest?, call: suspend () -> Unit) {

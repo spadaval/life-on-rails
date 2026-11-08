@@ -431,6 +431,15 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     }
     // The open folder as drawn now, so the next edit (a rename, an added app) is matched against it.
     SideEffect { if (folder != null && ui.folder != OpenFolder.of(folder)) ui.folder = OpenFolder.of(folder) }
+    // A LoR write from a panel or block takes home's one Undo bar, as a layout edit does (lor-rz50).
+    val lorBar = (LocalContext.current.applicationContext as com.spadaval.lor.LorApp).writes.bar
+    // A write that failed takes its line back, unless something else has the bar by now.
+    val lastLorBar = remember { arrayOfNulls<UndoMessage>(1) }
+    LaunchedEffect(lorBar) {
+        if (lorBar != null) ui.undo.message = lorBar
+        else if (ui.undo.message === lastLorBar[0]) ui.undo.message = null
+        lastLorBar[0] = lorBar
+    }
     // An edit that empties the open folder removes it, so the panel closes.
     LaunchedEffect(ui.folder, folder, placed) { if (ui.folder != null && folder == null && placed != null) ui.folder = null }
     // The grid drawn (lor-qdmy): the file's, else the default grid with nothing on home yet.

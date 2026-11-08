@@ -18,9 +18,9 @@ relationships:
     type: "implements"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "LoR's panels act on LoR: done, Seen, to the agent, the timer"
-updated_at: "2026-11-08T02:04:13.919710789+00:00"
+updated_at: "2026-11-08T09:02:08.566724355+00:00"
 ---
 
 ## Goal

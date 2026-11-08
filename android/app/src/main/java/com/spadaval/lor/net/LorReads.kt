@@ -56,6 +56,12 @@ class LorReads(
         var at by mutableStateOf<java.time.Instant?>(null)
             internal set
         internal var lastStart: Long? = null
+        /**
+         * The number ([begun]) of the read that gave [value]: a write that ended when fewer reads
+         * had begun is in [value] ([com.spadaval.lor.lor.LorWrites]).
+         */
+        var goodRead by mutableStateOf<Long?>(null)
+            internal set
     }
 
     val homeRead = Kept("/device/home", fetchHome)
@@ -70,6 +76,10 @@ class LorReads(
     val current: Boolean get() = homeRead.current
     /** A read asked for by [retry] is under way. */
     var retrying by mutableStateOf(false)
+        private set
+
+    /** How many reads have begun in this process, of any path; each read takes the next number. */
+    var begun = 0L
         private set
 
     private var holders = 0
@@ -129,6 +139,15 @@ class LorReads(
         }
     }
 
+    /**
+     * Reads what is held now, after a write (lor-rz50): `/device/home`, and the lists while a
+     * holder asks for them. Unlike [retry] it doesn't show "Trying…" on the Retry buttons.
+     */
+    fun refresh() {
+        val reads = wanted
+        scope.launch { reads.forEach { read(it) } }
+    }
+
     /** A kept reply a minute old or more isn't current once taken up again. */
     private fun stale(kept: Kept<*>, now: Long) {
         if (dueIn(kept.lastStart, now) == 0L) kept.current = false
@@ -136,10 +155,12 @@ class LorReads(
 
     private suspend fun <T> read(kept: Kept<T>) = one.withLock {
         val started = clock()
+        val number = ++begun
         val before = kept.lastStart
         kept.lastStart = started
         try {
             kept.value = kept.fetch()
+            kept.goodRead = number
             kept.at = java.time.Instant.now()
             kept.error = null
             log("read ${kept.path}: ok in ${clock() - started} ms, $holders holding, $listHolders for lists")
