@@ -471,7 +471,7 @@ function DueSoon({ data, busy, act }: { data: Data; busy: boolean; act: Act }) {
             <span className="min-w-0">
               <span className={task.done ? "text-dim line-through" : ""}>{task.title}</span>
               <small className="block text-[13px] text-mute">
-                {[task.done ? "done today" : task.due ? `due ${shortDate(task.due)}` : null, task.waiting ? `waiting on ${task.waiting}` : null, task.parent, task.google ? "Google Tasks" : null]
+                {[task.done ? "done today" : task.due ? `due ${shortDate(task.due)}` : null, task.waiting_on ? `waiting on ${task.waiting_on}` : null, task.parent, task.google ? "Google Tasks" : null]
                   .filter(Boolean)
                   .join(" · ")}
               </small>

@@ -17,7 +17,9 @@ import { normalizePhone } from "../shared/phone.js";
 import { fillWindow, pauseRunningBlock, resumeRunningBlock, startManualBlock, stopRunningBlock } from "./attribution/blocks.js";
 import { LOOKBACK_MS, lockBlocks, syncFill } from "./attribution/fill.js";
 import { env } from "./env.js";
+import { type TaskRow, getGraph, openTasks } from "./graph.js";
 import { needsOwner } from "./intents.js";
+import { type Channel, listPeople } from "./people.js";
 import { getToday } from "./today.js";
 import { briefLine, oneFrom, runningName } from "./trmnl/device.js";
 import { getPin } from "./trmnl/pin.js";
@@ -160,12 +162,28 @@ export interface DeviceHome {
     /** Timed events today not yet over (the one under way included), in order, at most HOME_EVENTS. */
     events: { title: string; start: string; end: string }[];
   };
+  /** The agent's work queue: open tasks given to the agent, queued ones first (oldest first), then the rest (newest change first). */
+  agent_queue: { id: string; title: string; queued_at: string | null; thread: string | null }[];
+}
+
+/** How many of the agent's tasks /device/home carries. */
+const AGENT_QUEUE = 10;
+
+async function agentQueue(): Promise<DeviceHome["agent_queue"]> {
+  const rows = await sql<{ id: string; title: string; queued_at: Date | null; thread_ref: string | null }[]>`
+    SELECT id, title, queued_at, thread_ref FROM intent
+    WHERE type = 'task' AND assignee = 'agent' AND status IN ('active', 'waiting')
+    ORDER BY queued_at IS NULL, queued_at, updated_at DESC
+    LIMIT ${AGENT_QUEUE}`;
+  return rows.map((r) => ({ id: r.id, title: r.title, queued_at: r.queued_at?.toISOString() ?? null, thread: r.thread_ref }));
 }
 
 /** What the launcher's agent page shows from LoR, in one read. */
 export async function deviceHome(now = new Date()): Promise<DeviceHome> {
   const date = localYmd(env.LOR_TZ, now);
-  const [today, needs, pin, brief] = await Promise.all([getToday(sql, date, now), needsOwner(sql), getPin(sql), briefLine(sql, date)]);
+  const [today, needs, pin, brief, queue] = await Promise.all([
+    getToday(sql, date, now), needsOwner(sql), getPin(sql), briefLine(sql, date), agentQueue(),
+  ]);
   const r = today.running;
   return {
     now: now.toISOString(),
@@ -184,7 +202,64 @@ export async function deviceHome(now = new Date()): Promise<DeviceHome> {
         .slice(0, HOME_EVENTS)
         .map((e) => ({ title: e.title ?? "(no title)", start: e.t_start, end: e.t_end })),
     },
+    agent_queue: queue,
   };
+}
+
+/** How many open tasks /device/tasks lists. */
+const TASKS = 100;
+
+export interface DeviceTasks {
+  now: string;
+  timezone: string;
+  today: string;
+  /** Every open task, including those past the cap. */
+  open: number;
+  /** The open tasks as the web's Today lists them in Due soon, at most TASKS. */
+  tasks: TaskRow[];
+}
+
+/** The phone's Tasks: the open tasks, from the same function as the web's Today. */
+export async function deviceTasks(now = new Date()): Promise<DeviceTasks> {
+  const all = openTasks((await getGraph(sql, now)).nodes);
+  return { now: now.toISOString(), timezone: env.LOR_TZ, today: localYmd(env.LOR_TZ, now), open: all.length, tasks: all.slice(0, TASKS) };
+}
+
+/** How many people each list of /device/people carries, and how far ahead a birthday counts. */
+const PEOPLE = 30;
+const BIRTHDAY_WINDOW = 30;
+
+export interface DevicePerson {
+  id: string;
+  name: string;
+  kind: string;
+  last_at: string | null;
+  last_via: Channel | null;
+  overdue_by: number | null;
+  keep_in_touch_days: number | null;
+  birthday_in: number | null;
+  turning: number | null;
+}
+
+export interface DevicePeople {
+  today: string;
+  /** Past their keep-in-touch cadence, most overdue first. */
+  overdue: DevicePerson[];
+  /** A birthday within BIRTHDAY_WINDOW days, soonest first. */
+  birthdays: DevicePerson[];
+}
+
+/** The phone's People: who to be in touch with, by the web's People filters. No addresses or numbers. */
+export async function devicePeople(now = new Date()): Promise<DevicePeople> {
+  const [overdue, birthdays] = await Promise.all([
+    listPeople(sql, { filter: "overdue", limit: PEOPLE, now }),
+    listPeople(sql, { filter: "birthdays", birthdayWindow: BIRTHDAY_WINDOW, limit: PEOPLE, now }),
+  ]);
+  const person = (p: (typeof overdue.people)[number]): DevicePerson => ({
+    id: p.id, name: p.name, kind: p.kind, last_at: p.last.at, last_via: p.last.via, overdue_by: p.overdue_by,
+    keep_in_touch_days: p.keep_in_touch_days, birthday_in: p.birthday_in, turning: p.turning,
+  });
+  return { today: localYmd(env.LOR_TZ, now), overdue: overdue.people.map(person), birthdays: birthdays.people.map(person) };
 }
 
 const TimerBody = z.object({

@@ -9,7 +9,7 @@ import {
 import { askFromDashboard, channelConfigured, t3Handoff } from "../channel/channel.js";
 import { env } from "../env.js";
 import { BadInput } from "../errors.js";
-import { getGraph } from "../graph.js";
+import { getGraph, openTasks, taskRow } from "../graph.js";
 import { needsOwner } from "../intents.js";
 import { resolveDate } from "../memory/day.js";
 import { dayTimeline } from "../memory/timeline.js";
@@ -65,14 +65,9 @@ export const getTodayFn = createServerFn({ method: "GET" })
         .map((n) => ({ id: n.id, title: n.title, hours: n.week_hours ?? 0, target: n.weekly_hour_target ?? 0, starving: n.starving })),
       // Open tasks by due date, then those finished today, so a mis-tap can be taken back.
       tasks: [
-        ...graph.nodes
-          .filter((n) => n.type === "task" && (n.status === "active" || n.status === "waiting"))
-          .sort((a, b) => (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999") || a.title.localeCompare(b.title)),
-        ...graph.nodes.filter((n) => n.type === "task" && n.status === "done" && doneToday.has(n.id)),
-      ].map((n) => ({
-        id: n.id, title: n.title, done: n.status === "done", due: n.due_local, overdue: n.overdue, waiting: n.status === "waiting" ? (n.waiting_on ?? "someone") : null,
-        parent: n.parents[0]?.title ?? null, google: n.google_task_id !== null, agent: n.via === "agent", flagged: n.flagged_at !== null,
-      })),
+        ...openTasks(graph.nodes).map((t) => ({ ...t, done: false })),
+        ...graph.nodes.filter((n) => n.type === "task" && n.status === "done" && doneToday.has(n.id)).map((n) => ({ ...taskRow(n), done: true })),
+      ],
       brief: (await sql<{ body: string }[]>`SELECT body FROM page WHERE slug = ${`briefs/${date}`}`)[0]?.body ?? null,
       needsYou: (await needsOwner(sql)).map((n) => ({ id: n.id, title: n.title, note: n.flag_note ?? "", google: n.google_task_id !== null })),
       agentTasks: graph.nodes
