@@ -241,4 +241,22 @@ class LayoutTest {
         val deep = "[".repeat(100_000) + "]".repeat(100_000)
         assertTrue(error("""{"version": 2, "active": "a", "layouts": $deep}""").startsWith("not JSON"))
     }
+
+    /** The layout lock's field (lor-v692, decision lor-73li). */
+    @Test
+    fun lockedIsTrueOrFalseAndWrittenOnlyWhenTrue() {
+        val locked = LayoutFile.parse(v2Empty(""""locked": true,"""))
+        assertTrue(locked.locked)
+        assertTrue(locked.toJson().contains("\"locked\": true"))
+        val unlocked = LayoutFile.parse(v2Empty(""""locked": false,"""))
+        assertFalse(unlocked.locked)
+        assertFalse("false is read, then dropped at the next write", unlocked.toJson().contains("locked"))
+        assertEquals(unlocked, LayoutFile.parse(unlocked.toJson()))
+        assertEquals("locked: must be true or false", error(v2Empty(""""locked": "yes",""")))
+        assertEquals("locked: must be true or false", error(v2Empty(""""locked": 1,""")))
+        assertFalse("absent is false", LayoutFile.parse(v2Empty()).locked)
+        // A locked file writes back byte for byte the same after parse and toJson.
+        val text = locked.toJson()
+        assertEquals(text, LayoutFile.parse(text).toJson())
+    }
 }

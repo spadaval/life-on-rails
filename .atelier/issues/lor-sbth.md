@@ -11,8 +11,6 @@ relationships:
   - kind: "issue"
     id: "lor-leh4"
   - kind: "issue"
-    id: "lor-q18v"
-  - kind: "issue"
     id: "lor-r0f9"
   - kind: "issue"
     id: "lor-vtmn"
@@ -28,13 +26,16 @@ relationships:
     id: "lor-ph30"
     type: "blocked_by"
   - kind: "issue"
+    id: "lor-q18v"
+    type: "blocked_by"
+  - kind: "issue"
     id: "lor-uj0r"
     type: "advances"
 schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Widget and clock blocks"
-updated_at: "2026-11-07T22:19:08.821934648+00:00"
+updated_at: "2026-11-08T00:05:49.048103339+00:00"
 ---
 
 ## Goal
@@ -70,3 +71,5 @@ The phone's home (`android/app/src/main/java/com/spadaval/lor/home/`, `net/Devic
   Rejected: One item: a single review over Kotlin parsing, the widget host, the clock and a server module
   Rejected: The phone's own calendar (CalendarContract) for the next event: a permission Sumeet must grant, and a second source of events beside LoR's
 - 2026-11-07 [plan] Planned 2026-11-07: children lor-vtmn, lor-q18v, lor-r0f9, lor-leh4 on this item's branch; decisions lor-9wlx (the widget block) and lor-g4ta (the weather's delivery); real-Fold validation lor-13c1 after merge, outside the mission. Set to todo; a fresh agent reviews this plan before lor-vtmn starts, and lor-eh0y and lor-ph30 merge first. Sumeet's setup before lor-q18v's last line: GOOGLE_MAPS_KEY in the env file.
+- 2026-11-07 [decision] lor-q18v is a standalone blocker of lor-sbth on its own branch, merging alone. Its live check needs GOOGLE_MAPS_KEY in the env file, which Sumeet sets.
+  Reason: lor-q18v is server-only and doesn't depend on the inner screen, so it can run while lor-ph30 is built; as a child it would wait for lor-ph30.

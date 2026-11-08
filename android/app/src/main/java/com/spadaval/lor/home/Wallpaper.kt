@@ -9,6 +9,10 @@ import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -107,4 +111,23 @@ class WallpaperInk(context: Context, scope: CoroutineScope) {
 fun rememberWallpaperInk(): Ink {
     val store = (LocalContext.current.applicationContext as LorApp).home
     return store.ink.ink.collectAsState().value
+}
+
+/**
+ * Whether home's window can blur the wallpaper behind it now (lor-gnk0's open folder): Android 12
+ * and up with cross-window blur on, which the system turns off in battery saver, by the developer
+ * option, and on devices without it. Followed by the system's listener while home is drawn.
+ */
+@Composable
+fun rememberCrossWindowBlur(): Boolean {
+    if (android.os.Build.VERSION.SDK_INT < 31) return false
+    val context = LocalContext.current
+    val windows = remember(context) { context.getSystemService(android.view.WindowManager::class.java) }
+    var on by remember(windows) { mutableStateOf(windows.isCrossWindowBlurEnabled) }
+    DisposableEffect(windows) {
+        val listener = java.util.function.Consumer<Boolean> { on = it }
+        windows.addCrossWindowBlurEnabledListener(listener)
+        onDispose { windows.removeCrossWindowBlurEnabledListener(listener) }
+    }
+    return on
 }

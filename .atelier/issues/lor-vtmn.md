@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Schema widget block, its edits and the id sweep, tested"
-updated_at: "2026-11-07T22:17:52.266027767+00:00"
+updated_at: "2026-11-07T23:37:54.426205978+00:00"
 ---
 
 ## Goal
@@ -45,3 +45,7 @@ The file can hold widgets, and the edits and the id sweep that the widget host n
 
 - Decision lor-9wlx is the contract; this item makes it code. The parser's style is `parseBlock` and `parsePanel` in `Layout.kt` (on `main` once lor-eh0y merges).
 - Edits address a widget by `id` (lor-9wlx), not by `BlockAt`, which stays the `apps` block's address.
+
+## Notes
+
+- 2026-11-07 [note] From lor-f3vn's plan: if lor-v692 is on main when this starts, express widget's repeat by widening Panel.Stack.takes(type), which the parser and lor-v692's block edits share, and make addBlock refuse widget (a widget is added through Android's bind flow on home); add a widget block to GridEditTest's layouts so everyEditParsesBackOrRefuses moves and removes one. If lor-v692 merges after this, it does so itself.

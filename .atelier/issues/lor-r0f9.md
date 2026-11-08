@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Widgets on home: add, draw, resize, remove"
-updated_at: "2026-11-07T22:17:52.291705142+00:00"
+updated_at: "2026-11-07T23:37:54.439911595+00:00"
 ---
 
 ## Goal
@@ -54,3 +54,7 @@ New `home/Widgets.kt` (the host, the block, the picker sheet, the bind and confi
 - `gridFinger` takes a swipe past slop in the Initial pass unless a registered `scrollsInGrid` takes it; the widget's `AndroidView` gets a cancel when the grid takes it, so its taps still work.
 - This item builds the stack's overflow scroll in `StackPanel` (review finding lor-1f2f). lor-clgw waits for lor-sbth, and lor-lz97 reuses it for LoR's blocks.
 - Only visible cells and their neighbours are composed, so a widget's view is created again when its cell comes back into the window; lor-sbth's home-press measurement guards the cost.
+
+## Notes
+
+- 2026-11-07 [note] From lor-f3vn's plan: the layout lock (decision lor-73li) refuses this item's add, resize and remove in LayoutStore.edit with no work here. If lor-zzyy (lock home) is on main when this starts, also hide the widget menu's Resize and Remove and the home menu's "Add widget" while locked, with a screenshot of each locked menu; and if lor-9uc1 (a stack's blocks) is on main, check that the minimap's Move to… on a widget keeps its id and height and draws it in the new stack with no bind dialog. If those land after this, they do it.

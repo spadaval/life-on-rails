@@ -54,7 +54,7 @@ val OnOr = Color(Palette.ON_OR)
 
 /** The backing of a card drawn over the wallpaper or a page (a state on home, an agent card). */
 val StateFill = PanelFace.copy(alpha = 0xDD / 255f)
-/** The scrim behind an open folder or sheet. */
+/** The scrim behind a sheet (quick send). An open folder has its own glass (lor-gnk0). */
 val Scrim = Color(0x99000000)
 /**
  * The agent page's veil over the wallpaper (launcher polish 6.3): strong enough that Far Dust on it

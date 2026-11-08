@@ -1,13 +1,13 @@
 import { expect, it } from "vitest";
 import { sql } from "../../src/db/client.js";
-import { deviceHome, deviceState, deviceTimer, ingest } from "../../src/server/device.js";
-import { createIntent } from "../../src/server/intents.js";
+import { deviceHome, devicePeople, deviceState, deviceTasks, deviceTimer, ingest } from "../../src/server/device.js";
+import { assignTask, claimTask, completeTask, createIntent, queueTask } from "../../src/server/intents.js";
 import { createPage } from "../../src/server/memory/pages.js";
-import { findEntity, upsertEntity } from "../../src/server/memory/entities.js";
+import { findEntity, updateEntity, upsertEntity } from "../../src/server/memory/entities.js";
 import { lastContacts } from "../../src/server/people.js";
 import { env } from "../../src/server/env.js";
 import { dayTimeline } from "../../src/server/memory/timeline.js";
-import { localYmd } from "../../src/shared/localTime.js";
+import { addDays, localTimeOnDay, localYmd } from "../../src/shared/localTime.js";
 import { dbDescribe } from "./helpers.js";
 
 const obs = (id: string, extra: Record<string, unknown> = {}) => ({
@@ -182,5 +182,133 @@ dbDescribe("device home", () => {
     expect(home.needs_you).toEqual([]);
     await deviceTimer({ action: "pause" }, "me");
     expect((await deviceHome()).day.running).toMatchObject({ paused: true, paused_at: expect.any(String) });
+  });
+});
+
+dbDescribe("device home: the agent's queue", () => {
+  it("lists the agent's open tasks, queued ones first and oldest first, then those being worked", async () => {
+    const ui = { via: "ui" as const };
+    const older = await createIntent(sql, { type: "task", title: "Renew the passport" }, ui);
+    const queued = await createIntent(sql, { type: "task", title: "Find a plumber" }, ui);
+    const claimed = await createIntent(sql, { type: "task", title: "Draft the lease email" }, ui);
+    const owners = await createIntent(sql, { type: "task", title: "Call mum" }, ui);
+    const done = await createIntent(sql, { type: "task", title: "Book the flights", assignee: "agent" }, ui);
+    await queueTask(sql, older.id);
+    await queueTask(sql, queued.id);
+    await sql`UPDATE intent SET queued_at = ${new Date("2026-10-14T10:00:00Z")} WHERE id = ${older.id}`;
+    await sql`UPDATE intent SET queued_at = ${new Date("2026-10-14T11:00:00Z")} WHERE id = ${queued.id}`;
+    await assignTask(sql, claimed.id, "agent");
+    await queueTask(sql, claimed.id);
+    await claimTask(sql, claimed.id, "thread-42");
+    await completeTask(sql, done.id, { via: "agent" });
+
+    const home = await deviceHome();
+    expect(JSON.parse(JSON.stringify(home))).toEqual(home);
+    // The claimed task changed last, yet the queued ones come first.
+    expect(home.agent_queue).toEqual([
+      { id: older.id, title: "Renew the passport", queued_at: "2026-10-14T10:00:00.000Z", thread: null },
+      { id: queued.id, title: "Find a plumber", queued_at: "2026-10-14T11:00:00.000Z", thread: null },
+      { id: claimed.id, title: "Draft the lease email", queued_at: null, thread: "thread-42" },
+    ]);
+    expect(home.agent_queue.map((t) => t.id)).not.toContain(owners.id);
+  });
+
+  it("is empty with nothing given to the agent, and stops at 10", async () => {
+    expect((await deviceHome()).agent_queue).toEqual([]);
+    for (let i = 0; i < 12; i++) await createIntent(sql, { type: "task", title: `agent ${i}`, assignee: "agent" }, { via: "ui" });
+    expect((await deviceHome()).agent_queue).toHaveLength(10);
+  });
+});
+
+dbDescribe("device tasks", () => {
+  // Noon in Los Angeles on 2026-10-14.
+  const now = new Date("2026-10-14T19:00:00.000Z");
+  const ui = { via: "ui" as const };
+  const on = (ymd: string) => localTimeOnDay("America/Los_Angeles", ymd, "12:00");
+
+  it("lists the open tasks as Today's Due soon does: by due date, then title, undated last", async () => {
+    const house = await createIntent(sql, { type: "project", title: "House move" }, ui);
+    const priya = await upsertEntity(sql, { kind: "person", name: "Priya" });
+    await createIntent(sql, { type: "task", title: "Undated" }, ui);
+    await createIntent(sql, { type: "task", title: "Pack books", dueAt: on("2026-10-20"), parentId: house.id }, ui);
+    await createIntent(sql, { type: "task", title: "Order boxes", dueAt: on("2026-10-20") }, ui);
+    const late = await createIntent(sql, { type: "task", title: "Pay rent", dueAt: on("2026-10-12") }, { via: "agent", sourceRef: "t" });
+    await createIntent(sql, { type: "task", title: "Hear back on the lease", dueAt: on("2026-10-16"), waitingOnEntityId: priya.id }, ui);
+    await sql`UPDATE intent SET flagged_at = now() WHERE id = ${late.id}`;
+    // Left out: done, later and archived.
+    const finished = await createIntent(sql, { type: "task", title: "Done already", dueAt: on("2026-10-13") }, ui);
+    await completeTask(sql, finished.id, ui);
+    await createIntent(sql, { type: "task", title: "Later on", status: "later", dueAt: on("2026-10-13") }, ui);
+    await createIntent(sql, { type: "task", title: "Archived", status: "archived", dueAt: on("2026-10-13") }, ui);
+
+    const r = await deviceTasks(now);
+    expect(JSON.parse(JSON.stringify(r))).toEqual(r);
+    expect(r).toMatchObject({ now: now.toISOString(), timezone: "America/Los_Angeles", today: "2026-10-14", open: 5 });
+    expect(r.tasks.map((t) => t.title)).toEqual(["Pay rent", "Hear back on the lease", "Order boxes", "Pack books", "Undated"]);
+    expect(r.tasks[0]).toEqual({
+      id: late.id, title: "Pay rent", due: "2026-10-12", overdue: true, waiting_on: null, parent: null, flagged: true, agent: true, google: false,
+    });
+    expect(r.tasks[1]).toMatchObject({ due: "2026-10-16", overdue: false, waiting_on: "Priya", flagged: false, agent: false });
+    expect(r.tasks[3]).toMatchObject({ parent: "House move", waiting_on: null });
+    expect(r.tasks[4]).toMatchObject({ due: null, overdue: false });
+  });
+
+  it("caps the list at 100 while open counts every open task", async () => {
+    for (let i = 0; i < 103; i++) await createIntent(sql, { type: "task", title: `task ${String(i).padStart(3, "0")}` }, ui);
+    const r = await deviceTasks(now);
+    expect(r.open).toBe(103);
+    expect(r.tasks).toHaveLength(100);
+    expect(r.tasks.at(-1)!.title).toBe("task 099");
+  });
+});
+
+dbDescribe("device people", () => {
+  const tz = "America/Los_Angeles";
+  const daysAgo = (d: number) => localTimeOnDay(tz, addDays(localYmd(tz, new Date()), -d), "12:00").toISOString();
+  const call = (id: string, phone: string, at: string) =>
+    obs(id, { t_start: at, t_end: at, app: "phone", title: "call", payload: { kind: "call", direction: "out", phone, duration_s: 60 } });
+
+  it("lists who is past their cadence and whose birthday is within 30 days, without their numbers", async () => {
+    const late = await upsertEntity(sql, { kind: "person", name: "Priya", identifiers: [{ kind: "phone", value: "+1 415 555 0100" }] });
+    const fine = await upsertEntity(sql, { kind: "person", name: "Jo", identifiers: [{ kind: "phone", value: "+1 415 555 0101" }] });
+    const soon = await upsertEntity(sql, { kind: "person", name: "Sam" });
+    const far = await upsertEntity(sql, { kind: "person", name: "Ana" });
+    await updateEntity(sql, late.id, { keepInTouchDays: 30 });
+    await updateEntity(sql, fine.id, { keepInTouchDays: 30 });
+    const today = localYmd(tz, new Date());
+    await updateEntity(sql, soon.id, { birthday: `1990-${addDays(today, 5).slice(5)}` });
+    await updateEntity(sql, far.id, { birthday: addDays(today, 40).slice(5) });
+    await ingest({
+      device: "pixel-9a",
+      observations: [call("6f1c2c1e-0000-4000-8000-000000000040", "(415) 555-0100", daysAgo(40)), call("6f1c2c1e-0000-4000-8000-000000000041", "(415) 555-0101", daysAgo(2))],
+    });
+
+    const r = await devicePeople();
+    expect(JSON.parse(JSON.stringify(r))).toEqual(r);
+    expect(r.today).toBe(today);
+    expect(r.overdue).toEqual([
+      { id: late.id, name: "Priya", kind: "person", last_at: daysAgo(40), last_via: "phone", overdue_by: 10, keep_in_touch_days: 30, birthday_in: null, turning: null },
+    ]);
+    expect(r.birthdays).toEqual([
+      { id: soon.id, name: "Sam", kind: "person", last_at: null, last_via: null, overdue_by: null, keep_in_touch_days: null, birthday_in: 5, turning: Number(addDays(today, 5).slice(0, 4)) - 1990 },
+    ]);
+    for (const p of [...r.overdue, ...r.birthdays]) expect(p).not.toHaveProperty("identifiers");
+    expect(JSON.stringify(r)).not.toMatch(/555/);
+  });
+});
+
+dbDescribe("device routes", () => {
+  it("serves the new reads on GET only, and answers POST with its 404", async () => {
+    const { Route } = await import("../../src/routes/device/$.js");
+    const handlers = (Route.options as unknown as { server: { handlers: Record<"GET" | "POST", (c: { request: Request }) => Promise<Response>> } }).server.handlers;
+    const at = (method: "GET" | "POST", path: string) => handlers[method]({ request: new Request(`http://127.0.0.1:3847/device${path}`, { method }) });
+    for (const path of ["/tasks", "/people"]) {
+      const got = await at("GET", path);
+      expect(got.status).toBe(200);
+      expect(await got.json()).toHaveProperty("today");
+      const posted = await at("POST", path);
+      expect(posted.status).toBe(404);
+      expect(await posted.json()).toEqual({ error: { code: "no-such-endpoint", message: `POST /device${path}` } });
+    }
   });
 });

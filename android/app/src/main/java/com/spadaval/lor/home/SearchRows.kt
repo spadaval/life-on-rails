@@ -74,7 +74,7 @@ internal fun ResultRow(value: Any, go: Boolean, at: At, home: HomeContext, icon:
             .fillMaxWidth()
             .padding(horizontal = 8.dp)
             .then(if (go) Modifier.background(Or.copy(alpha = 0.08f), shape).border(1.dp, Or.copy(alpha = 0.55f), shape) else Modifier)
-            .clickable(role = Role.Button) { openFound(value, at, home, icon) }
+            .clickable(interactionSource = null, indication = com.spadaval.lor.ui.PressScale.Row, role = Role.Button) { openFound(value, at, home, icon) }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
