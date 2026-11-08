@@ -17,7 +17,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Widgets on home: add, draw, resize, remove"
-updated_at: "2026-11-08T01:12:24.214509449+00:00"
+updated_at: "2026-11-08T02:17:51.467294968+00:00"
 ---
 
 ## Goal
@@ -55,3 +55,24 @@ New `home/Widgets.kt` (the host, the block, the picker sheet, the bind and confi
 ## Notes
 
 - 2026-11-07 [note] From lor-f3vn's plan: the layout lock (decision lor-73li) refuses this item's add, resize and remove in LayoutStore.edit with no work here. If lor-zzyy (lock home) is on main when this starts, also hide the widget menu's Resize and Remove and the home menu's "Add widget" while locked, with a screenshot of each locked menu; and if lor-9uc1 (a stack's blocks) is on main, check that the minimap's Move to… on a widget keeps its id and height and draws it in the new stack with no bind dialog. If those land after this, they do it.
+- 2026-11-07 [decision] A gone widget's Remove, like any widget's, refuses when the widget is its stack's only block, with the minimap's message ('a stack needs a block; remove the panel instead'), shown in the Undo bar as 'Can't: …'.
+  Reason: One rule for a stack's last block whichever edit removes it (lor-vtmn's decision). A stack holding only a widget can't come from the phone today: addWidget adds to a stack that already has a block, and an apps edit doesn't strip a page with a widget. It comes only from the minimap's block edits or a hand edit, and both of those can remove the panel.
+  Rejected: Removing the panel with the gone widget: an edit that changes what it wasn't asked to, and lor-vtmn rejected it
+  Rejected: Hiding Remove on the only block: the note would offer no way out and say nothing why
+- 2026-11-07 [decision] The stack's overflow scroll is one StackScroll (HomeScreen.kt) per column: a FillColumn at least the space above the dock, in a verticalScroll that reports scrollsInGrid and is enabled only while it overflows. FillColumn gives its Fill child (the apps block, or the space before the blocks when there is none) what the others leave, and no less than it needs. The dock is drawn under the scroll on the phone too, as the wide flow already did.
+  Reason: Column's weight(1f) gets nothing inside a scroll once the others overflow, which would collapse the apps grid; a custom measure keeps today's layout exactly when the blocks fit. Scrolling off while it fits keeps every swipe on a page that fits the grid's, with no overscroll stretch. lor-lz97 reuses StackScroll as it is.
+  Rejected: SubcomposeLayout measuring the blocks twice: costlier, and recomposes the apps grid
+  Rejected: Scrolling only the widgets: the Done when line asks the blocks above the dock to scroll together
+- 2026-11-07 [decision] Home's empty-space long press and double tap are drawn twice: under the whole panel as before, and under the scroll's content, where the scroll's own pointer input would otherwise hide the first. The second converts its press into the panel's coordinates for the home menu.
+  Reason: Compose hit-tests only the topmost sibling with pointer input, and verticalScroll is one; without the inner detector, a long press on empty home inside the scroll would stop opening the home menu, which is how a widget is added.
+- 2026-11-07 [decision] A widget is drawn 12 dp in from its column's sides and 6 dp from its neighbours, as home's cards (the broken-file banner, the empty-home note) are; its height is the block's height exactly. The picker is a bottom sheet over Scrim with a framed PanelFace and the 8 dp black float shadow, as quick send's sheet is, without blur.
+  Reason: Widgets sit beside home's cards, not its icon cells, and an edge-to-edge widget would touch the screen's rim. DESIGN.md allows blur behind a sheet but asks that the face over a dim look right alone; the folder's window blur would need the activity's blur-behind flag managed for one more surface.
+  Rejected: Blur behind the picker: optional in DESIGN.md, and the folder's window-level blur is not a per-surface tool
+- 2026-11-07 [decision] A resize frame closes on release (writing the height with Undo), on back, on a home press, and on a press outside it, which does nothing else. The grid and the widget picker take no swipe while open (gridFinger returns).
+  Reason: Release-writes is the Done when line; closing on release keeps one write per resize and needs no Done button. Without gridFinger's check, a drag on the handle or a swipe on the picker's list moved the grid (seen on the emulator: the drawer opened under the picker).
+- 2026-11-07 [decision] While locked (LayoutFile.locked, lor-v692 on main) the home menu has no Add widget, and the widget menu and the gone note have no Resize or Remove; Settings stays, since it writes nothing to layout.json. A menu that would be empty doesn't open.
+  Reason: lor-zzyy's Context and this item's note: the lock hides home's edits; LayoutStore.edit refuses them anyway (lor-73li).
+- 2026-11-07 [decision] A configure activity always runs when the provider has one, even with WIDGET_FEATURE_CONFIGURATION_OPTIONAL; MODE_BACKGROUND_ACTIVITY_START_ALLOWED is used on API 34 and up (deprecated in 36 for ALLOW_ALWAYS, which it still means).
+  Reason: The Done when line asks for the configure screen when it has one; skipping the optional one is Launcher3 polish that can follow.
+- 2026-11-07 [decision] In a stack or wide-flow column with no apps block, the spare space now goes after the blocks (the dock stays at the bottom, outside the scroll), not before them.
+  Reason: Seen on the unfolded Fold: the left flow column (clock header, then a widget) drew the widget at the column's bottom, far from the header. The space went first only to keep the dock at the bottom, which the scroll's split now does. Only widgets are affected: the clock is the header and the dock sits outside the scroll, so a home with no widgets draws as before (b2 matches b0 below the status bar).

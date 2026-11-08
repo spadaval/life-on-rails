@@ -749,13 +749,12 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
             if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.dock.orEmpty(), home, cell)
         }
         // Blocks, each with its place in the stack, top to bottom, the dock under them all; with no
-        // `apps` block, the space goes before the others. The clock is the header, drawn where
-        // [blocks]' caller puts it.
+        // `apps` block, the space goes after the others, so they sit under the header and the dock
+        // stays at the bottom. The clock is the header, drawn where [blocks]' caller puts it.
         val blocks = @Composable { mod: Modifier, list: List<IndexedValue<StackBlock>>, top: @Composable () -> Unit ->
             Column(mod) {
                 StackScroll(Modifier.weight(1f).fillMaxWidth(), background = emptyHome) {
                     top()
-                    if (list.none { it.value is StackBlock.Apps }) Spacer(Modifier.layoutId(Fill))
                     list.forEach { (i, block) ->
                         when (block) {
                             StackBlock.Clock, StackBlock.Dock -> {}
@@ -763,6 +762,7 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
                             is StackBlock.Widget -> key(block.id) { WidgetBlock(block, panelHeight, ui, home) }
                         }
                     }
+                    if (list.none { it.value is StackBlock.Apps }) Spacer(Modifier.layoutId(Fill))
                 }
                 if (list.any { it.value is StackBlock.Dock }) dock()
             }
