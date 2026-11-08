@@ -58,6 +58,38 @@ export async function getGraph(db: Tx, now = new Date()): Promise<Graph> {
   return { nodes, links };
 }
 
+/** A task as the dashboard's Today and the phone's Tasks list it. */
+export interface TaskRow {
+  id: string;
+  title: string;
+  /** Local calendar date. */
+  due: string | null;
+  overdue: boolean;
+  /** Who a waiting task waits on ("someone" when nobody is named); null when not waiting. */
+  waiting_on: string | null;
+  /** The first project or goal it serves. */
+  parent: string | null;
+  flagged: boolean;
+  /** Made by the agent. */
+  agent: boolean;
+  google: boolean;
+}
+
+export function taskRow(n: GraphNode): TaskRow {
+  return {
+    id: n.id, title: n.title, due: n.due_local, overdue: n.overdue, waiting_on: n.status === "waiting" ? (n.waiting_on ?? "someone") : null,
+    parent: n.parents[0]?.title ?? null, flagged: n.flagged_at !== null, agent: n.via === "agent", google: n.google_task_id !== null,
+  };
+}
+
+/** The open tasks (active or waiting), by due date with undated ones last, then by title: Today's Due soon and the phone's Tasks. */
+export function openTasks(nodes: GraphNode[]): TaskRow[] {
+  return nodes
+    .filter((n) => n.type === "task" && (n.status === "active" || n.status === "waiting"))
+    .sort((a, b) => (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999") || a.title.localeCompare(b.title))
+    .map(taskRow);
+}
+
 const pct = (x: number | null) => (x === null ? "—" : `${Math.round(x * 100)}%`);
 
 export function starvingLine(n: GraphNode): string {
