@@ -202,9 +202,6 @@ object MinimapRules {
     /** What the block list says under a block's name: an `apps` block's count ("12 apps"). */
     fun blockDetail(block: StackBlock): String? = (block as? StackBlock.Apps)?.let { blockName(it) }
 
-    /** What TalkBack reads for a block row: "Apps, 12 apps". */
-    fun blockDescription(block: StackBlock): String = listOfNotNull(blockTitle(block), blockDetail(block)).joinToString(", ")
-
     /** A stack as Move to… names it: "Column 2", with its row when it isn't row 0. */
     fun stackName(cell: Cell): String = if (cell.row == 0) "Column ${cell.column}" else "Column ${cell.column}, row ${cell.row}"
 
@@ -845,7 +842,6 @@ private fun BlockEditor(
                 val name = MinimapRules.blockTitle(StackBlock.bare(type)!!)
                 MapButton(
                     name,
-                    describe = "Add $name",
                     modifier = Modifier
                         .onGloballyPositioned { bounds[slot] = it.boundsInRoot() }
                         .pointerInput(type) {
@@ -905,7 +901,8 @@ private fun BlockRow(
                 .background(PanelFace)
                 .then(if (dragging) Modifier.selection() else Modifier.border(1.dp, Frame))
                 .then(if (locked) Modifier else Modifier.clickable(role = Role.Button, onClickLabel = "open its menu") { menu = true })
-                .semantics(mergeDescendants = true) { contentDescription = MinimapRules.blockDescription(block) },
+                // TalkBack reads the merged words: "Apps, 10 apps".
+                .semantics(mergeDescendants = true) {},
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (!locked) Box(handle.size(48.dp).clearAndSetSemantics {}, contentAlignment = Alignment.Center) { Grip() }
@@ -949,7 +946,7 @@ private fun BlockRow(
 @Composable
 private fun MenuItem(text: String, enabled: Boolean = true, danger: Boolean = false, onClick: () -> Unit) {
     DropdownMenuItem(
-        text = { Text(text, style = Type.body.copy(color = if (danger) Bad else Txt, fontSize = 15.sp)) },
+        text = { Text(text, style = Type.body.copy(color = (if (danger) Bad else Txt).copy(alpha = if (enabled) 1f else 0.38f), fontSize = 15.sp)) },
         onClick = onClick,
         enabled = enabled,
     )

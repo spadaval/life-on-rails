@@ -14,7 +14,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The minimap: a stack's blocks"
-updated_at: "2026-11-08T02:39:04.665212173+00:00"
+updated_at: "2026-11-08T02:45:07.681573619+00:00"
 ---
 
 ## Goal
@@ -42,3 +42,18 @@ On `T3_Phone_API35` against the test server, with a version 1 `layout.json` with
 
 - Read 2026-11-07: Kvaesitso's `ui/launcher/widgets/WidgetColumn.kt` and `WidgetItem.kt` (GPL-3.0, ideas only), the nearest built design to a stack's blocks. In its edit mode each widget gets a drag handle (`Modifier.draggable`, starting at once), follows the finger, and swaps with a neighbour once the offset passes that neighbour's height (`swapThresholds`, `moveUp`, `moveDown`), raised by 8 dp of elevation while dragged. Here each swap changes only the list on screen; the edit is written once, on letting go, so one drag is one Undo.
 - Edits address a block by its stack's cell, its index and the block as drawn (lor-v692), so a widget keeps its `id` wherever it moves (decision lor-9wlx).
+
+## Notes
+
+- 2026-11-07 [decision] The block list opens in the minimap's lower half, in place of the selected stack's actions and the panel palette, with the map still above it. Its Back button and the system back return to the actions; tapping another stack on the map shows that stack's blocks, and tapping a non-stack panel shows its actions.
+  Reason: The Done when keeps the map in view with the stack selected, and the minimap already scrolls one column under the map. Swapping the lower half keeps one place for whatever the selection offers, and back stepping out one level matches how the open folder and menus behave over home.
+  Rejected: A sheet or dialog over the minimap: it would hide the map the Done when keeps in view
+- 2026-11-07 [decision] Move to… names a stack 'Column c', adding ', row r' off row 0, then its blocks: 'Column 2: 3 apps · Dock'. Every other stack is listed, by row then column; one that already holds the block's type is refused by moveBlock with its own reason.
+  Reason: The Done when's example names stacks by column. Pages sit on row 0, so the row is said only where it tells two stacks apart. Listing every stack and letting the edit refuse keeps one rule in GridEdit.kt instead of a second copy in the menu.
+  Rejected: Naming stacks by cell ('[2, 0]'): the map's tiles already say the cell, but the menu reads better in words; Hiding stacks that can't take the block: a missing stack is harder to understand than a refusal that says why
+- 2026-11-07 [decision] A block's menu always shows Move up, Move down, Move to… and Remove. Move up on the top block and Move down on the bottom one are disabled, not hidden. On a stack's only block, Move to… shows the refusal (GridEdit's LAST_BLOCK, made internal as lor-sbth also does) before listing stacks, and Remove lets removeBlock refuse.
+  Reason: The same four entries in the same places for every block, and TalkBack reads a disabled entry as such. Listing stacks only to refuse the pick would waste a step. The internal LAST_BLOCK is the same line lor-sbth writes, so the two branches merge cleanly.
+- 2026-11-07 [decision] A palette chip dragged over the block list lands between the rows' middles (MinimapRules.dropIndex), shown by an amber 2 dp rule in the gap; let go outside the list (24 dp of slack above and below), it settles back. A tap adds before the dock, else last (MinimapRules.tapIndex), which Move to… shares.
+  Reason: It's the same rule as the handle's swap at a neighbour's middle, so a chip and a dragged row land where the eye expects. The rule says where it will land before letting go.
+- 2026-11-07 [decision] Fixed in passing (lor-6get's review): a panel add from the map's palette moves the selection to the new cell only once the edit is taken, so a refused add leaves the actions showing.
+  Reason: The add now sets the selection in HomeActions.edit's after callback, only if the change ran without refusing. It touches the same function as the Blocks state.

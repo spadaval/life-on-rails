@@ -103,7 +103,7 @@ Launcher polish's rules carry over, with "home" meaning every `apps` block of th
   - An edit of a panel or a block names its cell (and the block's index) and what the minimap drew there, and is refused ("Home changed; try again") when the file holds something else there.
 - The phone writes only fields that differ from their defaults (`start.wide` only when set, a panel's `wide` only when it differs from its type's default, `look` and `drawer` only when not default), and writes `start`, `dock` and `panels` in every layout. So a `wide` the file states that equals the type's default is dropped at the next write; any other is kept.
 
-Home draws the grid (lor-qdmy): one cell on screen, the narrow `start` after a home press. A swipe moves to the nearest cell that way in the row (the ends stop), or up and down by decision lor-y7qi's rule (the next row that way with a panel, wrapping; back to the cell a move came from, else the same column or the nearest, the left one on a tie). Each stack draws its blocks top to bottom: `clock` as home's header, `apps` taking the space between, `dock`; a stack without a `clock` starts where home's grid would.
+Home draws the grid (lor-qdmy): one cell on screen, the narrow `start` after a home press. A swipe moves to the nearest cell that way in the row (the ends stop), or up and down by decision lor-y7qi's rule (the next row that way with a panel, wrapping; back to the cell a move came from, else the same column or the nearest, the left one on a tie). Each stack draws its blocks top to bottom in the file's order: `clock` as home's header wherever it stands, `apps` taking the space between, `dock`; a stack that doesn't start with a `clock` starts where home's grid would.
 
 ## Reading a version 1 file
 

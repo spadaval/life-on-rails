@@ -107,7 +107,6 @@ class MinimapTest {
         val home = stack(grid, 1)
         assertEquals(listOf("Clock", "Apps", "Dock"), home.blocks.map { MinimapRules.blockTitle(it) })
         assertEquals(listOf(null, "4 apps", null), home.blocks.map { MinimapRules.blockDetail(it) })
-        assertEquals(listOf("Clock", "Apps, 4 apps", "Dock"), home.blocks.map { MinimapRules.blockDescription(it) })
     }
 
     @Test

@@ -712,11 +712,10 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
         val wide = maxWidth >= 600.dp
         val widthDp = maxWidth.value
         val headerStyle = LocalHomeLook.current.header
-        val hasClock = panel.blocks.any { it is StackBlock.Clock }
+        // Clear of the Remove bar, so a drop meant for the first row lands there (6.8's critique).
+        val clear = @Composable { Spacer(Modifier.height(if (wide || headerStyle == HomeLook.Header.NONE) BarClear else 104.dp)) }
         val header = @Composable {
-            if (hasClock && headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar)
-            // Clear of the Remove bar, so a drop meant for the first row lands there (6.8's critique).
-            else Spacer(Modifier.height(if (wide || headerStyle == HomeLook.Header.NONE) BarClear else 104.dp))
+            if (headerStyle != HomeLook.Header.NONE) HomeHeader(headerStyle, if (wide) 40 else 30, home.actions::calendar) else clear()
         }
         val body = homeBody(appsLoad, home.file, placed?.count ?: 0)
         val apps: @Composable ColumnScope.(BlockAt) -> Unit = { at ->
@@ -751,16 +750,20 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
             if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.dock.orEmpty(), home, cell)
         }
         // Blocks, each with its place in the stack, top to bottom; with no `apps` block, the space
-        // goes before the dock. The clock is the header, drawn where [blocks]' caller puts it.
-        val blocks = @Composable { mod: Modifier, list: List<IndexedValue<StackBlock>>, top: @Composable () -> Unit ->
+        // goes before the dock. The clock is home's header, drawn where it stands in the stack
+        // (lor-9uc1 orders it); a column that starts with anything else starts clear of the Remove bar.
+        val blocks = @Composable { mod: Modifier, list: List<IndexedValue<StackBlock>> ->
             Column(mod) {
-                top()
-                if (list.none { it.value is StackBlock.Apps }) Spacer(Modifier.weight(1f))
+                if (list.firstOrNull()?.value !is StackBlock.Clock) clear()
+                val noApps = list.none { it.value is StackBlock.Apps }
                 list.forEach { (i, block) ->
                     when (block) {
-                        StackBlock.Clock -> {}
+                        StackBlock.Clock -> header()
                         is StackBlock.Apps -> apps(BlockAt(cell, i))
-                        StackBlock.Dock -> dock()
+                        StackBlock.Dock -> {
+                            if (noApps) Spacer(Modifier.weight(1f))
+                            dock()
+                        }
                     }
                 }
             }
@@ -771,18 +774,11 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
             // rest with the dock right; a page of apps and a dock is one column.
             Row(Modifier.fillMaxSize()) {
                 StackFlow.wide(all) { it.value is StackBlock.Dock }.forEach { column ->
-                    val clock = column.any { it.value is StackBlock.Clock }
-                    blocks(Modifier.weight(1f).fillMaxSize(), column) {
-                        when {
-                            clock -> header()
-                            // A column with no clock starts clear of the Remove bar.
-                            else -> Spacer(Modifier.height(BarClear))
-                        }
-                    }
+                    blocks(Modifier.weight(1f).fillMaxSize(), column)
                 }
             }
         } else {
-            blocks(Modifier.fillMaxSize(), all, header)
+            blocks(Modifier.fillMaxSize(), all)
         }
         ui.homeMenu?.takeIf { ui.homeMenuCell == cell }?.let { HomeMenu(it, home, onEdit = { ui.drag.editing = true }, onPanels = ui::openMinimap) { ui.homeMenu = null } }
     }
