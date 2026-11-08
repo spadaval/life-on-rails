@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ZodError } from "zod";
-import { deviceHome, devicePeople, deviceState, deviceTasks, deviceTimer, ingest, receiveWhatsappBackup } from "../../server/device.js";
+import { deviceHome, devicePeople, deviceState, deviceTask, deviceTasks, deviceTimer, ingest, receiveWhatsappBackup } from "../../server/device.js";
 import { BadInput, NotFound, Refused } from "../../server/errors.js";
 import { errorMessage, log } from "../../server/log.js";
 
@@ -21,6 +21,7 @@ async function handle(request: Request): Promise<Response> {
     if (request.method === "POST" && path === "/ingest") return json(200, await ingest(await request.json()));
     if (request.method === "POST" && path === "/whatsapp-backup") return json(200, await receiveWhatsappBackup(request.body, url.searchParams.get("device")));
     if (request.method === "POST" && path === "/timer") return json(200, await deviceTimer(await request.json(), loginOf(request)));
+    if (request.method === "POST" && path === "/task") return json(200, await deviceTask(await request.json()));
     return json(404, { error: { code: "no-such-endpoint", message: `${request.method} ${url.pathname}` } });
   } catch (err) {
     if (err instanceof BadInput || err instanceof ZodError || err instanceof SyntaxError) {

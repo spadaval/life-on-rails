@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { sql } from "../../src/db/client.js";
-import { deviceHome, devicePeople, deviceState, deviceTasks, deviceTimer, ingest } from "../../src/server/device.js";
-import { assignTask, claimTask, completeTask, createIntent, queueTask } from "../../src/server/intents.js";
+import { deviceHome, devicePeople, deviceState, deviceTask, deviceTasks, deviceTimer, ingest } from "../../src/server/device.js";
+import { assignTask, claimTask, completeTask, createIntent, flagTask, queueTask } from "../../src/server/intents.js";
 import { createPage } from "../../src/server/memory/pages.js";
 import { findEntity, updateEntity, upsertEntity } from "../../src/server/memory/entities.js";
 import { lastContacts } from "../../src/server/people.js";
@@ -134,6 +134,23 @@ dbDescribe("device timer and state", () => {
     const [b] = await sql<{ minutes: number }[]>`SELECT round(extract(epoch FROM t_end - t_start) / 60)::int AS minutes FROM time_block`;
     expect(b!.minutes).toBe(8); // ended at the pause
   });
+
+  it("starts on a chosen intent and resumes after a pause, as the today block sends them", async () => {
+    const intent = await createIntent(sql, { type: "project", title: "House move" }, { via: "ui" });
+    const started = await deviceTimer({ action: "start", intent_id: intent.id, device: "pixel-9a" }, "me");
+    expect(started.running).toMatchObject({ intent: "House move", title: null, paused: false });
+    await sql`UPDATE time_block SET t_start = now() - interval '10 minutes'`;
+    expect((await deviceTimer({ action: "pause" }, "me")).running).toMatchObject({ paused: true, paused_at: expect.any(String) });
+    const resumed = await deviceTimer({ action: "resume", device: "pixel-9a" }, "me");
+    // A pause is never inside a block: resuming ends the paused block and starts another on the same intent.
+    expect(resumed.running).toMatchObject({ intent: "House move", paused: false, paused_at: null });
+    expect(resumed.running!.id).not.toBe(started.running!.id);
+    const blocks = await sql<{ id: string; intent_id: string; open: boolean }[]>`SELECT id, intent_id, t_end IS NULL AS open FROM time_block ORDER BY t_start`;
+    expect(blocks).toEqual([
+      { id: started.running!.id, intent_id: intent.id, open: false },
+      { id: resumed.running!.id, intent_id: intent.id, open: true },
+    ]);
+  });
 });
 
 dbDescribe("device home", () => {
@@ -159,7 +176,7 @@ dbDescribe("device home", () => {
     expect(home).toMatchObject({ now: now.toISOString(), timezone: "America/Los_Angeles", brief: "Post the notice today. It is due Friday." });
     // The lunch under way wins over the brief and the flag, as on the wall.
     expect(home.one).toMatchObject({ kicker: "Now", text: "lunch" });
-    expect(home.needs_you).toEqual([{ id: task.id, title: "Approve the dentist (reschedule)", note: "they need a yes", flagged_at: "2026-10-14T15:00:00.000Z" }]);
+    expect(home.needs_you).toEqual([{ id: task.id, title: "Approve the dentist (reschedule)", note: "they need a yes", flagged_at: "2026-10-14T15:00:00.000Z", google: false }]);
     expect(home.day.running).toBeNull();
     expect(home.day.events.map((e) => e.title)).toEqual(["lunch", "review", "late-0", "late-1", "late-2"]);
     expect(home.day.events[1]).toEqual({ title: "review", start: "2026-10-14T22:00:00.000Z", end: "2026-10-14T23:00:00.000Z" });
@@ -298,6 +315,23 @@ dbDescribe("device tasks", () => {
     expect(r.tasks[4]).toMatchObject({ due: null, overdue: false });
   });
 
+  it("lists the tasks done today under done_today, and leaves out those done on another day", async () => {
+    const today = await createIntent(sql, { type: "task", title: "Post the notice" }, ui);
+    const yesterday = await createIntent(sql, { type: "task", title: "Pay the deposit" }, ui);
+    const open = await createIntent(sql, { type: "task", title: "Pack books" }, ui);
+    await completeTask(sql, today.id, ui);
+    await completeTask(sql, yesterday.id, ui);
+    const tz = "America/Los_Angeles";
+    await sql`UPDATE commitment SET t = ${localTimeOnDay(tz, addDays(localYmd(tz, new Date()), -1), "12:00")} WHERE intent_id = ${yesterday.id}`;
+
+    const r = await deviceTasks();
+    expect(JSON.parse(JSON.stringify(r))).toEqual(r);
+    expect(r.tasks.map((t) => t.id)).toEqual([open.id]);
+    expect(r.done_today).toEqual([
+      { id: today.id, title: "Post the notice", due: null, overdue: false, waiting_on: null, parent: null, flagged: false, agent: false, google: false },
+    ]);
+  });
+
   it("caps the list at 100 while open counts every open task", async () => {
     for (let i = 0; i < 103; i++) await createIntent(sql, { type: "task", title: `task ${String(i).padStart(3, "0")}` }, ui);
     const r = await deviceTasks(now);
@@ -354,6 +388,127 @@ dbDescribe("device routes", () => {
       const posted = await at("POST", path);
       expect(posted.status).toBe(404);
       expect(await posted.json()).toEqual({ error: { code: "no-such-endpoint", message: `POST /device${path}` } });
+    }
+  });
+});
+
+dbDescribe("device task writes", () => {
+  const ui = { via: "ui" as const };
+  const google = async (title: string) => {
+    const t = await createIntent(sql, { type: "task", title }, ui);
+    await sql`UPDATE intent SET google_task_id = ${`g-${title}`} WHERE id = ${t.id}`;
+    return t;
+  };
+  const doneRows = (id: string) => sql<{ via: string; source_ref: string | null }[]>`SELECT via, source_ref FROM commitment WHERE kind = 'task_done' AND intent_id = ${id}`;
+  const jsonSafe = (r: unknown) => expect(JSON.parse(JSON.stringify(r))).toEqual(r);
+
+  it("marks a task done once, as the web's tick does, and reopens it", async () => {
+    const t = await createIntent(sql, { type: "task", title: "Renew the passport" }, ui);
+    const done = await deviceTask({ id: t.id, action: "done", device: "pixel-9a" });
+    jsonSafe(done);
+    expect(done).toEqual({ id: t.id, title: "Renew the passport", status: "done", done: true, assignee: "owner", queued_at: null, flagged: false });
+    expect(await doneRows(t.id)).toEqual([{ via: "ui", source_ref: "pixel-9a" }]);
+    await deviceTask({ id: t.id, action: "done", device: "pixel-9a" });
+    expect(await doneRows(t.id)).toHaveLength(1);
+
+    const reopened = await deviceTask({ id: t.id, action: "reopen", device: "pixel-9a" });
+    jsonSafe(reopened);
+    expect(reopened).toMatchObject({ status: "active", done: false });
+    expect(await doneRows(t.id)).toEqual([]);
+  });
+
+  it("refuses done and reopen on a Google task and changes nothing", async () => {
+    const t = await google("Buy stamps");
+    await flagTask(sql, t.id, "which ones?");
+    // needs_you says which cards are Google tasks, so the phone offers no Done on them.
+    expect((await deviceHome()).needs_you).toEqual([expect.objectContaining({ id: t.id, google: true })]);
+    await expect(deviceTask({ id: t.id, action: "done" })).rejects.toMatchObject({ name: "Refused", code: "google-task", message: expect.stringMatching(/^this task lives in Google Tasks: complete it there/) });
+    await sql`UPDATE intent SET status = 'done' WHERE id = ${t.id}`;
+    await expect(deviceTask({ id: t.id, action: "reopen" })).rejects.toMatchObject({ name: "Refused", code: "google-task", message: expect.stringMatching(/^this task lives in Google Tasks: reopen it there/) });
+    const [row] = await sql<{ status: string }[]>`SELECT status FROM intent WHERE id = ${t.id}`;
+    expect(row!.status).toBe("done");
+    expect(await doneRows(t.id)).toEqual([]);
+  });
+
+  it("marks a flag seen: the flag and its note go, the task stays open and leaves needs_you", async () => {
+    const t = await createIntent(sql, { type: "task", title: "Approve the dentist" }, ui);
+    await flagTask(sql, t.id, "they need a yes");
+    expect((await deviceHome()).needs_you.map((n) => n.id)).toEqual([t.id]);
+    // The reply carries the flag: reopening an open task leaves it flagged.
+    expect(await deviceTask({ id: t.id, action: "reopen" })).toMatchObject({ status: "active", flagged: true });
+    const seen = await deviceTask({ id: t.id, action: "seen" });
+    jsonSafe(seen);
+    expect(seen).toMatchObject({ status: "active", done: false, flagged: false });
+    const [row] = await sql<{ flagged_at: Date | null; flag_note: string | null }[]>`SELECT flagged_at, flag_note FROM intent WHERE id = ${t.id}`;
+    expect(row).toEqual({ flagged_at: null, flag_note: null });
+    expect((await deviceHome()).needs_you).toEqual([]);
+  });
+
+  it("gives a task to the agent behind those already queued, and takes it back", async () => {
+    const first = await createIntent(sql, { type: "task", title: "Find a plumber" }, ui);
+    const second = await createIntent(sql, { type: "task", title: "Draft the lease email" }, ui);
+    const mine = await createIntent(sql, { type: "task", title: "Book the flights" }, ui);
+    await queueTask(sql, first.id);
+    await queueTask(sql, second.id);
+    await sql`UPDATE intent SET queued_at = now() - interval '2 hours' WHERE id = ${first.id}`;
+    await sql`UPDATE intent SET queued_at = now() - interval '1 hour' WHERE id = ${second.id}`;
+
+    const queued = await deviceTask({ id: mine.id, action: "queue", device: "pixel-9a" });
+    jsonSafe(queued);
+    expect(queued).toMatchObject({ assignee: "agent", queued_at: expect.any(String), done: false });
+    expect((await deviceHome()).agent_queue.map((q) => q.id)).toEqual([first.id, second.id, mine.id]);
+
+    await claimTask(sql, mine.id, "thread-7");
+    const back = await deviceTask({ id: mine.id, action: "unqueue", device: "pixel-9a" });
+    jsonSafe(back);
+    expect(back).toMatchObject({ assignee: "owner", queued_at: null });
+    const [row] = await sql<{ assignee: string; queued_at: Date | null; thread_ref: string | null }[]>`SELECT assignee, queued_at, thread_ref FROM intent WHERE id = ${mine.id}`;
+    expect(row).toEqual({ assignee: "owner", queued_at: null, thread_ref: null });
+    expect((await deviceHome()).agent_queue.map((q) => q.id)).toEqual([first.id, second.id]);
+  });
+
+  it("refuses to queue a done task, and says not found for an unknown id and bad input for an unknown action", async () => {
+    const t = await createIntent(sql, { type: "task", title: "Done already" }, ui);
+    await completeTask(sql, t.id, ui);
+    await expect(deviceTask({ id: t.id, action: "queue" })).rejects.toMatchObject({ name: "BadInput", message: "this task is done" });
+    const [row] = await sql<{ assignee: string; queued_at: Date | null }[]>`SELECT assignee, queued_at FROM intent WHERE id = ${t.id}`;
+    expect(row).toEqual({ assignee: "owner", queued_at: null });
+
+    const unknown = "6f1c2c1e-0000-4000-8000-0000000000ff";
+    for (const action of ["done", "reopen", "seen", "queue", "unqueue"]) {
+      await expect(deviceTask({ id: unknown, action })).rejects.toMatchObject({ name: "NotFound" });
+    }
+    await expect(deviceTask({ id: t.id, action: "delete" })).rejects.toMatchObject({ name: "ZodError" });
+  });
+
+  it("answers through the route: the reply, each refusal's status and shape, and 404 on GET", async () => {
+    const { Route } = await import("../../src/routes/device/$.js");
+    const handlers = (Route.options as unknown as { server: { handlers: Record<"GET" | "POST", (c: { request: Request }) => Promise<Response>> } }).server.handlers;
+    const post = (body: unknown) =>
+      handlers.POST({ request: new Request("http://127.0.0.1:3847/device/task", { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" } }) });
+
+    const got = await handlers.GET({ request: new Request("http://127.0.0.1:3847/device/task") });
+    expect(got.status).toBe(404);
+    expect(await got.json()).toEqual({ error: { code: "no-such-endpoint", message: "GET /device/task" } });
+
+    const t = await createIntent(sql, { type: "task", title: "Water the plants" }, ui);
+    const ok = await post({ id: t.id, action: "done", device: "pixel-9a" });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toMatchObject({ id: t.id, done: true });
+
+    const g = await google("Buy stamps");
+    const refused = await post({ id: g.id, action: "done" });
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toEqual({ error: { code: "google-task", message: expect.stringMatching(/^this task lives in Google Tasks/) } });
+
+    const missing = await post({ id: "6f1c2c1e-0000-4000-8000-0000000000ff", action: "seen" });
+    expect(missing.status).toBe(404);
+    expect((await missing.json()).error.code).toBe("not-found");
+
+    for (const bad of [{ id: t.id, action: "queue" }, { id: t.id, action: "delete" }, { id: "nope", action: "done" }]) {
+      const r = await post(bad);
+      expect(r.status).toBe(400);
+      expect((await r.json()).error.code).toBe("bad-input");
     }
   });
 });
