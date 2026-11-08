@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The lor panel and LoR's blocks on home"
-updated_at: "2026-11-08T03:46:49.780719221+00:00"
+updated_at: "2026-11-08T04:07:26.795908358+00:00"
 ---
 
 ## Goal
@@ -62,3 +62,17 @@ LoR shows on home in native Compose: the `lor` panel (LoR's dashboard shaped for
 - 2026-11-07 [decision] Superseded in part by lor-tbqc: the shared /device/home reader is lor-leh4's (lor-sbth), which this item extends with /device/tasks and /device/people, and the stack's overflow scroll is lor-r0f9's; lor-clgw waits on lor-sbth.
   Reason: Review finding R1 (lor-tbqc): one owner for each piece, decided by the coordinator.
 - 2026-11-07 [note] From lor-f3vn's plan: if lor-v692 is on main when this starts, add lor to its addPanel as a once-per-layout type, like t3 and drawer, and the four blocks as types that take no field, with GridEditTest covering them; and if lor-6get and lor-9uc1 are on main, name them in the minimap's palettes (LoR; Today, Needs you, Running, Agent queue), with a screenshot of each palette. If those land after this, they do it.
+- 2026-11-07 [decision] The shared reader (LorReads) holds three kept replies, /device/home, /device/tasks and /device/people, each with its own minute; hold(lists = true) asks for the two lists, and a second count of such holds decides whether they are read. A holder asking for the lists wakes the loop, so the lists are read at once while /device/home keeps its minute.
+  Reason: lor-leh4's author suggested a hold that says what it wants. Separate minutes keep each read at once a minute without reading /device/home again when a lor panel comes; one Kept type gives each reply the same last-good, error and current rules.
+  Rejected: A second reader for the lists: two owners of LoR's reads, against decision lor-tbqc
+  Rejected: Reading the lists with every /device/home read: the panel would wait up to a minute for its first list
+- 2026-11-07 [decision] Each block and the lor panel make their own AgentModel (rememberAgentModel), which holds the process's reader and, for needs-you and running only, the T3 connection; today, t3-queue and the lor panel hold no T3 connection.
+  Reason: AgentModel is light (the reader, connection and card calls are all process-wide), so one per screen keeps the agent page's code path; holding T3 only where T3 is shown keeps a LoR-only stack from opening the socket.
+  Rejected: One AgentModel shared by home: a new owner in HomeScreen for state that already lives in LorApp
+- 2026-11-07 [decision] The lor panel's Tasks tab lists /device/tasks' open tasks grouped as the web's Tasks groups by due date (Needs you, Past due, Today, This week, Later on, No date), each row titled with a line of its due label, who it waits on, its project and Google Tasks; Due soon writes the web's Due soon line (due 15 Oct · waiting on X · project · Google Tasks). Dates are written in en-GB as the web's Intl does (Sept, not Sep), whatever the phone's locale.
+  Reason: The check is against the web on the same data; the web's /tasks groups by due date by default, and /device/tasks carries no assignee, so the web's Open, Waiting and With the agent tabs can't be split on the phone.
+  Rejected: One flat list in Due soon's order: matches no screen of the web's Tasks
+- 2026-11-07 [decision] LoR's blocks are drawn as cards (framedPanel on StateFill) over the wallpaper; the lor panel has the agent page's veil, and home's page dots use the surface ink on it as on the agent page. The tab segment is DESIGN.md's segmented control with the selection treatment.
+  Reason: The agent page's sections assume a dark surface; on a bright wallpaper the blocks' text would not read without one.
+- 2026-11-07 [decision] A LoR flag card's text opens its task in the dashboard, as its tile and Open do; T3 cards' text taps are left for lor-iabt, which makes them choose the thread on the wide form.
+  Reason: The Done when line asks a flag's text to open /tasks?id=; giving T3 cards a text tap now would be undone by lor-iabt.
