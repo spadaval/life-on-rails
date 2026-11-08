@@ -31,7 +31,7 @@ updated_at: "2026-11-08T03:36:23.275521639+00:00"
 
 ## Goal
 
-The phone sends LoR what home looks like, so the web can draw it: each launchable app's icon as home draws it (icon pack, themed icons, shape), the wallpaper (both of the Fold's screens if they differ), each screen's size in pixels, dp and physical dpi with its insets and cutout, and each placed widget's last snapshot and its preview image. Sent when they change, not on every resume.
+The phone sends LoR what home looks like, so the web can draw it: each launchable app's icon as home draws it (icon pack, themed icons, shape), the wallpaper (both of the Fold's screens if they differ), each screen's size in pixels, dp and physical dpi with its insets and cutout, and each placed widget's last snapshot and its preview image, and a snapshot of the `t3` panel. Sent when they change, not on every resume.
 
 ## Done when
 
