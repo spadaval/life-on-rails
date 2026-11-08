@@ -14,7 +14,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The minimap: arrange the grid's panels"
-updated_at: "2026-11-08T01:57:32.923565448+00:00"
+updated_at: "2026-11-08T01:58:11.339669908+00:00"
 ---
 
 ## Goal
@@ -28,7 +28,7 @@ On `T3_Phone_API35` against the test server, with a version 1 `layout.json` with
 - [ ] It draws a cell for each column from 0 to one past the last, and each row from 0 to one past the last. Each panel is a framed tile named by its type: Agent page, Drawer, or Stack with its blocks listed ("Clock · 12 apps · Dock"). Empty cells are dashed (DESIGN.md's Shapes: dashed is not yet). Each tile says Full or Half, and halves that share an inner screen (`InnerScreens.of`) are drawn joined. The phone's start and the inner screen's start are marked, and the cell home is on has the selection treatment. Up to 6 columns and 4 rows fit the phone without scrolling; a larger grid scrolls. Screenshots of the converted grid and of a sparse hand-written grid with gaps.
 - [ ] The palette lists Stack, Agent page and Drawer, and every other panel type `Panel.TYPES` holds. A drag from it onto an empty cell adds that panel (`addPanel`); so does a tap on it, then a tap on an empty cell. A type the layout already holds is drawn dimmed, and a tap on it says why in the Undo bar. The file is read after each add, and Undo after each gives back the file's sum (`sha256sum`).
 - [ ] A long press on a panel picks it up, and it follows the finger. Let go on an empty cell, it moves; on a panel, the two swap; elsewhere it settles back. Settling takes DESIGN.md's 220 ms, with no motion at the animator duration scale 0. A start marker moves with its panel. The selected panel's Move, then a tap on a cell, does the same. The file is read, and Undo checked, after a move and after a swap.
-- [ ] A tap selects a panel and shows its actions: Show, which closes the minimap and moves home there; Full and Half; Phone start; Inner start; Remove; and, on a stack, Blocks (lor-9uc1). Each edit writes with Undo, and the file is read after each.
+- [ ] A tap selects a panel and shows its actions: Show, which closes the minimap and moves home there; Full and Half; Phone start; Inner start; and Remove. (A stack's Blocks action is lor-9uc1's.) Each edit writes with Undo, and the file is read after each.
 - [ ] Refusals show in the Undo bar with their reason, and nothing is written: Remove on a start panel, a sixth stack in a row, a second Drawer.
 - [ ] Locked (lor-zzyy), the minimap opens and draws the map; Show is its only action, and the palette and every other action are hidden. Its padlock reads "Locked", and a tap on it unlocks with Undo; unlocked, it reads "Unlocked", and a tap locks. Screenshots of both.
 - [ ] A drag in the minimap never moves home's grid under it: no `LorGrid` move lines during the minimap's drags.
@@ -74,3 +74,5 @@ A new `home/Minimap.kt` (the map, the palette, the panel actions, the padlock), 
   Reason: Both are on home's root in the Initial pass, so they would see the minimap's touches before it does.
   Rejected: Drawing the minimap outside home's root Box: the Undo bar has to draw above it
 - 2026-11-07 [blocker] Emulator proof not run: agent-device refuses emulator-5554 (DEVICE_IN_USE) because of a stale session t3-790c7c1b0b7aa1f7623a3400 created 2026-11-06 16:20, before this boot. The device rules forbid closing another session, so whoever owns it, or Sumeet, closes it ('agent-device close --session t3-790c7c1b0b7aa1f7623a3400'). Code builds and the JVM tests pass on boat; the APK is installed on emulator-5554. Test layouts and helpers are in /tmp/claude-1000/6get-emu/.
+- 2026-11-07 [decision] The orchestrator moved the Blocks action to lor-9uc1: lor-6get's Done when line no longer names it, and lor-9uc1's Done when has a line for it (a Blocks action on a selected stack opens its block editor).
+  Reason: lor-9uc1 builds what Blocks opens; a Blocks button here would do nothing until then.

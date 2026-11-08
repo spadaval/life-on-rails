@@ -24,6 +24,7 @@ A stack's blocks are arranged in the minimap. A stack's Blocks action lists its 
 ## Done when
 
 On `T3_Phone_API35` against the test server, with a version 1 `layout.json` with two extra pages, unless a line says otherwise:
+- [ ] A Blocks action on a selected stack in the minimap (lor-6get) opens this item's block editor.
 - [ ] Blocks, on a selected stack (lor-6get), lists each block by name: Clock, Apps with its count ("12 apps"), Dock, a widget by its provider's label and height once lor-vtmn's `widget` exists, and any other type by its name. The map stays in view above the list, with the stack selected. Screenshot of home's stack and of page 2's.
 - [ ] A drag on a block's handle moves it through the list, swapping places as it passes a neighbour's middle, as Kvaesitso's `WidgetColumn` edit mode does (GPL-3.0, ideas only). Letting go writes `moveBlock` with Undo. After the clock is moved under home's apps, home draws it there (screenshot of home), and the file shows the new order.
 - [ ] Each block's menu has Move up, Move down, Move to… and Remove. Move up and down are the same edit as the drag, and the TalkBack way to make it. Move to… lists the other stacks by their blocks ("Column 2: 3 apps · Dock") and moves the block there, before that stack's dock, else last. Remove of home's `apps` block takes its apps off home, and Undo brings them back. Each writes with Undo, and the file is read after each. On a stack's only block, Remove and Move to… are refused with the reason in the Undo bar.
