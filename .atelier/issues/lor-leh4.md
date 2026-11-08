@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "The clock block: next alarm and weather"
-updated_at: "2026-11-07T22:17:52.305139416+00:00"
+updated_at: "2026-11-08T00:11:41.250260445+00:00"
 ---
 
 ## Goal
@@ -51,3 +51,7 @@ On `T3_Phone_API35` against the test server, unless a line says otherwise:
 - This item builds the process-scoped reader (review finding lor-1f2f). lor-clgw waits for lor-sbth, and lor-lz97 extends this reader for its blocks and the `lor` panel (`/device/tasks`, `/device/people`) rather than adding a second.
 - The weather line needs `GOOGLE_MAPS_KEY` in the env file, as lor-q18v's last line does (Sumeet's setup).
 - `layout-v2.md`'s `clock` line is rewritten by lor-vtmn.
+
+## Notes
+
+- 2026-11-07 [note] From lor-q18v's review (finding lor-0ri5): docs/v2-product-engineering-spec.md's GET /device/home line (about line 516) doesn't list the new weather field. lor-leh4 adds it: 'and weather, Google's current conditions at the phone's latest location fix (lor-g4ta), or null'.
