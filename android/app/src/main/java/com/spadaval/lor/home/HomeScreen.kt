@@ -731,6 +731,8 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
                         StackBlock.Clock -> {}
                         is StackBlock.Apps -> apps(BlockAt(cell, i))
                         StackBlock.Dock -> dock()
+                        // Drawn from lor-r0f9 on; until then a widget block takes no space.
+                        is StackBlock.Widget -> {}
                     }
                 }
             }

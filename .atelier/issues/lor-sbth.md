@@ -4,6 +4,9 @@ id: "lor-sbth"
 issue_type: "feature"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: lor-sbth
 priority: "P2"
 relationships:
   blocks: []
@@ -32,7 +35,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Widget and clock blocks"
-updated_at: "2026-11-08T01:05:08.657712698+00:00"
+updated_at: "2026-11-08T01:05:14.399174791+00:00"
 ---
 
 ## Goal
