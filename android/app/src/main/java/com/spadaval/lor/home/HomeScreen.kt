@@ -629,8 +629,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             // The dots of the row on screen, and of the row a vertical move brings (launcher polish 6.8:
             // on the agent page they sit on its dark veil, not the wallpaper). Under the keyboard, as
             // the page they mark is (lor-sqfe), rather than over a field the keyboard pushed up.
-            RowDots(grid, grid.cell, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.bars).padding(bottom = 96.dp))
-            grid.move?.takeIf { !it.way.horizontal }?.let { RowDots(grid, it.to, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.bars).padding(bottom = 96.dp)) }
+            RowDots(grid, grid.cell, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.bars).padding(bottom = DotsAbove))
+            grid.move?.takeIf { !it.way.horizontal }?.let { RowDots(grid, it.to, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.bars).padding(bottom = DotsAbove)) }
         }
         if (folder != null) {
             FolderPanel(folder, home, blurred, onClose = { ui.folder = null }, { folderShown.value }, { 1f - BACK_SCALE * ui.back }, ui.folderFrom, folderLayer) { cardBounds = it }
@@ -804,7 +804,7 @@ internal object Fill
  * column allows at most, placed at its start.
  */
 @Composable
-internal fun FillColumn(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun FillColumn(modifier: Modifier = Modifier, endPad: () -> Int = { 0 }, content: @Composable () -> Unit) {
     androidx.compose.ui.layout.Layout(content, modifier) { measurables, constraints ->
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
         val fill = measurables.indexOfFirst { it.layoutId == Fill }
@@ -816,7 +816,9 @@ internal fun FillColumn(modifier: Modifier = Modifier, content: @Composable () -
             val max = if (constraints.hasBoundedHeight) (constraints.maxHeight - others).coerceAtLeast(left) else Constraints.Infinity
             placeables[fill] = measurables[fill].measure(loose.copy(minHeight = left, maxHeight = max))
         }
-        val height = placeables.sumOf { it!!.height }.coerceIn(constraints.minHeight, constraints.maxHeight)
+        // Taller than its minimum (a stack that overflows), it ends [endPad] px lower; one that fits is unchanged.
+        val sum = placeables.sumOf { it!!.height }
+        val height = (if (sum > constraints.minHeight) sum + endPad() else sum).coerceIn(constraints.minHeight, constraints.maxHeight)
         val width = if (constraints.hasBoundedWidth) constraints.maxWidth else placeables.maxOfOrNull { it!!.width } ?: 0
         layout(width, height) {
             var y = 0
@@ -834,15 +836,27 @@ internal fun FillColumn(modifier: Modifier = Modifier, content: @Composable () -
  * before; taller than the space, it scrolls, reporting [scrollsInGrid] so the grid moves at its
  * edges. Scrolling is off while it fits, so a swipe on a page that fits is the grid's as before.
  * [background] is drawn under the blocks, at their full height, to take presses on empty home.
+ *
+ * Scrolling, its content ends with room for home's page dots, so the last row scrolls clear of
+ * them (lor-leh4): the dots stand [DotsAbove] above the panel's bottom, which is its parent's
+ * (the stack's column), and what lies below the scroll (the dock) already covers part of that.
  */
 @Composable
 internal fun StackScroll(modifier: Modifier, background: @Composable (Modifier) -> Unit, content: @Composable () -> Unit) {
-    BoxWithConstraints(modifier) {
+    val dotsTop = with(LocalDensity.current) { (DotsAbove + DotSize + DotsGap).roundToPx() }
+    // The scroll's height above the parent's bottom, in px: what lies under it there.
+    var below by remember { mutableIntStateOf(0) }
+    BoxWithConstraints(
+        modifier.onGloballyPositioned { c ->
+            val parent = c.parentLayoutCoordinates ?: return@onGloballyPositioned
+            below = (parent.size.height - c.positionInParent().y.roundToInt() - c.size.height).coerceAtLeast(0)
+        },
+    ) {
         val scroll = rememberScrollState()
         val space = maxHeight
         Box(Modifier.fillMaxWidth().scrollsInGrid(scroll).verticalScroll(scroll, enabled = scroll.maxValue > 0)) {
             background(Modifier.matchParentSize())
-            FillColumn(Modifier.fillMaxWidth().heightIn(min = space), content)
+            FillColumn(Modifier.fillMaxWidth().heightIn(min = space), endPad = { (dotsTop - below).coerceAtLeast(0) }, content = content)
         }
     }
 }
@@ -1058,10 +1072,16 @@ private fun RowDots(grid: GridPlace, of: Cell, ink: WallInk, heightPx: () -> Int
     Row(modifier.offset { IntOffset(0, grid.offsetOf(of, 0, heightPx())?.y ?: 0) }, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         row.forEach { s ->
             val color = if (s == lit) mark.copy(alpha = 0.8f) else mark.copy(alpha = 0.5f)
-            Box(Modifier.size(6.dp).background(color, if (grid.panel(s.left) is Panel.T3) RectangleShape else CircleShape))
+            Box(Modifier.size(DotSize).background(color, if (grid.panel(s.left) is Panel.T3) RectangleShape else CircleShape))
         }
     }
 }
+
+/** Home's page dots: [DotSize] tall, [DotsAbove] above the bars, as a panel's content ends. */
+internal val DotsAbove = 96.dp
+internal val DotSize = 6.dp
+/** The room an overflowing stack leaves between its last row and the dots. */
+private val DotsGap = 8.dp
 
 /** An app tile whose tap opens it from [at] and whose long press opens its menu. */
 @Composable
