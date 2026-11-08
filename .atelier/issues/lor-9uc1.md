@@ -12,9 +12,9 @@ relationships:
   relates: []
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "The minimap: a stack's blocks"
-updated_at: "2026-11-07T23:36:56.316022954+00:00"
+updated_at: "2026-11-08T02:39:04.665212173+00:00"
 ---
 
 ## Goal

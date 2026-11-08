@@ -185,7 +185,7 @@ val ONCE = mapOf("t3" to "an agent page", "drawer" to "a drawer")
 fun Layout.alreadyHolds(type: String): String? =
     ONCE[type]?.takeIf { panels.any { it.typeName == type } }?.let { "there's already $it" }
 
-private const val LAST_BLOCK = "a stack needs a block; remove the panel instead"
+internal const val LAST_BLOCK = "a stack needs a block; remove the panel instead"
 
 private fun oneOf(type: String) = "a stack holds one \"$type\" block"
 

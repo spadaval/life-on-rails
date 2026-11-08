@@ -93,9 +93,88 @@ class MinimapTest {
     }
 
     @Test
-    fun lockedShowIsTheOnlyAction() {
-        assertEquals(listOf(MinimapRules.Action.SHOW), MinimapRules.actions(locked = true))
-        assertEquals(MinimapRules.Action.entries, MinimapRules.actions(locked = false))
+    fun lockedShowAndAStacksBlocksAreTheOnlyActions() {
+        assertEquals(listOf(MinimapRules.Action.SHOW, MinimapRules.Action.BLOCKS), MinimapRules.actions(locked = true, stack = true))
+        assertEquals(listOf(MinimapRules.Action.SHOW), MinimapRules.actions(locked = true, stack = false))
+        assertEquals(MinimapRules.Action.entries, MinimapRules.actions(locked = false, stack = true))
+        assertEquals(MinimapRules.Action.entries - MinimapRules.Action.BLOCKS, MinimapRules.actions(locked = false, stack = false))
+    }
+
+    private fun stack(f: LayoutFile, column: Int, row: Int = 0) = f.current.panelAt(Cell(column, row)) as Panel.Stack
+
+    @Test
+    fun theBlockListNamesEachBlockWithTheAppsCounted() {
+        val home = stack(grid, 1)
+        assertEquals(listOf("Clock", "Apps", "Dock"), home.blocks.map { MinimapRules.blockTitle(it) })
+        assertEquals(listOf(null, "4 apps", null), home.blocks.map { MinimapRules.blockDetail(it) })
+        assertEquals(listOf("Clock", "Apps, 4 apps", "Dock"), home.blocks.map { MinimapRules.blockDescription(it) })
+    }
+
+    @Test
+    fun moveToListsTheOtherStacksByTheirBlocksAndGoesBeforeTheDock() {
+        val others = MinimapRules.otherStacks(grid.current, Cell(1, 0))
+        assertEquals(listOf("Column 2: 1 app · Dock", "Column 3: 0 apps · Dock"), others.map { MinimapRules.stackEntry(it) })
+        assertEquals("Column 2, row 1", MinimapRules.stackName(Cell(2, 1)))
+        // Before the dock, else last.
+        assertEquals(1, MinimapRules.tapIndex(others.first()))
+        val noDock = grid.removeBlock(BlockAt(Cell(2, 0), 1), StackBlock.Dock)
+        assertEquals(1, MinimapRules.tapIndex(stack(noDock, 2)))
+        // Moving home's clock there with that index puts it over the dock.
+        val moved = grid.moveBlock(BlockAt(Cell(1, 0), 0), StackBlock.Clock, Cell(2, 0), MinimapRules.tapIndex(others.first()))
+        assertEquals(listOf("apps", "clock", "dock"), stack(moved, 2).blocks.map { it.type })
+    }
+
+    @Test
+    fun thePaletteOffersTheTypesTheStackDoesntHold() {
+        assertEquals(emptyList<String>(), MinimapRules.blockPalette(stack(grid, 1)))
+        assertEquals(listOf("clock"), MinimapRules.blockPalette(stack(grid, 2)))
+        val bare = grid.removeBlock(BlockAt(Cell(2, 0), 1), StackBlock.Dock)
+        assertEquals(listOf("clock", "dock"), MinimapRules.blockPalette(stack(bare, 2)))
+        // Each one the palette offers, addBlock takes.
+        MinimapRules.blockPalette(stack(bare, 2)).forEach { bare.addBlock(Cell(2, 0), MinimapRules.tapIndex(stack(bare, 2)), it) }
+    }
+
+    @Test
+    fun aDropGoesBetweenTheRowsMiddles() {
+        val middles = listOf(50f, 150f, 250f)
+        assertEquals(0, MinimapRules.dropIndex(middles, 10f))
+        assertEquals(1, MinimapRules.dropIndex(middles, 99f))
+        assertEquals(2, MinimapRules.dropIndex(middles, 200f))
+        assertEquals(3, MinimapRules.dropIndex(middles, 400f))
+    }
+
+    @Test
+    fun aDraggedBlockSwapsOnlyOncePastANeighboursMiddle() {
+        // Rows of 100, 60 and 100 px, gaps included.
+        val h = listOf(100f, 60f, 100f)
+        val start = MinimapRules.Reorder.start(0, 3)
+        // 29 px down: short of the 60 px row's middle.
+        val short = start.dragged(29f) { h[it] }
+        assertEquals(listOf(0, 1, 2), short.order)
+        // 31 px: past it; the clock now sits second, 29 px under its new slot.
+        val past = short.dragged(2f) { h[it] }
+        assertEquals(listOf(1, 0, 2), past.order)
+        assertEquals(1, past.at)
+        assertEquals(-29f, past.offset, 0.01f)
+        // One fast fling past both neighbours swaps twice.
+        val far = start.dragged(200f) { h[it] }
+        assertEquals(listOf(1, 2, 0), far.order)
+        assertEquals(2, far.at)
+        assertEquals(0, far.block)
+        // And back up to the top.
+        val back = far.dragged(-200f) { h[it] }
+        assertEquals(listOf(0, 1, 2), back.order)
+        // The ends stop it.
+        assertEquals(listOf(0, 1, 2), start.dragged(-500f) { h[it] }.order)
+    }
+
+    @Test
+    fun aBlockMoveSaysWhatItNowSitsUnder() {
+        val blocks = stack(grid, 1).blocks
+        assertEquals("Clock moved under Apps.", MinimapRules.movedWithin(blocks, 0, 1))
+        assertEquals("Dock moved to the top.", MinimapRules.movedWithin(blocks, 2, 0))
+        assertEquals("Apps removed from Column 1; 4 apps left home.", MinimapRules.removed(blocks[1], Cell(1, 0)))
+        assertEquals("Clock removed from Column 1.", MinimapRules.removed(blocks[0], Cell(1, 0)))
     }
 
     @Test
