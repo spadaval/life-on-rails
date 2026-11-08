@@ -65,6 +65,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -193,16 +194,26 @@ object MinimapRules {
     fun actions(locked: Boolean, stack: Boolean): List<Action> =
         (if (locked) listOf(Action.SHOW, Action.BLOCKS) else Action.entries).filter { it != Action.BLOCKS || stack }
 
-    /** A block as the block list names it: its type's name. The apps count is [blockDetail]. */
-    fun blockTitle(block: StackBlock): String = when (block) {
+    /** A widget as the minimap names it when its provider's label isn't known: its provider. */
+    val PROVIDER: (StackBlock.Widget) -> String = { it.provider }
+
+    /**
+     * A block as the block list names it: its type's name, or a widget's provider's [label]
+     * (lor-r0f9 looks it up). The apps count and a widget's height are [blockDetail].
+     */
+    fun blockTitle(block: StackBlock, label: (StackBlock.Widget) -> String = PROVIDER): String = when (block) {
         is StackBlock.Clock -> "Clock"
         is StackBlock.Apps -> "Apps"
         is StackBlock.Dock -> "Dock"
-        is StackBlock.Widget -> "Widget"
+        is StackBlock.Widget -> label(block)
     }
 
-    /** What the block list says under a block's name: an `apps` block's count ("12 apps"). */
-    fun blockDetail(block: StackBlock): String? = (block as? StackBlock.Apps)?.let { blockName(it) }
+    /** What the block list says under a block's name: an `apps` block's count ("12 apps"), a widget's height ("Widget, 180 dp"). */
+    fun blockDetail(block: StackBlock): String? = when (block) {
+        is StackBlock.Apps -> blockName(block)
+        is StackBlock.Widget -> "Widget, ${block.height} dp"
+        else -> null
+    }
 
     /** A stack as Move to… names it: "Column 2", with its row when it isn't row 0. */
     fun stackName(cell: Cell): String = if (cell.row == 0) "Column ${cell.column}" else "Column ${cell.column}, row ${cell.row}"
@@ -221,16 +232,16 @@ object MinimapRules {
     fun blockPalette(stack: Panel.Stack): List<String> = StackBlock.TYPES.filter { StackBlock.bare(it) != null && stack.takes(it) }
 
     /** What the Undo bar says after block [from] of [blocks] moves to place [to] in its stack: "Clock moved under Apps." */
-    fun movedWithin(blocks: List<StackBlock>, from: Int, to: Int): String {
+    fun movedWithin(blocks: List<StackBlock>, from: Int, to: Int, label: (StackBlock.Widget) -> String = PROVIDER): String {
         val now = blocks.toMutableList().apply { add(to, removeAt(from)) }
-        val name = blockTitle(blocks[from])
-        return if (to == 0) "$name moved to the top." else "$name moved under ${blockTitle(now[to - 1])}."
+        val name = blockTitle(blocks[from], label)
+        return if (to == 0) "$name moved to the top." else "$name moved under ${blockTitle(now[to - 1], label)}."
     }
 
     /** What the Undo bar says after [block] is removed from the stack at [at]. */
-    fun removed(block: StackBlock, at: Cell): String = when (block) {
+    fun removed(block: StackBlock, at: Cell, label: (StackBlock.Widget) -> String = PROVIDER): String = when (block) {
         is StackBlock.Apps -> "Apps removed from ${stackName(at)}; ${blockName(block)} left home."
-        else -> "${blockTitle(block)} removed from ${stackName(at)}."
+        else -> "${blockTitle(block, label)} removed from ${stackName(at)}."
     }
 
     /** Where a block dropped at [y] goes in a list whose rows' middles, top to bottom, are [middles]. */
@@ -737,10 +748,18 @@ private fun BlockEditor(
     var list by remember { mutableStateOf(Rect.Zero) }
     val order = reorder?.order ?: stack.blocks.indices.toList()
     val current by rememberUpdatedState(stack)
+    // A widget's provider's label, as its long-press menu on home names it (lor-r0f9); its
+    // provider while it isn't bound.
+    val widgets = rememberWidgets()
+    val pm = LocalContext.current.packageManager
+    val labels = remember(stack, home.apps) {
+        stack.blocks.filterIsInstance<StackBlock.Widget>().associate { w -> w.id to (widgets.info(w.id, w.provider)?.loadLabel(pm) ?: w.provider) }
+    }
+    val label: (StackBlock.Widget) -> String = { labels[it.id] ?: it.provider }
 
     fun moveWithin(from: Int, to: Int, after: () -> Unit = {}) {
         val s = current
-        actions.edit(MinimapRules.movedWithin(s.blocks, from, to), after) { it.moveBlock(BlockAt(s.at, from), s.blocks[from], s.at, to) }
+        actions.edit(MinimapRules.movedWithin(s.blocks, from, to, label), after) { it.moveBlock(BlockAt(s.at, from), s.blocks[from], s.at, to) }
     }
 
     // Where a block chip from the palette would go: the list under the finger, between the rows' middles.
@@ -791,7 +810,7 @@ private fun BlockEditor(
                     val block = stack.blocks[b]
                     val r = reorder
                     BlockRow(
-                        block, b, stack, layout, locked, home,
+                        block, b, stack, layout, locked, home, label,
                         dragging = r?.block == b,
                         offset = if (r?.block == b) r.offset else 0f,
                         first = place == 0,
@@ -875,6 +894,7 @@ private fun BlockRow(
     layout: Layout,
     locked: Boolean,
     home: HomeContext,
+    label: (StackBlock.Widget) -> String,
     dragging: Boolean,
     offset: Float,
     first: Boolean,
@@ -885,7 +905,7 @@ private fun BlockRow(
 ) {
     val actions = home.actions
     val cell = stack.at
-    val title = MinimapRules.blockTitle(block)
+    val title = MinimapRules.blockTitle(block, label)
     var menu by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
     val close = { menu = false; picking = false }
@@ -938,7 +958,7 @@ private fun BlockRow(
             }
             MenuItem("Remove", danger = true) {
                 close()
-                actions.edit(MinimapRules.removed(block, cell)) { it.removeBlock(BlockAt(cell, index), block) }
+                actions.edit(MinimapRules.removed(block, cell, label)) { it.removeBlock(BlockAt(cell, index), block) }
             }
         }
     }

@@ -134,6 +134,30 @@ class MinimapTest {
     }
 
     @Test
+    fun aWidgetIsNamedByItsProvidersLabelWithItsHeightAndNeverOffered() {
+        val w = StackBlock.Widget(7, "com.example/.Clock", 180)
+        assertEquals("Analog clock", MinimapRules.blockTitle(w) { "Analog clock" })
+        assertEquals("com.example/.Clock", MinimapRules.blockTitle(w))
+        assertEquals("Widget, 180 dp", MinimapRules.blockDetail(w))
+        assertEquals("Widget", MinimapRules.blockName(w))
+        // Home's stack with two widgets: the palette still offers nothing, and no stack is offered a widget.
+        val two = grid.withCurrent(grid.current.copy(panels = grid.current.panels.map {
+            if (it.at == Cell(1, 0)) (it as Panel.Stack).copy(blocks = listOf(StackBlock.Clock, w, StackBlock.Widget(8, "com.example/.Notes", 120)) + it.blocks.drop(1)) else it
+        }))
+        assertEquals(emptyList<String>(), MinimapRules.blockPalette(stack(two, 1)))
+        assertEquals(listOf("clock"), MinimapRules.blockPalette(stack(two, 2)))
+        assertFalse(MinimapRules.blockPalette(stack(grid.removeBlock(BlockAt(Cell(2, 0), 1), StackBlock.Dock), 2)).contains(StackBlock.Widget.TYPE))
+        // The Undo bar names it by its label.
+        assertEquals("Analog clock moved under Notes.", MinimapRules.movedWithin(stack(two, 1).blocks, 1, 2) { if (it.id == 7) "Analog clock" else "Notes" })
+        assertEquals("Notes moved to the top.", MinimapRules.movedWithin(stack(two, 1).blocks, 2, 0) { if (it.id == 7) "Analog clock" else "Notes" })
+        assertEquals("Notes removed from Column 1.", MinimapRules.removed(stack(two, 1).blocks[2], Cell(1, 0)) { "Notes" })
+        // Move to… page 2 keeps its id and height, before page 2's dock.
+        val page2 = stack(two, 2)
+        val moved = two.moveBlock(BlockAt(Cell(1, 0), 1), w, Cell(2, 0), MinimapRules.tapIndex(page2))
+        assertEquals(listOf(StackBlock.Apps(page2.blocks[0].let { (it as StackBlock.Apps).items }), w, StackBlock.Dock), stack(moved, 2).blocks)
+    }
+
+    @Test
     fun aDropGoesBetweenTheRowsMiddles() {
         val middles = listOf(50f, 150f, 250f)
         assertEquals(0, MinimapRules.dropIndex(middles, 10f))
