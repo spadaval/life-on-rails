@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Weather from LoR's server in /device/home"
-updated_at: "2026-11-08T00:05:52.538428789+00:00"
+updated_at: "2026-11-08T00:08:39.422056768+00:00"
 ---
 
 ## Goal
@@ -50,6 +50,10 @@ LoR's server gives the phone the weather where it last was, through `/device/hom
 - `loadFixes` in `src/server/attribution/fill.ts` shows how `location` observations store coordinates (`payload->>'lat'`, `payload->>'lon'`).
 - lor-lz97 (lor-clgw) adds `agent_queue` to the same `deviceHome`; the two fields are independent.
 - Calls go out from the box; the phone never talks to Google.
+
+## Notes
+
+- 2026-11-07 [note] Handoff (author, 6eac5c7 on lor-q18v): five of six Done when lines hold, see ## Report. The live curl line waits on GOOGLE_MAPS_KEY in the env file (not set on 2026-11-07). Review: none yet.
 
 ## Report
 
