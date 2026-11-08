@@ -14,7 +14,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Lock home: no edits on home until it is unlocked"
-updated_at: "2026-11-08T01:16:43.010337226+00:00"
+updated_at: "2026-11-08T01:17:36.829273796+00:00"
 ---
 
 ## Goal
@@ -56,6 +56,7 @@ On `T3_Phone_API35` against the test server, unless a line says otherwise:
   Rejected: A check in each dragSource (dock, tiles, folder, drawer): four places to keep in step
 - 2026-11-07 [decision] The home menu shows 'Lock home' last, and locked, 'Unlock home' in its place with 'Edit home' hidden. Edit mode is left by HomeScreen whenever the file it draws is locked, not by the menu entry, so a lock from outside leaves it too. lor-r0f9's 'Add widget' goes behind the same !locked test (comment in HomeMenu).
   Reason: Lawnchair drops edit mode and Widgets from its options popup while locked. One owner for 'no edit mode while locked' covers both ways a lock arrives.
+- 2026-11-07 [handoff] Implemented on lor-f3vn (7407de5 code, c1f4c6a records); every Done when line ticked with receipts; see ## Report. Review: none yet, outstanding before merge.
 
 ## Report
 
