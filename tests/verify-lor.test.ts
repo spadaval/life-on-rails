@@ -2,8 +2,8 @@
 // CLI against a fake env file and a fake adb, so nothing here can reach the real
 // database, lor-web or a phone. Every case passes --dry-run, so even a broken guard
 // prints a plan instead of acting; only the listener case reaches a server, its own.
-import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -89,5 +89,37 @@ describe("verify-lor allows the test targets", () => {
     const r = cli(["api", "GET", "/status", "--dry-run"]);
     expect(r.code).toBe(0);
     expect(JSON.parse(r.out).steps[0].url).toBe("http://127.0.0.1:3857/api/v1/status");
+  });
+});
+
+describe("verify-lor keeps a shell's LOR_URL away from the flows", () => {
+  // A stand-in throwaway server (a scripts/serve.mjs on the test database) and a stand-in
+  // copy whose ui-check.mjs only reports the LOR_URL it was given.
+  const copy = path.join(dir, "fake-copy");
+  let server: ChildProcess;
+  let port = 0;
+  beforeAll(async () => {
+    const probe = createServer();
+    await new Promise<void>((resolve) => probe.listen(0, "127.0.0.1", resolve));
+    port = (probe.address() as AddressInfo).port;
+    await new Promise<void>((resolve) => probe.close(() => resolve()));
+    mkdirSync(path.join(dir, "fake-server/scripts"), { recursive: true });
+    writeFileSync(path.join(dir, "fake-server/scripts/serve.mjs"), `import { createServer } from "node:http"; createServer((_, r) => r.end("{}")).listen(Number(process.env.LOR_PORT), "127.0.0.1", () => console.log("up"));`);
+    mkdirSync(path.join(copy, "scripts"), { recursive: true });
+    writeFileSync(path.join(copy, "scripts/ui-check.mjs"), `console.log("LOR_URL=" + (process.env.LOR_URL ?? ""));`);
+    server = spawn("node", [path.join(dir, "fake-server/scripts/serve.mjs")], {
+      env: { ...process.env, LOR_PORT: String(port), DATABASE_URL: "postgres:///life_on_rails_test?host=/var/run/postgresql" },
+      stdio: ["ignore", "pipe", "inherit"],
+    });
+    await new Promise<void>((resolve) => server.stdout!.once("data", () => resolve()));
+  });
+  afterAll(() => server.kill());
+  it("screen does not pass a shell LOR_URL to the flow", () => {
+    const out = path.join(dir, "shots-lor-url");
+    const r = cli(["screen", "tasks", out, "--port", String(port)], { LOR_VERIFY_COPY: copy, LOR_URL: "http://127.0.0.1:3847" });
+    const log = readFileSync(path.join(out, "tasks.log"), "utf8");
+    expect(log).toMatch(/^LOR_URL=$/m);
+    expect(log).not.toMatch(/3847/);
+    expect(r.code).not.toBe(3);
   });
 });
