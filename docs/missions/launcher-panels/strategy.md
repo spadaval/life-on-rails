@@ -40,7 +40,7 @@ In: the grid and its movement, the pressed state and the folder's look, the draw
 
 Out:
 - generative widgets;
-- the agent-edited layout repository, named and temporary layouts, and agent-sorted folders (handed on from T3 Launcher);
+- the agent-edited layout repository (now the web layout editor mission, lor-ncpw), named and temporary layouts, and agent-sorted folders (handed on from T3 Launcher);
 - Launcher polish's carried robustness items that aren't about folding (lor-kxxz, outside the mission);
 - themed icons for apps with no monochrome layer (lor-fche, outside the mission: it has nothing to do with the grid);
 - count badges in place of dots (Sumeet, 2026-11-07: dots are enough unless he misses counts);
