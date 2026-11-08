@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The clock block: next alarm and weather"
-updated_at: "2026-11-08T03:02:05.274887974+00:00"
+updated_at: "2026-11-08T03:02:29.807064020+00:00"
 ---
 
 ## Goal
@@ -64,6 +64,7 @@ On `T3_Phone_API35` against the test server, unless a line says otherwise:
   Rejected: One combined line 'Alarm 7:00 · 46° Cloudy': the item names two lines
 - 2026-11-07 [decision] Edges of the lines: an alarm exactly 24 hours away shows and one already past does not; a reading exactly 2 hours old shows. Degrees round half up (Math.round), Fahrenheit computed from the Celsius the server sends. The unit follows LocaleData.getMeasurementSystem of the default FORMAT locale, read once per composition of the block.
   Reason: 'Within the next 24 hours' read as inclusive; the JVM tests in HeaderTest pin each edge.
+- 2026-11-07 [handoff] Implemented on lor-sbth (44252ef code, f72df4c records); every Done when line ticked, see ## Report. Review: none yet. lor-lz97 extends LorApp.reads (LorReads: hold(), retry(), home/error/current/retrying).
 
 ## Report
 
