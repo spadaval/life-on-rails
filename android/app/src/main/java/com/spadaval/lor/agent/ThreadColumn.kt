@@ -47,7 +47,11 @@ import com.spadaval.lor.ui.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -138,6 +142,23 @@ object Replies {
 
 private const val TAG = "T3Thread"
 
+/** What one read of the thread column is for: the thread and the updatedAt its shell row had. */
+internal data class ReadKey(val threadId: String, val updatedAt: String)
+
+/** The thread the column shows, and whether the connection is live. */
+internal data class Shown(val key: ReadKey, val live: Boolean)
+
+/**
+ * The reads the thread column makes, from what it shows: one per thread and updatedAt, made only
+ * while T3 is live, one at a time, and a change during a read gives one more read after it
+ * (conflate keeps only the latest). A read waits for the connection, since without a socket it
+ * fails at once; and the thread is read again when the connection comes back, because the
+ * reconnect's snapshot carries the same updatedAt and a read that failed while it was down would
+ * otherwise stay the column's last word (finding lor-wc8z).
+ */
+internal fun threadReads(shown: Flow<Shown>): Flow<ReadKey> =
+    shown.map { if (it.live) it.key else null }.distinctUntilChanged().filterNotNull().conflate()
+
 /** One read of a thread's end: its last messages, or why they couldn't be read. */
 private class ThreadRead(val threadId: String, val messages: List<ThreadMessage>?, val error: String?)
 
@@ -219,12 +240,12 @@ internal fun ThreadColumn(model: AgentModel, thread: T3Thread?, card: T3Card?, m
             Unseen(if (live) "T3 has no threads yet. Quick send starts one." else "The chosen thread shows here once T3 is connected.")
             return@Column
         }
-        // The read, again whenever the thread or its updatedAt changes: one at a time, and a change
-        // during a read gives one more read after it (conflate keeps only the latest).
+        // The read, while T3 is live, and again whenever the thread, its updatedAt or the connection
+        // changes ([threadReads]).
         var read by remember { mutableStateOf<ThreadRead?>(null) }
-        val key by rememberUpdatedState(thread.id to thread.updatedAt)
+        val shown by rememberUpdatedState(Shown(ReadKey(thread.id, thread.updatedAt), live))
         LaunchedEffect(Unit) {
-            snapshotFlow { key }.conflate().collect { (id, updatedAt) -> read = readThread(model.connection, id, updatedAt, read) }
+            threadReads(snapshotFlow { shown }).collect { k -> read = readThread(model.connection, k.threadId, k.updatedAt, read) }
         }
         ThreadHead(model, thread)
         val scroll = rememberScrollState()

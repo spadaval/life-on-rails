@@ -68,6 +68,8 @@ All seven Done when lines hold on `6ac3851`. The checks ran on the unfolded `T3_
 - **Tests:** `CommandsTest.theThreadColumnReadsTheLastMessagesOldestFirst` decodes the recorded projection (`projection-messages.ndjson`). `ThreadChoiceTest` covers which thread shows, what Threads lists, and the reply box's two failure wordings.
 - **Projection size for the longest thread:** after the checks, the largest of the scratch server's 51 listed threads is the Replay showcase thread at 242,807 characters of JSON (about 243 KB). The Fold read it in 120 to 217 ms. Before the checks the largest was "Back up the notes" at 134,979 characters.
 
+Review finding lor-wc8z is fixed: the thread column reads only while T3 is live, and reads again when the connection comes back (`threadReads` in `ThreadColumn.kt`). `ThreadReadsTest.readsWaitForTheConnectionAndComeAgainAfterAReconnect` failed before the fix and passes after it (boat, 386 tests, 0 failures). The fix has no emulator check yet.
+
 ### Deviations
 
 - **One fix the checks asked for (`6ac3851`, fail receipt lor-65ew on `iabt-b2`).** A reply that timed out while the scratch server was paused said "Not sent" and kept its text, but it arrived when the server resumed. That wording invites a second copy. The box now says "Not confirmed: … It may still reach the thread, so check it before sending again." It says "Not sent" only when no socket was open (`Replies.failure`). The same commit trims trailing blank lines from messages, which left a gap under some of them.
