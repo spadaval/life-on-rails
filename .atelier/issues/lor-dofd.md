@@ -44,13 +44,13 @@ Sumeet said yes to panels that write to LoR's data (2026-11-07: "I don't really 
 
 ## Decision
 
-The asked set, through one route, with Undo where there is a clean inverse (planner, 2026-11-07, on Sumeet's yes and the strategy's revised Authority).
+The asked set, through one route, with Undo where the web's own inverse write restores the task, and saying what it doesn't restore (planner, 2026-11-07, on Sumeet's yes and the strategy's revised Authority).
 
 - **Writes:** a task done (`completeTask`) and not done (`reopenTask`), a flag Seen (`unflagTask`), a task given to the agent (`queueTask`) and taken back (`assignTask(…, "owner")`), and the timer's start, pause, resume and stop.
 - **Route:** `POST /device/task` `{ id, action: done | reopen | seen | queue | unqueue, device? }`, replying with the task after the write; the timer keeps `POST /device/timer`. Both call the functions the web's server functions call, with `via: "ui"` and the device as `sourceRef`.
-- **Undo:** done and reopen undo each other; queue and unqueue undo each other. Seen has no Undo; the timer has none (as on the web).
+- **Undo:** done and reopen undo each other on a task row. Done on a flag card also clears the flag (`completeTask`), which `reopenTask` doesn't restore, so its Undo reopens the task without the flag and says so. Queue and unqueue undo each other, except that Take back on a task a run has already claimed (with a thread) has no Undo, since queueing it again would start a second run. Seen has no Undo; the timer has none (as on the web).
 - **lor-p86v's clauses change:** `needs-you`'s LoR flag cards get Done and Seen, and `t3-queue` gets Take back, so neither is read-only any more. Everything else in lor-p86v stands.
 
 ## Report
 
-Done, reopen, Seen, to the agent and back, and the timer, through POST /device/task (one route, the web's intents.ts functions) and POST /device/timer; Undo for done/reopen and queue/unqueue; no Undo for Seen or the timer
+Done, reopen, Seen, to the agent and back, and the timer, through POST /device/task (one route, the web's intents.ts functions) and POST /device/timer; Undo for done/reopen (a flag card's Done reopens without the flag) and queue/unqueue (none after a run claimed the task); no Undo for Seen or the timer

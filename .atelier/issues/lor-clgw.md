@@ -35,7 +35,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "LoR and T3 panels"
-updated_at: "2026-11-08T02:04:31.782545329+00:00"
+updated_at: "2026-11-08T02:09:40.991336306+00:00"
 ---
 
 ## Goal
@@ -45,7 +45,7 @@ LoR and T3 get panels that use the space, in native Compose with no WebView. The
 ## Done when
 
 - [ ] The server's standalone items are merged (lor-odtk, the reads; lor-2mh2, the writes), and each child is done, with its proof, in this order on this item's branch: lor-lz97 (the `lor` panel and the blocks), lor-rz50 (the panels' writes), lor-iabt (the T3 panel's wide form).
-- [ ] End to end on `T3_Fold_API35` against the test server and a scratch T3 server, in one session, with a layout of the `t3` panel, home with a `today` and a `needs-you` block above its apps, and a `lor` panel beside it: folded, each cell drawn; unfolded, the `t3` panel's wide form, home and the `lor` panel's wide form; an approval made on the T3 panel clears from the `needs-you` block and the agent page; a flag marked Done on the `needs-you` block leaves the `lor` panel and the agent page at once, and its Undo brings it back to all three; a task flagged in the test database (by SQL on `life_on_rails_test`, never with the `lor` CLI, which reaches the real server) shows in the `lor` panel and the block within a minute. Screenshots of each step, recorded as an evidence receipt on this item.
+- [ ] End to end on `T3_Fold_API35` against the test server and a scratch T3 server, in one session, with a layout of the `t3` panel, home with a `today` and a `needs-you` block above its apps, and a `lor` panel beside it: folded, each cell drawn; unfolded, the `t3` panel's wide form, home and the `lor` panel's wide form; an approval made on the T3 panel clears from the `needs-you` block and the agent page; a flag marked Done on the `needs-you` block leaves the `lor` panel and the agent page at once, and its Undo reopens the task without its flag, so it shows under the `lor` panel's Due soon and in none of the three Needs you lists; a task flagged in the test database (by SQL on `life_on_rails_test`, never with the `lor` CLI, which reaches the real server) shows in the `lor` panel and the block within a minute. Screenshots of each step, recorded as an evidence receipt on this item.
 - [ ] Launcher polish 7.8's home-press measurement on `T3_Phone_API35` and the unfolded `T3_Fold_API35`, with the layout above, on this branch and on `main` at the commit it branched from: the median `TotalTime` on this branch is within 10% of the base. In the same receipt or one beside it.
 
 ## Scope
@@ -73,3 +73,4 @@ The server's `/device/*` reads and writes, the phone's `home/` (layout and stack
 - 2026-11-07 [decision] Panel writes are planned as a standalone server item lor-2mh2 (POST /device/task, merging alone, as lor-odtk did) and a phone child lor-rz50 on this branch, worked after lor-lz97 and before lor-iabt.
   Reason: The server part needs no phone and can merge while lor-lz97 is built; the phone writes are their own reviewable slice rather than six more Done when lines in lor-lz97, which already draws and reads every panel and block. Siblings are ordered by this note, not by blocked_by.
   Rejected: Writes folded into lor-lz97: one slice too large to review in one pass
+- 2026-11-07 [note] Question for Sumeet: Seen on a flag has no Undo (decision lor-dofd), because taking it back would re-flag the task and re-send the WhatsApp message, and the flag's time and note would be lost; a mis-tap loses the flag. Is that acceptable, or should Seen get an Undo that restores the flag exactly (a server rule the web doesn't have)?
