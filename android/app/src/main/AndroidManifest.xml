@@ -70,7 +70,9 @@
         </activity>
 
         <!-- The home app (T3 Launcher). Attributes follow Launcher3's; its own task
-             (empty affinity), so the LoR icon still opens MainActivity in the app's task. -->
+             (empty affinity), so the LoR icon still opens MainActivity in the app's task.
+             adjustResize, not Launcher3's adjustPan (lor-sqfe): the keyboard arrives as an inset
+             that the drawer, the agent page and a folder pad by, so the grid never pans. -->
         <activity
             android:name=".home.HomeActivity"
             android:exported="true"
@@ -82,7 +84,7 @@
             android:taskAffinity=""
             android:theme="@style/Theme.Lor.Home"
             android:configChanges="keyboard|keyboardHidden|mcc|mnc|navigation|orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode|fontScale"
-            android:windowSoftInputMode="adjustPan">
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />

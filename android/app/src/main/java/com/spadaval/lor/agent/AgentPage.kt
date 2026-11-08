@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -190,20 +191,25 @@ fun AgentPage() {
                 narrowScroll.scrollTo(FormScroll.narrow(scroll.value, queueScroll.value, todayPx, queueScroll.value == queueScroll.maxValue))
             }
         }
-        if (full) {
-            // The full layout (decision note on lor-ph30, until lor-clgw): Today left, the queue right,
-            // each scrolling on its own and taking a vertical swipe until its edge (lor-qdmy).
-            Row(Modifier.fillMaxSize()) {
-                ScrollColumn(scroll, Modifier.weight(1f), bottom = 24.dp) { Today(model) }
-                ScrollColumn(queueScroll, Modifier.weight(1f), bottom = 120.dp) { queue() }
-            }
-        } else {
-            ScrollColumn(narrowScroll, Modifier.fillMaxWidth(), bottom = 120.dp) {
-                Column(Modifier.onSizeChanged { todayPx = it.height }) { Today(model) }
-                queue()
+        // The columns end at the keyboard (lor-sqfe: home's window doesn't pan), so a focused field,
+        // an answer on a queue card or the pairing link, scrolls into view above it.
+        Box(Modifier.fillMaxSize().imePadding()) {
+            if (full) {
+                // The full layout (decision note on lor-ph30, until lor-clgw): Today left, the queue right,
+                // each scrolling on its own and taking a vertical swipe until its edge (lor-qdmy).
+                Row(Modifier.fillMaxSize()) {
+                    ScrollColumn(scroll, Modifier.weight(1f), bottom = 24.dp) { Today(model) }
+                    ScrollColumn(queueScroll, Modifier.weight(1f), bottom = 120.dp) { queue() }
+                }
+            } else {
+                ScrollColumn(narrowScroll, Modifier.fillMaxWidth(), bottom = 120.dp) {
+                    Column(Modifier.onSizeChanged { todayPx = it.height }) { Today(model) }
+                    queue()
+                }
             }
         }
-        // At the panel's bottom-end corner, whatever its width (6.8: it floated mid-screen on the Fold).
+        // At the panel's bottom-end corner, whatever its width (6.8: it floated mid-screen on the Fold),
+        // and under the keyboard rather than over the field being typed in.
         SendButton(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 18.dp)) { QuickSend.open(context, QuickSend.From.AGENT) }
     }
 }

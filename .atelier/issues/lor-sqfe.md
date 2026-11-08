@@ -15,9 +15,9 @@ relationships:
     type: "blocked_by"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "The drawer within the thumb's reach, and its wide form"
-updated_at: "2026-11-07T22:02:37.677660858+00:00"
+updated_at: "2026-11-08T00:11:45.583611429+00:00"
 ---
 
 ## Goal

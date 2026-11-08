@@ -7,7 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -340,7 +342,16 @@ fun Modifier.scrollsInGrid(scrolls: (Way) -> Boolean): Modifier = composed {
 
 /** Reports [state]'s list as a block that takes a vertical swipe until it reaches its edge. */
 fun Modifier.scrollsInGrid(state: ScrollableState): Modifier =
-    scrollsInGrid { way -> if (way == Way.DOWN) state.canScrollForward else state.canScrollBackward }
+    scrollsInGrid { way -> listTakes(way, state.canScrollForward, state.canScrollBackward, reversed = false) }
+
+/**
+ * Whether a list that can scroll [forward] and [backward] takes a swipe that would move the grid
+ * [way]. A [reversed] list (the drawer's search results, which run upward from the field) scrolls
+ * forward toward its top, so it takes a finger going down forward.
+ */
+internal fun listTakes(way: Way, forward: Boolean, backward: Boolean, reversed: Boolean): Boolean =
+    // A finger going up moves the grid down, and scrolls a list toward its end: forward, or backward when reversed.
+    if ((way == Way.DOWN) != reversed) forward else backward
 
 /**
  * The finger on the grid, on home's root in the Initial pass as the drag is, measured where nothing
@@ -421,8 +432,18 @@ enum class Sides { BOTH, LEFT, RIGHT }
 val LocalCellSides = compositionLocalOf { Sides.BOTH }
 
 /**
- * Pads for the system's insets (bars, cutout) on the sides this cell touches only: a half of a
- * pair pads its outer side, top and bottom, so no gap opens where the halves meet (lor-el51).
+ * The system's bars and cutout, without the keyboard. Home's window is `adjustResize` (lor-sqfe),
+ * so the keyboard arrives as an inset instead of panning the window: home pads by these, and only
+ * a page with a field (the drawer, the agent page) pads by the keyboard too, so the grid and the
+ * pages beside it stay where they are.
+ */
+val WindowInsets.Companion.bars: WindowInsets
+    @Composable get() = systemBars.union(displayCutout)
+
+/**
+ * Pads for the system's insets (bars, cutout; not the keyboard, see [bars]) on the sides this cell
+ * touches only: a half of a pair pads its outer side, top and bottom, so no gap opens where the
+ * halves meet (lor-el51).
  */
 fun Modifier.cellInsetsPadding(): Modifier = composed {
     val sides = when (LocalCellSides.current) {
@@ -430,7 +451,7 @@ fun Modifier.cellInsetsPadding(): Modifier = composed {
         Sides.LEFT -> WindowInsetsSides.Left
         Sides.RIGHT -> WindowInsetsSides.Right
     }
-    windowInsetsPadding(WindowInsets.safeDrawing.only(sides + WindowInsetsSides.Vertical))
+    windowInsetsPadding(WindowInsets.bars.only(sides + WindowInsetsSides.Vertical))
 }
 
 /**

@@ -64,6 +64,7 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.withFrameNanos
@@ -616,9 +617,10 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
                 }
             }
             // The dots of the row on screen, and of the row a vertical move brings (launcher polish 6.8:
-            // on the agent page they sit on its dark veil, not the wallpaper).
-            RowDots(grid, grid.cell, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp))
-            grid.move?.takeIf { !it.way.horizontal }?.let { RowDots(grid, it.to, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp)) }
+            // on the agent page they sit on its dark veil, not the wallpaper). Under the keyboard, as
+            // the page they mark is (lor-sqfe), rather than over a field the keyboard pushed up.
+            RowDots(grid, grid.cell, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.bars).padding(bottom = 96.dp))
+            grid.move?.takeIf { !it.way.horizontal }?.let { RowDots(grid, it.to, ink, { heightPx }, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.bars).padding(bottom = 96.dp)) }
         }
         if (folder != null) {
             FolderPanel(folder, home, blurred, onClose = { ui.folder = null }, { folderShown.value }, { 1f - BACK_SCALE * ui.back }, ui.folderFrom, folderLayer) { cardBounds = it }
