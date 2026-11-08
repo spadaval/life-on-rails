@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The server's writes for LoR's panels: POST /device/task"
-updated_at: "2026-11-08T02:17:37.178787892+00:00"
+updated_at: "2026-11-08T02:17:57.003029150+00:00"
 ---
 
 ## Goal
@@ -59,6 +59,7 @@ LoR's panels on the phone can do what the web's Today and Tasks let Sumeet do to
   Reason: Matches deviceTimer's optional device (with ingest's 64-character cap so source_ref stays short), and keeps the route's one error mapping.
 - 2026-11-07 [decision] The timer coverage is a second test in the 'device timer and state' block (start with intent_id, pause, resume) rather than more lines in the toggle test.
   Reason: Resume ends the paused block and starts a new one on the same intent (a pause is never inside a block), so the check is about block rows, a different subject from the toggle test's minutes; one rule per test keeps a failure readable.
+- 2026-11-07 [handoff] Implemented on branch lor-2mh2 (d281dbc); every Done when line ticked; see ## Report. Review: none yet. Open: getTodayFn's tasks is checked by typecheck and reading only.
 
 ## Report
 
