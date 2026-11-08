@@ -47,7 +47,7 @@ LoR and T3 get panels that use the space, in native Compose with no WebView. The
 
 ## Done when
 
-- [ ] The server's standalone items are merged (lor-odtk, the reads; lor-2mh2, the writes), and each child is done, with its proof, in this order on this item's branch: lor-lz97 (the `lor` panel and the blocks), lor-rz50 (the panels' writes), lor-iabt (the T3 panel's wide form).
+- [x] The server's standalone items are merged (lor-odtk, the reads; lor-2mh2, the writes), and each child is done, with its proof, in this order on this item's branch: lor-lz97 (the `lor` panel and the blocks), lor-rz50 (the panels' writes), lor-iabt (the T3 panel's wide form).
 - [x] End to end on `T3_Fold_API35` against the test server and a scratch T3 server, in one session, with a layout of the `t3` panel, home with a `today` and a `needs-you` block above its apps, and a `lor` panel beside it: folded, each cell drawn; unfolded, the `t3` panel's wide form, home and the `lor` panel's wide form; an approval made on the T3 panel clears from the `needs-you` block and the agent page; a flag marked Done on the `needs-you` block leaves the `lor` panel and the agent page at once, and its Undo reopens the task without its flag, so it shows under the `lor` panel's Due soon and in none of the three Needs you lists; a task flagged in the test database (by SQL on `life_on_rails_test`, never with the `lor` CLI, which reaches the real server) shows in the `lor` panel and the block within a minute. Screenshots of each step, recorded as an evidence receipt on this item.
 - [x] Launcher polish 7.8's home-press measurement on `T3_Phone_API35` and the unfolded `T3_Fold_API35`, on this branch and on `main` at the commit it last merged (9c8a470), with the same layout on both: the layout above without the types `main` can't parse. The median `TotalTime` on this branch is within 10% of the base. The layout above itself is measured on this branch and recorded beside it, and its cost on a real GPU is judged on the real Fold in lor-l2zj (Sumeet, 2026-11-08: on the emulators it costs +20% to +27%, the blocks' drawing on a CPU renderer, lor-6p0h).
 
@@ -80,7 +80,9 @@ The server's `/device/*` reads and writes, the phone's `home/` (layout and stack
 
 ## Report
 
-Line 2 holds and line 3 fails. Line 1, the children done, is the orchestrator's and stays unticked.
+**Outcome (orchestrator, 2026-11-08).** All three lines hold. Line 1: lor-odtk and lor-2mh2 are merged, and lor-lz97 (approval lor-v1eb), lor-rz50 (approval lor-771o) and lor-iabt (its fix for lor-wc8z, 6f946a8, with receipt lor-izgg, awaiting review) are built in that order on this branch, each with its Report. Line 3 was restated on Sumeet's call: the code's cost at an equal layout passes (receipt lor-w5dg: +6.8% on the phone, +4.9% on the Fold), and the full layout's cost is judged on the real Fold in lor-l2zj. lor-6p0h found that cost is the blocks' drawing on the emulators' CPU renderer, with no cheap fix. Line 2 ran on 5e9c703; 6f946a8 since changes only when the T3 panel's thread column reads, which lor-izgg checks on the Fold. Deferred review findings are backlog bugs outside the mission: lor-0xhc, lor-gfow, lor-y32o.
+
+The end-to-end agent's account follows. Its "line 3 fails" was resolved by the restatement above.
 
 - **Line 2 (pass, receipt lor-myhe).** This was the end-to-end check on `T3_Fold_API35` in one
   session, on 5e9c703 against the test server and a scratch T3 server. Every step held. Each cell was
