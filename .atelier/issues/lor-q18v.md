@@ -37,7 +37,7 @@ LoR's server gives the phone the weather where it last was, through `/device/hom
 - [x] The cache, tested in `pnpm test` with an injected fetch and clock: a second read within 30 minutes calls nothing, even when the latest location has changed; a read after 30 minutes calls once, with the latest location; a failed call, a non-200 reply and a timeout each give `null`, reads in the next 5 minutes call nothing and give `null`, and a read after 5 minutes calls again; with the key unset nothing is called and the result is `null`. Every call logs one line with its status (or `timeout`, or the error's name) and its duration in ms, and the test shows no line contains the key or the coordinates.
 - [x] A `pnpm test:db` test: `deviceHome` returns `weather` built from the latest `location` observation's coordinates (two observations, the later one used), with the fetch stubbed; with no `location` observation it returns `weather: null` and calls nothing.
 - [x] `pnpm typecheck` passes.
-- [ ] With the key in the env file, on the test server (`scripts/ui-server.sh`) after inserting a `location` observation for Milpitas into the test database, `curl` of `/device/home` returns a `weather` object, and a second `curl` within a minute adds no Google call (the server log shows one call line for the two). The handoff quotes the `weather` object.
+- [x] With the key in the env file, on the test server (`scripts/ui-server.sh`) after inserting a `location` observation for Milpitas into the test database, `curl` of `/device/home` returns a `weather` object, and a second `curl` within a minute adds no Google call (the server log shows one call line for the two). The handoff quotes the `weather` object.
 
 ## Scope
 
@@ -58,9 +58,9 @@ LoR's server gives the phone the weather where it last was, through `/device/hom
 
 ## Report
 
-Five of six Done when lines hold; the live check waits on the key. `GOOGLE_MAPS_KEY` is read by `src/server/env.ts` (default `""`) and named in the spec's Config list with its comment on its own line. `src/server/weather.ts` parses the reply and holds the cache; `tests/weather/weather.test.ts` (`pnpm test`, 10 tests, passing) covers the parse and refusal, the 30-minute hold across a location change, the refetch at the latest location, failure, non-200, a 200 without a temperature, and a real timeout (a fetch that never answers, ended by the cache's own `AbortSignal.timeout`) each held 5 minutes, no key, no location, and log lines free of the key and coordinates. `tests/db/device.test.ts` "device home: the weather" (`pnpm test:db`, passing) shows `deviceHome` uses the later of two `location` observations and calls nothing without one. `pnpm test` (149), `pnpm test:db` (132) and `pnpm typecheck` pass. Removing the cache check made 5 of the unit tests fail.
+All six Done when lines hold. `GOOGLE_MAPS_KEY` is read by `src/server/env.ts` (default `""`) and named in the spec's Config list with its comment on its own line. `src/server/weather.ts` parses the reply and holds the cache; `tests/weather/weather.test.ts` (`pnpm test`, 10 tests, passing) covers the parse and refusal, the 30-minute hold across a location change, the refetch at the latest location, failure, non-200, a 200 without a temperature, and a real timeout (a fetch that never answers, ended by the cache's own `AbortSignal.timeout`) each held 5 minutes, no key, no location, and log lines free of the key and coordinates. `tests/db/device.test.ts` "device home: the weather" (`pnpm test:db`, passing) shows `deviceHome` uses the later of two `location` observations and calls nothing without one. `pnpm test` (149), `pnpm test:db` (132) and `pnpm typecheck` pass. Removing the cache check made 5 of the unit tests fail.
 
-The last line (live `curl` on the test server) is unticked: `GOOGLE_MAPS_KEY` is not in `~/.config/life-on-rails/env` (`grep -c '^GOOGLE_MAPS_KEY=.'` printed 0 on 2026-11-07).
+Live check (receipt on this item), 2026-11-08 02:00 UTC on the test server (`scripts/ui-server.sh`, `:3857`, `life_on_rails_test`) with the key from the env file and a Milpitas `location` observation: two `curl`s of `/device/home` 3 s apart both returned `"weather": {"temp_c": 18, "condition": "Clear", "is_day": false, "observed_at": "2026-11-08T02:00:33.294Z"}`, and the server log has one call line for the two, `weather: 200 in 239 ms`. Neither the key nor the coordinates appear in the log (grep counts 0).
 
 ### Decisions
 
@@ -71,8 +71,8 @@ The last line (live `curl` on the test server) is unticked: `GOOGLE_MAPS_KEY` is
 
 ### Surprises
 
-- The fixture `tests/weather/fixtures/currentConditions.json` follows Google's documented reply shape; it is not a captured live reply, since no key was available. The live check is the first real reply.
+- The live check was the first real reply LoR has parsed. The fixture `tests/weather/fixtures/currentConditions.json` was written from Google's documented shape; the real reply parsed without error, so the four fields the parser reads (`temperature.degrees`, `weatherCondition.description.text`, `isDaytime`, `currentTime`) match it. The rest of the fixture was not compared, since the raw reply goes only through the server and is not logged.
 
 ### Open items
 
-- The live check (last Done when line) needs Sumeet to put `GOOGLE_MAPS_KEY` in the env file.
+- Finding lor-0ri5 is deferred to lor-leh4.
