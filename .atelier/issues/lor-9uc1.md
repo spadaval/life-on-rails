@@ -14,7 +14,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The minimap: a stack's blocks"
-updated_at: "2026-11-08T02:45:07.681573619+00:00"
+updated_at: "2026-11-08T03:12:54.249020261+00:00"
 ---
 
 ## Goal
@@ -24,15 +24,15 @@ A stack's blocks are arranged in the minimap. A stack's Blocks action lists its 
 ## Done when
 
 On `T3_Phone_API35` against the test server, with a version 1 `layout.json` with two extra pages, unless a line says otherwise:
-- [ ] A Blocks action on a selected stack in the minimap (lor-6get) opens this item's block editor.
-- [ ] Blocks, on a selected stack (lor-6get), lists each block by name: Clock, Apps with its count ("12 apps"), Dock, a widget by its provider's label and height once lor-vtmn's `widget` exists, and any other type by its name. The map stays in view above the list, with the stack selected. Screenshot of home's stack and of page 2's.
-- [ ] A drag on a block's handle moves it through the list, swapping places as it passes a neighbour's middle, as Kvaesitso's `WidgetColumn` edit mode does (GPL-3.0, ideas only). Letting go writes `moveBlock` with Undo. After the clock is moved under home's apps, home draws it there (screenshot of home), and the file shows the new order.
-- [ ] Each block's menu has Move up, Move down, Move to… and Remove. Move up and down are the same edit as the drag, and the TalkBack way to make it. Move to… lists the other stacks by their blocks ("Column 2: 3 apps · Dock") and moves the block there, before that stack's dock, else last. Remove of home's `apps` block takes its apps off home, and Undo brings them back. Each writes with Undo, and the file is read after each. On a stack's only block, Remove and Move to… are refused with the reason in the Undo bar.
-- [ ] The palette offers each block type that takes no field and that the stack doesn't hold; `widget` is added from home's menu by lor-r0f9, not here. A drag from the palette into the list adds the block there; a tap adds it before the dock, else last. The file is read after each, and Undo gives back the file's sum (`sha256sum`).
-- [ ] Locked, Blocks lists the blocks with no handles, menus or palette.
+- [x] A Blocks action on a selected stack in the minimap (lor-6get) opens this item's block editor.
+- [x] Blocks, on a selected stack (lor-6get), lists each block by name: Clock, Apps with its count ("12 apps"), Dock, a widget by its provider's label and height once lor-vtmn's `widget` exists, and any other type by its name. The map stays in view above the list, with the stack selected. Screenshot of home's stack and of page 2's.
+- [x] A drag on a block's handle moves it through the list, swapping places as it passes a neighbour's middle, as Kvaesitso's `WidgetColumn` edit mode does (GPL-3.0, ideas only). Letting go writes `moveBlock` with Undo. After the clock is moved under home's apps, home draws it there (screenshot of home), and the file shows the new order.
+- [x] Each block's menu has Move up, Move down, Move to… and Remove. Move up and down are the same edit as the drag, and the TalkBack way to make it. Move to… lists the other stacks by their blocks ("Column 2: 3 apps · Dock") and moves the block there, before that stack's dock, else last. Remove of home's `apps` block takes its apps off home, and Undo brings them back. Each writes with Undo, and the file is read after each. On a stack's only block, Remove and Move to… are refused with the reason in the Undo bar.
+- [x] The palette offers each block type that takes no field and that the stack doesn't hold; `widget` is added from home's menu by lor-r0f9, not here. A drag from the palette into the list adds the block there; a tap adds it before the dock, else last. The file is read after each, and Undo gives back the file's sum (`sha256sum`).
+- [x] Locked, Blocks lists the blocks with no handles, menus or palette.
 - [ ] If lor-r0f9 is on `main` when this starts: with two widgets in home's stack, Move to… page 2 on one keeps its `id` and `height` in the file, and it draws on page 2 with no bind dialog (screenshot). Otherwise the note on lor-r0f9 has that item check it.
-- [ ] TalkBack reads each block row by its name and its menu's entries by their words (uiautomator dump).
-- [ ] `assembleDebug testDebugUnitTest` passes on boat.
+- [x] TalkBack reads each block row by its name and its menu's entries by their words (uiautomator dump).
+- [x] `assembleDebug testDebugUnitTest` passes on boat.
 
 ## Scope
 
@@ -57,3 +57,31 @@ On `T3_Phone_API35` against the test server, with a version 1 `layout.json` with
   Reason: It's the same rule as the handle's swap at a neighbour's middle, so a chip and a dragged row land where the eye expects. The rule says where it will land before letting go.
 - 2026-11-07 [decision] Fixed in passing (lor-6get's review): a panel add from the map's palette moves the selection to the new cell only once the edit is taken, so a refused add leaves the actions showing.
   Reason: The add now sets the selection in HomeActions.edit's after callback, only if the change ran without refusing. It touches the same function as the Blocks state.
+- 2026-11-07 [blocker] The widget line (Done when 7) can't be ticked as written. lor-r0f9 wasn't on main when this started, so the line hands the check to lor-r0f9's note; but that note (on lor-sbth) says r0f9 checks only if lor-9uc1 is on main when r0f9 starts, and otherwise 'they do it', meaning this item. lor-r0f9 started first, so each record hands the check to the other. It can only run on a branch that holds both widgets and the block editor, so it belongs to whichever of lor-f3vn or lor-sbth merges second, as lor-f3vn's Context says for type fitting. The same merge must add a widget case to MinimapRules.blockTitle and blockDetail (the label and height, per Done when 2); the exhaustive when makes that a compile error until it's done. The orchestrator should reword the line or move it to that merge.
+- 2026-11-07 [decision] Home draws the clock block where it stands in its stack (HomeScreen.kt's StackPanel), not always as the header at the top. A column that doesn't start with the clock starts clear of the Remove bar, as a stack without one did; with no apps block the space goes right before the dock. layout-v2.md says so.
+  Reason: Done when 3 needs home to draw the clock under the apps after the reorder. Until now the file's order was ignored for the clock, so the minimap's reorder would have changed the file and nothing on screen. lor-sbth rewrites the same lambda for widgets, so whichever merges second resolves it.
+  Rejected: Leaving home's drawing alone and reporting the line unmet: the change is about ten lines and the line asks for exactly this
+- 2026-11-07 [handoff] Handed off: Done when ticked except the widget line (blocker note); see ## Report. Commits 8684613, 00a613b, receipts lor-vyyb, lor-jmmr, lor-p4xg, lor-ncmj, lor-hd99. Review: none yet.
+
+## Report
+
+A stack's blocks can be arranged in the minimap now. Every Done when line except the widget one holds on `T3_Phone_API35` from a version 1 `layout.json` with two extra pages (commits 8684613 and 00a613b; receipts lor-vyyb, lor-jmmr, lor-p4xg, lor-ncmj, lor-hd99; screenshots, file reads and dumps in `/tmp/claude-1000/9uc1-emu/`). A selected stack's Blocks action lists its blocks under the map, with the stack still selected. A drag on a handle swaps rows at a neighbour's middle and writes one `moveBlock` on letting go, and home then draws the clock under the apps. The menu's Move up, Move down, Move to… and Remove, a palette tap and a palette drag were each tried, and the file was read after each. Each Undo gave back the starting file's sha256. Move to… and Remove on a stack's only block show the reason in the Undo bar and leave the file alone. Locked, Blocks only lists the blocks. TalkBack reads each row by its words and the menu's entries by theirs (uiautomator dump). JVM tests: `MinimapTest` has 14 tests, 6 of them new, covering the row names, the Move to… entries and where they put the block, the palette, the drop index, the reorder's swap at a neighbour's middle, and the Undo bar's words. A fresh boat `assembleDebug testDebugUnitTest --rerun-tasks` after the last code change passed (321 tests, 0 failures, no warnings).
+
+### Deviations
+
+- `HomeScreen.kt` changed, though Scope names only `Minimap.kt`. Home always drew the clock at the top, so the reorder Done when 3 asks for wouldn't have shown on home (decision note). `layout-v2.md`'s sentence on drawing a stack now says the file's order counts.
+- `GridEdit.kt`'s `LAST_BLOCK` is `internal` now, on the same line lor-sbth changes the same way.
+- The widget line (Done when 7) is not ticked: see the blocker note. Each record hands the check to the other.
+- As in lor-6get, the launcher reaches no LoR server, so the test server wasn't started. The Fold wasn't needed.
+- uiautomator is killed while agent-device's helper holds the accessibility connection. The TalkBack dumps were taken after closing the agent-device session, with the menu opened by `adb input tap`.
+- The disabled Move up wasn't dimmed on the first APK. The fix changed only its text colour, so the edits were checked on the APK before it, and the drag, the menu and Undo again on the final one (f25, 24).
+
+### Decisions
+
+The decision notes above: where the list opens and how back leaves it; how Move to… names stacks; the menu's four entries always present; where a palette drop lands; the clock drawn in place on home. A refused panel add no longer moves the selection, the fix lor-6get's reviewer suggested.
+
+### Open items
+
+- The widget check and the `widget` case of `blockTitle`/`blockDetail` belong to whichever of lor-f3vn or lor-sbth merges second (blocker note). `HomeScreen.kt`'s `blocks` lambda will conflict with lor-sbth's rewrite of it.
+- With the Undo bar up, the bottom of a long block list sits under it until scrolled. The minimap leaves 176 dp of scroll room for that, as lor-6get does.
+- The real Fold's check is lor-92o7, after merge.
