@@ -234,7 +234,7 @@ private fun DueSoon(model: AgentModel) {
         val t = model.writes.tasks(read)
         val rows = LorRows.dueSoon(t)
         if (rows.isEmpty()) Unseen("No open tasks.")
-        rows.forEach { (task, done) -> key(task.id) { TaskRow(model, task, LorRows.dueSoonLine(task, done), done) } }
+        rows.forEach { (task, done) -> key(task.id) { TaskRow(model, task, { LorRows.dueSoonLine(task, it) }, done) } }
         Link("All ${t.open} tasks") { model.openLor("/tasks", LaunchFrom.AGENT_CARD) }
     }
 }
@@ -248,12 +248,12 @@ private fun TasksList(model: AgentModel) {
         if (groups.isEmpty()) Unseen("No open tasks.")
         groups.forEach { g ->
             GroupHead(g.title, g.tasks.size)
-            g.tasks.forEach { key(it.id) { TaskRow(model, it, LorRows.taskLine(it, t.today)) } }
+            g.tasks.forEach { key(it.id) { TaskRow(model, it, { _ -> LorRows.taskLine(it, t.today) }) } }
         }
         // Done today under the open ones, struck through, as Due soon draws them: a task ticked here stays in sight.
         if (t.doneToday.isNotEmpty()) {
             GroupHead("Done today", t.doneToday.size)
-            t.doneToday.forEach { key(it.id) { TaskRow(model, it, LorRows.taskLine(it, t.today), wasDone = true) } }
+            t.doneToday.forEach { key(it.id) { TaskRow(model, it, { _ -> LorRows.taskLine(it, t.today) }, wasDone = true) } }
         }
         if (t.open > t.tasks.size) Unseen("The first ${t.tasks.size} of ${t.open} open tasks.")
         Link("Open Tasks in LoR") { model.openLor("/tasks", LaunchFrom.AGENT_CARD) }
@@ -301,9 +301,10 @@ private fun <T> Lists(model: AgentModel, kept: LorReads.Kept<T>, content: @Compo
  * [TaskAction.REOPEN], as the web's `TaskCheck`), with Undo; a Google task has none, being done in
  * Google Tasks. A long press on an owner's open task offers Give to the agent, with Undo; one with
  * the agent is tagged so. [wasDone] is whether the reply has it done; a write since may have changed it.
+ * [line] is the line under it, given whether it is done now.
  */
 @Composable
-private fun TaskRow(model: AgentModel, t: DeviceTasks.Task, line: String, wasDone: Boolean = false) {
+private fun TaskRow(model: AgentModel, t: DeviceTasks.Task, line: (Boolean) -> String, wasDone: Boolean = false) {
     val writes = model.writes
     val done = writes.done(t.id, wasDone)
     val busy = t.id in writes.busy
@@ -314,7 +315,7 @@ private fun TaskRow(model: AgentModel, t: DeviceTasks.Task, line: String, wasDon
     var menu by remember { mutableStateOf(false) }
     Box {
         LorRow(
-            t.title, line.ifEmpty { null }, mark = if (t.flagged) Or else null, label = "Open in LoR", done = done,
+            t.title, line(done).ifEmpty { null }, mark = if (t.flagged) Or else null, label = "Open in LoR", done = done,
             tag = "with the agent".takeIf { withAgent && !done },
             failure = writes.failures[t.id], busy = busy,
             lead = {
