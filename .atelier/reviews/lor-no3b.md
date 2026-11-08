@@ -10,6 +10,12 @@ created_at: 2026-11-08T03:41:21.376020013Z
 event:
   event: finding
   recommendation: defer
+  disposition:
+    decision: fix_now
+    identity: reviewer-web-layout-plan-1
+    commit: b200c72aa8a9cecf72e229914d5ca4d0fb35e571
+    recorded_at: 2026-11-08T03:43:40.632260673Z
+    reason: 'Fixed in b200c72: round-trip is one save with three named versions; same-pixels is now the independent full check by lor-nnn5 while lor-kaq8 keeps only the author''s spot check; the Risk now says the spike''s decision record settles delivery.'
 ---
 
 Clarity in criteria and owners: (1) round-trip says the web's history shows 'all three versions' after two edits (an app into a folder; a stack added and set Half) and an Undo, which holds only if both edits are one save; say so. (2) same-pixels is lor-kaq8's first Done when restated (it says so itself); fine as acceptance, but plan.md says a criterion that restates an item adds nothing, so either drop it or widen it to cover the edited layout after lor-u0h7. (3) The strategy's Risks say 'the first increment that ships it decides' the bundle's delivery, while lor-llmf's last Done when has the spike record that decision and lor-kaq8 follows it; make the Risk match.
