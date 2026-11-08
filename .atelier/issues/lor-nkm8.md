@@ -28,7 +28,7 @@ updated_at: "2026-11-08T03:36:23.275521639+00:00"
 
 ## Goal
 
-The phone sends LoR what home looks like, so the web can draw it: each launchable app's icon as home draws it (icon pack, themed icons, shape), the wallpaper (both of the Fold's screens if they differ), each screen's size in pixels, dp and physical dpi with its insets and cutout, and each placed widget's last snapshot and its preview image, and a snapshot of the `t3` panel. Sent when they change, not on every resume.
+The phone sends LoR what home looks like, so the web can draw it: each launchable app's icon as home draws it (icon pack, themed icons, shape), the wallpaper (one, used on both of the Fold's screens; Sumeet, 2026-11-08: "keep things simple and use one consistent wallpaper"), each screen's size in pixels, dp and physical dpi with its insets and cutout, and each placed widget's last snapshot and its preview image, and a snapshot of the `t3` panel. Sent when they change, not on every resume.
 
 ## Done when
 
@@ -38,7 +38,6 @@ Provisional:
 
 ## Unknowns
 
-- Whether `WallpaperManager` gives the cover and inner wallpapers apart on One UI; moot if Sumeet uses one wallpaper for both (asked 2026-11-08).
-- Whether All files access is granted to LoR on the phone, which reading the wallpaper needs (asked of Sumeet at the plan's walk-through, 2026-11-08; the answer goes here).
+- Reading the wallpaper needs All files access. The app already asks for it on its Sensors screen (`ui/SensorsScreen.kt`, for WhatsApp backups), and it is granted on the phone: `adb shell appops get com.spadaval.lor MANAGE_EXTERNAL_STORAGE` gave `allow` on 2026-11-08. Where it isn't granted, the upload skips the wallpaper and the web draws a plain ground; nothing waits on it.
 - A widget that has never been on screen has no snapshot; whether to draw it off screen once or use its preview.
 - Waits for the split (lor-xdoi), so the icons and widget snapshots come from the platform interface it defines.

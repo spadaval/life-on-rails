@@ -14,9 +14,9 @@ relationships:
   relates: []
 schema: "atelier.issue"
 schema_version: 2
-status: "draft"
+status: "todo"
 title: "Edit home from LoR's web, drawn as the phone draws it"
-updated_at: "2026-11-08T03:36:23.147268461+00:00"
+updated_at: "2026-11-08T17:57:12.134104993+00:00"
 ---
 
 ## Outcome
