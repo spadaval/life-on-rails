@@ -15,9 +15,9 @@ relationships:
     type: "discovered_from"
 schema: "atelier.issue"
 schema_version: 2
-status: "backlog"
+status: "todo"
 title: "verify-lor screen follows a shell LOR_URL to whatever server it names"
-updated_at: "2026-11-08T06:38:07.148428971+00:00"
+updated_at: "2026-11-08T06:40:06.549894354+00:00"
 ---
 
 ## Goal
