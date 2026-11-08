@@ -38,7 +38,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "The minimap editor"
-updated_at: "2026-11-08T01:05:15.704904747+00:00"
+updated_at: "2026-11-08T07:23:16.570285416+00:00"
 ---
 
 ## Goal
@@ -82,3 +82,4 @@ The phone's home (`android/app/src/main/java/com/spadaval/lor/home/`: a new `Min
   Rejected: One item: one review over parsing, a store rule, ten edit functions and three screens
   Rejected: The lock as its own item outside lor-f3vn: the lock's padlock is in the minimap, and the Outcome names them together
 - 2026-11-07 [plan] Planned 2026-11-07: blocker lor-v692 (rules, no screen); children lor-zzyy, lor-6get, lor-9uc1 in that order on this item's branch; decision lor-73li (the lock's field and what it stops); real-Fold validation lor-92o7 after merge, outside the mission. Unknowns resolved by the decision notes above. Set to todo; a fresh agent reviews this plan before lor-v692 starts, and lor-ph30 must merge before lor-zzyy starts.
+- 2026-11-08 [note] 2026-11-08: the end-to-end check on T3_Fold_API35 found that after a screen-off, unfolding showed the folded start ([1, 0]) instead of start.wide. The screen-on broadcast came before the unfold's configuration (events log: SCREEN_ON 02:18:39.335, configuration changed .371, onRestart/onStart .372), so lor-ozj2's reset read the folded start. Fixed on this branch: the screen-off is acted on in onStart, after the configuration, through HomeUi.toStart, which an effect turns into a home press once composed for that screen. Evidence of the failure: /tmp/lor-verify/lor-wt-f3vn/e2e-fold-2/first-run-bug/11-unfolded-after-screen-off.png.

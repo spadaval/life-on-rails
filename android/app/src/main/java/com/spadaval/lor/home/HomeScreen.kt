@@ -240,6 +240,11 @@ class HomeUi {
     var folder by mutableStateOf<OpenFolder?>(null)
     var query by mutableStateOf("")
     var homePresses by mutableStateOf(0)
+    /**
+     * Home goes to its start after a screen-off (lor-ozj2), once composed with the screen it came
+     * back on, so the start is read for that screen's width.
+     */
+    var toStart by mutableStateOf(false)
     /** Where on home a long press on empty space opened the home menu. */
     var homeMenu by mutableStateOf<Offset?>(null)
     /** The cell that long press was on, so only that cell draws the menu. */
@@ -445,6 +450,12 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // only when it changes something, so composition settles).
     val first = remember { booleanArrayOf(true) }
     if (grid.start != start) grid.start = start
+    LaunchedEffect(ui.toStart) {
+        if (ui.toStart) {
+            ui.toStart = false
+            ui.homePressed(animate = false)
+        }
+    }
     if (grid.panels != panels) grid.edited(panels, start)
     if (first[0] && file != null) {
         first[0] = false

@@ -56,19 +56,14 @@ class HomeActivity : ComponentActivity() {
     private var slept = false
 
     /**
-     * A screen-off is remembered, and acted on when the screen comes back on, so the start is that
-     * screen's: a fold or unfold while the screen was off has changed it by then (lor-ozj2).
+     * A screen-off is remembered and acted on in [onStart], so the start is that screen's: a fold
+     * or unfold while the screen was off reaches the activity after the screen-on broadcast but
+     * before onStart, so acting on the broadcast went to the folded start (lor-ozj2; found by
+     * lor-f3vn's end-to-end check).
      */
     private val screen = object : BroadcastReceiver() {
         override fun onReceive(c: Context, intent: Intent) {
-            when (intent.action) {
-                Intent.ACTION_SCREEN_OFF -> slept = true
-                Intent.ACTION_SCREEN_ON -> if (slept) {
-                    slept = false
-                    ui.homePressed(animate = false)
-                    Log.i(TAG, "screen on: home goes to its start (${describe(resources.configuration)})")
-                }
-            }
+            if (intent.action == Intent.ACTION_SCREEN_OFF) slept = true
         }
     }
 
@@ -82,7 +77,7 @@ class HomeActivity : ComponentActivity() {
         model = HomeModel((application as LorApp).home)
         val icons = model.icons
         ContextCompat.registerReceiver(
-            this, screen, IntentFilter().apply { addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON) },
+            this, screen, IntentFilter(Intent.ACTION_SCREEN_OFF),
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         // Back on home goes nowhere; HomeScreen's handlers close what is open first.
@@ -172,6 +167,11 @@ class HomeActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         store.widgets.startListening()
+        if (slept) {
+            slept = false
+            ui.toStart = true
+            Log.i(TAG, "screen on: home goes to its start (${describe(resources.configuration)})")
+        }
     }
 
     override fun onStop() {
