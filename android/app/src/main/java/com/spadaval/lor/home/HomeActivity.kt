@@ -168,6 +168,93 @@ class HomeActivity : ComponentActivity() {
         model.resume()
     }
 
+    // Widgets get their updates while home is started (Launcher3's LauncherWidgetHolder).
+    override fun onStart() {
+        super.onStart()
+        store.widgets.startListening()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        store.widgets.stopListening()
+    }
+
+    /** The widget on its way to home, held by the process's widget host (lor-r0f9), not by this activity. */
+    private var adding: WidgetHost.Adding?
+        get() = store.widgets.adding
+        set(v) {
+            store.widgets.adding = v
+        }
+
+    /** Android's "Allow LoR to create widgets" dialog, when the bind needs it. */
+    private val bindWidget = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { r ->
+        val a = adding ?: return@registerForActivityResult
+        if (r.resultCode == RESULT_OK) {
+            Log.i(WIDGETS, "bound ${a.id} to ${a.info.provider.flattenToShortString()} (the dialog allowed it)")
+            configureWidget(a)
+        } else cancelWidget(a, "the bind dialog was cancelled")
+    }
+
+    /** The widget's configure screen when it has one, else straight to home (Kvaesitso's WidgetPickerSheet). */
+    private fun configureWidget(a: WidgetHost.Adding) {
+        if (a.info.configure == null) return placeWidget(a)
+        try {
+            store.widgets.host.startAppWidgetConfigureActivityForResult(this, a.id, 0, CONFIGURE_WIDGET, configureOptions())
+            Log.i(WIDGETS, "configuring ${a.id}")
+        } catch (e: RuntimeException) {
+            cancelWidget(a, "its configure screen can't be opened (${e.javaClass.simpleName})")
+        }
+    }
+
+    /**
+     * API 34 starts a widget's configure screen from the host's PendingIntent only when allowed to.
+     * ALLOWED is deprecated in API 36 for ALLOW_ALWAYS, which it still means there.
+     */
+    @Suppress("DEPRECATION")
+    private fun configureOptions(): Bundle? =
+        if (android.os.Build.VERSION.SDK_INT < 34) null
+        else ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED).toBundle()
+
+    @Deprecated("The widget host's configure screen reports here; it has no ActivityResult contract.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            CONFIGURE_WIDGET -> {
+                // A result for another id (a widget's own result carrying it) isn't this add's.
+                val said = data?.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
+                val a = adding?.takeIf { said == -1 || said == it.id } ?: return Log.i(WIDGETS, "configure result for $said with no add waiting for it").let {}
+                Log.i(WIDGETS, "configure ${a.id}: ${if (resultCode == RESULT_OK) "done" else "cancelled"}")
+                if (resultCode == RESULT_OK) placeWidget(a) else cancelWidget(a, "its configure screen was cancelled")
+            }
+            RECONFIGURE_WIDGET -> Log.i(WIDGETS, "settings ${data?.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, 0)}: ${if (resultCode == RESULT_OK) "done" else "cancelled"}")
+        }
+    }
+
+    /** Puts the bound widget in its stack with Undo, at its provider's minimum height; a refused edit deletes the id. */
+    private fun placeWidget(a: WidgetHost.Adding) {
+        adding = null
+        val info = store.widgets.manager.getAppWidgetInfo(a.id) ?: a.info
+        val height = WidgetSize.newHeight(info.minHeight / resources.displayMetrics.density)
+        val label = info.loadLabel(packageManager)
+        lifecycleScope.launch {
+            model.edit { it.addWidget(a.at, a.id, info.provider.flattenToString(), height) }
+                .onSuccess {
+                    Log.i(WIDGETS, "added ${a.id} (${info.provider.flattenToShortString()}) at ${a.at}, $height dp")
+                    ui.undo.show("$label is on home.")
+                }
+                .onFailure {
+                    store.widgets.delete(a.id, "the edit was refused")
+                    say("Can't: ${it.message ?: "the widget couldn't be added"}.")
+                }
+        }
+    }
+
+    private fun cancelWidget(a: WidgetHost.Adding, why: String) {
+        adding = null
+        store.widgets.delete(a.id, why)
+    }
+
     /** Search rows' shortcut icons (launcher polish 5.2). */
     private val shortcutIcons = android.util.LruCache<String, ImageBitmap>(100)
 
@@ -269,6 +356,17 @@ class HomeActivity : ComponentActivity() {
             }
         }
 
+        override fun alarms() {
+            val intent = Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS)
+            try {
+                startActivity(Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                val pkg = takenBy(packageManager, intent)
+                Launches.record(this@HomeActivity, Launch(LaunchFrom.HOME, pkg, label = pkg?.let { Launches.label(this@HomeActivity, it) }))
+            } catch (e: RuntimeException) {
+                fail("No clock app can show your alarms.")
+            }
+        }
+
         override fun wallpaper() {
             try {
                 startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Wallpaper"))
@@ -293,6 +391,42 @@ class HomeActivity : ComponentActivity() {
         override fun refused(reason: String) = say("Can't: $reason.")
 
         override fun quickSend() = QuickSend.open(this@HomeActivity, QuickSend.From.HOME)
+
+        override fun addWidget(at: Cell, provider: android.appwidget.AppWidgetProviderInfo) {
+            val widgets = store.widgets
+            // One at a time: a flow cut off without a result leaves its id to the next start's sweep.
+            adding?.let { cancelWidget(it, "another widget was picked") }
+            val a = try {
+                WidgetHost.Adding(widgets.allocate(), at, provider)
+            } catch (e: RuntimeException) {
+                return fail("No widget can be added now.")
+            }
+            adding = a
+            if (widgets.manager.bindAppWidgetIdIfAllowed(a.id, provider.profile, provider.provider, null)) {
+                Log.i(WIDGETS, "bound ${a.id} to ${provider.provider.flattenToShortString()} (allowed already)")
+                return configureWidget(a)
+            }
+            Log.i(WIDGETS, "asking to bind ${a.id} to ${provider.provider.flattenToShortString()}")
+            try {
+                bindWidget.launch(
+                    Intent(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_BIND)
+                        .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, a.id)
+                        .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, provider.provider)
+                        .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_PROVIDER_PROFILE, provider.profile),
+                )
+            } catch (e: RuntimeException) {
+                cancelWidget(a, "the bind dialog can't be opened")
+                fail("The widget can't be added.")
+            }
+        }
+
+        override fun widgetSettings(id: Int) {
+            try {
+                store.widgets.host.startAppWidgetConfigureActivityForResult(this@HomeActivity, id, 0, RECONFIGURE_WIDGET, configureOptions())
+            } catch (e: RuntimeException) {
+                fail("The widget's settings can't be opened.")
+            }
+        }
 
         override fun undo() {
             lifecycleScope.launch {
@@ -394,6 +528,9 @@ class HomeActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "LorHome"
+        private const val WIDGETS = "LorWidgets"
+        private const val CONFIGURE_WIDGET = 1024
+        private const val RECONFIGURE_WIDGET = 1025
 
         /** The extra that opens the minimap (lor-6get), from Home settings' Panels row. */
         private const val EXTRA_MINIMAP = "com.spadaval.lor.home.MINIMAP"

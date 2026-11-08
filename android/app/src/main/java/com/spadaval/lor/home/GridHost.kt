@@ -314,9 +314,10 @@ fun SettleGrid(grid: GridPlace) {
  * vertical swipe that one of them can take is its own, not the grid's (the strategy's Shape).
  */
 class GridScrolls {
-    private val areas = HashMap<Any, Pair<LayoutCoordinates, (Way) -> Boolean>>()
+    private val areas = HashMap<Any, Pair<LayoutCoordinates, (Offset, Way) -> Boolean>>()
 
-    fun put(key: Any, at: LayoutCoordinates, scrolls: (Way) -> Boolean) {
+    /** [scrolls] gets where the finger pressed within [at], in its px, and the way the grid would move. */
+    fun put(key: Any, at: LayoutCoordinates, scrolls: (Offset, Way) -> Boolean) {
         areas[key] = at to scrolls
     }
 
@@ -326,18 +327,26 @@ class GridScrolls {
 
     /** Whether a block under [at] takes a swipe that would move the grid [way]. */
     fun takes(at: Offset, way: Way): Boolean =
-        areas.values.any { (c, scrolls) -> c.isAttached && c.boundsInRoot().contains(at) && scrolls(way) }
+        areas.values.any { (c, scrolls) ->
+            c.isAttached && c.boundsInRoot().let { b -> b.contains(at) && scrolls(at - b.topLeft, way) }
+        }
 }
 
 /** Home's scrolling blocks, for a page drawn in a cell (the agent page) to report its own. */
 val LocalGridScrolls = staticCompositionLocalOf<GridScrolls?> { null }
 
 /** Reports this as a block that takes a vertical swipe while [scrolls] says it can scroll that way. */
-fun Modifier.scrollsInGrid(scrolls: (Way) -> Boolean): Modifier = composed {
+fun Modifier.scrollsInGrid(scrolls: (Way) -> Boolean): Modifier = scrollsInGridAt { _, way -> scrolls(way) }
+
+/**
+ * Reports this as a block that takes a vertical swipe pressed at a point of it (in its px) while
+ * [scrolls] says what is there can scroll that way: a widget's list, not the widget around it (lor-r0f9).
+ */
+fun Modifier.scrollsInGridAt(scrolls: (Offset, Way) -> Boolean): Modifier = composed {
     val registry = LocalGridScrolls.current ?: return@composed Modifier
     val key = remember { Any() }
     DisposableEffect(registry, key) { onDispose { registry.remove(key) } }
-    onGloballyPositioned { registry.put(key, it) { way -> !way.horizontal && scrolls(way) } }
+    onGloballyPositioned { registry.put(key, it) { at, way -> !way.horizontal && scrolls(at, way) } }
 }
 
 /** Reports [state]'s list as a block that takes a vertical swipe until it reaches its edge. */
@@ -367,7 +376,9 @@ internal fun Modifier.gridFinger(ui: HomeUi, haptics: HapticFeedback, topPx: () 
         if (ui.minimap) return@awaitEachGesture
         // Any press on a half makes it the one a fold lands on.
         grid.pressed(down.position.x, size.width)?.let { android.util.Log.d("LorGrid", "touched $it on ${grid.inner.screen.cells}") }
-        if (ui.drag.held != null || ui.folder != null || down.position.y < topPx()) return@awaitEachGesture
+        // A widget being resized, and the widget picker over home, have the finger (lor-r0f9); a
+        // press something took first (a press outside a resize frame, which only closes it) is not the grid's.
+        if (down.isConsumed || ui.drag.held != null || ui.folder != null || ui.resizing != null || ui.widgetPicker != null || down.position.y < topPx()) return@awaitEachGesture
         val tracker = VelocityTracker()
         val first = awaitSlop(down, tracker, PointerEventPass.Initial) ?: return@awaitEachGesture
         if (ui.drag.held != null) return@awaitEachGesture

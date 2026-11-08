@@ -153,7 +153,8 @@ class GridEditTest {
         val bare = one.removeBlock(BlockAt(Cell(1, 0), 1), one.blocks(1, 0)[1])
         assertEquals(listOf(StackBlock.Clock, StackBlock.Dock, StackBlock.Apps(emptyList())), bare.addBlock(Cell(1, 0), 2, "apps").blocks(1, 0))
         assertEquals("a stack holds one \"clock\" block", refused { one.addBlock(Cell(1, 0), 0, "clock") })
-        assertEquals("there's no block type \"widget\"", refused { one.addBlock(Cell(2, 0), 0, "widget") })
+        assertEquals("a widget is added from the home menu", refused { one.addBlock(Cell(2, 0), 0, "widget") })
+        assertEquals("there's no block type \"today\"", refused { one.addBlock(Cell(2, 0), 0, "today") })
         assertEquals(HOME_CHANGED, refused { one.addBlock(Cell(0, 0), 0, "clock") })
         assertEquals(HOME_CHANGED, refused { one.addBlock(Cell(3, 0), 0, "clock") })
         assertEquals(HOME_CHANGED, refused { one.addBlock(Cell(2, 0), 3, "clock") })
@@ -213,14 +214,15 @@ class GridEditTest {
 
     @Test
     fun aStackTakesEachTypeOnceForTheParserAndTheEdits() {
-        val stack = Panel.Stack(Cell(0, 0), listOf(StackBlock.Clock, StackBlock.Dock))
+        val stack = Panel.Stack(Cell(0, 0), listOf(StackBlock.Clock, StackBlock.Widget(1, "a.b/a.b.W", 100), StackBlock.Dock))
         assertFalse(stack.takes("clock"))
         assertTrue(stack.takes("apps"))
+        assertTrue("widgets repeat", stack.takes("widget"))
         assertEquals("layouts[0].panels[0].blocks[1]: a stack holds one \"clock\" block",
             refused { LayoutFile.parse(v2Stack("""[{"type": "clock"}, {"type": "clock"}]""")) })
     }
 
-    /** The five layouts lor-v692 names. */
+    /** The five layouts lor-v692 names; sparse and wide hold widgets (lor-vtmn), so blocks edits move and remove them. */
     private val layouts: Map<String, LayoutFile> by lazy {
         val firstRun = LayoutFile("default", listOf(Layout.grid("default", listOf(ref("a.a"), Folder("F", listOf(ref("b.b"), ref("c.c")))), listOf(ref("d.d")))))
         val converted = LayoutFile.parse(
@@ -231,14 +233,15 @@ class GridEditTest {
             """{"version": 2, "active": "s", "layouts": [{"name": "s", "start": {"narrow": [0, 0]}, "panels": [
                 {"at": [0, 0], "type": "stack", "blocks": [{"type": "apps", "items": ["a.a"]}]},
                 {"at": [3, 0], "type": "t3"},
-                {"at": [1, 2], "type": "stack", "blocks": [{"type": "clock"}, {"type": "dock"}]},
+                {"at": [1, 2], "type": "stack", "blocks": [{"type": "clock"}, {"type": "widget", "id": 7, "provider": "w.w/.W", "height": 120}, {"type": "dock"}]},
                 {"at": [4, 3], "type": "drawer"}]}]}""",
         )
         val wide = LayoutFile.parse(
             """{"version": 2, "active": "w", "layouts": [{"name": "w", "start": {"narrow": [1, 0], "wide": [2, 0]}, "dock": ["d.d"], "panels": [
                 {"at": [0, 0], "type": "t3", "wide": "half"},
-                {"at": [1, 0], "type": "stack", "blocks": [{"type": "clock"}, {"type": "apps", "items": ["a.a"]}, {"type": "dock"}]},
-                {"at": [2, 0], "type": "stack", "wide": "full", "blocks": [{"type": "apps", "items": ["e.e"]}, {"type": "dock"}]},
+                {"at": [1, 0], "type": "stack", "blocks": [{"type": "clock"}, {"type": "widget", "id": 1, "provider": "w.w/.W", "height": 40},
+                  {"type": "widget", "id": 2, "provider": "w.w/.V", "height": 2000}, {"type": "apps", "items": ["a.a"]}, {"type": "dock"}]},
+                {"at": [2, 0], "type": "stack", "wide": "full", "blocks": [{"type": "apps", "items": ["e.e"]}, {"type": "widget", "id": 3, "provider": "w.w/.W", "height": 90}, {"type": "dock"}]},
                 {"at": [1, 1], "type": "drawer"}]}]}""",
         )
         val locked = firstRun.copy(locked = true, hidden = listOf(ref("h.h")))
@@ -269,7 +272,13 @@ class GridEditTest {
             for (c in cells) {
                 for (type in Panel.TYPES + "lor") attempt { f.addPanel(c, type) }
                 for (screen in StartScreen.entries) attempt { f.setStart(c, screen) }
-                for (i in -1..size(c) + 1) for (type in StackBlock.TYPES + "widget") attempt { f.addBlock(c, i, type) }
+                for (i in -1..size(c) + 1) for (type in StackBlock.TYPES + "today") attempt { f.addBlock(c, i, type) }
+                for (id in listOf(0, 3, 99)) attempt { f.addWidget(c, id, "w.w/.W", 100) }
+            }
+            // The widget edits (WidgetEdit.kt), by id: each widget the layouts hold, and one they don't.
+            for (id in listOf(1, 2, 3, 7, 99)) {
+                attempt { f.removeWidget(id) }
+                for (h in listOf(39, 40, 500, 2000, 2001)) attempt { f.setWidgetHeight(id, h) }
             }
             for (p in layout.panels) {
                 for (c in cells) attempt { f.movePanel(p.at, p, c) }

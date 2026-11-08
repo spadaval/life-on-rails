@@ -129,6 +129,7 @@ object MinimapRules {
         is StackBlock.Clock -> "Clock"
         is StackBlock.Apps -> appCount(block.items).let { if (it == 1) "1 app" else "$it apps" }
         is StackBlock.Dock -> "Dock"
+        is StackBlock.Widget -> "Widget"
     }
 
     /**
@@ -197,6 +198,7 @@ object MinimapRules {
         is StackBlock.Clock -> "Clock"
         is StackBlock.Apps -> "Apps"
         is StackBlock.Dock -> "Dock"
+        is StackBlock.Widget -> "Widget"
     }
 
     /** What the block list says under a block's name: an `apps` block's count ("12 apps"). */
