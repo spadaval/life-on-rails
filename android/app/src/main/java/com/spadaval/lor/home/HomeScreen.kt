@@ -251,8 +251,31 @@ class HomeUi {
     val undo = UndoBarState()
     /** What is held, and edit mode (launcher polish 4.3). */
     val drag = DragState()
+    /**
+     * The minimap is open over home (lor-6get): from the home menu's Panels, or Home settings'.
+     * Home stays on its cell under it.
+     */
+    var minimap by mutableStateOf(false)
+        private set
+
+    /** Opens the minimap, closing what floats over home and putting a held item back. */
+    fun openMinimap() {
+        drag.held = null
+        drag.settling = null
+        drag.editing = false
+        folder = null
+        homeMenu = null
+        menu = null
+        minimap = true
+    }
+
+    /** Closes the minimap: home stays on the cell it is on (an edit that removed it moved home already). */
+    fun closeMinimap() {
+        minimap = false
+    }
+
     /** Home with nothing open over it: a home press here opens quick send instead. */
-    val atRest: Boolean get() = folder == null && homeMenu == null && menu == null && grid.heading(grid.start) && grid.move == null && !drag.editing && drag.held == null
+    val atRest: Boolean get() = !minimap && folder == null && homeMenu == null && menu == null && grid.heading(grid.start) && grid.move == null && !drag.editing && drag.held == null
 
     /**
      * A home press ([animate] false when home wasn't on screen before it: then everything shuts
@@ -267,6 +290,7 @@ class HomeUi {
         grid.goTo(grid.start, animate)
         folder = null
         homeMenu = null
+        minimap = false
         // Every floating view closes, as Launcher3's onNewIntent closes them (launcher polish 7.3).
         menu = null
         query = ""
@@ -433,7 +457,10 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // An open folder, opening or closing, holds the glass (launcher polish 7.2).
     var panel by remember { mutableStateOf<ResolvedFolder?>(null) }
     SideEffect { if (folder != null) panel = folder }
-    val darkBarIcons = ink.ink == Ink.DARK && underBar is Panel.Stack && folder == null && panel == null
+    // The minimap's glass comes in and goes as a folder's does, home fading under it (lor-6get).
+    val mapShown = remember { Animatable(0f) }
+    LaunchedEffect(ui.minimap) { mapShown.animateTo(if (ui.minimap) 1f else 0f, if (ui.minimap) Motion.move() else Motion.quick()) }
+    val darkBarIcons = ink.ink == Ink.DARK && underBar is Panel.Stack && folder == null && panel == null && !ui.minimap && mapShown.value == 0f
     val view = androidx.compose.ui.platform.LocalView.current
     var barsDark by remember { mutableStateOf<Boolean?>(null) }
     SideEffect {
@@ -526,7 +553,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val folderOpen = folder != null
     // The wallpaper behind an open folder blurs where the window can (lor-gnk0), with the motion.
     val blurred = rememberCrossWindowBlur()
-    BlurBehind(blurred, view) { folderShown.value }
+    BlurBehind(blurred, view) { maxOf(folderShown.value, mapShown.value) }
     LaunchedEffect(folderOpen, ui.homePresses) {
         if (folderOpen) {
             folderFading = false
@@ -594,7 +621,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     Box(Modifier.fillMaxSize().onSizeChanged { heightPx = it.height }.dragging(ui, haptics, { latestHome }, { h, t -> latestDrop(h, t) }).gridFinger(ui, haptics) { barTop.value }) {
         // Home gives way to an open folder (lor-gnk0, as Smart Launcher's does): it fades out as the
         // folder opens, so the glass shows only the wallpaper, and back in as it closes.
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - folderShown.value }) {
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - maxOf(folderShown.value, mapShown.value) }) {
             CompositionLocalProvider(LocalGridScrolls provides ui.scrolls) {
                 GridCells(grid) { p ->
                     when (p) {
@@ -642,6 +669,9 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
                 },
             )
         }
+        // The minimap over home (lor-6get), on the open folder's glass.
+        if (ui.minimap || mapShown.value > 0f) Box(Modifier.fillMaxSize().drawBehind { folderGlass(mapShown.value, blurred) })
+        if (ui.minimap) Minimap(file, ui, home)
         // Edit mode's bar, and Remove while something is held (launcher polish 4.3).
         TopBar(ui, Modifier.align(Alignment.TopCenter).safeDrawingPadding())
         held?.let { HeldItem(it) }
@@ -754,7 +784,7 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
         } else {
             blocks(Modifier.fillMaxSize(), all, header)
         }
-        ui.homeMenu?.takeIf { ui.homeMenuCell == cell }?.let { HomeMenu(it, home, onEdit = { ui.drag.editing = true }) { ui.homeMenu = null } }
+        ui.homeMenu?.takeIf { ui.homeMenuCell == cell }?.let { HomeMenu(it, home, onEdit = { ui.drag.editing = true }, onPanels = ui::openMinimap) { ui.homeMenu = null } }
     }
 }
 
@@ -1398,6 +1428,8 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
     val edge = 24.dp.toPx()
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        // The minimap's own drags aren't home's (lor-6get).
+        if (ui.minimap) return@awaitEachGesture
         val layer = when {
             ui.drawer -> 2
             ui.folder != null -> 1

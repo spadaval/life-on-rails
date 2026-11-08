@@ -298,13 +298,15 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
 
 /** The menu for a long press on empty home, at [at] within home's content (launcher polish 1.3). */
 @Composable
-fun HomeMenu(at: Offset, home: HomeContext, onEdit: () -> Unit, close: () -> Unit) {
+fun HomeMenu(at: Offset, home: HomeContext, onEdit: () -> Unit, onPanels: () -> Unit, close: () -> Unit) {
     val locked = home.locked
     Box(Modifier.offset { IntOffset(at.x.roundToInt(), at.y.roundToInt()) }) {
         DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
             // Locked, what edits home is left out, as Lawnchair drops edit mode and Widgets. lor-r0f9's
             // "Add widget" goes in this branch too, so a locked home doesn't show it.
             if (!locked) Item("Edit home") { close(); onEdit() }
+            // The minimap (lor-6get) opens locked too: it draws the map, with Show and its padlock.
+            Item("Panels") { close(); onPanels() }
             Item("Wallpaper") { close(); home.actions.wallpaper() }
             Item("Home settings") { close(); home.actions.settings() }
             // HomeScreen leaves edit mode when the file it draws is locked.

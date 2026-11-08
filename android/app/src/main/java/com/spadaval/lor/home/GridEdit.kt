@@ -52,7 +52,7 @@ fun LayoutFile.addPanel(cell: Cell, type: String): LayoutFile {
         "drawer" -> Panel.Drawer(cell)
         else -> throw LayoutError("there's no panel type \"$type\"")
     }
-    ONCE[type]?.let { name -> if (layout.panels.any { it.typeName == type }) throw LayoutError("there's already $name") }
+    layout.alreadyHolds(type)?.let { throw LayoutError(it) }
     return withCurrent(layout.copy(panels = layout.panels + panel).checkRows())
 }
 
@@ -175,8 +175,15 @@ fun LayoutFile.removeBlock(at: BlockAt, block: StackBlock): LayoutFile {
     return withCurrent(layout.withPanel(stack.copy(blocks = stack.blocks.filterIndexed { i, _ -> i != at.block })))
 }
 
-/** The panel types a layout holds at most one of, with how a refusal names one. */
-private val ONCE = mapOf("t3" to "an agent page", "drawer" to "a drawer")
+/**
+ * The panel types a layout holds at most one of, with how a refusal names one. The minimap's
+ * palette (lor-6get) dims these when the layout holds one.
+ */
+val ONCE = mapOf("t3" to "an agent page", "drawer" to "a drawer")
+
+/** Why a panel of [type] can't be added to this layout, which holds its one already; null when it can be. */
+fun Layout.alreadyHolds(type: String): String? =
+    ONCE[type]?.takeIf { panels.any { it.typeName == type } }?.let { "there's already $it" }
 
 private const val LAST_BLOCK = "a stack needs a block; remove the panel instead"
 

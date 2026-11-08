@@ -12,9 +12,9 @@ relationships:
   relates: []
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "The minimap: arrange the grid's panels"
-updated_at: "2026-11-07T23:54:17.605211440+00:00"
+updated_at: "2026-11-08T01:57:32.923565448+00:00"
 ---
 
 ## Goal
@@ -52,3 +52,25 @@ A new `home/Minimap.kt` (the map, the palette, the panel actions, the padlock), 
 ## Notes
 
 - 2026-11-07 [note] From lor-v692's review: the once-per-layout panel list (ONCE) is private to GridEdit.kt. Make it public there for the palette rather than copying it.
+- 2026-11-07 [decision] A home press with the minimap open closes it and leaves home on its cell, as back and Done do; a screen-off and on still closes it and sends home to its start (lor-ozj2's rule).
+  Reason: The Done when line says home stays on the cell it was on when the minimap closes, and names the home press among the ways it closes. The screen-on path calls homePressed, which still closes everything and goes to start.
+  Rejected: A home press closing the minimap and going to start, as it closes a folder: the line says home stays
+- 2026-11-07 [decision] A tile's apps count ('12 apps') counts every app in the block, a folder's apps one by one.
+  Reason: It says how much the page holds; a folder of eight counted as one would read as a near-empty page.
+  Rejected: Counting items, a folder as one
+- 2026-11-07 [decision] The selection starts on the cell home is on; a tap moves it. There is no second mark for home's cell.
+  Reason: That is the line's 'the cell home is on has the selection treatment', and one amber mark per map keeps DESIGN.md's Colour Has Jobs rule.
+  Rejected: A separate 'here' mark beside the selection
+- 2026-11-07 [decision] The Blocks action is not drawn here; lor-9uc1 adds it with the list it opens.
+  Reason: lor-9uc1 builds what Blocks opens. A Blocks button that does nothing until then would be a dead control, and both items land together on lor-f3vn's branch.
+  Rejected: A Blocks button that says it comes later
+- 2026-11-07 [decision] Full and Half, Phone start and Inner start are buttons; the one that holds now takes the selection treatment, and a tap on it does nothing. Start marks are words ('PHONE START', 'INNER START') in Starlight, not amber.
+  Reason: The edits refuse a no-op ('it's already full'), which would read as an error for a tap on what is shown as current. Amber is for selection, so a start can't use it.
+  Rejected: Letting the edit refuse a tap on the current state
+- 2026-11-07 [decision] ONCE is public in GridEdit.kt, with Layout.alreadyHolds(type) giving addPanel's refusal; the palette dims a type by the same function, so its reason is the edit's words.
+  Reason: lor-v692's review note asked for ONCE public; one function keeps the palette's words and the refusal's the same (MinimapTest checks it).
+  Rejected: Copying ONCE into Minimap.kt
+- 2026-11-07 [decision] A drag in the minimap is kept from home: gridFinger and home's item drag return at once while HomeUi.minimap is set, and the minimap's root takes every touch over home.
+  Reason: Both are on home's root in the Initial pass, so they would see the minimap's touches before it does.
+  Rejected: Drawing the minimap outside home's root Box: the Undo bar has to draw above it
+- 2026-11-07 [blocker] Emulator proof not run: agent-device refuses emulator-5554 (DEVICE_IN_USE) because of a stale session t3-790c7c1b0b7aa1f7623a3400 created 2026-11-06 16:20, before this boot. The device rules forbid closing another session, so whoever owns it, or Sumeet, closes it ('agent-device close --session t3-790c7c1b0b7aa1f7623a3400'). Code builds and the JVM tests pass on boat; the APK is installed on emulator-5554. Test layouts and helpers are in /tmp/claude-1000/6get-emu/.
