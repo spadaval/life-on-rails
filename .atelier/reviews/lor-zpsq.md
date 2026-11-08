@@ -10,6 +10,12 @@ created_at: 2026-11-08T09:04:06.899758699Z
 event:
   event: finding
   recommendation: no_action
+  disposition:
+    decision: no_action
+    identity: orchestrator-uj0r
+    commit: f3842df9e141bf191cdd609321452114f2f11658
+    recorded_at: 2026-11-08T09:04:49.482007239Z
+    reason: 'Without consequence, as the finding says: the Done when line asks for /tasks?id= and the launch line, both shown, and the id comes from one function, LorRows.taskPath.'
 ---
 
 low: /tmp/lor-verify/lor-wt-clgw/phone3/README.md (receipt lor-7p8t; no_action, without consequence) The README names the task id each text tap opened (20: 01a1ba26-27e5…, 22: 01a1ba26-281d…), but no saved file shows those ids. Logcat's START line masks dat= as http://10.0.2.2:3857/..., and Chrome's address field cuts off after '/tasks?id='. The Done when line asks for '/tasks?id=' and the launch line, and both are shown. Tap 21's web page highlights the tapped flag's row, and every row's path is the one-line LorRows.taskPath(id). Next time, drop the ids from the README or capture the full URL.
