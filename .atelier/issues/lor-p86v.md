@@ -18,7 +18,7 @@ schema_version: 2
 closed_at: "2026-11-07T22:17:58.360212228+00:00"
 status: "done"
 title: "What the lor panel and LoR's blocks are in layout.json"
-updated_at: "2026-11-07T22:17:58.360212228+00:00"
+updated_at: "2026-11-08T02:04:20.669059229+00:00"
 ---
 
 ## Context
@@ -51,6 +51,10 @@ What do the `lor` panel type and the `today`, `needs-you`, `running` and `t3-que
   - `t3-queue`: LoR's work queue for the agent: open tasks assigned to the agent, those queued for the next run first, then those being worked in a T3 thread. Read-only.
 - A block shows at most a fixed number of rows (`needs-you` 3 cards, `running` 3, `t3-queue` 5), then a line "N more" that moves the grid to the layout's `t3` panel (for `needs-you` and `running`) or `lor` panel (for `t3-queue`) when it has one.
 - No `version` bump: new optional panel and block types (layout-v2.md's Rules).
+
+## Notes
+
+- 2026-11-07 [note] Its read-only clauses (needs-you's LoR cards, t3-queue) are replaced by decision lor-dofd after Sumeet's yes to panel writes (2026-11-07); the rest stands.
 
 ## Report
 
