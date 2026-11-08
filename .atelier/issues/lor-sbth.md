@@ -35,7 +35,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "Widget and clock blocks"
-updated_at: "2026-11-08T03:35:39.130435937+00:00"
+updated_at: "2026-11-08T03:44:28.499380494+00:00"
 ---
 
 ## Goal
@@ -101,3 +101,4 @@ All three lines hold. Line 1 is fully met when lor-sbth merges. The end to end i
 
 - Unfolded, home with a page beside it is a half of the pair (lor-ph30), so the widgets sit in its narrow column. The decision note of c431a78 accepts this as home's flow. lor-ctox showed the full-width flow with `wide` full.
 - Markor isn't on the Fold. I installed it from F-Droid for the check and removed it afterwards.
+- 2026-11-07 [note] Handoff (latency rerun): line 3 holds on six rounds, pooled 61.5 ms base vs 53.5 ms head (lor-a0rq); see ## Report. No code changed; not reviewed.
