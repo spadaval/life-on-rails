@@ -9,7 +9,7 @@ import {
 import { askFromDashboard, channelConfigured, t3Handoff } from "../channel/channel.js";
 import { env } from "../env.js";
 import { BadInput } from "../errors.js";
-import { getGraph, openTasks, taskRow } from "../graph.js";
+import { doneTodayTasks, getGraph, openTasks } from "../graph.js";
 import { needsOwner } from "../intents.js";
 import { resolveDate } from "../memory/day.js";
 import { dayTimeline } from "../memory/timeline.js";
@@ -47,9 +47,7 @@ export const getTodayFn = createServerFn({ method: "GET" })
       WHERE i.type = 'metric' AND i.status = 'active'
         AND NOT EXISTS (SELECT 1 FROM commitment c WHERE c.intent_id = i.id AND c.kind = 'metric_value' AND c.t >= ${start} AND c.t < ${end})
       ORDER BY i.weight DESC, i.created_at LIMIT 1`;
-    const doneToday = new Set(
-      (await sql<{ intent_id: string }[]>`SELECT intent_id FROM commitment WHERE kind = 'task_done' AND t >= ${start} AND t < ${end}`).map((r) => r.intent_id),
-    );
+    const doneToday = await doneTodayTasks(sql, graph.nodes, date);
     const system = await sql<{ id: string; title: string }[]>`SELECT id, title FROM intent WHERE system ORDER BY title`;
     // Time goes to goals, projects, habits, and tasks; a metric is a measurement, not somewhere time goes.
     const pickable = graph.nodes.filter((n) => (n.status === "active" || n.status === "waiting") && n.type !== "metric");
@@ -66,7 +64,7 @@ export const getTodayFn = createServerFn({ method: "GET" })
       // Open tasks by due date, then those finished today, so a mis-tap can be taken back.
       tasks: [
         ...openTasks(graph.nodes).map((t) => ({ ...t, done: false })),
-        ...graph.nodes.filter((n) => n.type === "task" && n.status === "done" && doneToday.has(n.id)).map((n) => ({ ...taskRow(n), done: true })),
+        ...doneToday.map((t) => ({ ...t, done: true })),
       ],
       brief: (await sql<{ body: string }[]>`SELECT body FROM page WHERE slug = ${`briefs/${date}`}`)[0]?.body ?? null,
       needsYou: (await needsOwner(sql)).map((n) => ({ id: n.id, title: n.title, note: n.flag_note ?? "", google: n.google_task_id !== null })),

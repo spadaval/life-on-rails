@@ -2,7 +2,7 @@
 // parents, and the flags Today and the agent care about.
 import type { Tx } from "../db/client.js";
 import type { JsonObject } from "../shared/json.js";
-import { localYmd } from "../shared/localTime.js";
+import { type Ymd, localDayBounds, localYmd } from "../shared/localTime.js";
 import { env } from "./env.js";
 import { NotFound } from "./errors.js";
 import { type IntentView, type LinkView, getIntent, listIntents, listLinks, taskOutcome } from "./intents.js";
@@ -88,6 +88,15 @@ export function openTasks(nodes: GraphNode[]): TaskRow[] {
     .filter((n) => n.type === "task" && (n.status === "active" || n.status === "waiting"))
     .sort((a, b) => (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999") || a.title.localeCompare(b.title))
     .map(taskRow);
+}
+
+/** The tasks marked done on a local day (done, with a `task_done` commitment that day): Today's Due soon draws them struck through. */
+export async function doneTodayTasks(db: Tx, nodes: GraphNode[], date: Ymd): Promise<TaskRow[]> {
+  const { start, end } = localDayBounds(env.LOR_TZ, date);
+  const done = new Set(
+    (await db<{ intent_id: string }[]>`SELECT intent_id FROM commitment WHERE kind = 'task_done' AND t >= ${start} AND t < ${end}`).map((r) => r.intent_id),
+  );
+  return nodes.filter((n) => n.type === "task" && n.status === "done" && done.has(n.id)).map(taskRow);
 }
 
 const pct = (x: number | null) => (x === null ? "—" : `${Math.round(x * 100)}%`);
