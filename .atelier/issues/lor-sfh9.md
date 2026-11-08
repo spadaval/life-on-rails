@@ -4,6 +4,9 @@ id: "lor-sfh9"
 issue_type: "feature"
 labels:
 - "verification"
+workflow_branch:
+  branch_base: main
+  work_branch: lor-sfh9
 priority: "P1"
 relationships:
   blocks: []
@@ -12,9 +15,9 @@ relationships:
   relates: []
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "Give agents one verify skill that drives LoR's server, web screens and launcher and proves what they changed"
-updated_at: "2026-11-08T05:36:44.996690636+00:00"
+updated_at: "2026-11-08T05:52:25.603740925+00:00"
 ---
 
 ## Goal
