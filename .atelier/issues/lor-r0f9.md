@@ -17,7 +17,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Widgets on home: add, draw, resize, remove"
-updated_at: "2026-11-08T02:18:57.665456909+00:00"
+updated_at: "2026-11-08T02:36:04.820553495+00:00"
 ---
 
 ## Goal
@@ -77,6 +77,7 @@ New `home/Widgets.kt` (the host, the block, the picker sheet, the bind and confi
 - 2026-11-07 [decision] In a stack or wide-flow column with no apps block, the spare space now goes after the blocks (the dock stays at the bottom, outside the scroll), not before them.
   Reason: Seen on the unfolded Fold: the left flow column (clock header, then a widget) drew the widget at the column's bottom, far from the header. The space went first only to keep the dock at the bottom, which the scroll's split now does. Only widgets are affected: the clock is the header and the dock sits outside the scroll, so a home with no widgets draws as before (b2 matches b0 below the status bar).
 - 2026-11-07 [handoff] Implemented in eea4aea and 1e0a51e on lor-sbth; every Done when line ticked, outcome and proof in ## Report, receipts lor-3ztb (phone) and lor-ctox (Fold). Proof: boat assembleDebug testDebugUnitTest at 1e0a51e, 43 suites, 314 tests, 0 failures (WidgetTest 12/12). A home with no widgets draws as before (0 px differ below the status bar). Scrolling list shown with Markor's todo widget (Google's agenda needs sign-in). Review: none yet.
+- 2026-11-07 [handoff] Fixes for lor-wueo and lor-qbfx in 728cef6 (fix range 748a690..728cef6 plus this record commit): the in-flight add lives in WidgetHost.adding; gridFinger skips a consumed press. Proof: boat at 728cef6, 43 suites, 314 tests, 0 failures; emulator receipt for an add surviving a locale change mid-configure and a swipe outside a resize frame closing it without moving the grid. Review of the fix: none yet.
 
 ## Report
 
@@ -102,3 +103,9 @@ Decision notes above: the gone widget's Remove on a stack's only block refuses l
 - A provider's `maxResizeWidth` narrower than the column is covered only by `WidgetSize.width`'s test; no emulator widget on hand sets one.
 - The real-Fold check, including Sumeet's bind tap, is lor-13c1. The home-press latency with widgets is lor-sbth's own Done when line.
 - Review outstanding.
+
+### Fixes after review (728cef6)
+Both fix_now findings are fixed in 728cef6, and both checks ran on its build (receipt in r0f9-emu/fix).
+- **lor-wueo:** the widget on its way to home now lives in `WidgetHost.adding`, held for the process next to the host, not on `HomeActivity`. A home recreated behind the bind dialog or the configure screen still places it. A configure result is also matched to the id it carries. Shown by a locale change while the configure screen was open: home was destroyed and created again in the same process, and "added 8" followed. A process that dies behind those screens still loses the add, and the next start's sweep deletes its id, as the `adding` comment says.
+- **lor-qbfx:** `gridFinger` now skips a press that something before it consumed, so a press outside a resize frame only closes the frame, as the decision note says. Shown by a horizontal swipe from outside an open frame: the frame closed and no grid line was logged. The next swipe moved the grid.
+- No new JVM test: both fixes live in Android and Compose input code with no pure part. The boat `assembleDebug testDebugUnitTest` at 728cef6 passed: 43 suites, 314 tests, 0 failures, no warnings.
