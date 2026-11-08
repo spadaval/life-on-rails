@@ -136,6 +136,8 @@ LOR_WAKE_MAX_S=900
 GOOGLE_ACCOUNT=sumeet.padavala@gmail.com
 GOOGLE_OAUTH_CLIENT=/home/supadava/.config/life-on-rails/google-client.json
 GOOGLE_TOKEN_FILE=/home/supadava/.config/life-on-rails/google-token.json
+# the Weather API key behind /device/home's weather; empty: no weather
+GOOGLE_MAPS_KEY=
 PLAID_ENV=sandbox             # or production
 PLAID_CLIENT_ID=
 PLAID_SECRET=                 # the secret for PLAID_ENV
