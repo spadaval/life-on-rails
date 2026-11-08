@@ -27,7 +27,7 @@ Check on the real Fold that LoR's and T3's panels (lor-clgw) work on One UI over
 
 ## Done when
 
-Each check has a result in an evidence receipt on this item, from Sumeet's use or a session he allows; a failure files a bug linked here. One result names how long the T3 panel takes to show a long thread's end after it is chosen. Another is Launcher polish 7.8's home-press measurement on the real Fold, folded and unfolded, with home's stack holding `today` and `needs-you` blocks above its apps beside a `lor` panel, against the same layout without them: on the emulators that layout cost +20% to +27% (receipts lor-79s1 and lor-6p0h, the blocks' drawing on a CPU renderer), and Sumeet chose (2026-11-08) to judge it on a real GPU. A result past 10% files a bug linked here.
+Each check has a result in an evidence receipt on this item, from Sumeet's use or a session he allows; a failure files a bug linked here. One result names how long the T3 panel takes to show a long thread's end after it is chosen. Another is Launcher polish 7.8's home-press measurement on the real Fold, folded and unfolded, with home's stack holding `today` and `needs-you` blocks above its apps beside a `lor` panel, against the same layout without them: on the emulators that layout cost +19% on the phone and +13% on the Fold against the same build without the blocks (receipts lor-79s1 and lor-6p0h, the blocks' drawing on a CPU renderer), and Sumeet chose (2026-11-08) to judge it on a real GPU. A result past 10% files a bug linked here.
 
 ## Context
 
