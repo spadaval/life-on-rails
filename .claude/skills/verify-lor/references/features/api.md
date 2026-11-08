@@ -68,7 +68,7 @@ node .claude/skills/verify-lor/verify.mjs api POST /intents --body '{"type":"tas
 echo '{"text":"hi","thread":"verify"}' | node .claude/skills/verify-lor/verify.mjs api POST /log --body - --out /tmp/log.json
 ```
 
-It prints `{status, body}` JSON. The same calls through `lor` itself: `LOR_PORT=3857 node cli/lor.mjs status`, or `LOR_PORT=3857 node cli/lor.mjs intent create --type task --title x --thread verify`. Never leave `LOR_PORT` unset: `lor` then talks to the real server on 3847.
+It prints `{method, path, status, body}` JSON; the `--out` file adds `at`, `commit` and `dirty_files`. The same calls through `lor` itself: `LOR_PORT=3857 node cli/lor.mjs status`, or `LOR_PORT=3857 node cli/lor.mjs intent create --type task --title x --thread verify`. Never leave `LOR_PORT` unset: `lor` then talks to the real server on 3847.
 
 ## Proves it works
 

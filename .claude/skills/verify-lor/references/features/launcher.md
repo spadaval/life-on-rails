@@ -60,4 +60,4 @@ For anything about width or folding, the missions also used `T3_Fold_API35`. Age
 - Home rereads `layout.json` only on resume, so a file written while home is in front shows after you leave and come back.
 - `install` writes `server_url` before `adb install -r` as well as after, because the install restarts LoR at once when it is the default home. On 2026-11-08 the emulator's app had no `server_url` at all, so it was on the real server until `install` ran; `doctor`'s "app on emulator" check reports this.
 - `agent-device open` can fail with a hint that another session holds the device (an earlier thread's, left open). Follow its advice once (`open <app> --wait 30000`); never reuse or close the other session.
-- Settings > Test connection reading "Connected. LoR sees you as this box." proves the app reaches the server in `server_url`.
+- Settings > Test connection reading "Connected. LoR sees you as this box." proves the app reaches the server in `server_url`. The line is not interactive, so `snapshot -i` leaves it out; capture it with `snapshot --force-full`.

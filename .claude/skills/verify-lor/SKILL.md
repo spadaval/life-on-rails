@@ -54,7 +54,8 @@ node $V doctor
 ```
 
 Reports, per surface (`api`, `web`, `launcher`), whether it is ready, and for
-each check that is not, the `fix`: the test database and pending migrations,
+each check that is not, the `fix`: the test database and pending migrations (`migrations_from_other_branches`
+counts ones applied by another branch's checks, which is harmless),
 port 3857, the copy, Chrome, the emulator, the app's `server_url` on it, the
 debug APK and the boat CLI. It also lists lor-web's ports, which nothing here
 touches. Exit 0 only when every surface is ready.

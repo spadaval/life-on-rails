@@ -30,7 +30,7 @@ Who matters to the owner and when they were last in touch, with one hub per pers
 
 ## Proves it works
 
-- `people-1-who-matters` lists Priya and Jo; Priya shows "has a page" and a birthday "in 2 days".
+- `people-1-who-matters` lists Priya, Jo and the org Acme; Priya shows "has a page" and a birthday "in 2 days".
 - `people-2-overdue` (the "Due a hello" filter highlighted; the URL is not in the shot) lists Priya (last mail 45 days ago against a 30-day cadence) and not Jo (emailed 3 days ago).
 - `acme cadence: 90` confirms the select saved to `entity.keep_in_touch_days`.
 - `people-3-hub` shows Priya's hub with her page text. `hub waiting:` lists "Get the deposit back from Priya"; `hub mail:` lists the "Lunch?" mail.
