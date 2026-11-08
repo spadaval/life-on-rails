@@ -124,6 +124,17 @@ class WidgetHost(context: Context) {
     }
     private var swept = false
 
+    /**
+     * The widget on its way to home (lor-r0f9): bound, waiting for Android's bind dialog or its
+     * configure screen. Held here, for the process, so a home recreated behind those screens (a
+     * configuration change home doesn't handle itself) still places it. A process that dies there
+     * loses it; the id it bound is in no layout, so the next start's sweep deletes it.
+     */
+    var adding: Adding? = null
+
+    /** A widget on its way to home: its bound [id], the stack [at] it goes to, and its provider. */
+    class Adding(val id: Int, val at: Cell, val info: AppWidgetProviderInfo)
+
     /** From [HomeActivity.onStart]: widgets get their updates while home is started. */
     fun startListening() = try {
         host.startListening()

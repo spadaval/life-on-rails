@@ -168,14 +168,12 @@ class HomeActivity : ComponentActivity() {
         store.widgets.stopListening()
     }
 
-    /**
-     * A widget on its way to home (lor-r0f9): its bound id, the stack it goes to, and its provider.
-     * Held by the activity, which handles every configuration change itself; an id left over when
-     * the process ends goes in the next start's sweep.
-     */
-    private class Adding(val id: Int, val at: Cell, val info: android.appwidget.AppWidgetProviderInfo)
-
-    private var adding: Adding? = null
+    /** The widget on its way to home, held by the process's widget host (lor-r0f9), not by this activity. */
+    private var adding: WidgetHost.Adding?
+        get() = store.widgets.adding
+        set(v) {
+            store.widgets.adding = v
+        }
 
     /** Android's "Allow LoR to create widgets" dialog, when the bind needs it. */
     private val bindWidget = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { r ->
@@ -187,7 +185,7 @@ class HomeActivity : ComponentActivity() {
     }
 
     /** The widget's configure screen when it has one, else straight to home (Kvaesitso's WidgetPickerSheet). */
-    private fun configureWidget(a: Adding) {
+    private fun configureWidget(a: WidgetHost.Adding) {
         if (a.info.configure == null) return placeWidget(a)
         try {
             store.widgets.host.startAppWidgetConfigureActivityForResult(this, a.id, 0, CONFIGURE_WIDGET, configureOptions())
@@ -212,7 +210,9 @@ class HomeActivity : ComponentActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
             CONFIGURE_WIDGET -> {
-                val a = adding ?: return
+                // A result for another id (a widget's own result carrying it) isn't this add's.
+                val said = data?.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, -1) ?: -1
+                val a = adding?.takeIf { said == -1 || said == it.id } ?: return Log.i(WIDGETS, "configure result for $said with no add waiting for it").let {}
                 Log.i(WIDGETS, "configure ${a.id}: ${if (resultCode == RESULT_OK) "done" else "cancelled"}")
                 if (resultCode == RESULT_OK) placeWidget(a) else cancelWidget(a, "its configure screen was cancelled")
             }
@@ -221,7 +221,7 @@ class HomeActivity : ComponentActivity() {
     }
 
     /** Puts the bound widget in its stack with Undo, at its provider's minimum height; a refused edit deletes the id. */
-    private fun placeWidget(a: Adding) {
+    private fun placeWidget(a: WidgetHost.Adding) {
         adding = null
         val info = store.widgets.manager.getAppWidgetInfo(a.id) ?: a.info
         val height = WidgetSize.newHeight(info.minHeight / resources.displayMetrics.density)
@@ -239,7 +239,7 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
-    private fun cancelWidget(a: Adding, why: String) {
+    private fun cancelWidget(a: WidgetHost.Adding, why: String) {
         adding = null
         store.widgets.delete(a.id, why)
     }
@@ -375,7 +375,7 @@ class HomeActivity : ComponentActivity() {
             // One at a time: a flow cut off without a result leaves its id to the next start's sweep.
             adding?.let { cancelWidget(it, "another widget was picked") }
             val a = try {
-                Adding(widgets.allocate(), at, provider)
+                WidgetHost.Adding(widgets.allocate(), at, provider)
             } catch (e: RuntimeException) {
                 return fail("No widget can be added now.")
             }
