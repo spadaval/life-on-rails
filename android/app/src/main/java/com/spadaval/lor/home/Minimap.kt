@@ -126,14 +126,6 @@ object MinimapRules {
     /** [name] inside a sentence: "agent page", but "LoR panel" keeps its capitals. */
     fun lowerName(type: String): String = name(type).let { if (it.startsWith("LoR")) it else it.lowercase() }
 
-    /** LoR's blocks (lor-lz97) by the names the agent page gives their sections. */
-    private fun lorName(block: StackBlock): String? = when (block) {
-        is StackBlock.Today -> "Today"
-        is StackBlock.NeedsYou -> "Needs you"
-        is StackBlock.Running -> "Running"
-        is StackBlock.T3Queue -> "Agent queue"
-        else -> null
-    }
 
     /** The apps an `apps` block holds, a folder's counted one by one. */
     fun appCount(items: List<LayoutItem>): Int = items.sumOf { if (it is Folder) it.apps.size else 1 }
@@ -144,7 +136,11 @@ object MinimapRules {
         is StackBlock.Apps -> appCount(block.items).let { if (it == 1) "1 app" else "$it apps" }
         is StackBlock.Dock -> "Dock"
         is StackBlock.Widget -> "Widget"
-        else -> lorName(block)!!
+        // LoR's blocks (lor-lz97), by the names the agent page gives their sections.
+        is StackBlock.Today -> "Today"
+        is StackBlock.NeedsYou -> "Needs you"
+        is StackBlock.Running -> "Running"
+        is StackBlock.T3Queue -> "Agent queue"
     }
 
     /**
@@ -220,7 +216,7 @@ object MinimapRules {
         is StackBlock.Apps -> "Apps"
         is StackBlock.Dock -> "Dock"
         is StackBlock.Widget -> label(block)
-        else -> lorName(block)!!
+        is StackBlock.Today, StackBlock.NeedsYou, StackBlock.Running, StackBlock.T3Queue -> blockName(block)
     }
 
     /** What the block list says under a block's name: an `apps` block's count ("12 apps"), a widget's height ("Widget, 180 dp"). */
