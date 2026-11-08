@@ -43,7 +43,7 @@ Out:
 - named and temporary layouts, and agent-sorted folders (T3 Launcher's Increments 9 and 10, still later);
 - a live stream of the phone's screen.
 
-Environment: the dashboard in desktop Chrome; `T3_Phone_API35` and `T3_Fold_API35` against the LoR test server (`scripts/ui-server.sh`, `http://10.0.2.2:3857`); Gradle builds, Android and wasm, on boat. The real phone and Fold only when Sumeet says so, in `needs-human` validation items after merge, outside the mission, each with an emulator stand-in run before merge.
+Environment: the dashboard in desktop Chrome; `T3_Phone_API35` and `T3_Fold_API35` against the LoR test server (`scripts/ui-server.sh`, `http://10.0.2.2:3857`); Android Gradle builds on boat; the browser bundle in GitHub Actions (decision lor-kbog). The real phone and Fold only when Sumeet says so, in `needs-human` validation items after merge, outside the mission, each with an emulator stand-in run before merge.
 
 # Authority
 

@@ -27,7 +27,7 @@ updated_at: "2026-11-08T06:02:35.308260371+00:00"
 ## Context
 
 - Measured in spike lor-llmf on `T3_Phone_API35` (420 dpi): the header line is 565 px wide on Android by default, 570 px in Chrome, 571 px on Android with `Animated`. Every browser rasterization setting Compose offers (hinting none to full, subpixel positioning on and off) left the browser at 570 to 577 px, so only Android can move toward the browser.
-- At 4x zoom, labels at rest look the same either way (`docs/missions/web-layout-editor/spike/textmotion.png`). Text gets about 1% wider; a label already at its tile's edge could lose a letter to the ellipsis.
+- At 4x zoom, labels at rest look the same either way (`docs/missions/web-layout-editor/spike/textmotion.png`: top row the default, bottom row `Animated`). Text gets about 1% wider; a label already at its tile's edge could lose a letter to the ellipsis.
 - Compose's guidance is to use `Animated` for text scaled or rotated through a graphics layer, which is what home's press, folder and predictive-back motion do.
 
 ## Question
@@ -41,7 +41,7 @@ Should the app's text use Compose's `TextMotion.Animated` instead of the default
 
 ## Decision
 
-`Animated`, set once in the shared look (`Type` and home's `labelStyle`), so every screen and block gets it (Sumeet, 2026-11-08: "I can definitely see the weird shimmering/ghosting/jumping effect on the text... do it").
+`Animated` on every text style the app builds: `Type` in the shared look (which Material's typography copies), home's `labelStyle`, and the header's own styles in `home/Header.kt`; a new `TextStyle` sets it too (Sumeet, 2026-11-08: "I can definitely see the weird shimmering/ghosting/jumping effect on the text... do it").
 
 ## Report
 
