@@ -22,9 +22,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -113,9 +111,6 @@ fun homeBody(apps: AppsLoad, layout: LayoutFile?, placed: Int): HomeBody = when 
     else -> HomeBody.GRID
 }
 
-/** A package whose activities changed, so its icons are stale. */
-data class PackageChange(val packages: List<String>, val user: UserHandle)
-
 /**
  * The app list and the layout file for the whole process (launcher polish, P1): created once by
  * [com.spadaval.lor.LorApp], read by home and Home settings, and the one writer of `layout.json`.
@@ -157,8 +152,8 @@ class HomeStore(private val context: Context) {
     private val _search = MutableStateFlow(SearchSources())
     /** Search's sources besides the app list (launcher polish 5.1). */
     val search: StateFlow<SearchSources> = _search
-    private val _changes = MutableSharedFlow<PackageChange>(extraBufferCapacity = 64)
-    val changes: SharedFlow<PackageChange> = _changes
+    /** App icons for the process (lor-ozj2), drawn at the size each screen asks for. */
+    val icons = Icons(context)
 
     private val callback = object : LauncherApps.Callback() {
         override fun onPackageRemoved(packageName: String, user: UserHandle) = changed(listOf(packageName), user)
@@ -438,7 +433,7 @@ class HomeStore(private val context: Context) {
     }
 
     private fun changed(packages: List<String>, user: UserHandle) = serially {
-        _changes.tryEmit(PackageChange(packages, user))
+        icons.evict(packages, user)
         packs.changed(packages)
         val fresh = packages.flatMap { pkg -> activities(pkg, user) }
         _apps.value = (_apps.value.filterNot { it.packageName in packages && it.user == user } + fresh).sortedWith(byLabel)

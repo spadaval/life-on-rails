@@ -26,8 +26,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -37,6 +38,8 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -49,6 +52,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,17 +84,22 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /*
- * The drawer (launcher polish 2.2): search at the top, then one of three views. Sections opens on
- * Recent and Frequent rows, New, the sorted sections ([Drawer.sort]) and Work profile; A–Z has
+ * The drawer (launcher polish 2.2): one of three views, with its controls at the bottom, where the
+ * thumb is (lor-sqfe; decision note on lor-ph30). Sections opens on Recent and Frequent rows, New,
+ * the sorted sections ([Drawer.sort]) and Work profile, with a Jump menu of those headers; A–Z has
  * letter headers and a rail that jumps to a letter, as Launcher3's all-apps fast scroller does;
- * Most used ranks by launch count. Typing shows search results whatever the view.
+ * Most used ranks by launch count. Typing shows search results whatever the view, running upward
+ * from the field, the best nearest it, as Kvaesitso's bottom search bar has them (GPL-3.0, ideas
+ * only: `SearchColumn`'s `reverseLayout`, padded by the keyboard in an `adjustResize` window).
+ * One layout for both widths: at full width on the inner screen, `look.grid.wide`'s columns and
+ * the controls at most 560 dp wide, centred.
  */
 
 /** How long an app counts as new. */
 private const val NEW_FOR_MS = 3L * 24 * 60 * 60 * 1000
 
 /** One cell or full-width line of the drawer's grid. Keys are unique: an app can show twice (a row and its section). */
-private sealed interface Entry {
+internal sealed interface Entry {
     val key: String
 
     class Header(val title: String, val reason: String?, override val key: String) : Entry
@@ -103,7 +112,10 @@ private sealed interface Entry {
 }
 
 /** The grid's entries for [view], and the A–Z view's letters with the index of each header. */
-private class Built(val entries: List<Entry>, val letters: List<Pair<String, Int>>)
+internal class Built(val entries: List<Entry>, val letters: List<Pair<String, Int>>) {
+    /** Each header's title with its index, for the Sections view's Jump menu. */
+    val headers: List<Pair<String, Int>> get() = entries.mapIndexedNotNull { i, e -> (e as? Entry.Header)?.let { it.title to i } }
+}
 
 private fun build(view: DrawerView, apps: List<HomeApp>, file: LayoutFile?, stats: LaunchStats, columns: Int, now: Long): Built {
     val byKey = apps.associateBy { it.key }
@@ -145,18 +157,22 @@ private fun build(view: DrawerView, apps: List<HomeApp>, file: LayoutFile?, stat
     return Built(out, letters)
 }
 
-/** The grid's entries for search results: a header per block when more than one shows. */
-private fun searchEntries(results: Results<Any>, goKey: String?): Built {
+/**
+ * The grid's entries for search results, for a grid laid out bottom up (the first entry nearest
+ * the field): each block's entries best first, then its header, which a reversed grid draws above
+ * them, when more than one block shows.
+ */
+internal fun searchEntries(results: Results<Any>, goKey: String?): Built {
     val out = mutableListOf<Entry>()
     val headers = results.blocks.size > 1
     results.blocks.forEach { block ->
-        if (headers) out.add(Entry.Header(block.kind.title, null, "qh:${block.kind}"))
         block.entries.forEach { e ->
             when (val v = e.value) {
                 is HomeApp -> out.add(Entry.Tile(v, false, "q:${e.key}", go = e.key == goKey))
                 else -> out.add(Entry.Row(v, "q:${e.key}", e.key == goKey))
             }
         }
+        if (headers) out.add(Entry.Header(block.kind.title, null, "qh:${block.kind}"))
     }
     return Built(out, emptyList())
 }
@@ -216,6 +232,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
     var field by remember { mutableStateOf(TextFieldValue(ui.query, TextRange(ui.query.length))) }
     if (field.text != ui.query) field = TextFieldValue(ui.query, TextRange(ui.query.length))
     val focus = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     // Opened ready to type, when the file asks (launcher polish 5.5), once the drawer has settled
@@ -235,11 +252,11 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
         }
     }
     // Where each result's icon is, by its entry's key, so Go grows its app out of it (launcher polish 7.4).
-    val found = remember(results) { HashMap<String, IconSpot>() }
+    val spots = remember(results) { HashMap<String, IconSpot>() }
     fun go() {
         val r = if (current) results else searchAll(ui.query, apps, sources, stats)
         val first = r.go
-        if (first != null) openFound(first.value, at, home, found["q:${first.key}"]) else elsewhere(sources.targets, ui.query).firstOrNull()?.let { home.actions.elsewhere(it, ui.query) }
+        if (first != null) openFound(first.value, at, home, spots["q:${first.key}"]) else elsewhere(sources.targets, ui.query).firstOrNull()?.let { home.actions.elsewhere(it, ui.query) }
     }
     val saved = home.file?.drawer?.view ?: DrawerView.SECTIONS
     // Shown at once; the file catches up when the write lands.
@@ -258,79 +275,101 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
             }
         }
     }
-    Column(Modifier.fillMaxSize().background(Bg).swallowTaps().safeDrawingPadding().padding(top = 12.dp)) {
-        OutlinedTextField(
-            field,
-            { field = it; ui.query = it.text },
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).focusRequester(focus).onFocusChanged { focused = it.isFocused },
-            placeholder = { Text("Search", color = Dim) },
-            singleLine = true,
-            shape = RectangleShape,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Txt,
-                // DESIGN.md's field: an Edge border, amber at 70% when focused.
-                focusedBorderColor = Or.copy(alpha = 0.7f), unfocusedBorderColor = Edge,
-            ),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { go() }),
-        )
-        // A quick answer (launcher polish 5.4) heads the results; it opens nothing, so Go passes it by.
-        if (searching) results.answer?.let { AnswerCard(it) }
-        // Recent searches, while the empty field has focus (launcher polish 5.5).
-        if (!searching && focused && stats.searches.isNotEmpty()) {
-            RecentSearches(stats.searches, { ui.query = it }, home.actions::clearSearches)
+    // The list and the controls end at the keyboard: only the drawer lifts, never the grid (lor-sqfe).
+    BoxWithConstraints(Modifier.fillMaxSize().background(Bg).swallowTaps().cellInsetsPadding().imePadding()) {
+        val columns = LocalHomeLook.current.columnsFor(maxWidth.value).drawer
+        val now = remember(apps, stats) { System.currentTimeMillis() }
+        val goKey = if (focused && current) results.go?.key else null
+        val built = remember(view, apps, home.file, stats, columns, searching, results, goKey) {
+            if (searching) searchEntries(results, goKey)
+            else build(view, apps, home.file, stats, columns, now)
         }
-        if (!searching) {
-            ViewSwitch(view) { v ->
-                view = v
-                home.actions.setView(v)
-            }
-        } else if (nothing) {
-            NoResults(ui.query, ways, line = results.answer == null) { home.actions.elsewhere(it, ui.query) }
-        }
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val columns = LocalHomeLook.current.columnsFor(maxWidth.value).drawer
-            val now = remember(apps, stats) { System.currentTimeMillis() }
-            val goKey = if (focused && current) results.go?.key else null
-            val built = remember(view, apps, home.file, stats, columns, searching, results, goKey) {
-                if (searching) searchEntries(results, goKey)
-                else build(view, apps, home.file, stats, columns, now)
-            }
-            val grid = rememberLazyGridState()
-            // A new view starts at its top.
-            LaunchedEffect(view) { grid.scrollToItem(0) }
-            LazyVerticalGrid(
-                GridCells.Fixed(columns),
-                // A swipe the list can't take, at its top or its end, moves the grid (lor-qdmy; 7.1's pull down).
-                Modifier.fillMaxSize().nestedScroll(pullToClose).scrollsInGrid(grid),
-                state = grid,
-                contentPadding = PaddingValues(start = 8.dp, end = if (built.letters.isEmpty()) 8.dp else 28.dp, top = 8.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(built.entries, key = { it.key }, span = { if (it is Entry.Tile) GridItemSpan(1) else GridItemSpan(maxLineSpan) }) { e ->
-                    when (e) {
-                        is Entry.Header -> SectionHeader(e.title, e.reason)
-                        // A main-profile app can be picked up and dragged onto home (launcher polish 4.6); refs can't name a work-profile one.
-                        is Entry.Tile -> Box(
-                            Modifier.dragSource(home.drag, e.key) { b ->
-                                if (e.app.mainProfile) Source(b, From.Drawer(e.app.id, home.refFor(e.app)), 2, e.app, null) else null
-                            },
-                            contentAlignment = Alignment.TopCenter,
-                        ) {
-                            // Go's target, while the field has focus (launcher polish 5.1): DESIGN.md's selection.
-                            if (e.go) Box(Modifier.matchParentSize().selection())
-                            MenuTile(e.app, at, home, dot = e.dot, icon = found.getOrPut(e.key) { IconSpot() })
+        // A view's place and the results' are kept apart, so clearing a search goes back to where the view was.
+        val browse = rememberLazyGridState()
+        val found = rememberLazyGridState()
+        // A new view starts at its top; new results at their best, by the field.
+        LaunchedEffect(view) { browse.scrollToItem(0) }
+        LaunchedEffect(results) { found.scrollToItem(0) }
+        val grid = if (searching) found else browse
+        // Read by the grid's finger at each swipe, so it asks the list on screen.
+        val list by rememberUpdatedState(grid)
+        val reversed by rememberUpdatedState(searching)
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                LazyVerticalGrid(
+                    GridCells.Fixed(columns),
+                    // A swipe the list can't take, at its top or its end, moves the grid (lor-qdmy; 7.1's pull down).
+                    Modifier.fillMaxSize().nestedScroll(pullToClose).scrollsInGrid { listTakes(it, list.canScrollForward, list.canScrollBackward, reversed) },
+                    state = grid,
+                    contentPadding = PaddingValues(start = 8.dp, end = if (built.letters.isEmpty()) 8.dp else 28.dp, top = 8.dp, bottom = 16.dp),
+                    // Results run upward from the field, the best nearest it (Kvaesitso's bottom search bar).
+                    reverseLayout = searching,
+                    verticalArrangement = Arrangement.spacedBy(12.dp, if (searching) Alignment.Bottom else Alignment.Top),
+                ) {
+                    items(built.entries, key = { it.key }, span = { if (it is Entry.Tile) GridItemSpan(1) else GridItemSpan(maxLineSpan) }) { e ->
+                        when (e) {
+                            is Entry.Header -> SectionHeader(e.title, e.reason)
+                            // A main-profile app can be picked up and dragged onto home (launcher polish 4.6); refs can't name a work-profile one.
+                            is Entry.Tile -> Box(
+                                Modifier.dragSource(home.drag, e.key) { b ->
+                                    if (e.app.mainProfile) Source(b, Slot.DrawerApp(e.app.key), 2) else null
+                                },
+                                contentAlignment = Alignment.TopCenter,
+                            ) {
+                                // Go's target, while the field has focus (launcher polish 5.1): DESIGN.md's selection.
+                                if (e.go) Box(Modifier.matchParentSize().selection())
+                                MenuTile(e.app, at, home, dot = e.dot, icon = spots.getOrPut(e.key) { IconSpot() })
+                            }
+                            is Entry.Row -> ResultRow(e.value, e.go, at, home, spots.getOrPut(e.key) { IconSpot() })
+                            is Entry.HiddenApps -> Text(
+                                "Hidden apps (${e.count})",
+                                style = Type.body.copy(color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center),
+                                modifier = Modifier.fillMaxWidth().clickable { home.actions.settings() }.padding(vertical = 20.dp),
+                            )
                         }
-                        is Entry.Row -> ResultRow(e.value, e.go, at, home, found.getOrPut(e.key) { IconSpot() })
-                        is Entry.HiddenApps -> Text(
-                            "Hidden apps (${e.count})",
-                            style = Type.body.copy(color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center),
-                            modifier = Modifier.fillMaxWidth().clickable { home.actions.settings() }.padding(vertical = 20.dp),
-                        )
                     }
                 }
+                if (built.letters.isNotEmpty()) LetterRail(built.letters, browse, Modifier.align(Alignment.CenterEnd))
             }
-            if (built.letters.isNotEmpty()) LetterRail(built.letters, grid, Modifier.align(Alignment.CenterEnd))
+            // The controls, upward from the bottom: the field, the recent searches while it is empty
+            // and focused, and the view switch with Jump; while searching, the answer or the ways
+            // out of an empty search sit just above the field. At most 560 dp wide, centred.
+            Column(Modifier.align(Alignment.CenterHorizontally).widthIn(max = 560.dp).fillMaxWidth().padding(bottom = 8.dp)) {
+                if (!searching) {
+                    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        ViewSwitch(view, Modifier.weight(1f)) { v ->
+                            view = v
+                            home.actions.setView(v)
+                        }
+                        if (view == DrawerView.SECTIONS && built.headers.isNotEmpty()) {
+                            JumpButton(built.headers) { index -> scope.launch { browse.scrollToItem(index) } }
+                        }
+                    }
+                } else if (nothing) {
+                    NoResults(ui.query, ways, line = results.answer == null) { home.actions.elsewhere(it, ui.query) }
+                }
+                // A quick answer (launcher polish 5.4) is the result nearest the field; it opens nothing, so Go passes it by.
+                if (searching) results.answer?.let { AnswerCard(it) }
+                // Recent searches, while the empty field has focus (launcher polish 5.5).
+                if (!searching && focused && stats.searches.isNotEmpty()) {
+                    RecentSearches(stats.searches, { ui.query = it }, home.actions::clearSearches)
+                }
+                OutlinedTextField(
+                    field,
+                    { field = it; ui.query = it.text },
+                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 10.dp).focusRequester(focus).onFocusChanged { focused = it.isFocused },
+                    placeholder = { Text("Search", color = Dim) },
+                    singleLine = true,
+                    shape = RectangleShape,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Txt,
+                        // DESIGN.md's field: an Edge border, amber at 70% when focused.
+                        focusedBorderColor = Or.copy(alpha = 0.7f), unfocusedBorderColor = Edge,
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                    keyboardActions = KeyboardActions(onGo = { go() }),
+                )
+            }
         }
     }
 }
@@ -361,8 +400,8 @@ private fun Chip(text: String, color: Color, edge: Color, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ViewSwitch(view: DrawerView, choose: (DrawerView) -> Unit) {
-    Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun ViewSwitch(view: DrawerView, modifier: Modifier, choose: (DrawerView) -> Unit) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(DrawerView.SECTIONS to "Sections", DrawerView.AZ to "A–Z", DrawerView.USED to "Most used").forEach { (v, label) ->
             val on = v == view
             Text(
@@ -375,6 +414,31 @@ private fun ViewSwitch(view: DrawerView, choose: (DrawerView) -> Unit) {
                     .clickable { if (!on) choose(v) }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             )
+        }
+    }
+}
+
+/**
+ * Jump, beside the view switch in the Sections view: a menu of the list's headers, which rises
+ * from the button (the drawer's controls are at the bottom, so Material's menu opens upward), and
+ * a choice scrolls the list to that header. In place of Smart Launcher's one category per page
+ * (decision note on lor-ph30); the menu is the app menu's look ([AppMenu]).
+ */
+@Composable
+private fun JumpButton(headers: List<Pair<String, Int>>, jump: (Int) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Chip("Jump", Txt, Edge) { open = true }
+        DropdownMenu(open, { open = false }, containerColor = Raised, shape = RectangleShape) {
+            headers.forEach { (title, index) ->
+                DropdownMenuItem(
+                    text = { Text(title, style = Type.body.copy(color = Txt, fontSize = 15.sp)) },
+                    onClick = {
+                        open = false
+                        jump(index)
+                    },
+                )
+            }
         }
     }
 }

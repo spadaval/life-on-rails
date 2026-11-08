@@ -2,6 +2,8 @@ package com.spadaval.lor.home
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 /** Which target is under the finger (launcher polish 4.3). */
@@ -49,6 +51,79 @@ class DragTest {
     fun neverOntoTheHeldItemsOwnSlot() {
         assertEquals(Target.Before(Spot.Apps(page(0), 0)), targetAt(45f, 130f, zones, false, null, heldAt = Spot.Apps(page(0), 0)))
         assertEquals(Target.Onto(Spot.Apps(page(0), 1)), targetAt(150f, 130f, zones, false, null, heldAt = Spot.Apps(page(0), 0)))
+    }
+
+    // 4's review item (a), lor-ozj2: sources and zones hold what they stand for, and the item is looked up when used.
+
+    private fun ref(s: String) = AppRef.parse(s)!!
+    private fun file(items: List<LayoutItem>, dock: List<AppRef> = emptyList()) = LayoutFile("a", listOf(Layout.grid("a", items, dock, listOf(emptyList()))))
+
+    @Test
+    fun aFolderDraggedAwayAndBackIsPickedUpAsItIsNow() {
+        // An unpinned folder moved to the front and back again: its tile is where it was, but the
+        // file now holds it pinned. Picked up by its slot, it is the pinned folder, and it moves.
+        val f = file(listOf(ref("a.a"), Folder("F", listOf(ref("x.x"), ref("y.y")))))
+        val slot = f.current.slotOf(Spot.Apps(page(0), 1))!!
+        assertEquals(Slot.Tile(page(0), "folder:F#1"), slot)
+        val away = f.drop(f.current.find(slot)!!, Target.Before(Spot.Apps(page(0), 0))).file
+        val back = away.drop(away.current.find(slot)!!, Target.AtEnd(Place.InApps(page(0)))).file
+        val stale = f.current.find(slot)!!
+        val now = back.current.find(slot)!!
+        assertEquals(Spot.Apps(page(0), 1), now.spot)
+        assertTrue((now.item as Folder).pinned)
+        try {
+            back.drop(stale, Target.AtEnd(Place.NewPanel)); fail("the snapshot isn't what the file holds")
+        } catch (e: LayoutError) {
+            assertEquals(HOME_CHANGED, e.message)
+        }
+        assertEquals(listOf(ref("a.a")), back.drop(now, Target.AtEnd(Place.NewPanel)).file.current.home)
+    }
+
+    @Test
+    fun slotsFollowTheirItemAndGoWithIt() {
+        val f = file(listOf(ref("a.a"), Folder("F", listOf(ref("x.x"), ref("y.y"))), ref("a.a")), dock = listOf(ref("d.d")))
+        val l = f.current
+        // Repeats are told apart in order, as the tiles' keys are.
+        assertEquals(Slot.Tile(page(0), "app:a.a#2"), l.slotOf(Spot.Apps(page(0), 2)))
+        val inFolder = l.slotOf(Spot.InFolder(page(0), 1, 1))!!
+        assertEquals(From.At(Spot.InFolder(page(0), 1, 1), ref("y.y")), l.find(inFolder))
+        assertEquals(From.At(Spot.Dock(0), ref("d.d")), l.find(l.slotOf(Spot.Dock(0))!!))
+        // The first item removed: the folder's slot finds it one place on.
+        val removed = f.drop(l.find(l.slotOf(Spot.Apps(page(0), 0))!!)!!, Target.Remove).file.current
+        assertEquals(Spot.InFolder(page(0), 0, 1), removed.find(inFolder)!!.spot)
+        // The folder removed: its slots find nothing.
+        val folder = l.slotOf(Spot.Apps(page(0), 1))!!
+        val noFolder = f.drop(l.find(folder)!!, Target.Remove).file.current
+        assertNull(noFolder.find(folder))
+        assertNull(noFolder.find(inFolder))
+        assertNull(l.find(Slot.DrawerApp("a.a/.Main#0")))
+    }
+
+    @Test
+    fun marksResolveToTheZonesOfTheLayoutDrawn() {
+        val f = file(listOf(ref("a.a"), Folder("F", listOf(ref("x.x")))), dock = listOf(ref("d.d")))
+        val box = Bounds(0f, 0f, 10f, 10f)
+        val folder = Slot.Tile(page(0), "folder:F#1")
+        val marks = listOf(
+            DropMark.Item(folder, box, 1f, 5f),
+            DropMark.Item(Slot.Tile(page(0), "app:gone#1"), box, 1f, 5f),
+            DropMark.Area(Space.Apps(page(0)), box),
+            DropMark.Area(Space.Apps(BlockAt(Cell(9, 0), 0)), box),
+            DropMark.Area(Space.Dock, box),
+            DropMark.Area(Space.Card(folder), box),
+            DropMark.Remove(box),
+        )
+        assertEquals(
+            listOf(
+                Zone.Item(Spot.Apps(page(0), 1), box, 1f, 5f),
+                Zone.Area(Place.InApps(page(0)), box),
+                Zone.Area(Place.NewPanel, box),
+                Zone.Area(Place.Dock, box),
+                Zone.Area(Place.InFolder(Spot.Apps(page(0), 1)), box),
+                Zone.Remove(box),
+            ),
+            f.current.zones(marks),
+        )
     }
 
     @Test

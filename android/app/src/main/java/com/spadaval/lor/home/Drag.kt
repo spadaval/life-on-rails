@@ -110,8 +110,79 @@ fun Spot.next(): Spot = when (this) {
     is Spot.InFolder -> copy(app = app + 1)
 }
 
-/** What a press can pick up, where it is on screen. [layer]: 0 home and the dock, 1 the open folder, 2 the drawer. */
-class Source(val box: Bounds, val from: From, val layer: Int, val app: HomeApp?, val folder: ResolvedFolder?)
+/**
+ * What a drag source or drop zone stands for, by what it is rather than by what it held when it
+ * was last laid out (4's review item (a)): a tile's `onGloballyPositioned` doesn't run again when
+ * only its item changes (a folder pinned by a move away and back keeps its bounds), so a snapshot
+ * of its item goes stale. A [key] is [itemKeys]' for the item in its list; [Layout.find] looks the
+ * slot up in the layout drawn when it is used.
+ */
+sealed interface Slot {
+    /** The item keyed [key] in the `apps` block [block]. */
+    data class Tile(val block: BlockAt, val key: String) : Slot
+    /** The dock app keyed [key]. */
+    data class Dock(val key: String) : Slot
+    /** The app keyed [key] in the folder at [folder]. */
+    data class InFolder(val folder: Tile, val key: String) : Slot
+    /** The drawer's app whose [HomeApp.key] is [app]; not in the layout. */
+    data class DrawerApp(val app: String) : Slot
+}
+
+/** The item at [slot] in this layout, with its place now, or null when it has gone (or [slot] is the drawer's). */
+fun Layout.find(slot: Slot): From.At? = when (slot) {
+    is Slot.Tile -> items(slot.block)?.let { keyed(it, slot.key) }?.let { i -> From.At(Spot.Apps(slot.block, i), items(slot.block)!![i]) }
+    is Slot.Dock -> keyed(dock, slot.key)?.let { i -> From.At(Spot.Dock(i), dock[i]) }
+    is Slot.InFolder -> find(slot.folder)?.let { f ->
+        val folder = f.item as? Folder ?: return null
+        val spot = f.spot as Spot.Apps
+        keyed(folder.apps, slot.key)?.let { a -> From.At(Spot.InFolder(spot.at, spot.index, a), folder.apps[a]) }
+    }
+    is Slot.DrawerApp -> null
+}
+
+/** The slot standing for what is at [spot] in this layout now, or null when nothing is there. */
+fun Layout.slotOf(spot: Spot): Slot? = when (spot) {
+    is Spot.Apps -> items(spot.at)?.let { itemKeys(it).getOrNull(spot.index) }?.let { Slot.Tile(spot.at, it) }
+    is Spot.Dock -> itemKeys(dock).getOrNull(spot.index)?.let { Slot.Dock(it) }
+    is Spot.InFolder -> (slotOf(spot.folder) as? Slot.Tile)?.let { tile ->
+        (items(spot.at)?.getOrNull(spot.index) as? Folder)?.let { itemKeys(it.apps).getOrNull(spot.app) }?.let { Slot.InFolder(tile, it) }
+    }
+}
+
+private fun keyed(items: List<LayoutItem>, key: String): Int? = itemKeys(items).indexOf(key).takeIf { it >= 0 }
+
+/** A list's space a zone stands for: an `apps` block's (or the new panel's), the dock's, an open folder's card. */
+sealed interface Space {
+    data class Apps(val block: BlockAt) : Space
+    data object Dock : Space
+    data class Card(val folder: Slot.Tile) : Space
+}
+
+/** A drop zone as laid out: its bounds and what it stands for, which [Layout.zones] resolves. */
+sealed interface DropMark {
+    val box: Bounds
+    /** An item at [slot]: its icon's top is [iconTop] and it is [iconSize] across, centred in [box]. */
+    data class Item(val slot: Slot, override val box: Bounds, val iconTop: Float, val iconSize: Float) : DropMark
+    data class Area(val space: Space, override val box: Bounds) : DropMark
+    data class Remove(override val box: Bounds) : DropMark
+}
+
+/** [marks] as the zones they are in this layout now; a mark whose item has gone is left out. */
+fun Layout.zones(marks: Collection<DropMark>): List<Zone> = marks.mapNotNull { m ->
+    when (m) {
+        is DropMark.Item -> find(m.slot)?.let { Zone.Item(it.spot, m.box, m.iconTop, m.iconSize) }
+        is DropMark.Remove -> Zone.Remove(m.box)
+        is DropMark.Area -> when (val space = m.space) {
+            // The new panel a drag shows isn't in the file yet.
+            is Space.Apps -> Zone.Area(if (items(space.block) != null) Place.InApps(space.block) else Place.NewPanel, m.box)
+            Space.Dock -> Zone.Area(Place.Dock, m.box)
+            is Space.Card -> (find(space.folder)?.spot as? Spot.Apps)?.let { Zone.Area(Place.InFolder(it), m.box) }
+        }
+    }
+}
+
+/** What a press can pick up: where it is on screen, and what it stands for. [layer]: 0 home and the dock, 1 the open folder, 2 the drawer. */
+class Source(val box: Bounds, val slot: Slot, val layer: Int)
 
 /** An item being held. */
 class Held(
@@ -194,9 +265,12 @@ class DragState {
     /** What a drop wrote, drawn until the store shows it, so home doesn't flash back to before it. */
     var landing: LayoutFile? by mutableStateOf(null)
 
-    /** Laid-out sources and drop zones, by a key per composable; each removes its own when it leaves. */
+    /**
+     * Laid-out sources and drop zones, by a key per composable; each removes its own when it
+     * leaves. Each holds only where it is and what it stands for; the item is looked up when used.
+     */
     val sources = HashMap<Any, Source>()
-    val zones = HashMap<Any, Zone>()
+    val zones = HashMap<Any, DropMark>()
 
     /** The source under [at] in [layer], the top one showing. */
     fun sourceAt(at: Offset, layer: Int): Source? =

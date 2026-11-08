@@ -1,7 +1,13 @@
 package com.spadaval.lor.home
 
 import android.app.ActivityOptions
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.util.Log
 import android.content.pm.LauncherApps
 import android.content.pm.ShortcutInfo
 import android.net.Uri
@@ -16,6 +22,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -43,14 +50,41 @@ class HomeActivity : ComponentActivity() {
     private lateinit var launcherApps: LauncherApps
     private lateinit var model: HomeModel
     private val ui = HomeUi()
+    /** The configuration last seen, so each change logs what it changed. */
+    private lateinit var config: Configuration
+    /** The screen went off; when it comes back on, home goes to its start (decision note on lor-ph30). */
+    private var slept = false
+
+    /**
+     * A screen-off is remembered, and acted on when the screen comes back on, so the start is that
+     * screen's: a fold or unfold while the screen was off has changed it by then (lor-ozj2).
+     */
+    private val screen = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_SCREEN_OFF -> slept = true
+                Intent.ACTION_SCREEN_ON -> if (slept) {
+                    slept = false
+                    ui.homePressed(animate = false)
+                    Log.i(TAG, "screen on: home goes to its start (${describe(resources.configuration)})")
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        config = Configuration(resources.configuration)
+        Log.i(TAG, "HomeActivity created (${describe(config)})")
         // Light system bar icons to start; HomeScreen turns them dark over a light wallpaper (6's review, R1).
         enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
         launcherApps = getSystemService(LauncherApps::class.java)
-        val icons = Icons(this, (HomeLook.ICON_SIZES.last * resources.displayMetrics.density).toInt())
-        model = HomeModel((application as LorApp).home, lifecycleScope, icons)
+        model = HomeModel((application as LorApp).home)
+        val icons = model.icons
+        ContextCompat.registerReceiver(
+            this, screen, IntentFilter().apply { addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON) },
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         // Back on home goes nowhere; HomeScreen's handlers close what is open first.
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {}
@@ -71,6 +105,22 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * A fold, an unfold, a theme or a font change is handled here rather than by recreating home
+     * (the manifest's `configChanges`; decision note on lor-ph30): Compose takes the new
+     * configuration and density, and every state stays as it is.
+     */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        Log.i(TAG, "configuration changed: ${configChanges(config.diff(newConfig))} (${describe(newConfig)})")
+        config = Configuration(newConfig)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(screen)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent.action != Intent.ACTION_MAIN || !intent.hasCategory(Intent.CATEGORY_HOME)) return
@@ -87,7 +137,7 @@ class HomeActivity : ComponentActivity() {
      * A drag cut off by home pausing or losing window focus puts the item back, as Launcher3 does
      * on cancel. Shown for the notification shade. Compose turns a cancelled press into a release,
      * so a cut-off whose cancel reaches Compose before this (screen off, a call, gesture navigation
-     * taking the touch: not tried) may still drop where the finger was; Increment 8 holds that.
+     * taking the touch: not tried) may still drop where the finger was; lor-kxxz holds that.
      */
     override fun onPause() {
         super.onPause()
@@ -97,7 +147,7 @@ class HomeActivity : ComponentActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (!hasFocus && ui.drag.held != null) {
-            android.util.Log.i("LorHome", "a drag was put back: home lost window focus")
+            Log.i(TAG, "a drag was put back: home lost window focus")
             ui.drag.held = null
         }
     }
@@ -330,4 +380,23 @@ class HomeActivity : ComponentActivity() {
 
     /** Something that failed: the bar with 3.6's coral dot. */
     private fun fail(text: String) = ui.undo.say(text, failed = true)
+
+    private companion object {
+        const val TAG = "LorHome"
+
+        /** What a log line needs of [c]: the smallest width, density, night mode and font scale. */
+        fun describe(c: Configuration) =
+            "sw ${c.smallestScreenWidthDp} dp, ${c.screenWidthDp}x${c.screenHeightDp} dp, ${c.densityDpi} dpi, " +
+                "night ${if (c.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES) "yes" else "no"}, font ${c.fontScale}"
+
+        /** The names of the `configChanges` bits in [diff]. */
+        fun configChanges(diff: Int): String = listOf(
+            ActivityInfo.CONFIG_ORIENTATION to "orientation", ActivityInfo.CONFIG_SCREEN_SIZE to "screenSize",
+            ActivityInfo.CONFIG_SMALLEST_SCREEN_SIZE to "smallestScreenSize", ActivityInfo.CONFIG_SCREEN_LAYOUT to "screenLayout",
+            ActivityInfo.CONFIG_DENSITY to "density", ActivityInfo.CONFIG_UI_MODE to "uiMode", ActivityInfo.CONFIG_FONT_SCALE to "fontScale",
+            ActivityInfo.CONFIG_KEYBOARD to "keyboard", ActivityInfo.CONFIG_KEYBOARD_HIDDEN to "keyboardHidden",
+            ActivityInfo.CONFIG_NAVIGATION to "navigation", ActivityInfo.CONFIG_LOCALE to "locale",
+            ActivityInfo.CONFIG_FONT_WEIGHT_ADJUSTMENT to "fontWeightAdjustment",
+        ).filter { (bit, _) -> diff and bit != 0 }.joinToString(" ") { it.second }.ifEmpty { "nothing named" }
+    }
 }

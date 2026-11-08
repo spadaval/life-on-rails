@@ -1,24 +1,16 @@
 package com.spadaval.lor.home
 
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 
-/**
- * Home's view of [HomeStore] for one activity: the store's app list and layout, and this
- * activity's icon cache, which drops a package's icons when the store says it changed.
- */
-class HomeModel(private val store: HomeStore, scope: CoroutineScope, val icons: Icons) {
+/** Home's view of [HomeStore] for one activity: the store's app list, layout and icons. */
+class HomeModel(private val store: HomeStore) {
     val apps: StateFlow<List<HomeApp>> get() = store.apps
     val layout: StateFlow<LayoutState> get() = store.layout
     val stats: StateFlow<LaunchStats> get() = store.stats
     val appsLoad: StateFlow<AppsLoad> get() = store.appsLoad
     val reads: StateFlow<Int> get() = store.reads
     val search: StateFlow<SearchSources> get() = store.search
-
-    init {
-        scope.launch { store.changes.collect { icons.evict(it.packages, it.user) } }
-    }
+    val icons: Icons get() = store.icons
 
     fun resume() = store.resume()
 

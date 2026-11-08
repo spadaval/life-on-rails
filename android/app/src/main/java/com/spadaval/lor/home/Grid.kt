@@ -78,8 +78,4 @@ object GridMoves {
         to.row < from.row -> Way.UP
         else -> Way.DOWN
     }
-
-    /** The cells kept composed: [at] and each cell a move from it reaches. */
-    fun window(cells: Collection<Cell>, at: Cell, back: Arrival?): Set<Cell> =
-        setOf(at) + Way.entries.mapNotNull { next(cells, at, it, back) }
 }

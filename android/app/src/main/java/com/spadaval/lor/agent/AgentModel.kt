@@ -8,6 +8,7 @@ import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.spadaval.lor.LorApp
 import com.spadaval.lor.collect.Launch
 import com.spadaval.lor.collect.LaunchFrom
 import com.spadaval.lor.collect.Launches
@@ -31,7 +32,8 @@ import kotlinx.coroutines.withContext
  * to another app doesn't drop and rebuild the socket. [scope] is the page's; [dispose] lets go at once.
  *
  * Each card action runs at most once at a time: its key is in [busy] until the call ends, and the
- * card's buttons are disabled meanwhile, since a command sent twice could act twice.
+ * card's buttons are disabled meanwhile, since a command sent twice could act twice. The calls run
+ * in the process's scope ([CardCalls]).
  */
 class AgentModel(private val context: Context, private val scope: CoroutineScope) {
     val connection = T3Connection.get(context)
@@ -49,15 +51,14 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     /** At least one read has ended since the page opened; until then a kept [lor] is shown greyed. */
     var lorRead by mutableStateOf(false)
         private set
+    /** The cards' calls, one for the process (F4, lor-0fbs): a page built again sees a call still under way. */
+    private val calls = (context.applicationContext as LorApp).cardCalls
     /** Requests answered from this page, hidden before the shell catches up. */
-    var answered by mutableStateOf(emptySet<String>())
-        private set
+    val answered: Set<String> get() = calls.answered
     /** Card keys with a call under way. */
-    var busy by mutableStateOf(emptySet<String>())
-        private set
+    val busy: Set<String> get() = calls.busy
     /** Why a card's last action failed, by card key. */
-    var failures by mutableStateOf(emptyMap<String, String>())
-        private set
+    val failures: Map<String, String> get() = calls.failures
     /** One line about the last thing the page couldn't do outside a card, such as opening T3; the next action clears it. */
     var notice by mutableStateOf<String?>(null)
 
@@ -125,20 +126,7 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
     fun act(key: String, request: PendingRequest?, call: suspend () -> Unit) {
         if (key in busy) return
         notice = null
-        busy = busy + key
-        failures = failures - key
-        scope.launch {
-            try {
-                call()
-                if (request != null) answered = answered + request.requestId
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                failures = failures + (key to T3Connection.describe(e))
-            } finally {
-                busy = busy - key
-            }
-        }
+        calls.act(key, request?.requestId, call)
     }
 
     fun approve(card: T3Card, approve: Boolean) {
@@ -188,5 +176,44 @@ class AgentModel(private val context: Context, private val scope: CoroutineScope
         val last: kotlinx.coroutines.flow.StateFlow<DeviceHome?> = _last
         private const val LOR_EVERY_MS = 60_000L
         private const val RELEASE_AFTER_MS = 30_000L
+    }
+}
+
+/**
+ * The cards' calls (approve, answer) and what the cards show of them. Each runs at most once at a
+ * time, and in [work], the process's scope ([LorApp.scope]) rather than the page's, so leaving the
+ * agent page (a move two cells away, a recreated home) never cancels a call under way (F4 from T3
+ * Launcher 3.3, as quick send's send already runs). One is held for the process
+ * ([LorApp.cardCalls]), so an agent page built again while a call runs shows it busy and won't
+ * send it twice (lor-0fbs). [describe] puts a failure in plain words.
+ */
+class CardCalls(private val work: CoroutineScope, private val describe: (Exception) -> String) {
+    /** Requests answered, hidden before the shell catches up. */
+    var answered by mutableStateOf(emptySet<String>())
+        private set
+    /** Card keys with a call under way. */
+    var busy by mutableStateOf(emptySet<String>())
+        private set
+    /** Why a card's last call failed, by card key. */
+    var failures by mutableStateOf(emptyMap<String, String>())
+        private set
+
+    /** Runs [call] for the card [key] unless one is under way; on success [requestId], if any, is answered. */
+    fun act(key: String, requestId: String?, call: suspend () -> Unit): Job? {
+        if (key in busy) return null
+        busy = busy + key
+        failures = failures - key
+        return work.launch {
+            try {
+                call()
+                if (requestId != null) answered = answered + requestId
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                failures = failures + (key to describe(e))
+            } finally {
+                busy = busy - key
+            }
+        }
     }
 }

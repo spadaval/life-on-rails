@@ -1,9 +1,14 @@
 package com.spadaval.lor
 
 import android.app.Application
+import com.spadaval.lor.agent.CardCalls
 import com.spadaval.lor.home.HomeStore
 import com.spadaval.lor.live.LiveUpdates
 import com.spadaval.lor.sync.SyncWorker
+import com.spadaval.lor.t3.T3Connection
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 class LorApp : Application() {
     /**
@@ -11,6 +16,15 @@ class LorApp : Application() {
      * thread: the store registers a `LauncherApps.Callback`, which binds to the calling thread's looper.
      */
     val home: HomeStore by lazy { HomeStore(this) }
+
+    /**
+     * Work that must outlive the screen that started it, on the main thread: a card's call from the
+     * agent page (F4), which leaving the page or a recreated home must not cancel.
+     */
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    /** The agent page's card calls, held for the process so a page built again sees one under way (lor-0fbs). */
+    val cardCalls: CardCalls by lazy { CardCalls(scope) { T3Connection.describe(it) } }
 
     override fun onCreate() {
         super.onCreate()
