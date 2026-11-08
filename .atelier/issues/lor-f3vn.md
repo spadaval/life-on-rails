@@ -4,6 +4,9 @@ id: "lor-f3vn"
 issue_type: "feature"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: lor-f3vn
 priority: "P2"
 relationships:
   blocks: []
@@ -35,7 +38,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "The minimap editor"
-updated_at: "2026-11-07T23:37:54.479576453+00:00"
+updated_at: "2026-11-08T01:05:15.704904747+00:00"
 ---
 
 ## Goal

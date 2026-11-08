@@ -286,3 +286,14 @@ fun dropMessage(to: Target?, from: Spot?, file: LayoutFile): String = when (to) 
     }
     else -> if (from == null) "Added." else "Moved."
 }
+
+/**
+ * What a drop or a folder's + writes over [now], the file as the edit finds it: [result], made
+ * from [original], the file home drew. Refused with [HOME_CHANGED] when [now] differs from
+ * [original] in more than its lock. [now]'s lock is kept, so a lock written from outside since home
+ * read the file reaches [LayoutStore.edit], which refuses with [LOCKED] (lor-zzyy).
+ */
+fun landOver(now: LayoutFile, original: LayoutFile, result: LayoutFile): LayoutFile {
+    if (now.copy(locked = original.locked) != original) throw LayoutError(HOME_CHANGED)
+    return result.copy(locked = now.locked)
+}

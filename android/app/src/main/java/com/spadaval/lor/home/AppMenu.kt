@@ -46,7 +46,38 @@ import kotlin.math.roundToInt
  * `LauncherApp.kt`): App info through `LauncherApps.startAppDetailsActivity`, Uninstall as an
  * `ACTION_DELETE` intent. Here the popup is Material's `DropdownMenu`, which closes on a tap
  * elsewhere or back.
+ *
+ * The layout lock (lor-zzyy, decision lor-73li) follows Lawnchair (Apache-2.0, at aeb92c1):
+ * `LauncherOptionsPopup.kt` toggles `lockHomeScreen` from the home menu and drops edit mode (and
+ * Widgets) from it while locked, and `LawnchairShortcut.kt` drops an app's editing entries. Here
+ * Uninstall stays, since it isn't a change to the layout.
  */
+
+/** What the Undo bar says when a press would have edited a locked home (lor-zzyy). */
+const val LOCKED_SAY = "Home is locked. Unlock it from the home menu."
+
+/** The entries of an app's menu that edit `layout.json`, in the order drawn. */
+enum class AppEdit { REMOVE_FROM_FOLDER, REMOVE_FROM_HOME, ADD_TO_HOME, REMOVE_FROM_DOCK, ADD_TO_DOCK, MOVE_TO_SECTION, HIDE }
+
+/**
+ * The edit entries an app at [places] shows. While [locked], only those [LayoutStore.edit] would
+ * take: Move to section…, and Hide of an app on none of home, a folder and the dock (decision lor-73li).
+ */
+fun appEdits(places: Places, locked: Boolean): List<AppEdit> {
+    val placed = places.home || places.folder != null || places.dock
+    if (locked) return listOfNotNull(AppEdit.MOVE_TO_SECTION, AppEdit.HIDE.takeIf { !placed })
+    return listOfNotNull(
+        AppEdit.REMOVE_FROM_FOLDER.takeIf { places.folder != null },
+        when {
+            places.home -> AppEdit.REMOVE_FROM_HOME
+            places.folder == null -> AppEdit.ADD_TO_HOME
+            else -> null
+        },
+        if (places.dock) AppEdit.REMOVE_FROM_DOCK else AppEdit.ADD_TO_DOCK,
+        AppEdit.MOVE_TO_SECTION,
+        AppEdit.HIDE,
+    )
+}
 
 /** Where an app was opened or long-pressed: the launch record's `from`, folder and query. */
 data class At(val from: LaunchFrom, val folder: String? = null, val query: String? = null)
@@ -149,6 +180,12 @@ class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: Lis
         if (apps.count { it.mainProfile && it.packageName == app.packageName } == 1) AppRef(app.packageName)
         else AppRef(app.packageName, app.id.className)
 
+    /** Home is locked (decision lor-73li): what would edit it is hidden or does nothing. */
+    val locked: Boolean get() = file?.locked == true
+
+    /** Says why a press did nothing on a locked home. */
+    fun sayLocked() = ui.undo.say(LOCKED_SAY, failed = false)
+
     /** Hidden by the layout file: left out of the drawer and search. */
     fun hidden(app: HomeApp): Boolean = app.mainProfile && file?.isHidden(app.id) == true
 }
@@ -233,25 +270,27 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
             val ref = home.refFor(app)
             // Opened from a tile, the tile's own place is edited (and checked); otherwise by what the refs draw as.
             val here = spot?.spot
-            if (places.folder != null) Item("Remove from folder") {
-                close()
-                actions.edit("${app.label} is out of ${places.folder}.") { if (here is Spot.InFolder) it.removeAt(spot) else it.removeFromFolder(app.id, installed) }
-            }
-            when {
-                places.home -> Item("Remove from home") {
-                    close()
-                    actions.edit("${app.label} is off home.") { if (here is Spot.Apps) it.removeAt(spot) else it.removeFromHome(app.id, installed) }
+            appEdits(places, home.locked).forEach { e ->
+                when (e) {
+                    AppEdit.REMOVE_FROM_FOLDER -> Item("Remove from folder") {
+                        close()
+                        actions.edit("${app.label} is out of ${places.folder}.") { if (here is Spot.InFolder) it.removeAt(spot) else it.removeFromFolder(app.id, installed) }
+                    }
+                    AppEdit.REMOVE_FROM_HOME -> Item("Remove from home") {
+                        close()
+                        actions.edit("${app.label} is off home.") { if (here is Spot.Apps) it.removeAt(spot) else it.removeFromHome(app.id, installed) }
+                    }
+                    AppEdit.ADD_TO_HOME -> Item("Add to home") { close(); actions.edit("${app.label} is on home.") { it.addToHome(app.id, ref, installed) } }
+                    AppEdit.REMOVE_FROM_DOCK -> Item("Remove from dock") {
+                        close()
+                        actions.edit("${app.label} is out of the dock.") { if (here is Spot.Dock) it.removeAt(spot) else it.removeFromDock(app.id, installed) }
+                    }
+                    AppEdit.ADD_TO_DOCK -> Item("Add to dock") { close(); actions.edit("${app.label} is in the dock.") { it.addToDock(app.id, ref, installed) } }
+                    AppEdit.MOVE_TO_SECTION -> Item("Move to section…") { picking = true }
+                    AppEdit.HIDE -> Item("Hide") {
+                        close(); actions.edit("${app.label} is hidden. Home settings brings it back.") { it.hide(app.packageName) }
+                    }
                 }
-                places.folder == null -> Item("Add to home") { close(); actions.edit("${app.label} is on home.") { it.addToHome(app.id, ref, installed) } }
-            }
-            if (places.dock) Item("Remove from dock") {
-                close()
-                actions.edit("${app.label} is out of the dock.") { if (here is Spot.Dock) it.removeAt(spot) else it.removeFromDock(app.id, installed) }
-            }
-            else Item("Add to dock") { close(); actions.edit("${app.label} is in the dock.") { it.addToDock(app.id, ref, installed) } }
-            Item("Move to section…") { picking = true }
-            Item("Hide") {
-                close(); actions.edit("${app.label} is hidden. Home settings brings it back.") { it.hide(app.packageName) }
             }
         }
     }
@@ -260,11 +299,17 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
 /** The menu for a long press on empty home, at [at] within home's content (launcher polish 1.3). */
 @Composable
 fun HomeMenu(at: Offset, home: HomeContext, onEdit: () -> Unit, close: () -> Unit) {
+    val locked = home.locked
     Box(Modifier.offset { IntOffset(at.x.roundToInt(), at.y.roundToInt()) }) {
         DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
-            Item("Edit home") { close(); onEdit() }
+            // Locked, what edits home is left out, as Lawnchair drops edit mode and Widgets. lor-r0f9's
+            // "Add widget" goes in this branch too, so a locked home doesn't show it.
+            if (!locked) Item("Edit home") { close(); onEdit() }
             Item("Wallpaper") { close(); home.actions.wallpaper() }
             Item("Home settings") { close(); home.actions.settings() }
+            // HomeScreen leaves edit mode when the file it draws is locked.
+            if (locked) Item("Unlock home") { close(); home.actions.edit("Home is unlocked.") { it.setLocked(false) } }
+            else Item("Lock home") { close(); home.actions.edit("Home is locked.") { it.setLocked(true) } }
         }
     }
 }

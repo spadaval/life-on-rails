@@ -504,10 +504,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         }
         if (final == h.original) return
         drag.landing = final
-        actions.edit(said ?: "Added.", after = { drag.landing = null }) { now ->
-            if (now != h.original) throw LayoutError(HOME_CHANGED)
-            final
-        }
+        actions.edit(said ?: "Added.", after = { drag.landing = null }) { now -> landOver(now, h.original, final) }
     }
     // The icon let go goes to where it went, then is gone (launcher polish 7.5).
     LaunchedEffect(drag.settling) {
@@ -515,6 +512,9 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         s.progress.animateTo(1f, if (s.kind == Settle.Kind.FADE) Motion.quick() else Motion.move())
         if (drag.settling === s) drag.settling = null
     }
+    // A locked home has no edit mode (lor-zzyy): locking from the home menu, or from outside, leaves it.
+    val locked = file?.locked == true
+    LaunchedEffect(locked) { if (locked) drag.editing = false }
     // What is left of a back gesture's scale eases to 0 in one job (7's third review).
     val backScope = rememberCoroutineScope()
     val backEase = remember(backScope) { BackEase(ui, backScope) }
@@ -1022,9 +1022,10 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: (Rect
     Column(
         Modifier.fillMaxWidth().widthIn(max = 76.dp)
             .then(if (label) Modifier else Modifier.semantics { contentDescription = folder.folder.name })
-            .combinedClickable(interactionSource = null, indication = PressScale.Tile, onLongClickLabel = "Menu", onLongClick = {
+            .combinedClickable(interactionSource = null, indication = PressScale.Tile, onLongClickLabel = if (home.locked) null else "Menu", onLongClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                menu = true
+                // Every entry of a folder's menu edits home, so a locked home opens none (lor-zzyy).
+                if (home.locked) home.sayLocked() else menu = true
             }, onClick = { onClick(icon[0]) })
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1190,6 +1191,16 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, blurred: Bool
 @Composable
 private fun FolderName(folder: ResolvedFolder, home: HomeContext, add: () -> Unit) {
     val name = folder.folder.name
+    // Locked, the name is text and there is no + (lor-zzyy), as Lawnchair's `FolderNameEditText`
+    // takes no touch while locked (Apache-2.0). The spacers keep it where the field would be.
+    if (home.locked) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.size(48.dp))
+            Text(name, style = Type.body.copy(color = Txt, fontSize = 20.sp, textAlign = TextAlign.Center), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(vertical = 8.dp))
+            Spacer(Modifier.size(48.dp))
+        }
+        return
+    }
     var text by remember(name) { mutableStateOf(TextFieldValue(name)) }
     var focused by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
@@ -1329,10 +1340,7 @@ private fun addToFolder(folder: ResolvedFolder, home: HomeContext, picked: List<
     home.drag.landing = d.file
     home.ui.folder = OpenFolder(at, folder.folder.name, (d.file.itemAt(at) as Folder).apps)
     val said = if (added == 1) "${home.apps.first { it.id == adding[0].first }.label} is in ${folder.folder.name}." else "$added apps added to ${folder.folder.name}."
-    home.actions.edit(said, after = { home.drag.landing = null }) { now ->
-        if (now != file) throw LayoutError(HOME_CHANGED)
-        d.file
-    }
+    home.actions.edit(said, after = { home.drag.landing = null }) { now -> landOver(now, file, d.file) }
 }
 
 /**
@@ -1417,6 +1425,18 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
                 val now = home()
                 val file = now.file ?: return@awaitEachGesture
                 val picked = now.pick(source.slot) ?: return@awaitEachGesture
+                if (file.locked) {
+                    // Locked, nothing is picked up (lor-zzyy), as Lawnchair's `Workspace.beginDragShared`
+                    // starts no drag (Apache-2.0); here the bar says why, once. A folder's long press said it.
+                    if (picked.item !is Folder) now.sayLocked()
+                    haptics.performHapticFeedback(HapticFeedbackType.Reject)
+                    // The rest of the press is taken, so the grid doesn't move under it either.
+                    while (true) {
+                        val m = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+                        if (!m.pressed) return@awaitEachGesture
+                        m.consume()
+                    }
+                }
                 // A new pickup ends a settle at once, and ticks (launcher polish 7.5).
                 drag.settling = null
                 drag.held = Held(file, picked.from, picked.item, picked.app, picked.folder, now).also { it.finger = c.position }
