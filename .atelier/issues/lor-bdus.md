@@ -7,9 +7,7 @@ labels:
 priority: "P2"
 relationships:
   blocks: []
-  children:
-  - kind: "issue"
-    id: "lor-slux"
+  children: []
   attachments: []
   relates:
   - kind: "issue"
@@ -22,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "todo"
 title: "No dock: its apps join home"
-updated_at: "2026-11-09T01:36:39.696497864+00:00"
+updated_at: "2026-11-09T01:45:12.461701033+00:00"
 ---
 
 ## Goal
@@ -31,7 +29,7 @@ Home has no dock. Sumeet finds it useless, and the usage-built home puts the mos
 
 ## Done when
 
-- [ ] The parser still reads a layout with `dock` and stacks with a `dock` block, and converts them: the block is dropped, and the dock's apps are appended to the `apps` block of the start cell's stack, skipping any already on home, up to its 24, with a log line naming each one dropped past that. The phone writes no `dock`. `Layout`'s tests cover a version 1 file, a version 2 file, a full `apps` block and a dock app already on home.
+- [ ] The parser still reads a layout with `dock` and stacks with a `dock` block, and converts them without losing an app: every `dock` block is dropped, a stack left with no blocks is removed (unless it is at a `start` cell, where it stays as a stack with an empty `apps` block), and each dock app not already on home is appended, in dock order, to the first page (`Layout.pages`, in their order) with room, else to a new page made as Add to home makes one. A dock app that can't be placed (every page full and no room for a new one) makes the conversion refuse, naming it, so home shows the last good file and nothing is overwritten. The phone writes no `dock`. `Layout`'s tests cover a version 1 file, a version 2 file, a start stack with no `apps` block, a stack of only `dock`, a full first page (the app goes to the next page), a full home (refused), and a dock app already on home.
 - [ ] Nothing else knows a dock: `StackBlock.Dock`, `Layout.dock`, `MAX_DOCK`, `Spot.Dock`, `Place.Dock`, the menu's Add to and Remove from dock, the drag's dock targets, the minimap's Dock in its palette and drawing, and `LaunchFrom` `dock` are removed, with their tests rewritten or removed. A new page is a stack of only `apps`.
 - [ ] On `T3_Phone_API35`, from a version 2 `layout.json` whose dock holds two apps, home shows them at the end of its apps and no dock (screenshot), and `layout.json` read after an edit holds no `dock`.
 - [ ] `layout-v2.md`, the spec and DESIGN.md's mentions of the dock say there is none.
