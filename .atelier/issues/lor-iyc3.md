@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The drawer is tabs from drawer.tabs, with search behind a button"
-updated_at: "2026-11-09T04:16:55.005362678+00:00"
+updated_at: "2026-11-09T04:40:33.490158619+00:00"
 ---
 
 ## Goal
@@ -50,6 +50,10 @@ The drawer is a set of tabs Sumeet and LoR's agent manage, instead of one long l
 
 Mission lor-5qkq; the strategy's Shape says what tabs are. Search's engine (`Search.kt`, `searchAll`) doesn't change.
 
+## Notes
+
+- 2026-11-08 [note] Handoff (implementer, claude-opus-5-5): implemented on t3/drawer-tabs-floating-search, code 930520d and records 7bc57c0. Boat's assembleDebug testDebugUnitTest passes: 405 tests, 0 failures. Emulator receipts lor-59ju, lor-zw30, lor-jyrq, lor-3j1z, lor-sh9o, lor-mz40. Review requested but not yet done. Open items are in the Report.
+
 ## Report
 
 Every Done when line holds at 930520d on `t3/drawer-tabs-floating-search`. Boat's `assembleDebug testDebugUnitTest` passes, 405 tests, 0 failures. `DrawerTest` (12) covers `drawer.tabs` parsing: every refusal and where it names, the default Quick dial then All, dropped `sections` and `view`, list order and package refs (`aListTabShowsItsAppsInItsOrderAndAPackageTakesEveryActivity`), and which list tab names an app (`anAppIsInTheListTabThatNamesItAndOnlyThere`). `TabEditTest` (6) covers Move to tab, rename, icon, move, delete and new tab, with their refusals and the 8-tab limit. `HomeEditTest.theTabCarryKeepsAPackagesOtherActivities` covers a package ref's other activities staying put. `LayoutStoreTest` confirms tab edits are still taken while home is locked. On boat's `T3_Phone_API35`, using a four-tab test file, the receipts show each tab, the name flash, the list end clearing the bar, the drawer reopening on the first tab, search growing, results, folding by ✕, Back and swipe down, `drawer.keyboard`, recent searches, Move to tab writing the file, and the Drawer tabs page. On the unfolded `T3_Fold_API35` they show the drawer at full width with the bar and field centred and at most 560 dp wide. Those receipts are lor-59ju, lor-zw30, lor-jyrq, lor-3j1z, lor-sh9o and lor-mz40, with screenshots in `~/.local/share/lor-evidence/lor-iyc3/`. The emulators' `layout.json` files were put back: restored from backup on the phone (md5 matches), and removed on the Fold, which had none before. `layout-v2.md` has a new "The drawer's tabs" section, and the spec's launcher lines and the verify skill's launcher feature map now describe tabs.
@@ -67,4 +71,3 @@ Every Done when line holds at 930520d on `t3/drawer-tabs-floating-search`. Boat'
 
 - Quick dial's ranked apps don't exist yet (lor-2imw). For now the `quick` tab shows New, and the receipts can't show "among quick dial's ranked apps".
 - The real Fold and phone are not checked. That waits for the mission's needs-human items.
-
