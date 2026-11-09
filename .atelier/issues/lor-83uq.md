@@ -20,7 +20,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "A short swipe opens the drawer, and Add moves an app out of its folder"
-updated_at: "2026-11-09T01:52:32.128330752+00:00"
+updated_at: "2026-11-09T01:59:21.074323083+00:00"
 ---
 
 ## Goal
@@ -44,6 +44,10 @@ Two fixes Sumeet hit on the Fold. A swipe up of a couple of centimetres should o
 
 Mission lor-5qkq; strategy `docs/missions/launcher-use/strategy.md`. `FollowMotion.settles` and `commitPoint` take shares of the travel today; the vertical rule needs the cell's height in dp, which `gridFinger` has (`size.height`, `density`).
 
+## Notes
+
+- 2026-11-08 [note] Handoff: implementation and unit tests are done on branch t3/short-swipe-folder-add-home (30d4183); boat assembleDebug testDebugUnitTest passed. The two emulator Done when lines are open: T3_Phone_API35 is held by agent-device session t3-96ff96c08099e0cc482de91b (idle since 13:52), and open --wait 30000 timed out. Review request is refused until those lines are ticked. See ## Report.
+
 ## Report
 
 Four of six Done when lines hold; the two emulator lines are open because the emulator was held by another session. A vertical move of the grid (the drawer included) now commits at 110 dp of travel, or on a release faster than 400 dp/s toward the other cell after 24 dp; a fast release back stays; horizontal moves keep 30% and 800 dp/s. `MotionTest.aVerticalMoveCommitsAt110DpOrAFlingPast24Dp` covers the Fold's four releases at 960 dp (0.155 at 700 goes, 0.194 at 462 goes, 0.15 at -489 stays, 0.01 at 440 stays), the 110 dp and 24 dp edges, closing from open, and a follow caught near the far end. `MotionTest.aHorizontalMoveKeepsThirtyPercentAnd800DpS` shows the same releases still stay sideways, and `FollowTest.aVerticalFingerTakesTheVerticalRuleInDp` shows the finger ticks and commits at 110 dp. Add to home on an app in a folder moves it out onto home: `HomeEditTest.addToHomeMovesAnAppOutOfItsFolder` (the menu path, the cover cleared, an app on home itself still refused), `HomeEditTest.aFolderThatAddToHomeEmptiesGoes` (the folder, and an extra page it leaves empty, go), and `HomeEditTest.aDrawerDropOnHomeMovesAnAppOutOfItsFolder` (the drag path, the drop's place counted without an emptied folder, a drop into the dock leaving the folder as it was). `HomeLockTest.unlockedTheMenuIsAsBefore` shows the menu now offers Add to home for an app in a folder. All passed in boat's `assembleDebug testDebugUnitTest` (MotionTest 9, FollowTest 6, HomeEditTest 20, HomeLockTest 5, LayoutEditTest 12; no failures in the build). The Undo bar says "<label> is on home, out of <folder>." from the menu (`AppMenu.kt`) and after a drawer drag (`dropHeld` in `HomeScreen.kt`, from `Held.outOf`). Undo restores the whole file, so the app goes back in its folder at its place. No unit test covers that bar text.
@@ -58,4 +62,3 @@ Four of six Done when lines hold; the two emulator lines are open because the em
 
 - Done when lines 2 and 4 (the emulator checks) are not done. The APK from this branch is installed on `T3_Phone_API35` (`verify-lor install`), but the device was held by agent-device session `t3-96ff96c08099e0cc482de91b`, idle since 13:52. `open --wait 30000` timed out, and the rules say not to close or reuse another session. Once that session is released, run: a swipe up of about 130 dp at moderate speed and one of 60 dp slowly, each with a screenshot and its `LorMotion` line; and Add to home from the drawer menu on Settings, which is in the default layout's Tools folder.
 - The installed APK may have replaced whatever build that other session was checking.
-
