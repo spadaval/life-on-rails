@@ -75,8 +75,12 @@ data class SearchSources(
 sealed interface LayoutState {
     data object Loading : LayoutState
     data class Ready(val file: LayoutFile) : LayoutState
-    /** The file can't be used; home shows [lastGood], the last file that parsed, if there is one (launcher polish 3.1). */
-    data class Broken(val message: String, val lastGood: LayoutFile?) : LayoutState
+    /**
+     * The file can't be used; home shows [lastGood], the last file that parsed, if there is one
+     * (launcher polish 3.1). [left] names the old dock apps it has no room for (lor-bdus): shown
+     * without them, it is not offered as a restore.
+     */
+    data class Broken(val message: String, val lastGood: LayoutFile?, val left: List<AppRef> = emptyList()) : LayoutState
 }
 
 /** The layout home draws: the file, or while it is broken, the last good one. */
@@ -426,6 +430,8 @@ class HomeStore(private val context: Context) {
      */
     suspend fun restore(): Result<LayoutFile> = withContext(serial) {
         runCatching {
+            // A last good file shown without dock apps that didn't fit is not written (lor-bdus).
+            store.readLastGood()?.left?.takeIf { it.isNotEmpty() }?.let { throw LayoutError(leftOutLine(it)) }
             val fallback = store.readGood()
                 ?: if (loaded) defaultLayout() else throw LayoutError("the app list hasn't loaded, so there is no default layout yet")
             stamp = store.restore(fallback)
@@ -471,6 +477,11 @@ class HomeStore(private val context: Context) {
     private fun activities(pkg: String?, user: UserHandle): List<HomeApp> =
         launcherApps.getActivityList(pkg, user).map { HomeApp(it.label.toString(), it) }
 
+    private fun broken(message: String): LayoutState.Broken {
+        val good = store.readLastGood()
+        return LayoutState.Broken(message, good?.layout, good?.left.orEmpty())
+    }
+
     /** Reads the layout file; any failure shows as Broken rather than leaving home on Loading. */
     private fun readLayout() {
         // No file and no app list yet: the default can't be made, so home is still loading.
@@ -489,12 +500,12 @@ class HomeStore(private val context: Context) {
             LayoutState.Ready(read.layout)
         } catch (e: LayoutError) {
             stamp = store.file.lastModified()
-            LayoutState.Broken(e.message ?: "invalid", store.readGood())
+            broken(e.message ?: "invalid")
         } catch (e: IOException) {
-            LayoutState.Broken("can't read ${store.file.path}: ${e.message}", store.readGood())
+            broken("can't read ${store.file.path}: ${e.message}")
         } catch (e: Exception) {
             Log.w(TAG, "layout read failed", e)
-            LayoutState.Broken("can't be read: ${e.message ?: e.javaClass.simpleName}", store.readGood())
+            broken("can't be read: ${e.message ?: e.javaClass.simpleName}")
         }
     }
 

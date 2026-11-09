@@ -2,6 +2,7 @@ package com.spadaval.lor.home
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Rule
@@ -129,16 +130,93 @@ class NoDockTest {
     fun aDockAppAlreadyOnHomeIsNotAddedAgain() {
         val f = LayoutFile.parse(
             v2(
-                "\"a.a\", \"f.f/f.f.Main\", \"work:w.w\", \"w.w\"",
-                stackAt(1, """{"type": "apps", "items": ["a.a", {"folder": "F", "apps": ["f.f"]}, "work:w.w"]}, $dockBlock"""),
+                "\"a.a\", \"f.f/.Main\", \"work:w.w\", \"w.w\"",
+                stackAt(1, """{"type": "apps", "items": ["a.a", {"folder": "F", "apps": ["f.f/f.f.Main"]}, "work:w.w"]}, $dockBlock"""),
             ),
         )
-        // On home itself, in a folder (a package names its activity too), in the work profile: kept as is.
+        // The same ref on home itself, in a folder (`.Main` written short), in the work profile: kept as is.
         // The main profile's w.w is another app, so it joins.
         assertEquals(
-            listOf(ref("a.a"), Folder("F", listOf(ref("f.f"))), ref("work:w.w"), ref("w.w")),
+            listOf(ref("a.a"), Folder("F", listOf(ref("f.f/f.f.Main"))), ref("work:w.w"), ref("w.w")),
             f.current.items(BlockAt(Cell(1, 0), 0)),
         )
+    }
+
+    /** lor-bdus's review, R1: a package ref draws as one activity, which the parser can't know, so a near match is kept. */
+    @Test
+    fun aDockActivityAPackageRefOnHomeMayNotDrawAsIsKept() {
+        val a = AppId("p.p", "p.p.A")
+        val b = AppId("p.p", "p.p.B")
+        val installed = listOf(a, b)
+        for ((home, dock) in listOf("p.p" to "p.p/p.p.B", "p.p/p.p.B" to "p.p")) {
+            val f = LayoutFile.parse(v2("\"$dock\"", stackAt(1, "${appsOf(home)}, $dockBlock")))
+            assertEquals(listOf(ref(home), ref(dock)), f.current.allItems)
+            // Home draws both activities, and the file the phone writes keeps both.
+            assertEquals(setOf(a, b), f.current.allItems.map { (it as AppRef).resolve(installed) }.toSet())
+            val back = LayoutFile.parse(f.toJson())
+            assertEquals(f, back)
+            assertEquals(listOf(ref(home), ref(dock)), back.current.allItems)
+        }
+    }
+
+    /**
+     * lor-bdus's review, R2: a start stack of only `dock` beside five pages. Its row has no room
+     * for a sixth page, so it stays as a clock and the dock app joins the first page with room.
+     */
+    @Test
+    fun aDockOnlyStartBesideFivePagesStaysWithinTheRowsLimit() {
+        val pages = (1..5).joinToString { c -> stackAt(c, appsOf("p.p$c")) }
+        for (start in listOf("""{"narrow": [0, 0]}""", """{"narrow": [1, 0], "wide": [0, 0]}""")) {
+            val text = """{"version": 2, "active": "a", "layouts": [{"name": "a", "start": $start, "dock": ["d.d"], "panels": [
+                ${stackAt(0, dockBlock)}, $pages]}]}"""
+            val f = LayoutFile.parse(text)
+            assertEquals(start, listOf(StackBlock.Clock), blocks(f, 0))
+            assertEquals(start, listOf(ref("p.p1"), ref("d.d")), f.current.items(BlockAt(Cell(1, 0), 0)))
+            assertEquals(start, 5, f.current.panels.count { it.hasApps })
+            assertEquals(start, f, LayoutFile.parse(f.toJson()))
+        }
+        // With room in the row, it is an empty page, as before, and takes the dock app first.
+        val four = (1..4).joinToString { c -> stackAt(c, appsOf("p.p$c")) }
+        val roomy = LayoutFile.parse("""{"version": 2, "active": "a", "layouts": [{"name": "a", "start": {"narrow": [0, 0]}, "dock": ["d.d"], "panels": [
+            ${stackAt(0, dockBlock)}, $four]}]}""")
+        assertEquals(listOf(StackBlock.Apps(listOf(ref("d.d")))), blocks(roomy, 0))
+        assertEquals(roomy, LayoutFile.parse(roomy.toJson()))
+    }
+
+    /**
+     * lor-bdus's review, R3: on the upgrade, layout.json and layout.good.json hold the same old file,
+     * and neither converts. Home still shows that home, without the app that didn't fit, and
+     * neither file is written.
+     */
+    @Test
+    fun anOldFullHomeIsStillShownFromItsLastGoodCopyWithoutWritingEither() {
+        val store = LayoutStore(tmp.root.resolve("layout.json"))
+        val text = fullHome("\"p2.p2\", \"e.e\"")
+        store.file.writeText(text)
+        store.good.writeText(text)
+        try {
+            store.read(null); fail("read")
+        } catch (e: LayoutError) {
+            assertTrue(e.message!!.contains("\"e.e\""))
+        }
+        // Nothing a restore could write from, but a home to show, naming what was left out.
+        assertNull(store.readGood())
+        val shown = store.readLastGood()!!
+        assertEquals(listOf(ref("e.e")), shown.left)
+        assertEquals(5, shown.layout.current.pages.size)
+        assertEquals(24 * 5, shown.layout.current.allItems.size)
+        val state = LayoutState.Broken("x", shown.layout, shown.left)
+        assertEquals("layout.json has an error. Showing the last good layout without 1 old dock app.", brokenLine(state))
+        assertTrue(leftOutLine(shown.left).contains("\"e.e\""))
+        // An edit is refused, and neither file changes.
+        assertTrue(store.edit { it }.isFailure)
+        assertEquals(text, store.file.readText())
+        assertEquals(text, store.good.readText())
+        // A good copy that converts in full is shown as before, with nothing left out.
+        store.good.writeText(fullHome("\"p2.p2\""))
+        assertEquals(emptyList<AppRef>(), store.readLastGood()!!.left)
+        assertEquals(store.readGood(), store.readLastGood()!!.layout)
+        assertEquals("layout.json has an error. Showing the last good layout.", brokenLine(LayoutState.Broken("x", store.readGood())))
     }
 
     @Test

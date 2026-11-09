@@ -115,7 +115,20 @@ data class LayoutFile(
         const val MAX_BYTES = 256 * 1024L
 
         /** Parses and validates [text], or throws [LayoutError] naming the first problem. A version 1 file is converted. */
-        fun parse(text: String): LayoutFile {
+        fun parse(text: String): LayoutFile = parse(text, null)
+
+        /**
+         * [text] parsed as [parse] does, except that an old dock app home has no room for is left
+         * out rather than refused; with the apps left out, in order. Only for showing the last good
+         * file (lor-bdus's review, R3), never for writing.
+         */
+        fun parseLeavingOut(text: String): Pair<LayoutFile, List<AppRef>> {
+            val left = mutableListOf<AppRef>()
+            return parse(text, left) to left
+        }
+
+        /** [left] null: refuse a dock app that doesn't fit; else leave it out and add it there. */
+        private fun parse(text: String, left: MutableList<AppRef>?): LayoutFile {
             if (text.length > MAX_BYTES) throw LayoutError("the file is over ${MAX_BYTES / 1024} KB")
             val tokener = JSONTokener(text)
             val root = try {
@@ -137,8 +150,8 @@ data class LayoutFile(
             root.onlyKeys("", "version", "active", "hidden", "drawer", "look", "locked", "layouts")
             val version = root.opt("version")
             val parseLayout: (String, Any) -> Layout = when (version) {
-                VERSION -> ::parseLayout
-                1 -> ::parseLayoutV1
+                VERSION -> { at, v -> parseLayout(at, v, left) }
+                1 -> { at, v -> parseLayoutV1(at, v, left) }
                 else -> throw LayoutError("version: must be $VERSION (or 1, which is converted), got ${version ?: "nothing"}")
             }
             val layouts = root.array("", "layouts").mapIndexed { i, v -> parseLayout("layouts[$i]", v) }
@@ -221,7 +234,7 @@ data class LayoutFile(
         }
 
         /** A version 1 layout (`home`, `pages`, `dock`), converted to the default grid. Errors name version 1's places. */
-        private fun parseLayoutV1(at: String, v: Any): Layout {
+        private fun parseLayoutV1(at: String, v: Any, left: MutableList<AppRef>?): Layout {
             if (v !is JSONObject) throw LayoutError("$at: must be an object")
             v.onlyKeys(at, "name", "expires", "home", "dock", "pages")
             val name = v.string(at, "name")
@@ -230,7 +243,7 @@ data class LayoutFile(
             val dock = parseDock(at, v)
             val pages = if (v.has("pages")) v.array(at, "pages").mapIndexed { i, p -> parsePageV1("$at.pages[$i]", p) } else emptyList()
             if (pages.size > V1_MAX_PAGES) throw LayoutError("$at.pages: at most $V1_MAX_PAGES pages after home, got ${pages.size}")
-            return Layout.grid(name, home, pages, expires).withDockApps(at, dock)
+            return Layout.grid(name, home, pages, expires).withDockApps(at, dock, left)
         }
 
         private fun parsePageV1(at: String, v: Any): List<LayoutItem> {
@@ -239,7 +252,7 @@ data class LayoutFile(
             return parseItems(at, v, "items")
         }
 
-        private fun parseLayout(at: String, v: Any): Layout {
+        private fun parseLayout(at: String, v: Any, left: MutableList<AppRef>?): Layout {
             if (v !is JSONObject) throw LayoutError("$at: must be an object")
             v.onlyKeys(at, "name", "expires", "start", "dock", "panels")
             val name = v.string(at, "name")
@@ -260,17 +273,21 @@ data class LayoutFile(
             }
             if (!v.has("start")) throw LayoutError("$at.start: must be an object")
             val start = parseStart("$at.start", v.opt("start")!!, panels)
-            // A stack an old file's `dock` blocks alone made is empty now, and goes; at a start cell
-            // it stays, as an empty page.
-            val kept = panels.mapNotNull { p ->
-                if (p !is Panel.Stack || p.blocks.isNotEmpty()) p
-                else if (p.at == start.narrow || p.at == start.wide) p.copy(blocks = listOf(StackBlock.Apps(emptyList())))
-                else null
+            // A stack an old file's `dock` blocks alone made is empty now, and goes. At a start cell
+            // it stays: as an empty page when its row has room for another, else as a clock, so it
+            // never takes the row past its limit (lor-bdus's review, R2).
+            val kept = panels.filter { it !is Panel.Stack || it.blocks.isNotEmpty() || it.at == start.narrow || it.at == start.wide }.toMutableList()
+            for (i in kept.indices) {
+                val p = kept[i]
+                if (p is Panel.Stack && p.blocks.isEmpty()) {
+                    val room = kept.count { it.hasApps && it.at.row == p.at.row } < MAX_APPS_PANELS
+                    kept[i] = p.copy(blocks = listOf(if (room) StackBlock.Apps(emptyList()) else StackBlock.Clock))
+                }
             }
             kept.filter { it.hasApps }.groupBy { it.at.row }.entries.firstOrNull { it.value.size > MAX_APPS_PANELS }?.let { (row, ps) ->
                 throw LayoutError("$at.panels: row $row holds ${ps.size} stacks with an apps block, at most $MAX_APPS_PANELS")
             }
-            return Layout(name, kept, start, expires).withDockApps(at, dock)
+            return Layout(name, kept, start, expires).withDockApps(at, dock, left)
         }
 
         private fun parseStart(at: String, v: Any, panels: List<Panel>): Start {
@@ -452,16 +469,20 @@ data class Layout(
     /**
      * An old file's [dock] apps moved onto home (lor-bdus): each not already in an `apps` block or a
      * folder of this layout goes, in dock order, to the end of the first page ([pages]) with room,
-     * else to a new page ([withNewPanel]). Refuses, naming the app, when home has no room, so the
-     * file is not read and nothing overwrites it. [at] names the layout in the error.
+     * else to a new page ([withNewPanel]). "Already" means the same ref, profile included: without
+     * the installed apps the parser can't tell whether `p.p` draws as `p.p/p.p.B`, so it keeps
+     * both (lor-bdus's review, R1). When home has no room, it refuses naming the app, so the file is
+     * not read and nothing overwrites it; or, given [left], leaves the app out and adds it there.
+     * [at] names the layout in the error.
      */
-    internal fun withDockApps(at: String, dock: List<AppRef>): Layout = dock.withIndex().fold(this) { layout, (i, ref) ->
+    internal fun withDockApps(at: String, dock: List<AppRef>, left: MutableList<AppRef>? = null): Layout = dock.withIndex().fold(this) { layout, (i, ref) ->
         val onHome = layout.allItems.flatMap { if (it is Folder) it.apps else listOf(it as AppRef) }
-        if (onHome.any { it.overlaps(ref) }) return@fold layout
+        if (ref in onHome) return@fold layout
         val page = layout.pages.firstOrNull { layout.items(it)!!.size < LayoutFile.MAX_HOME }
         when {
             page != null -> layout.withItems(page, layout.items(page)!! + ref)
             layout.roomForPanel -> layout.withNewPanel(listOf(ref)).first
+            left != null -> layout.also { left += ref }
             else -> throw LayoutError("$at.dock[$i]: home is full (${LayoutFile.MAX_APPS_PANELS} pages of ${LayoutFile.MAX_HOME}), so \"$ref\" can't move there from the dock, which is gone; make room on home or take it out of \"dock\"")
         }
     }
@@ -837,6 +858,23 @@ class LayoutStore(val file: File) {
         keepGood(text)
         return Read(layout, stamp) to text
     }
+
+    /**
+     * What home shows while the file is broken (lor-bdus's review, R3): the last good file, and the
+     * old dock apps it has no room for, which [LayoutFile.parseLeavingOut] left out. With any left
+     * out it is for showing only: [readGood], which a restore writes from, is null then. Null when
+     * there is no copy or it doesn't parse even so.
+     */
+    fun readLastGood(): LastGood? = try {
+        if (good.exists()) LayoutFile.parseLeavingOut(good.readText()).let { (layout, left) -> LastGood(layout, left) } else null
+    } catch (e: LayoutError) {
+        null
+    } catch (e: IOException) {
+        null
+    }
+
+    /** The last good file as shown, and the old dock apps left out of it ([readLastGood]). */
+    data class LastGood(val layout: LayoutFile, val left: List<AppRef>)
 
     /** The last file that parsed, or null when there is none or it doesn't parse either. */
     fun readGood(): LayoutFile? = try {
