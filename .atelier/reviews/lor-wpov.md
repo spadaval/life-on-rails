@@ -1,0 +1,14 @@
+---
+schema: atelier.review
+schema_version: 2
+id: lor-wpov
+title: review on lor-iyc3 @ff1d78b5
+target: lor-iyc3
+identity: gpt-6.1-sol
+commit: ff1d78b599bf2fa939723a1de83b245098b3ddfc
+created_at: 2026-11-09T05:09:38.835658479Z
+event:
+  event: review
+---
+
+Independent implementation review of daea3bf2..ff1d78b5. Verdict: merge after the two FIX NOW findings are resolved; the tabbed drawer serves the approved launcher-use outcome and does not need a smaller scope. Sizes: complexity high because layout.json is a persisted contract shared with agent edits; value high because this replaces the rejected categories and establishes the quick-tab seam for lor-2imw; risk medium because visible launcher failures are reversible and old-file loading is retained. Contract: fail, R1 lor-81d4 lets a valid eight-tab file squeeze search to zero width at 360 dp. Fitness: fail, the required launcher runtime evidence is incomplete (R2 lor-mbwn); otherwise the parser, edits and state ownership are coherent. Checked AGENTS.md, DESIGN.md, review procedure and sizing, spec, strategy, schema, both approved mocks, the full code/doc/test diff and surrounding caller/filter/grid/store paths. Read all six receipts and visually inspected all 24 attached screenshots. Compatibility tests cover old drawer.sections/view being dropped and a v1 file retaining drawer.keyboard; schema refusals, ordered lists, profile separation, move/rename/icon/reorder/delete/add and locked edits have meaningful tests. Old Category, section edits, DrawerView, Jump and unused ranking methods are removed. Prior planning finding lor-b7tg remains settled by lor-g6ot; no duplicate planning finding or approval was created. Fresh proof: git diff --check HEAD^ HEAD excluding .atelier and the whole daea3bf2..ff1d78b5 diff check passed; atelier check passed with pre-existing warnings on unrelated items. Independently calculated the fixed-width controls budget from the source modifiers. Attempted android/boat-build.sh with assembleDebug testDebugUnitTest twice: first failed parsing processId while boat was stopping; after resume and confirming no build was running, the retry returned build exited 1 and could not fetch the log. Therefore 405 passing tests is an author claim, not independently confirmed here. No local Gradle, emulator or phone was used. Open questions: no product decisions; original missing verification output may exist outside the attachments. Residual risk: search expansion motion and gesture sequences were assessed by source and author screenshots rather than replayed; maximum-count narrow layout still needs runtime verification after R1; quick-dial ranking is explicitly deferred to lor-2imw, and real-Fold validation remains after merge. Outcome: review complete, approval withheld. Changes: review records only; implementation unchanged. Proof and open items are stated here for handoff alongside the item Report.
