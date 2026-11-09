@@ -55,6 +55,8 @@ Mission lor-5qkq. `IconSpot` already reports an icon's bounds in the window. Lau
   Rejected: A Compose Popup window for the popover
 - 2026-11-08 [handoff] Implemented on t3/home-long-press-centered-popovers (48660f9 code, records after). Review requested, none dispatched. Proof: PopoverTest and boat assembleDebug testDebugUnitTest (414 tests) pass; emulator receipt lor-7l83. See ## Report
 
+## Report
+
 All six Done when lines hold at e4f6f82, the second as rewritten after review (lor-ic8q accepted opening on the roomier side with no flip). Every long-press menu on home (an app's on home, in a folder, in the drawer and in search; a folder's; a widget's; empty home's) is drawn by one `Popover` (`home/Popover.kt`), and none of `AppMenu.kt`, the folder menu or the widget menu uses `DropdownMenu`. The Jump menu, the minimap's tile menu and Home settings' keep it. Placement is `PopoverPlace.place`, tested in `PopoverTest` (10 tests: the middle, both edges, both halves, a menu too tall for its side clamped and scrolling, a screen narrower than the menu, `theSideItOpensOnIsAlwaysTheRoomier`, `atTheEdgeTheTipStillPointsAtTheFingerAndTheBaseStaysOnTheBody`, `aSourceFillingTheScreenStillGetsAUsableMenu` with the review's witness, and `aWidgetsMenuAtThePressHasRoom`). Boat's `assembleDebug testDebugUnitTest` passed at e4f6f82 with all 416 unit tests. The first round's emulator screenshots are receipt lor-7l83; the review fixes' are receipt lor-rm7a (files `r1`-`r5`).
 
 ### Review fixes (lor-ayib)
@@ -64,6 +66,9 @@ All six Done when lines hold at e4f6f82, the second as rewritten after review (l
 - R3 lor-3y1o: the outline and arrow are `or-deep` `#9a5c22`, the mock's colour, and DESIGN.md's Floating menus says so. The panels' Frame Bronze is unchanged.
 - R4 lor-ic8q: the second Done when line and this Report describe the roomier-side clamp.
 - R5 lor-n3hy: the arrow's tip is always exactly on the source; its base stays on the body's straight edge, so near an edge the arrow leans.
+
+- lor-6vjm (second round, lor-sgm8): the menu also closes when density, font scale, screen size in dp or orientation change, since those can lay icons out again at the same pixel size (`PopoverLayer`'s `layoutKey`). Shown by boat's `assembleDebug testDebugUnitTest`; not reproduced on a device.
+- lor-5h48: the `## Report` heading is restored.
 
 ### Deviations
 

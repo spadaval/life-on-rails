@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -201,6 +202,12 @@ fun PopoverLayer(host: PopoverHost) {
     val sourceInWindow = remember(entry) { entry.source?.invoke() ?: anchorInWindow }
     // The size home had when it opened: a fold or a rotation keeps this composition but moves everything.
     val openedAt = remember(entry) { arrayOfNulls<IntSize>(1) }
+    // A change of density, font scale or screen size can lay the icons out again at the same pixel size,
+    // so the anchor taken at opening would be stale: the menu closes then too (review lor-6vjm).
+    val configuration = LocalConfiguration.current
+    val layoutKey = listOf(density.density, density.fontScale, configuration.screenWidthDp, configuration.screenHeightDp, configuration.orientation)
+    val openedWith = remember(entry) { layoutKey }
+    LaunchedEffect(entry, layoutKey) { if (layoutKey != openedWith) entry.close() }
     val shown = remember(entry) { Animatable(0f) }
     LaunchedEffect(entry) { shown.animateTo(1f, Motion.quick()) }
     BackHandler { entry.close() }
