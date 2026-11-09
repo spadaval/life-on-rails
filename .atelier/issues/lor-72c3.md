@@ -4,6 +4,9 @@ id: "lor-72c3"
 issue_type: "feature"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: t3/work-profile-app-refs
 priority: "P2"
 relationships:
   blocks: []
@@ -18,9 +21,9 @@ relationships:
     type: "blocked_by"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "Work-profile apps go on home, in folders and hidden: refs name a profile"
-updated_at: "2026-11-09T01:36:22.823663076+00:00"
+updated_at: "2026-11-09T02:15:39.152989595+00:00"
 ---
 
 ## Goal

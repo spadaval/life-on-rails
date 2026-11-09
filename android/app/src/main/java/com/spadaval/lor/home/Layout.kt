@@ -73,8 +73,8 @@ data class LayoutFile(
             .toString(2),
     )
 
-    /** Whether [app] is hidden: a `hidden` ref matches it. Main-profile apps only; callers check the profile. */
-    fun isHidden(app: AppId): Boolean = hidden.any { it.matches(app.packageName, app.className) }
+    /** Whether [app] is hidden: a `hidden` ref of its profile matches it. */
+    fun isHidden(app: AppId): Boolean = hidden.any { it.matches(app) }
 
     companion object {
         const val VERSION = 2
@@ -338,8 +338,12 @@ data class LayoutFile(
             else -> throw LayoutError("$at: must be an app (a package name) or a folder object")
         }
 
-        private fun parseRef(at: String, v: Any): AppRef =
-            (v as? String)?.let(AppRef::parse) ?: throw LayoutError("$at: \"$v\" is not a package name or package/activity")
+        private fun parseRef(at: String, v: Any): AppRef {
+            (v as? String)?.let(AppRef::parse)?.let { return it }
+            val prefix = (v as? String)?.takeIf { ':' in it }?.substringBefore(':')
+            if (prefix != null && prefix != AppRef.WORK) throw LayoutError("$at: \"$v\" has the prefix \"$prefix:\"; the only prefix is \"${AppRef.WORK}:\"")
+            throw LayoutError("$at: \"$v\" is not a package name or package/activity")
+        }
 
         private fun JSONObject.onlyKeys(at: String, vararg allowed: String) {
             keys().asSequence().firstOrNull { it !in allowed }?.let {
@@ -609,7 +613,7 @@ sealed interface StackBlock {
              * [s] as a provider, `package/class` with `package/.Short` expanded as
              * `ComponentName.unflattenFromString` does; null when it isn't one.
              */
-            fun provider(s: String): String? = AppRef.parse(s)?.takeIf { it.className != null }?.toString()
+            fun provider(s: String): String? = AppRef.parse(s)?.takeIf { it.className != null && !it.work }?.toString()
         }
     }
 
@@ -679,29 +683,35 @@ data class Folder(
 /**
  * An app: a package name, which means that package's first launchable activity, or
  * `package/activity` for one activity (`package/.Short` as in `ComponentName.unflattenFromString`).
+ * Written with `work:` in front ([work]), it names the app in the work profile (lor-72c3); without,
+ * the main profile's.
  */
-data class AppRef(val packageName: String, val className: String? = null) : LayoutItem {
-    fun matches(packageName: String, className: String): Boolean =
-        packageName == this.packageName && (this.className == null || this.className == className)
+data class AppRef(val packageName: String, val className: String? = null, val work: Boolean = false) : LayoutItem {
+    fun matches(app: AppId): Boolean =
+        app.work == work && app.packageName == packageName && (className == null || className == app.className)
 
-    /** Whether some activity is named by both refs: equal, or a package and one of its activities. */
+    /** Whether some activity is named by both refs: equal, or a package and one of its activities, in one profile. */
     fun overlaps(other: AppRef): Boolean =
-        packageName == other.packageName && (className == null || other.className == null || className == other.className)
+        work == other.work && packageName == other.packageName && (className == null || other.className == null || className == other.className)
 
-    override fun toString() = if (className == null) packageName else "$packageName/$className"
+    override fun toString() = (if (work) "$WORK:" else "") + if (className == null) packageName else "$packageName/$className"
     override fun toJsonValue(): Any = toString()
 
     companion object {
+        /** The prefix naming the work profile. */
+        const val WORK = "work"
         private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
         private val CLASS = Regex("[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*")
 
         fun parse(s: String): AppRef? {
-            val pkg = s.substringBefore('/')
+            val work = s.startsWith("$WORK:")
+            val rest = if (work) s.substring(WORK.length + 1) else s
+            val pkg = rest.substringBefore('/')
             if (!PACKAGE.matches(pkg)) return null
-            if ('/' !in s) return AppRef(pkg)
-            val raw = s.substringAfter('/')
+            if ('/' !in rest) return AppRef(pkg, work = work)
+            val raw = rest.substringAfter('/')
             val cls = if (raw.startsWith('.')) pkg + raw else raw
-            return if (CLASS.matches(cls)) AppRef(pkg, cls) else null
+            return if (CLASS.matches(cls)) AppRef(pkg, cls, work) else null
         }
     }
 }
@@ -754,8 +764,8 @@ data class DrawerSection(
     }
 }
 
-/** One launchable activity of a main-profile app, as the edits below match it against refs. */
-data class AppId(val packageName: String, val className: String)
+/** One launchable activity of an app, in the work profile when [work], as the edits match it against refs. */
+data class AppId(val packageName: String, val className: String, val work: Boolean = false)
 
 /** The layout file on disk. No Android here, so the JVM tests can reach it. */
 class LayoutStore(val file: File) {

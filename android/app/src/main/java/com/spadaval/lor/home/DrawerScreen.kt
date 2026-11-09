@@ -136,10 +136,11 @@ private fun build(view: DrawerView, apps: List<HomeApp>, file: LayoutFile?, stat
             val new = apps.filter { it.mainProfile && now - it.firstInstalled < NEW_FOR_MS }.sortedByDescending { it.firstInstalled }
             if (new.isNotEmpty()) { header("New"); tiles("new", new) }
             val drawer = file?.drawer ?: Drawer()
-            drawer.sort(apps.filter { it.mainProfile }, { it.id }, { it.category })
+            // A work app goes in a section that names it (Move to section), else under Work profile.
+            val (sorted, work) = apps.partition { it.mainProfile || drawer.lists(it.id) }
+            drawer.sort(sorted, { it.id }, { it.category })
                 .filter { !it.hidden && it.apps.isNotEmpty() }
                 .forEach { s -> header(s.name, s.reason); tiles("s", s.apps) }
-            val work = apps.filterNot { it.mainProfile }
             if (work.isNotEmpty()) { header("Work profile"); tiles("work", work) }
         }
         DrawerView.AZ -> apps.groupBy { letterOf(it.label) }.forEach { (letter, list) ->
@@ -309,11 +310,9 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
                     items(built.entries, key = { it.key }, span = { if (it is Entry.Tile) GridItemSpan(1) else GridItemSpan(maxLineSpan) }) { e ->
                         when (e) {
                             is Entry.Header -> SectionHeader(e.title, e.reason)
-                            // A main-profile app can be picked up and dragged onto home (launcher polish 4.6); refs can't name a work-profile one.
+                            // An app of either profile can be picked up and dragged onto home (launcher polish 4.6, lor-72c3).
                             is Entry.Tile -> Box(
-                                Modifier.dragSource(home.drag, e.key) { b ->
-                                    if (e.app.mainProfile) Source(b, Slot.DrawerApp(e.app.key), 2) else null
-                                },
+                                Modifier.dragSource(home.drag, e.key) { b -> Source(b, Slot.DrawerApp(e.app.key), 2) },
                                 contentAlignment = Alignment.TopCenter,
                             ) {
                                 // Go's target, while the field has focus (launcher polish 5.1): DESIGN.md's selection.
