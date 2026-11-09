@@ -86,15 +86,35 @@ class QuickDialTest {
             Resumed("maps", t + 4000), // back from home: a new open
             Resumed("mail", t + 5000),
         )
-        val o = start.withUsage(events, setOf("com.spadaval.lor"), t + 6000, zone)
+        val o = start.withUsage(events, setOf("com.spadaval.lor"), t + 6000, 0, zone)
         assertEquals(2.0, o.counts.getValue("maps").sum(), 1e-3)
         assertEquals(1.0, o.counts.getValue("mail").sum(), 1e-3)
         assertFalse("com.spadaval.lor" in o.counts)
         assertEquals(t + 6000, o.cursor)
         assertEquals("mail", o.foreground)
         // The next read continues from the foreground app: mail again isn't a new open.
-        val next = o.withUsage(listOf(Resumed("mail", t + 7000)), emptySet(), t + 8000, zone)
+        val next = o.withUsage(listOf(Resumed("mail", t + 7000)), emptySet(), t + 8000, 0, zone)
         assertEquals(1.0, next.counts.getValue("mail").sum(), 1e-3)
+    }
+
+    @Test
+    fun aClockSetForwardOrBackDoesNotCountEventsAgainOrSkipNewOnes() {
+        val t = at(today, "08:00")
+        val hour = 60 * 60 * 1000L
+        // Read at t, elapsedRealtime 1000 s; maps was opened at t - 1 s.
+        val read = AppOpens().readTo(t - 5000, null, 1_000_000).withUsage(listOf(Resumed("maps", t - 1000)), emptySet(), t, 1_000_000, zone)
+        assertEquals(1.0, read.counts.getValue("maps").sum(), 0.05)
+        // The clock is set 12 hours on, and Android moves the stored events with it: maps' open is
+        // now at t + 12 h - 1 s, after the cursor in wall time but read already. Mail is new.
+        val on = read.withUsage(listOf(Resumed("maps", t + 12 * hour - 1000), Resumed("mail", t + 12 * hour + 4000)), emptySet(), t + 12 * hour + 5000, 1_005_000, zone)
+        assertEquals(1.0, on.counts.getValue("maps").sum(), 0.05)
+        assertEquals(1.0, on.counts.getValue("mail").sum(), 0.05)
+        // Set back 12 hours: an app opened after that, at a time before the old cursor, still counts.
+        val back = read.withUsage(listOf(Resumed("chat", t - 12 * hour + 4000)), emptySet(), t - 12 * hour + 5000, 1_005_000, zone)
+        assertEquals(1.0, back.counts.getValue("chat").sum(), 0.05)
+        assertEquals(t - 12 * hour + 5000, back.cursor)
+        // After a restart elapsedRealtime starts again, so the cursor stays where it was.
+        assertEquals(t, read.readFrom(t + hour, 10_000))
     }
 
     @Test
@@ -102,7 +122,8 @@ class QuickDialTest {
         val t = at(today, "08:00")
         val o = AppOpens().opened("maps", t, zone).opened("mail", t + AppOpens.HALF_LIFE_MS, zone)
         assertEquals(0.5, o.counts.getValue("maps").sum(), 1e-6)
-        val back = AppOpens.parse(o.readTo(t + 5, "mail").toJson())
+        val back = AppOpens.parse(o.readTo(t + 5, "mail", 42).toJson())
+        assertEquals(42L, back.cursorClock)
         assertEquals(o.at, back.at)
         assertEquals("mail", back.foreground)
         assertEquals(o.last, back.last)
@@ -143,6 +164,13 @@ class QuickDialTest {
         val t = now - 500
         val chats = listOf("Priya" to 4, "Marco" to 3, "Aiko" to 1, "Sam" to 2).map { (n, r) -> Chat(n, t + 3, n, rank = r) } + Chat("Dana", t, "Dana", rank = 0)
         assertEquals(listOf("Dana", "Aiko", "Sam", "Marco"), recentPeople(chats, now).map { it.value })
+        // Seen on the emulator: the batch straddles a second's edge (…0995 and …1008).
+        val edge = (now / 1000 - 10) * 1000
+        val across = listOf("Sam" to 1, "Aiko" to 2, "Marco" to 3).map { (n, r) -> Chat(n, edge + 8, n, rank = r) } + Chat("Dana", edge - 5, "Dana", rank = 0)
+        assertEquals(listOf("Dana", "Sam", "Aiko", "Marco"), recentPeople(across, now).map { it.value })
+        // A chat changed a minute later is newer whatever its rank.
+        val later = across + Chat("Lee", edge + 60_000, "Lee", rank = 9)
+        assertEquals("Lee", recentPeople(later, now + 60_000).first().value)
     }
 
     @Test

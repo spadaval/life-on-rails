@@ -243,7 +243,8 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(quickShown, lifecycle) { if (quickShown) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { lor.reads.hold() } }
     val reads = lor.reads
-    val card = quickCard(reads.home?.one, reads.current, reads.homeRead.at, ZoneId.systemDefault())
+    // Greyed while the kept reply isn't current or the last read failed, as the lor panel's lists are.
+    val card = quickCard(reads.home?.one, reads.current && reads.error == null, reads.homeRead.at, ZoneId.systemDefault())
     val people = remember(apps, sources.shortcuts) { quickPeople(apps, sources, System.currentTimeMillis()) }
     val quick = QuickParts(opens, card, people)
     val open = ui.searchOpen

@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Quick dial: the drawer's first tab, ranked for the hour"
-updated_at: "2026-11-09T05:44:18.567170196+00:00"
+updated_at: "2026-11-09T08:14:03.904951700+00:00"
 ---
 
 ## Goal
@@ -60,3 +60,11 @@ Mission lor-5qkq. LoR already holds Usage access (`collect/AppUsageCollector.kt`
   Reason: ShortcutInfo.getPersons() is a @SystemApi: it is not in the public android.jar (checked with javap on android-37.0), so a launcher can't read the Person. The Done when line's 'else its label' is what applies. The same person in WhatsApp and Messages usually has the same name, which the test covers.
 - 2026-11-09 [decision] Emulator check on boat's T3_Phone_API35 with the host's test server forwarded into the VM by 'boat forward --reverse --local 3857', so the app's server_url stays http://10.0.2.2:3857 (the emulator's 10.0.2.2 is the VM's loopback).
   Reason: The local T3_Phone_API35 is still held by another thread's agent-device session (t3-96ff96...), which this thread may not reuse or close. A forward reaches the real test server, so the card is shown from a real /device/home with a pin set on the test database, not faked.
+- 2026-11-09 [decision] Quick dial's usage cursor carries elapsedRealtime and moves by however far the wall clock was set since the last read (AppOpens.readFrom), when the jump is over a minute and there was no restart.
+  Reason: Found on the emulator: setting the clock logs 'UsageStatsDatabase: Time changed by +11h50m30s… files moved', i.e. Android moves every stored usage event by the change. A wall-time cursor then counted already-read events again after a forward set (Photos got 4 morning opens it never had) and would skip new ones after a backward set until the clock caught up. Rare on a real phone (manual time set, a bad clock after boot), but cheap to get right; tested by aClockSetForwardOrBackDoesNotCountEventsAgainOrSkipNewOnes.
+  Rejected: Ignore it as an emulator artifact (a real manual clock change recounts days of opens)
+- 2026-11-09 [decision] People skip shortcuts declared in an app's manifest, and chats changed within a second of the next newer one count as one publish, ordered by the app's ShortcutInfo.rank.
+  Reason: Found on the emulator: Messages declares its manifest 'New conversation' with the conversation category, so it showed as a person; and Messages republishes all its chats in one batch when one changes, a few ms apart and sometimes across a second's edge, which put the newest chat (Dana, rank 0, 13 ms 'older') last. Newest lastChangedTimestamp still decides between publishes. Tested by peopleAreTheNewestConversationPerPersonOfTheLastTwoWeeks and chatsPublishedTogetherKeepTheAppsOrder.
+  Rejected: Bucket by whole seconds (a batch can straddle a second's edge; seen on the emulator)
+- 2026-11-09 [decision] The card greys when the kept /device/home isn't current or the last read failed (reads.current && reads.error == null), as the lor panel's lists do.
+  Reason: LorReads sets current = true after any read, failed ones included, so current alone left the card bright with the network off; seen on the emulator in airplane mode before the fix.

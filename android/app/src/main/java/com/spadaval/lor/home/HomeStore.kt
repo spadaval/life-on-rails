@@ -14,6 +14,7 @@ import android.app.usage.UsageStatsManager
 import android.database.ContentObserver
 import android.net.Uri
 import android.os.Process
+import android.os.SystemClock
 import android.os.UserHandle
 import android.provider.ContactsContract
 import android.provider.MediaStore
@@ -243,8 +244,9 @@ class HomeStore(private val context: Context) {
      */
     fun readUsage() = serially {
         val now = System.currentTimeMillis()
+        val clock = SystemClock.elapsedRealtime()
         val old = _opens.value
-        val from = if (old.cursor > 0) old.cursor else now - USAGE_FIRST_MS
+        val from = if (old.cursor > 0) old.readFrom(now, clock) else now - USAGE_FIRST_MS
         val usm = context.getSystemService(UsageStatsManager::class.java)
         val events = mutableListOf<Resumed>()
         val it = usm.queryEvents(from, now)
@@ -253,7 +255,7 @@ class HomeStore(private val context: Context) {
             it.getNextEvent(e)
             if (e.eventType == UsageEvents.Event.ACTIVITY_RESUMED && e.packageName != null) events += Resumed(e.packageName, e.timeStamp)
         }
-        val next = old.withUsage(events, ignoredForOpens(), now, ZoneId.systemDefault())
+        val next = old.withUsage(events, ignoredForOpens(), now, clock, ZoneId.systemDefault())
         _opens.value = next
         writeAtomically(opensFile, next.toJson())
         Log.i(TAG, "quick dial read ${events.size} app resumes since ${if (old.cursor > 0) "the last read" else "a week ago"} in ${System.currentTimeMillis() - now} ms (${next.counts.size} apps counted)")

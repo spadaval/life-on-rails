@@ -51,8 +51,9 @@ data class HourSlot(val band: Band, val weekend: Boolean) {
 
 /**
  * Per-app open counts by slot, keyed by the app's ref (`pkg`, or `work:pkg`: a package, since
- * usage events name the package), decayed to [at]. [cursor] is the last usage event read and
- * [foreground] the package it brought up, so the next read counts only a change of app.
+ * usage events name the package), decayed to [at]. [cursor] is when the last read of usage
+ * events ended, [cursorClock] the `elapsedRealtime` then, and [foreground] the package last
+ * brought up, so the next read counts only a change of app.
  */
 class AppOpens(
     val counts: Map<String, DoubleArray> = emptyMap(),
@@ -61,6 +62,7 @@ class AppOpens(
     val last: Map<String, Long> = emptyMap(),
     val cursor: Long = 0,
     val foreground: String? = null,
+    val cursorClock: Long = 0,
 ) {
     /** The counts decayed to [now] (never back in time). */
     private fun decayedTo(now: Long): Map<String, DoubleArray> {
@@ -75,11 +77,24 @@ class AppOpens(
         val decayed = decayedTo(now).filterValues { it.sum() >= FLOOR }
         val c = (decayed[key] ?: DoubleArray(HourSlot.COUNT)).copyOf()
         c[HourSlot.of(Instant.ofEpochMilli(time), zone).index] += 1.0
-        return AppOpens(decayed + (key to c), now, last + (key to maxOf(time, last[key] ?: 0)), cursor, foreground)
+        return AppOpens(decayed + (key to c), now, last + (key to maxOf(time, last[key] ?: 0)), cursor, foreground, cursorClock)
     }
 
-    /** The cursor and foreground app after a read of usage events. */
-    fun readTo(cursor: Long, foreground: String?) = AppOpens(counts, at, last, cursor, foreground)
+    /** The cursor and foreground app after a read of usage events, at [clock] (`elapsedRealtime`). */
+    fun readTo(cursor: Long, foreground: String?, clock: Long = 0) = AppOpens(counts, at, last, cursor, foreground, clock)
+
+    /**
+     * Where the next read starts, at wall time [now] and `elapsedRealtime` [clock]: the cursor,
+     * moved by however far the clock was set since it. Android moves every stored usage event by
+     * a clock change (`UsageStatsDatabase.onTimeChanged`), so a cursor left alone would count
+     * events again after a change forward and skip new ones after a change back. Without a
+     * reading of the clock since the last read (a restart resets it), the cursor stays.
+     */
+    fun readFrom(now: Long, clock: Long): Long {
+        if (cursor <= 0 || cursorClock <= 0 || clock < cursorClock) return cursor
+        val jump = now - (cursor + (clock - cursorClock))
+        return if (Math.abs(jump) > CLOCK_SET_MS) cursor + jump else cursor
+    }
 
     /**
      * How likely [key] is to be wanted at [now]: its decayed count in all ([total]) times its
@@ -98,6 +113,7 @@ class AppOpens(
         .put("version", 1)
         .put("at", at)
         .put("cursor", cursor)
+        .put("cursorClock", cursorClock)
         .apply { foreground?.let { put("foreground", it) } }
         .put("apps", JSONObject().apply {
             counts.forEach { (k, c) -> put(k, JSONObject().put("slots", JSONArray(c.toList())).put("last", last[k] ?: 0L)) }
@@ -107,6 +123,8 @@ class AppOpens(
     companion object {
         /** Each count halves in two weeks: a habit a month old still counts, one dropped fades. */
         const val HALF_LIFE_MS = 14L * 24 * 60 * 60 * 1000
+        /** A difference between wall time and `elapsedRealtime` past this is the clock being set, not drift. */
+        private const val CLOCK_SET_MS = 60_000L
         /** Pseudo-opens spread over the week's slots (see [score]). */
         const val SMOOTHING = 4.0
         /** An app whose counts add to less than this is dropped from the file. */
@@ -126,7 +144,7 @@ class AppOpens(
                     last[k] = o.optLong("last")
                 }
             }
-            AppOpens(counts, root.getLong("at"), last, root.getLong("cursor"), root.optString("foreground").ifEmpty { null })
+            AppOpens(counts, root.getLong("at"), last, root.getLong("cursor"), root.optString("foreground").ifEmpty { null }, root.optLong("cursorClock"))
         } catch (e: Exception) {
             AppOpens()
         }
@@ -139,16 +157,18 @@ data class Resumed(val pkg: String, val time: Long)
 /**
  * Counts the opens in [events] (in time order, after [AppOpens.cursor]): a resume of a package
  * other than the one in front before it, except the [ignored] ones (LoR, the home app, the system
- * UI), which still count as being in front. [now] becomes the cursor.
+ * UI), which still count as being in front. [now] and [clock] (`elapsedRealtime`) become the
+ * cursor; the events start at [AppOpens.readFrom].
  */
-fun AppOpens.withUsage(events: List<Resumed>, ignored: Set<String>, now: Long, zone: ZoneId): AppOpens {
+fun AppOpens.withUsage(events: List<Resumed>, ignored: Set<String>, now: Long, clock: Long, zone: ZoneId): AppOpens {
     var out = this
     var front = foreground
-    events.filter { it.time > cursor }.forEach { e ->
+    val from = readFrom(now, clock)
+    events.filter { it.time > from }.forEach { e ->
         if (e.pkg != front && e.pkg !in ignored) out = out.opened(e.pkg, e.time, zone)
         front = e.pkg
     }
-    return out.readTo(maxOf(cursor, now), front)
+    return out.readTo(maxOf(from, now), front, clock)
 }
 
 /** The ref quick dial counts [app] under: its package, `work:` before it for the work profile. */
@@ -182,23 +202,32 @@ const val PEOPLE = 4
 
 /**
  * The people talked to most recently: [chats] changed within [PEOPLE_DAYS] of [now], not from a
- * manifest, newest first (to the second, then by the app's rank),
+ * manifest, newest first (chats published together in the app's rank order),
  * one per person (by name, ignoring case and spaces at the ends), at most [PEOPLE].
  */
 fun <T> recentPeople(chats: List<Chat<T>>, now: Long, most: Int = PEOPLE): List<Chat<T>> {
     val since = now - PEOPLE_DAYS * 24 * 60 * 60 * 1000
-    return chats.filter { it.changed >= since && it.person.isNotBlank() && !it.manifest }
-        // Messages republishes every chat at once when one changes, a few milliseconds apart: chats
-        // changed in the same second are one publish, in the app's own order.
-        .sortedWith(compareByDescending<Chat<T>> { it.changed / 1000 }.thenBy { it.rank }.thenByDescending { it.changed })
+    val newest = chats.filter { it.changed >= since && it.person.isNotBlank() && !it.manifest }.sortedByDescending { it.changed }
+    // Messages republishes every chat at once when one changes, a few milliseconds apart (and
+    // maybe across a second's edge): a chat changed within [BATCH_MS] of the next newer one is in
+    // its publish, and a publish is in the app's own order.
+    val batches = mutableListOf<MutableList<Chat<T>>>()
+    newest.forEach { c ->
+        val last = batches.lastOrNull()
+        if (last != null && last.last().changed - c.changed < BATCH_MS) last.add(c) else batches.add(mutableListOf(c))
+    }
+    return batches.flatMap { b -> b.sortedBy { it.rank } }
         .distinctBy { it.person.trim().lowercase() }
         .take(most)
 }
 
+/** How close two chats' changes are to count as one publish of the app's chats. */
+private const val BATCH_MS = 1000L
+
 /** What quick dial's card shows: `/device/home`'s one thing, greyed with the time it was read when LoR can't be read now. */
 data class QuickCard(val kicker: String, val text: String, val stale: String?)
 
-/** The card for [one], read at [readAt]; [current] as [com.spadaval.lor.net.LorReads.current]. Null without one. */
+/** The card for [one], read at [readAt]; [current] when the reply is current and the last read didn't fail ([com.spadaval.lor.net.LorReads]). Null without one. */
 fun quickCard(one: DeviceHome.One?, current: Boolean, readAt: Instant?, zone: ZoneId): QuickCard? {
     one ?: return null
     val stale = if (current) null else "as of ${readAt?.let { DateTimeFormatter.ofPattern("H:mm").format(it.atZone(zone)) } ?: "earlier"}"
