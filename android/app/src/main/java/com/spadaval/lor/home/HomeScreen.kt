@@ -555,6 +555,16 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
                 actions.refused(e.message ?: "it can't go there")
             }
         }
+        // Off home, a drawer app a step took out of its folder stays in it (lor-83uq's review, R1).
+        h.drawer?.let { d ->
+            try {
+                drawerDragResult(h.original, final, d, at, h.home.installed).let { final = it.file; at = it.at }
+            } catch (e: LayoutError) {
+                refused = true
+                final = h.original
+                actions.refused(e.message ?: "it can't go there")
+            }
+        }
         val stripped = final.withCurrent(final.current.stripEmptyPanels(h.original.current))
         // A page that went may have been before the one it settles on; then it fades where it is.
         if (stripped.current.pages.size != final.current.pages.size) at = null
@@ -568,6 +578,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             else -> Settle(h.app, h.folder, h.finger, to, Settle.Kind.SLOT)
         }
         if (final == h.original) return
+        val out = h.outOf
+        if (out != null && !refused && h.app != null && final.placesOf(h.app.id, h.home.installed).home) said = "${h.app.label} is on home, out of $out."
         drag.landing = final
         actions.edit(said ?: "Added.", after = { drag.landing = null }) { now -> landOver(now, h.original, final) }
     }

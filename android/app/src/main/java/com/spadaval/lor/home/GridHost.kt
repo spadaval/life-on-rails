@@ -393,9 +393,9 @@ internal fun Modifier.gridFinger(ui: HomeUi, haptics: HapticFeedback, topPx: () 
         }
         val from = grid.cell
         val sizePx = (if (move.way.horizontal) size.width else size.height).toFloat()
-        val finger = FollowFinger(grid.follow, sizePx, density, onTick = { haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) }) { toOne, dpS ->
+        val finger = FollowFinger(grid.follow, sizePx, density, vertical = !move.way.horizontal, onTick = { haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) }) { toOne, dpS ->
             // One line per release, which the emulator checks read (as the drawer's did, launcher polish 7.1).
-            android.util.Log.d("LorMotion", "grid $from to ${move.to} let go at ${grid.follow.position}, $dpS dp/s: ${if (toOne) "goes" else "stays"}")
+            android.util.Log.d("LorMotion", "grid $from to ${move.to} let go at ${grid.follow.position} of ${(sizePx / density).toInt()} dp, $dpS dp/s: ${if (toOne) "goes" else "stays"}")
         }
         // Held before the move is set, so the settle never sees a move nobody has.
         grid.move = move

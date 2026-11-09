@@ -10,29 +10,59 @@ package com.spadaval.lor.home
 object FollowMotion {
     /**
      * The share of the travel left, from where a gesture started toward the other end, past which
-     * a release commits: 30% of the way from fully closed or open (see [commitPoint]).
+     * a horizontal release commits: 30% of the way from fully closed or open (see [commitPoint]).
      */
     const val COMMIT = 0.3f
 
-    /** A fling faster than this (dp/s) decides by its direction alone. */
+    /** A horizontal fling faster than this (dp/s) decides by its direction alone. */
     const val FLING = 800f
 
     /**
-     * Where a gesture that started at [start] commits: 30% of the travel left toward the other
-     * end, so a follow caught mid-settle near one end still has a point short of the other.
+     * A vertical move (the drawer's included) commits once the finger has gone this far (dp)
+     * toward the other cell (lor-83uq): on the Fold's cover, 30% of the screen was about 290 dp,
+     * and swipes of 150 to 190 dp fell back.
      */
-    fun commitPoint(fromOpen: Boolean, start: Float): Float =
-        if (fromOpen) start - COMMIT * start else start + COMMIT * (1f - start)
+    const val COMMIT_DP = 110f
+
+    /** A vertical fling faster than this (dp/s) decides by its direction, once it has gone [FLING_MIN_DP]. */
+    const val FLING_V = 400f
+
+    /** How far (dp) a vertical fling toward the other cell must have gone to commit, so a flick in place doesn't. */
+    const val FLING_MIN_DP = 24f
+
+    /**
+     * Where a gesture that started at [start] commits: 30% of the travel left toward the other
+     * end, so a follow caught mid-settle near one end still has a point short of the other. A
+     * vertical move passes its height as [sizeDp] and commits [COMMIT_DP] from [start] instead,
+     * or sooner when that is past the 30% point.
+     */
+    fun commitPoint(fromOpen: Boolean, start: Float, sizeDp: Float? = null): Float {
+        val left = if (fromOpen) start else 1f - start
+        val share = if (sizeDp == null) COMMIT * left else minOf(COMMIT_DP / sizeDp, COMMIT * left)
+        return if (fromOpen) start - share else start + share
+    }
 
     /**
      * Whether it ends open (at 1) when a finger that started at [start] (taking it from open or
      * not: [fromOpen]) lets go at [shown], moving toward 1 at [upDpS] dp/s (negative: toward 0).
+     * [sizeDp] is a vertical move's height, which takes the vertical rule ([COMMIT_DP], [FLING_V]).
      */
-    fun settles(fromOpen: Boolean, start: Float, shown: Float, upDpS: Float): Boolean = when {
-        upDpS > FLING -> true
-        upDpS < -FLING -> false
-        fromOpen -> shown > commitPoint(true, start)
-        else -> shown > commitPoint(false, start)
+    fun settles(fromOpen: Boolean, start: Float, shown: Float, upDpS: Float, sizeDp: Float? = null): Boolean {
+        val point = commitPoint(fromOpen, start, sizeDp)
+        if (sizeDp == null) return when {
+            upDpS > FLING -> true
+            upDpS < -FLING -> false
+            else -> shown > point
+        }
+        // Toward the other end: up (toward 1) from closed, down from open.
+        val away = if (fromOpen) -upDpS else upDpS
+        val gone = (if (fromOpen) start - shown else shown - start) * sizeDp
+        val commits = when {
+            away < -FLING_V -> false
+            away > FLING_V && gone >= FLING_MIN_DP -> true
+            else -> if (fromOpen) shown < point else shown > point
+        }
+        return commits != fromOpen
     }
 
     /** Whether a move from [before] to [after] crossed [point], either way (a tick, once per crossing). */

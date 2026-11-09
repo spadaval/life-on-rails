@@ -68,11 +68,8 @@ fun appEdits(places: Places, locked: Boolean): List<AppEdit> {
     if (locked) return listOfNotNull(AppEdit.MOVE_TO_SECTION, AppEdit.HIDE.takeIf { !placed })
     return listOfNotNull(
         AppEdit.REMOVE_FROM_FOLDER.takeIf { places.folder != null },
-        when {
-            places.home -> AppEdit.REMOVE_FROM_HOME
-            places.folder == null -> AppEdit.ADD_TO_HOME
-            else -> null
-        },
+        // In a folder and not on home itself, Add to home moves it out of the folder (lor-83uq).
+        if (places.home) AppEdit.REMOVE_FROM_HOME else AppEdit.ADD_TO_HOME,
         if (places.dock) AppEdit.REMOVE_FROM_DOCK else AppEdit.ADD_TO_DOCK,
         AppEdit.MOVE_TO_SECTION,
         AppEdit.HIDE,
@@ -293,7 +290,10 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
                         close()
                         actions.edit("${app.label} is off home.") { if (here is Spot.Apps) it.removeAt(spot) else it.removeFromHome(app.id, installed) }
                     }
-                    AppEdit.ADD_TO_HOME -> Item("Add to home") { close(); actions.edit("${app.label} is on home.") { it.addToHome(app.id, ref, installed) } }
+                    AppEdit.ADD_TO_HOME -> Item("Add to home") {
+                        close()
+                        actions.edit(places.folder?.let { "${app.label} is on home, out of $it." } ?: "${app.label} is on home.") { it.addToHome(app.id, ref, installed) }
+                    }
                     AppEdit.REMOVE_FROM_DOCK -> Item("Remove from dock") {
                         close()
                         actions.edit("${app.label} is out of the dock.") { if (here is Spot.Dock) it.removeAt(spot) else it.removeFromDock(app.id, installed) }
