@@ -14,7 +14,7 @@ class HomeModel(private val store: HomeStore) {
 
     fun resume() = store.resume()
 
-    suspend fun edit(undoable: Boolean = true, change: (LayoutFile) -> LayoutFile): Result<HomeStore.Edited> = store.edit(undoable, change)
+    suspend fun edit(change: (LayoutFile) -> LayoutFile): Result<HomeStore.Edited> = store.edit(change)
 
     suspend fun undo(): Result<LayoutFile> = store.undo()
 

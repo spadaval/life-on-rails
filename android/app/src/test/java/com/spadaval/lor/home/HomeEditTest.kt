@@ -127,14 +127,15 @@ class HomeEditTest {
     }
 
     @Test
-    fun theSectionCarryKeepsAPackagesOtherActivities() {
+    fun theTabCarryKeepsAPackagesOtherActivities() {
         val a = AppId("p.p", "p.p.A")
         val b = AppId("p.p", "p.p.B")
-        val f = LayoutFile("a", listOf(Layout.grid("a", emptyList())), drawer = Drawer(sections = listOf(DrawerSection("Mine", apps = listOf(ref("p.p"))))))
-        val moved = f.moveToSection(a, AppRef("p.p", "p.p.A"), Category.TOOLS, "Work", listOf(a, b))
-        assertEquals(listOf(AppRef("p.p", "p.p.B")), moved.drawer.sections.first { it.name == "Mine" }.apps)
-        assertEquals("Work", moved.drawer.sectionOf(a, Category.TOOLS))
-        assertEquals("Mine", moved.drawer.sectionOf(b, Category.TOOLS))
+        val tabs = listOf(Drawer.DEFAULT_TABS[0], DrawerTab("Mine", "star", apps = listOf(ref("p.p"))), DrawerTab("Work", "brief"), Drawer.DEFAULT_TABS[1])
+        val f = LayoutFile("a", listOf(Layout.grid("a", emptyList())), drawer = Drawer(tabs))
+        val moved = f.moveToTab(a, AppRef("p.p", "p.p.A"), "Work", listOf(a, b))
+        assertEquals(listOf(AppRef("p.p", "p.p.B")), moved.drawer.tabs.first { it.name == "Mine" }.apps)
+        assertEquals("Work", moved.drawer.tabOf(a)?.name)
+        assertEquals("Mine", moved.drawer.tabOf(b)?.name)
         roundTrips(moved)
     }
 
@@ -262,9 +263,10 @@ class HomeEditTest {
     }
 
     @Test
-    fun aNewFolderIsNamedForTheSharedCategory() {
-        assertEquals("Media", folderName(Category.MEDIA, Category.MEDIA))
-        assertEquals("Folder", folderName(Category.MEDIA, Category.TOOLS))
+    fun aNewFolderIsNamedForTheSharedTab() {
+        assertEquals("Media", folderName("Media", "Media"))
+        assertEquals("Folder", folderName("Media", "Tools"))
+        assertEquals("Folder", folderName("Media", null))
         assertEquals("Folder", folderName(null, null))
     }
 

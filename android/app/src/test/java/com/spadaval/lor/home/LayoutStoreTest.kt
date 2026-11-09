@@ -205,10 +205,11 @@ class LayoutStoreTest {
         assertTrue("the words name the home menu", LOCKED.contains("home menu"))
         // Taken while locked: what leaves the grid alone.
         val taken: List<Pair<String, (LayoutFile) -> LayoutFile>> = listOf(
-            "a drawer view change" to { it.copy(drawer = it.drawer.copy(view = DrawerView.AZ)) },
+            "a drawer keyboard change" to { it.copy(drawer = it.drawer.copy(keyboard = !it.drawer.keyboard)) },
+            "newTab" to { it.newTab("Work") },
             "a look change" to { it.copy(look = it.look.copy(labels = false)) },
             "unhide" to { it.unhide("h.h") },
-            "moveToSection" to { it.moveToSection(app("a.a"), ref("a.a"), Category.TOOLS, "Work") },
+            "moveToTab" to { it.newTab("Daily").moveToTab(app("a.a"), ref("a.a"), "Daily") },
             "hide of an app not on home" to { it.hide("q.q") },
         )
         for ((name, edit) in taken) {

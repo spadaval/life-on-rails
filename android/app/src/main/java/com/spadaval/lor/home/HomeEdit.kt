@@ -81,8 +81,8 @@ private fun sameApp(a: AppRef, b: AppRef, installed: List<AppId>): Boolean {
     return if (ra != null && rb != null) ra == rb else a == b
 }
 
-/** A new folder's name: the two apps' category when they share one, else "Folder". */
-fun folderName(a: Category?, b: Category?): String = if (a != null && a == b) a.title else "Folder"
+/** A new folder's name: the drawer tab both apps are in, when they share one, else "Folder". */
+fun folderName(a: String?, b: String?): String = if (a != null && a == b) a else "Folder"
 
 fun LayoutFile.placesOf(app: AppId, installed: List<AppId> = emptyList()): Places {
     val layout = current

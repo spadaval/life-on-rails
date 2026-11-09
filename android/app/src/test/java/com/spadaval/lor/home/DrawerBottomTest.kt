@@ -37,16 +37,6 @@ class DrawerBottomTest {
     }
 
     @Test
-    fun headersAreWhatJumpOffers() {
-        val results = Results<Any>(
-            "s",
-            null,
-            listOf(Block(Kind.SETTINGS, listOf(found(Kind.SETTINGS, "Sound")), 0), Block(Kind.CONTACTS, listOf(found(Kind.CONTACTS, "Sam")), 0)),
-        )
-        assertEquals(listOf("Settings" to 1, "Contacts" to 3), searchEntries(results, null).headers)
-    }
-
-    @Test
     fun aListTakesTheSwipeItCanScroll() {
         // A finger going up moves the grid down; a list in its usual order scrolls on toward its end.
         assertTrue(listTakes(Way.DOWN, forward = true, backward = false, reversed = false))

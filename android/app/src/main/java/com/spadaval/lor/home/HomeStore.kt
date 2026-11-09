@@ -5,7 +5,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
@@ -38,10 +37,6 @@ class HomeApp(val label: String, val info: LauncherActivityInfo) {
     val mainProfile: Boolean get() = user == Process.myUserHandle()
     /** As refs name it: any profile but the main one is the work profile (a phone has at most one, lor-72c3). */
     val id = AppId(packageName, info.componentName.className, work = !mainProfile)
-    val category: Category by lazy {
-        val a = info.applicationInfo
-        categoryOf(packageName, a.category, a.flags and ApplicationInfo.FLAG_SYSTEM != 0)
-    }
     /**
      * When the package was first installed, read once (each read asks the package manager). It
      * is the main profile's: `LauncherActivityInfo.getFirstInstallTime` ignores the profile.
@@ -386,23 +381,22 @@ class HomeStore(private val context: Context) {
     /** The last edit's copy for [undo] (launcher polish 4.2): kept in memory until the next edit or an undo. */
     private var lastUndo: LayoutStore.Undo? = null
 
-    /** An edit's outcome: the file now, and whether it wrote something [undo] can take back. */
+    /** An edit's outcome: the file now, and whether it wrote something (which [undo] can take back). */
     data class Edited(val layout: LayoutFile, val undoable: Boolean)
 
     /**
      * Applies [change] to the file (see [LayoutStore.edit]) and shows the result. The new modified
-     * time is recorded, so the next [resume] doesn't reread this write. An [undoable] edit that
-     * wrote can be taken back by [undo]; one that isn't (the drawer's view) drops what [undo]
-     * held, whose copy no longer matches the file. Fails with the reason.
+     * time is recorded, so the next [resume] doesn't reread this write. An edit that wrote can be
+     * taken back by [undo]. Fails with the reason.
      */
-    suspend fun edit(undoable: Boolean = true, change: (LayoutFile) -> LayoutFile): Result<Edited> = withContext(serial) {
+    suspend fun edit(change: (LayoutFile) -> LayoutFile): Result<Edited> = withContext(serial) {
         store.edit(change).map {
             if (it.undo == null) return@map Edited(it.layout, false)
             stamp = it.stamp
             _layout.value = LayoutState.Ready(it.layout)
-            lastUndo = it.undo.takeIf { undoable }
+            lastUndo = it.undo
             Log.i(TAG, "wrote layout.json (an edit from the phone)")
-            Edited(it.layout, undoable)
+            Edited(it.layout, true)
         }.onFailure {
             Log.i(TAG, "layout edit refused: ${it.message}")
             // A file changed from outside since the last read (home rereads only on resume): read
