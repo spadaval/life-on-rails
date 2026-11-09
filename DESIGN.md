@@ -279,10 +279,10 @@ Quiet, rectangular, sentence case. They outline until touched.
 
 ### Floating menus
 A menu opened by a press (on the phone, every long-press menu on home) is a chamfered panel that points at what opened it.
-- **Shape:** the outer panel's 6px two-corner chamfer, with an arrow 22px wide and 10px tall out of the edge facing the source, drawn in the same 1px `frame` outline as the body.
-- **Face:** `raised` inside the 1px `frame`; the float shadow of Elevation & Depth under it.
-- **Place:** centred on the source's centre (the icon, or the finger on empty space), kept 8px inside the screen. Below a source in the top half of the screen, above one in the bottom half; a menu taller than that side's room is cut to it and scrolls. When the body is pushed in from an edge, the arrow stays on the source's centre.
-- **Around it:** a light dim over the page (near-black at 35%), and a 1.5px amber ring round the pressed icon or widget. A tap anywhere outside, or back, closes it.
+- **Shape:** the outer panel's 6px two-corner chamfer, with an arrow 22px wide and 10px tall out of the edge facing the source, drawn in the same 1px outline as the body.
+- **Face:** `raised` inside a 1px `or-deep` outline, brighter than a panel's `frame` because the menu floats (the approved mock's colour); the float shadow of Elevation & Depth under it.
+- **Place:** centred on the source's centre (the icon, the finger on empty space, the finger on a widget), kept 8px inside the screen. Below a source in the top half of the screen, above one in the bottom half, which is always the roomier side; a menu taller than that room is cut to it (never below about two rows) and scrolls. When the body is pushed in from an edge, the arrow's base stays on the body's straight edge and the arrow leans so its tip is still on the source.
+- **Around it:** a light dim over the page (near-black at 35%), and a 1.5px amber ring round the pressed icon or widget. A tap anywhere outside, back, or a fold or rotation closes it.
 - **Motion:** it opens with a 150ms fade and a slight scale out of the arrow's tip.
 - **Content:** 15px `txt` rows (an app's shortcuts with their icons first); App info, Remove, Hide and Uninstall as a row of line glyphs over 11px `mute` labels; a 1px `line` rule between groups.
 

@@ -195,6 +195,9 @@ class WidgetHost(context: Context) {
 class LorWidgetView(context: Context) : AppWidgetHostView(context) {
     /** Opens the widget's menu; null when the menu would be empty. */
     var onLongPress: (() -> Unit)? = null
+    /** Where in the window the finger held for the menu; null when TalkBack opened it. */
+    var pressedAt: Bounds? = null
+        private set
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
     private var check: Runnable? = null
     private var longPressed = false
@@ -204,7 +207,7 @@ class LorWidgetView(context: Context) : AppWidgetHostView(context) {
 
     init {
         // TalkBack's long press reaches the menu the same way.
-        setOnLongClickListener { onLongPress?.let { it(); true } ?: false }
+        setOnLongClickListener { onLongPress?.let { pressedAt = null; it(); true } ?: false }
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
@@ -230,6 +233,8 @@ class LorWidgetView(context: Context) : AppWidgetHostView(context) {
                     val open = onLongPress
                     if (open != null && parent != null && hasWindowFocus()) {
                         longPressed = true
+                        val at = IntArray(2).also(::getLocationInWindow)
+                        pressedAt = Bounds(at[0] + downX, at[1] + downY, at[0] + downX, at[1] + downY)
                         performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                         open()
                     }
@@ -367,7 +372,9 @@ internal fun WidgetBlock(block: StackBlock.Widget, panelHeight: Float, ui: HomeU
                 }
             }
             if (menu.open) {
-                Popover(ui.popovers, { spot.bounds()?.toBounds() }, { menu.open = false }, PopoverRing.BOX) {
+                // It points at the finger and rings the widget: a tall widget leaves no room beside its box.
+                val box = { spot.bounds()?.toBounds() }
+                Popover(ui.popovers, { view[0]?.pressedAt ?: box() }, { menu.open = false }, PopoverRing.BOX, source = box) {
                     if (!locked) PopoverItem("Resize") {
                         menu.open = false
                         dragged = block.height.toFloat()

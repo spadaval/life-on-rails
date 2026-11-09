@@ -50,6 +50,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -58,7 +60,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spadaval.lor.ui.Chamfer
-import com.spadaval.lor.ui.Frame
+import com.spadaval.lor.ui.OrDeep
 import com.spadaval.lor.ui.Line
 import com.spadaval.lor.ui.Motion
 import com.spadaval.lor.ui.Mute
@@ -91,9 +93,11 @@ data class PopoverPlacement(
     val height: Float,
     /** The body is below the anchor, and the arrow on its top edge. */
     val below: Boolean,
-    /** The arrow's tip: x from the body's left, y in the area's coordinates. */
+    /** The arrow's tip: x from the body's left (on the source, so it may lie past the body's edge), y in the area's coordinates. */
     val tipX: Float,
     val tipY: Float,
+    /** The middle of the arrow's base, from the body's left: on the body's straight edge, under the tip when it can be. */
+    val baseX: Float,
 )
 
 object PopoverPlace {
@@ -102,26 +106,32 @@ object PopoverPlace {
      * The body is centred on the anchor's centre, kept [margin] inside the area. It opens below an
      * anchor whose centre is in the area's top half and above one in the bottom half. That side is
      * always the roomier one, so a body it can't hold fits the other side no better: it is clamped
-     * to the room and scrolls. The arrow ([arrowHeight] tall, [arrowHalf] wide each side) starts [gap] from the anchor, and its
-     * tip stays on the anchor's centre unless that would take it off the body's straight edge
-     * ([chamfer] is the cut corner on the edge it sits on).
+     * to the room and scrolls, but never below [minHeight] (or the area): with less room than that
+     * (a press at the screen's edge, a widget filling the panel) the body moves in over the anchor.
+     * The arrow ([arrowHeight] tall, [arrowHalf] wide each side) starts [gap] from the anchor. Its
+     * tip is always on the anchor's centre; its base stays on the body's straight edge ([chamfer]
+     * is the cut corner on the edge it sits on), so near a screen edge the arrow leans.
      */
-    fun place(anchor: Bounds, width: Float, height: Float, area: Bounds, margin: Float, arrowHalf: Float, arrowHeight: Float, gap: Float, chamfer: Float): PopoverPlacement {
+    fun place(anchor: Bounds, width: Float, height: Float, area: Bounds, margin: Float, arrowHalf: Float, arrowHeight: Float, gap: Float, chamfer: Float, minHeight: Float = 0f): PopoverPlacement {
         val w = min(width, area.right - area.left - 2 * margin)
         val cx = (anchor.left + anchor.right) / 2
         val left = (cx - w / 2).coerceIn(area.left + margin, max(area.left + margin, area.right - margin - w))
         val roomBelow = max(0f, area.bottom - margin - (anchor.bottom + gap + arrowHeight))
         val roomAbove = max(0f, (anchor.top - gap - arrowHeight) - (area.top + margin))
         val below = (anchor.top + anchor.bottom) / 2 < (area.top + area.bottom) / 2
-        val h = min(height, if (below) roomBelow else roomAbove)
+        val most = max(0f, area.bottom - area.top - 2 * margin - arrowHeight)
+        val h = min(height, max(if (below) roomBelow else roomAbove, min(minHeight, most)))
         // The cut corner is the top-left one (on the top edge, where the arrow sits when below) and
         // the bottom-right one (on the bottom edge, when above).
         val lo = arrowHalf + if (below) chamfer else 0f
         val hi = w - arrowHalf - if (below) 0f else chamfer
-        val tipX = (cx - left).coerceIn(lo, max(lo, hi))
-        val tipY = if (below) anchor.bottom + gap else anchor.top - gap
-        val bodyTop = if (below) tipY + arrowHeight else tipY - arrowHeight - h
-        return PopoverPlacement(left, bodyTop, w, h, below, tipX, tipY)
+        val tipX = cx - left
+        val baseX = tipX.coerceIn(lo, max(lo, hi))
+        // Kept inside the area when the minimum height took more than the room: the arrow goes with it.
+        val bodyTop = if (below) min(anchor.bottom + gap + arrowHeight, area.bottom - margin - h)
+        else max(anchor.top - gap - arrowHeight - h, area.top + margin)
+        val tipY = if (below) bodyTop - arrowHeight else bodyTop + h + arrowHeight
+        return PopoverPlacement(left, bodyTop, w, h, below, tipX, tipY, baseX)
     }
 }
 
@@ -131,6 +141,8 @@ enum class PopoverRing { ICON, BOX, NONE }
 /** One open popover: what it points at (in the window) and what it holds. */
 class PopoverEntry {
     var anchor: () -> Bounds? = { null }
+    /** What the ring goes round, when not the anchor (a widget's box, when the menu points at the press). */
+    var source: (() -> Bounds?)? = null
     var ring: PopoverRing = PopoverRing.ICON
     var close: () -> Unit = {}
     var content: (@Composable ColumnScope.() -> Unit)? by mutableStateOf(null)
@@ -143,13 +155,15 @@ class PopoverHost {
 
 /**
  * Opens a popover on [host] while this is composed: it points at [anchor] (in the window, read when
- * it opens), and [close] is called on a tap outside it or back. The caller decides when it is open,
- * as it did with `DropdownMenu`.
+ * it opens) and rings [source] (the anchor when null), and [close] is called on a tap outside it,
+ * back, or a change of home's size (a fold, a rotation), which would leave it pointing at where
+ * things were. The caller decides when it is open, as it did with `DropdownMenu`.
  */
 @Composable
-fun Popover(host: PopoverHost, anchor: () -> Bounds?, close: () -> Unit, ring: PopoverRing = PopoverRing.ICON, content: @Composable ColumnScope.() -> Unit) {
+fun Popover(host: PopoverHost, anchor: () -> Bounds?, close: () -> Unit, ring: PopoverRing = PopoverRing.ICON, source: (() -> Bounds?)? = null, content: @Composable ColumnScope.() -> Unit) {
     val entry = remember { PopoverEntry() }
     entry.anchor = anchor
+    entry.source = source
     entry.ring = ring
     entry.close = close
     SideEffect { entry.content = content }
@@ -168,6 +182,8 @@ private object PopoverSize {
     val gap = 4.dp
     val chamfer = 6.dp
     val ringOut = 5.dp
+    /** The least of a body that a cramped side still shows: two rows, the rest by scrolling. */
+    val minHeight = 104.dp
 }
 
 /** The dim over home behind a popover: light, so home still reads under it. */
@@ -182,11 +198,15 @@ fun PopoverLayer(host: PopoverHost) {
     val insets = WindowInsets.safeDrawing
     var origin by remember { mutableStateOf(Offset.Zero) }
     val anchorInWindow = remember(entry) { entry.anchor() }
+    val sourceInWindow = remember(entry) { entry.source?.invoke() ?: anchorInWindow }
+    // The size home had when it opened: a fold or a rotation keeps this composition but moves everything.
+    val openedAt = remember(entry) { arrayOfNulls<IntSize>(1) }
     val shown = remember(entry) { Animatable(0f) }
     LaunchedEffect(entry) { shown.animateTo(1f, Motion.quick()) }
     BackHandler { entry.close() }
     Box(
         Modifier.fillMaxSize().onPlaced { origin = it.positionInWindow() }
+            .onSizeChanged { if (openedAt[0] == null) openedAt[0] = it else if (openedAt[0] != it) entry.close() }
             // Any touch outside the body closes it and reaches nothing under it, as the menu's own window did.
             .pointerInput(entry) {
                 awaitEachGesture {
@@ -202,7 +222,8 @@ fun PopoverLayer(host: PopoverHost) {
         val anchor = anchorInWindow?.let { Bounds(it.left - origin.x, it.top - origin.y, it.right - origin.x, it.bottom - origin.y) }
         Canvas(Modifier.fillMaxSize()) {
             drawRect(PopoverDim, alpha = shown.value)
-            if (anchor != null && entry.ring != PopoverRing.NONE) drawRing(anchor, entry.ring, shown.value)
+            val source = sourceInWindow?.let { Bounds(it.left - origin.x, it.top - origin.y, it.right - origin.x, it.bottom - origin.y) }
+            if (source != null && entry.ring != PopoverRing.NONE) drawRing(source, entry.ring, shown.value)
         }
         if (anchor == null) return@Box
         var placed by remember(entry) { mutableStateOf<PopoverPlacement?>(null) }
@@ -218,7 +239,8 @@ fun PopoverLayer(host: PopoverHost) {
                             val s = 0.85f + 0.15f * shown.value
                             scaleX = s; scaleY = s
                             // From the arrow's tip.
-                            transformOrigin = TransformOrigin(p.tipX / p.width, if (p.below) -a / p.height else 1f + a / p.height)
+                            val h = maxOf(1f, p.height)
+                            transformOrigin = TransformOrigin(p.tipX / p.width, if (p.below) -a / h else 1f + a / h)
                         }
                         .shadow(8.dp, Chamfer, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
                         .drawBehind { placed?.let { drawPopoverFrame(it) } }
@@ -237,7 +259,7 @@ fun PopoverLayer(host: PopoverHost) {
             )
             val p = PopoverPlace.place(
                 anchor, w, natural, area, PopoverSize.margin.toPx(), PopoverSize.arrowHalf.toPx(), PopoverSize.arrowHeight.toPx(),
-                PopoverSize.gap.toPx(), PopoverSize.chamfer.toPx(),
+                PopoverSize.gap.toPx(), PopoverSize.chamfer.toPx(), PopoverSize.minHeight.toPx(),
             )
             if (placed != p) placed = p
             val placeable = body.measure(Constraints.fixed(p.width.roundToInt(), p.height.roundToInt().coerceAtLeast(0)))
@@ -267,19 +289,21 @@ private fun DrawScope.drawPopoverFrame(p: PopoverPlacement) {
     val s = 0.5.dp.toPx()
     val l = s; val t = s; val r = size.width - s; val b = size.height - s
     val x = p.tipX
+    val base = p.baseX
     val path = Path().apply {
         moveTo(l + c, t)
-        if (p.below) { lineTo(x - half, t); lineTo(x, t - a); lineTo(x + half, t) }
+        if (p.below) { lineTo(base - half, t); lineTo(x, t - a); lineTo(base + half, t) }
         lineTo(r, t)
         lineTo(r, b - c)
         lineTo(r - c, b)
-        if (!p.below) { lineTo(x + half, b); lineTo(x, b + a); lineTo(x - half, b) }
+        if (!p.below) { lineTo(base + half, b); lineTo(x, b + a); lineTo(base - half, b) }
         lineTo(l, b)
         lineTo(l, t + c)
         close()
     }
     drawPath(path, Raised)
-    drawPath(path, Frame, style = Stroke(1.dp.toPx()))
+    // The approved mock's bronze (Banked Amber), brighter than panels' Frame Bronze: a menu floats.
+    drawPath(path, OrDeep, style = Stroke(1.dp.toPx()))
 }
 
 /** A popover's row: a label, with an icon (an app shortcut's) before it when given. */
