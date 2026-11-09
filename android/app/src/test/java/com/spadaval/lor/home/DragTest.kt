@@ -8,16 +8,14 @@ import org.junit.Test
 
 /** Which target is under the finger (launcher polish 4.3). */
 class DragTest {
-    // Two tiles on page 0, 100 wide, icons 52 across from 4 down; the page's space under them; a dock; Remove on top.
+    // Two tiles on page 0, 100 wide, icons 52 across from 4 down; the page's space under them; Remove on top.
     private val a = Zone.Item(Spot.Apps(page(0), 0), Bounds(0f, 100f, 100f, 200f), 104f, 52f)
     private val b = Zone.Item(Spot.Apps(page(0), 1), Bounds(100f, 100f, 200f, 200f), 104f, 52f)
     private val page = Zone.Area(Place.InApps(page(0)), Bounds(0f, 100f, 400f, 600f))
-    private val dock = Zone.Area(Place.Dock, Bounds(0f, 700f, 400f, 780f))
-    private val d0 = Zone.Item(Spot.Dock(0), Bounds(0f, 710f, 100f, 770f), 710f, 48f)
     private val remove = Zone.Remove(Bounds(0f, 0f, 400f, 60f))
     private val inFolder = Zone.Item(Spot.InFolder(page(0), 1, 0), Bounds(50f, 300f, 150f, 400f), 304f, 52f)
     private val card = Zone.Area(Place.InFolder(Spot.Apps(page(0), 1)), Bounds(0f, 280f, 400f, 500f))
-    private val zones = listOf(a, b, page, dock, d0, remove, inFolder, card)
+    private val zones = listOf(a, b, page, remove, inFolder, card)
 
     private fun at(x: Float, y: Float, folder: Boolean = false, open: Spot.Apps? = null) = targetAt(x, y, zones, folder, open)
 
@@ -33,10 +31,8 @@ class DragTest {
     @Test
     fun listsTakeADropAfterTheirItems() {
         assertEquals(Target.AtEnd(Place.InApps(page(0))), at(300f, 400f))
-        assertEquals(Target.AtEnd(Place.Dock), at(300f, 740f))
-        assertEquals("no onto in the dock", Target.Before(Spot.Dock(0)), at(40f, 740f))
         assertEquals(Target.Remove, at(200f, 30f))
-        assertNull("between the grid and the dock", at(200f, 650f))
+        assertNull("under the grid's space", at(200f, 650f))
     }
 
     @Test
@@ -56,7 +52,7 @@ class DragTest {
     // 4's review item (a), lor-ozj2: sources and zones hold what they stand for, and the item is looked up when used.
 
     private fun ref(s: String) = AppRef.parse(s)!!
-    private fun file(items: List<LayoutItem>, dock: List<AppRef> = emptyList()) = LayoutFile("a", listOf(Layout.grid("a", items, dock, listOf(emptyList()))))
+    private fun file(items: List<LayoutItem>) = LayoutFile("a", listOf(Layout.grid("a", items, listOf(emptyList()))))
 
     @Test
     fun aFolderDraggedAwayAndBackIsPickedUpAsItIsNow() {
@@ -81,13 +77,12 @@ class DragTest {
 
     @Test
     fun slotsFollowTheirItemAndGoWithIt() {
-        val f = file(listOf(ref("a.a"), Folder("F", listOf(ref("x.x"), ref("y.y"))), ref("a.a")), dock = listOf(ref("d.d")))
+        val f = file(listOf(ref("a.a"), Folder("F", listOf(ref("x.x"), ref("y.y"))), ref("a.a")))
         val l = f.current
         // Repeats are told apart in order, as the tiles' keys are.
         assertEquals(Slot.Tile(page(0), "app:a.a#2"), l.slotOf(Spot.Apps(page(0), 2)))
         val inFolder = l.slotOf(Spot.InFolder(page(0), 1, 1))!!
         assertEquals(From.At(Spot.InFolder(page(0), 1, 1), ref("y.y")), l.find(inFolder))
-        assertEquals(From.At(Spot.Dock(0), ref("d.d")), l.find(l.slotOf(Spot.Dock(0))!!))
         // The first item removed: the folder's slot finds it one place on.
         val removed = f.drop(l.find(l.slotOf(Spot.Apps(page(0), 0))!!)!!, Target.Remove).file.current
         assertEquals(Spot.InFolder(page(0), 0, 1), removed.find(inFolder)!!.spot)
@@ -101,7 +96,7 @@ class DragTest {
 
     @Test
     fun marksResolveToTheZonesOfTheLayoutDrawn() {
-        val f = file(listOf(ref("a.a"), Folder("F", listOf(ref("x.x")))), dock = listOf(ref("d.d")))
+        val f = file(listOf(ref("a.a"), Folder("F", listOf(ref("x.x")))))
         val box = Bounds(0f, 0f, 10f, 10f)
         val folder = Slot.Tile(page(0), "folder:F#1")
         val marks = listOf(
@@ -109,7 +104,6 @@ class DragTest {
             DropMark.Item(Slot.Tile(page(0), "app:gone#1"), box, 1f, 5f),
             DropMark.Area(Space.Apps(page(0)), box),
             DropMark.Area(Space.Apps(BlockAt(Cell(9, 0), 0)), box),
-            DropMark.Area(Space.Dock, box),
             DropMark.Area(Space.Card(folder), box),
             DropMark.Remove(box),
         )
@@ -118,7 +112,6 @@ class DragTest {
                 Zone.Item(Spot.Apps(page(0), 1), box, 1f, 5f),
                 Zone.Area(Place.InApps(page(0)), box),
                 Zone.Area(Place.NewPanel, box),
-                Zone.Area(Place.Dock, box),
                 Zone.Area(Place.InFolder(Spot.Apps(page(0), 1)), box),
                 Zone.Remove(box),
             ),

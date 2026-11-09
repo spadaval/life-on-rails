@@ -94,19 +94,13 @@ object InnerScreens {
 
 object StackFlow {
     /**
-     * A stack's blocks in its wide form, as columns left to right, each top to bottom: the `dock`,
-     * wherever it is in the list, under the right column; the other blocks split in reading order,
-     * the left column taking the first half, rounded up. With one block besides the dock, a single
-     * column across the panel, the dock last.
+     * A stack's blocks in its wide form, as columns left to right, each top to bottom: split in
+     * reading order, the left column taking the first half, rounded up. One block is a single
+     * column across the panel. Generic, so the rule is tested on more blocks than the file has types.
      */
-    fun wide(blocks: List<StackBlock>): List<List<StackBlock>> = wide(blocks) { it is StackBlock.Dock }
-
-    /** [wide] over any blocks, [isDock] naming the dock; so the rule is tested on more blocks than the file has types. */
-    fun <T> wide(blocks: List<T>, isDock: (T) -> Boolean): List<List<T>> {
-        val dock = blocks.filter(isDock)
-        val others = blocks.filterNot(isDock)
-        if (others.size <= 1) return listOf(others + dock)
-        val split = (others.size + 1) / 2
-        return listOf(others.take(split), others.drop(split) + dock)
+    fun <T> wide(blocks: List<T>): List<List<T>> {
+        if (blocks.size <= 1) return listOf(blocks)
+        val split = (blocks.size + 1) / 2
+        return listOf(blocks.take(split), blocks.drop(split))
     }
 }

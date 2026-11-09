@@ -11,7 +11,7 @@ class InnerTest {
     private fun pair(left: Int, right: Int, row: Int = 0) = InnerScreen(c(left, row), c(right, row))
 
     /** The default grid from a version 1 file with [pages] extra pages. */
-    private fun default(pages: Int) = Layout.grid("d", emptyList(), emptyList(), List(pages) { emptyList() }).panels
+    private fun default(pages: Int) = Layout.grid("d", emptyList(), List(pages) { emptyList() }).panels
 
     private fun stack(column: Int, row: Int = 0, wide: Wide = Wide.HALF) = Panel.Stack(c(column, row), listOf(StackBlock.Apps(emptyList())), wide)
 
@@ -183,38 +183,20 @@ class InnerTest {
     // A stack's wide flow.
 
     @Test
-    fun todaysHomeStackPutsTheClockLeftAndAppsWithTheDockRight() {
+    fun todaysHomeStackPutsTheClockLeftAndAppsRight() {
         val apps = StackBlock.Apps(emptyList())
-        assertEquals(listOf(listOf(StackBlock.Clock), listOf(apps, StackBlock.Dock)), StackFlow.wide(listOf(StackBlock.Clock, apps, StackBlock.Dock)))
-        // The dock goes under the right column wherever it is in the list.
-        assertEquals(listOf(listOf(StackBlock.Clock), listOf(apps, StackBlock.Dock)), StackFlow.wide(listOf(StackBlock.Dock, StackBlock.Clock, apps)))
+        assertEquals(listOf(listOf(StackBlock.Clock), listOf(apps)), StackFlow.wide(listOf(StackBlock.Clock, apps)))
     }
 
     @Test
     fun aPageIsOneColumn() {
         val apps = StackBlock.Apps(emptyList())
-        assertEquals(listOf(listOf(apps, StackBlock.Dock)), StackFlow.wide(listOf(apps, StackBlock.Dock)))
-        assertEquals(listOf(listOf(apps, StackBlock.Dock)), StackFlow.wide(listOf(StackBlock.Dock, apps)))
-        assertEquals(listOf(listOf(StackBlock.Dock)), StackFlow.wide(listOf(StackBlock.Dock)))
-    }
-
-    @Test
-    fun aStackWithNoDockSplitsInReadingOrder() {
-        val apps = StackBlock.Apps(emptyList())
-        assertEquals(listOf(listOf(StackBlock.Clock), listOf(apps)), StackFlow.wide(listOf(StackBlock.Clock, apps)))
         assertEquals(listOf(listOf(apps)), StackFlow.wide(listOf(apps)))
     }
 
     @Test
-    fun aStackOfFourBlocks() {
-        // Block types later issues add (widget, today); the rule doesn't depend on them.
-        val isDock = { b: String -> b == "dock" }
-        assertEquals(listOf(listOf("clock", "widget"), listOf("today", "apps")), StackFlow.wide(listOf("clock", "widget", "today", "apps"), isDock))
-        assertEquals(listOf(listOf("clock", "widget"), listOf("apps", "dock")), StackFlow.wide(listOf("clock", "widget", "apps", "dock"), isDock))
-        // Five besides the dock: the left takes three.
-        assertEquals(
-            listOf(listOf("a", "b", "c"), listOf("d", "e", "dock")),
-            StackFlow.wide(listOf("a", "dock", "b", "c", "d", "e"), isDock),
-        )
+    fun moreBlocksSplitInReadingOrderTheLeftTakingTheLargerHalf() {
+        assertEquals(listOf(listOf("clock", "widget"), listOf("today", "apps")), StackFlow.wide(listOf("clock", "widget", "today", "apps")))
+        assertEquals(listOf(listOf("a", "b", "c"), listOf("d", "e")), StackFlow.wide(listOf("a", "b", "c", "d", "e")))
     }
 }

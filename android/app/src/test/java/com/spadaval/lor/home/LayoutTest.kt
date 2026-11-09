@@ -16,16 +16,14 @@ class LayoutTest {
           "layouts": [
             { "name": "default",
               "start": { "narrow": [1, 0], "wide": [2, 0] },
-              "dock": ["com.google.android.dialer", "com.google.android.apps.messaging"],
               "panels": [
                 { "at": [0, 0], "type": "t3" },
                 { "at": [1, 0], "type": "stack", "blocks": [
                   { "type": "clock" },
                   { "type": "apps", "items": ["com.whatsapp", "com.android.chrome/com.google.android.apps.chrome.Main",
                     { "folder": "Dev", "apps": ["com.github.android", "org.example/.Term"],
-                      "reason": "You open these together.", "pinned": true }] },
-                  { "type": "dock" }] },
-                { "at": [2, 0], "type": "stack", "blocks": [{ "type": "apps" }, { "type": "dock" }] },
+                      "reason": "You open these together.", "pinned": true }] }] },
+                { "at": [2, 0], "type": "stack", "blocks": [{ "type": "apps" }] },
                 { "at": [1, 1], "type": "drawer" }] },
             { "name": "trip", "expires": "2026-11-18T00:00:00-08:00",
               "start": { "narrow": [0, 0] },
@@ -62,8 +60,8 @@ class LayoutTest {
         val default = file.layouts[0]
         assertEquals(listOf(Panel.T3(Cell(0, 0)), Panel.Drawer(Cell(1, 1))), default.panels.filter { it !is Panel.Stack })
         assertEquals(Start(Cell(1, 0), Cell(2, 0)), default.start)
-        assertEquals(listOf(StackBlock.Clock, StackBlock.Apps(default.home), StackBlock.Dock), (default.panelAt(Cell(1, 0)) as Panel.Stack).blocks)
-        assertEquals(listOf(StackBlock.Apps(emptyList()), StackBlock.Dock), (default.panelAt(Cell(2, 0)) as Panel.Stack).blocks)
+        assertEquals(listOf(StackBlock.Clock, StackBlock.Apps(default.home)), (default.panelAt(Cell(1, 0)) as Panel.Stack).blocks)
+        assertEquals(listOf(StackBlock.Apps(emptyList())), (default.panelAt(Cell(2, 0)) as Panel.Stack).blocks)
         assertEquals(listOf(HOME_APPS, BlockAt(Cell(2, 0), 0)), default.pages)
         assertEquals(Start(Cell(0, 0)), file.layouts[1].start)
         val home = default.home
@@ -74,10 +72,8 @@ class LayoutTest {
         assertEquals(listOf(AppRef("com.github.android"), AppRef("org.example", "org.example.Term")), dev.apps)
         assertEquals("You open these together.", dev.reason)
         assertTrue(dev.pinned)
-        assertEquals(2, default.dock.size)
         assertNull(default.expires)
         assertEquals(Instant.parse("2026-11-18T08:00:00Z"), file.layouts[1].expires)
-        assertEquals(emptyList<AppRef>(), file.layouts[1].dock)
         assertEquals(listOf(AppRef("com.ubercab")), file.layouts[1].items(BlockAt(Cell(0, 0), 0)))
     }
 
@@ -85,7 +81,7 @@ class LayoutTest {
     fun roundTripsThroughJson() {
         val file = LayoutFile.parse(full)
         assertEquals(file, LayoutFile.parse(file.toJson()))
-        val plain = LayoutFile("a", listOf(Layout.grid("a", listOf(Folder("F", listOf(AppRef("a.b")))), emptyList())))
+        val plain = LayoutFile("a", listOf(Layout.grid("a", listOf(Folder("F", listOf(AppRef("a.b")))))))
         assertEquals(plain, LayoutFile.parse(plain.toJson()))
         assertFalse("defaults are left out", plain.toJson().contains("pinned"))
         assertFalse("wide is left out when unset", plain.toJson().contains("wide"))
@@ -124,12 +120,11 @@ class LayoutTest {
         // Written and read back in every place a ref goes; a file without the prefix reads as before.
         val text = """{"version": 2, "active": "a", "hidden": ["work:h.h", "h.h"],
             "drawer": {"sections": [{"name": "Work", "apps": ["work:s.s", "s.s"]}]},
-            "layouts": [{"name": "a", "start": {"narrow": [0, 0]}, "dock": ["work:d.d"], "panels": [
+            "layouts": [{"name": "a", "start": {"narrow": [0, 0]}, "panels": [
             {"at": [0, 0], "type": "stack", "blocks": [{"type": "apps", "items": ["work:a.b/.Short", "a.b",
               {"folder": "F", "apps": ["work:c.c", "c.c"], "cover": "work:c.c"}]}]}]}]}"""
         val f = LayoutFile.parse(text)
         assertEquals(listOf(AppRef("h.h", work = true), AppRef("h.h")), f.hidden)
-        assertEquals(listOf(AppRef("d.d", work = true)), f.current.dock)
         assertEquals(AppRef("c.c", work = true), (f.current.allItems[2] as Folder).cover)
         assertEquals(f, LayoutFile.parse(f.toJson()))
         assertTrue(f.toJson().contains("\"work:a.b/a.b.Short\""))
@@ -174,7 +169,6 @@ class LayoutTest {
         assertEquals("layouts[0].panels[0].blocks[0].items[0].pinned: must be true or false", error(apps("""[{"folder": "F", "apps": ["a.b"], "pinned": "yes"}]""")))
         assertEquals("layouts[0].panels[0].blocks[0].items[0].reason: must be a string", error(apps("""[{"folder": "F", "apps": ["a.b"], "reason": 1}]""")))
         assertEquals("layouts[0].dock[0]: \"{\"folder\":\"F\"}\" is not a package name or package/activity", error(one("""{"name": "a", "dock": [{"folder": "F"}]}""")))
-        assertEquals("layouts[0].dock: at most 5 apps, got 6", error(one("""{"name": "a", "dock": ["a.a", "a.b", "a.c", "a.d", "a.e", "a.f"]}""")))
         val many = (1..25).joinToString { "\"a.a$it\"" }
         assertEquals("layouts[0].panels[0].blocks[0].items: at most 24 items, got 25", error(apps("[$many]")))
         assertEquals("layouts[0].expires: \"2026-11-18\" is not a date-time like 2026-11-18T00:00:00Z", error(one("""{"name": "a", "expires": "2026-11-18"}""")))
@@ -240,13 +234,13 @@ class LayoutTest {
         assertEquals("layouts[0].panels[0].blocks: must be a list", error(panels("""{"at": [0, 0], "type": "stack"}""")))
         assertEquals("layouts[0].panels[0].blocks: a stack needs at least one block", error(stack("[]")))
         assertEquals("layouts[0].panels[0]: unknown field \"items\" (allowed: at, type, wide, blocks)",
-            error(panels("""{"at": [0, 0], "type": "stack", "blocks": [{"type": "dock"}], "items": []}""")))
+            error(panels("""{"at": [0, 0], "type": "stack", "blocks": [{"type": "clock"}], "items": []}""")))
         assertEquals("layouts[0].panels[0].blocks[1]: must be an object", error(stack("""[{"type": "clock"}, "apps"]""")))
         assertEquals("layouts[0].panels[0].blocks[1].type: must be a string", error(stack("""[{"type": "clock"}, {"items": []}]""")))
-        assertEquals("layouts[0].panels[0].blocks[1].type: must be one of clock, apps, dock, widget, today, needs-you, running, t3-queue, got \"weather\"", error(stack("""[{"type": "clock"}, {"type": "weather"}]""")))
-        assertEquals("layouts[0].panels[0].blocks[1]: unknown field \"items\" (allowed: type)", error(stack("""[{"type": "clock"}, {"type": "dock", "items": []}]""")))
+        assertEquals("layouts[0].panels[0].blocks[1].type: must be one of clock, apps, widget, today, needs-you, running, t3-queue, got \"weather\"", error(stack("""[{"type": "clock"}, {"type": "weather"}]""")))
+        assertEquals("layouts[0].panels[0].blocks[1]: unknown field \"items\" (allowed: type)", error(stack("""[{"type": "clock"}, {"type": "today", "items": []}]""")))
         assertEquals("layouts[0].panels[0].blocks[0]: unknown field \"style\" (allowed: type)", error(stack("""[{"type": "clock", "style": "date"}]""")))
-        assertEquals("layouts[0].panels[0].blocks[2]: a stack holds one \"apps\" block", error(stack("""[{"type": "apps"}, {"type": "dock"}, {"type": "apps"}]""")))
+        assertEquals("layouts[0].panels[0].blocks[2]: a stack holds one \"apps\" block", error(stack("""[{"type": "apps"}, {"type": "clock"}, {"type": "apps"}]""")))
         // start
         assertEquals("layouts[0].start: must be an object", error(one("""{"name": "a", "panels": [$t3]}""")))
         assertEquals("layouts[0].start: must be an object", error(panels(t3, start = "[0, 0]")))

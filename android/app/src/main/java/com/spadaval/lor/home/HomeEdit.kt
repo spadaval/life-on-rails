@@ -10,7 +10,7 @@ package com.spadaval.lor.home
  *
  * Edits act on the active layout, except hide, which acts on every layout. A folder an edit
  * touches becomes `pinned` (it is Sumeet's now); a folder an edit empties is removed, and so is
- * an extra page's panel (a stack of only `apps` and `dock`) the edit emptied or made; one that was
+ * an extra page's panel (a stack of only `apps`) the edit emptied or made; one that was
  * already empty stays, and the start cell's panel stays even when empty ([Layout.stripEmptyPanels]).
  * "On home" means in any `apps` block of the grid.
  *
@@ -26,11 +26,10 @@ package com.spadaval.lor.home
  * screen), so it never moves or removes the wrong thing.
  */
 
-/** A place in the active layout: an item of an `apps` block, the dock, an app in a folder. */
+/** A place in the active layout: an item of an `apps` block, an app in a folder. */
 sealed interface Spot {
     /** The item at [index] of the `apps` block [at]. */
     data class Apps(val at: BlockAt, val index: Int) : Spot
-    data class Dock(val index: Int) : Spot
     /** The app at [app] in the folder at `Apps(at, index)`. */
     data class InFolder(val at: BlockAt, val index: Int, val app: Int) : Spot {
         val folder: Apps get() = Apps(at, index)
@@ -45,7 +44,7 @@ sealed interface From {
 
 /** Where a moved item goes. */
 sealed interface Target {
-    /** In front of the item at [spot] (an `apps` block, the dock or a folder). */
+    /** In front of the item at [spot] (an `apps` block or a folder). */
     data class Before(val spot: Spot) : Target
     data class AtEnd(val place: Place) : Target
     /** Onto the app or folder at [spot]: the two make a folder, or the folder takes it. */
@@ -57,14 +56,13 @@ sealed interface Target {
 sealed interface Place {
     /** The `apps` block [at]. */
     data class InApps(val at: BlockAt) : Place
-    data object Dock : Place
     data class InFolder(val folder: Spot.Apps) : Place
     /** A new stack panel after the last in the start row, made by the drop (launcher polish 4.5). */
     data object NewPanel : Place
 }
 
-/** Where [LayoutFile.current] holds an app: on home itself (any `apps` block), in the dock, in a folder. */
-data class Places(val home: Boolean, val dock: Boolean, val folder: String?)
+/** Where [LayoutFile.current] holds an app: on home itself (any `apps` block), in a folder. */
+data class Places(val home: Boolean, val folder: String?)
 
 /** A drop's result: the edited file, and where the moved item is now (null when it was removed). */
 data class Dropped(val file: LayoutFile, val at: Spot?)
@@ -91,7 +89,6 @@ fun LayoutFile.placesOf(app: AppId, installed: List<AppId> = emptyList()): Place
     val items = layout.allItems
     return Places(
         home = items.any { it is AppRef && it.names(app, installed) },
-        dock = layout.dock.any { it.names(app, installed) },
         folder = items.filterIsInstance<Folder>().firstOrNull { f -> f.apps.any { it.names(app, installed) } }?.name,
     )
 }
@@ -101,7 +98,6 @@ fun LayoutFile.itemAt(spot: Spot): LayoutItem? {
     val layout = current
     return when (spot) {
         is Spot.Apps -> layout.items(spot.at)?.getOrNull(spot.index)
-        is Spot.Dock -> layout.dock.getOrNull(spot.index)
         is Spot.InFolder -> (itemAt(spot.folder) as? Folder)?.apps?.getOrNull(spot.app)
     }
 }
@@ -131,17 +127,11 @@ fun LayoutFile.folderSpotOf(app: AppId, installed: List<AppId> = emptyList()): S
 /**
  * What a drag of [drawer]'s app from the drawer writes, [work] being the file once it ended at [at]
  * (null: removed) and [original] the file the drag began on. A step over home takes an app in a
- * folder out of it, so when the drag ends off home (on Remove, or in the dock) the result is made
- * from [original] instead, and the folder keeps the app (lor-83uq's review, R1).
+ * folder out of it, so when the drag ends off home (on Remove) the result is made from [original]
+ * instead, and the folder keeps the app (lor-83uq's review, R1).
  */
-fun drawerDragResult(original: LayoutFile, work: LayoutFile, drawer: From.Drawer, at: Spot?, installed: List<AppId> = emptyList()): Dropped {
-    if (original.folderSpotOf(drawer.app, installed) == null) return Dropped(work, at)
-    return when (at) {
-        null -> Dropped(original, null)
-        is Spot.Dock -> original.drop(drawer, Target.Before(at), installed, strip = false)
-        else -> Dropped(work, at)
-    }
-}
+fun drawerDragResult(original: LayoutFile, work: LayoutFile, drawer: From.Drawer, at: Spot?, installed: List<AppId> = emptyList()): Dropped =
+    if (at == null && original.folderSpotOf(drawer.app, installed) != null) Dropped(original, null) else Dropped(work, at)
 
 /**
  * Adds [ref] (written for [app]) to the end of the first page ([Layout.pages]) with room; when
@@ -164,24 +154,10 @@ fun LayoutFile.addToHome(app: AppId, ref: AppRef, installed: List<AppId> = empty
     return withCurrent(added.stripEmptyPanels(current))
 }
 
-/** Adds [ref] (written for [app]) to the end of the dock. */
-fun LayoutFile.addToDock(app: AppId, ref: AppRef, installed: List<AppId> = emptyList()): LayoutFile {
-    val layout = current
-    if (placesOf(app, installed).dock) throw LayoutError("it's already in the dock")
-    if (layout.dock.size >= LayoutFile.MAX_DOCK) throw LayoutError("the dock is full (${LayoutFile.MAX_DOCK} apps)")
-    return withCurrent(layout.copy(dock = layout.dock + ref))
-}
-
 /** Removes the refs in every `apps` block (not in folders) that name [app]. */
 fun LayoutFile.removeFromHome(app: AppId, installed: List<AppId> = emptyList()): LayoutFile {
     if (!placesOf(app, installed).home) throw LayoutError("it isn't on home")
     return withCurrent(current.mapApps { items -> items.filterNot { it is AppRef && it.names(app, installed) } }.stripEmptyPanels(current))
-}
-
-fun LayoutFile.removeFromDock(app: AppId, installed: List<AppId> = emptyList()): LayoutFile {
-    val layout = current
-    if (!placesOf(app, installed).dock) throw LayoutError("it isn't in the dock")
-    return withCurrent(layout.copy(dock = layout.dock.filterNot { it.names(app, installed) }))
 }
 
 /** Removes [app] from the first folder (by place, not name) that holds it. */
@@ -204,7 +180,7 @@ fun LayoutFile.removeAt(from: From.At): LayoutFile = drop(from, Target.Remove).f
 /**
  * Hides every activity of [packageName] in one profile (the work profile when [work]): adds it to
  * `hidden` and removes, in every layout, each ref to that package in that profile from every
- * `apps` block, the dock and folders.
+ * `apps` block and folders.
  */
 fun LayoutFile.hide(packageName: String, work: Boolean = false): LayoutFile {
     if (hidden.any { it.packageName == packageName && it.work == work && it.className == null }) throw LayoutError("it's already hidden")
@@ -217,7 +193,7 @@ fun LayoutFile.hide(packageName: String, work: Boolean = false): LayoutFile {
                     is Folder -> if (item.apps.any(gone)) item.without(gone) else item
                 }
             }
-        }.copy(dock = layout.dock.filterNot(gone)).stripEmptyPanels(layout)
+        }.stripEmptyPanels(layout)
     }
     return copy(layouts = layouts, hidden = hidden + AppRef(packageName, work = work))
 }
@@ -246,7 +222,7 @@ fun LayoutFile.setCover(at: From.At, cover: AppRef?): LayoutFile = changeFolder(
  * Adds [apps], each with the ref Add writes for it, to the end of the folder [at] holds, in order
  * (lor-gnk0: the open folder's +). An app is on home once, so one already elsewhere on home (in an
  * `apps` block or another folder) moves into this folder; a folder that leaves empty goes, and so
- * does an extra page's panel. The dock keeps its own. Refuses an app this folder already holds.
+ * does an extra page's panel. Refuses an app this folder already holds.
  * The result's place is the folder's, which moves up by the items that left ahead of it.
  */
 fun LayoutFile.addToFolder(at: From.At, apps: List<Pair<AppId, AppRef>>, installed: List<AppId> = emptyList()): Dropped {
@@ -291,12 +267,12 @@ private fun LayoutFile.changeFolder(at: From.At, change: (Folder) -> Folder): La
  * drop strips it. [nameFor] names a folder two apps make.
  *
  * - Onto an app in an `apps` block makes a folder of the two there; onto a folder appends to it.
- * - A folder goes only to `apps` blocks: not into the dock, a folder, or onto anything.
- * - An app is on home once (any page, folders included) and in the dock once, by what refs draw
- *   as: moving from the drawer or the dock onto home refuses one already there, and so does
- *   moving into the dock. From the drawer, one in a folder on home (and not on home itself) is
- *   moved out of that folder instead (lor-83uq). This is a rule of the edits; the parser doesn't refuse duplicates.
- * - An `apps` block holds 24, the dock 5, and the start row at most 5 stacks with an `apps` block.
+ * - A folder goes only to `apps` blocks: not into a folder, or onto anything.
+ * - An app is on home once (any page, folders included), by what refs draw as: moving from the
+ *   drawer onto home refuses one already there. From the drawer, one in a folder on home (and not
+ *   on home itself) is moved out of that folder instead (lor-83uq). This is a rule of the edits;
+ *   the parser doesn't refuse duplicates.
+ * - An `apps` block holds 24, and the start row at most 5 stacks with an `apps` block.
  * - Remove takes the item out (a folder with its apps); from the drawer it changes nothing.
  * - Dropping an item where it is returns the file unchanged.
  */
@@ -315,12 +291,8 @@ fun LayoutFile.drop(
     if (from is From.Drawer && to.toHome) folderSpotOf(from.app, installed)?.let { return drop(From.At(it, itemAt(it)!!), to, installed, strip, nameFor) }
     val spot = (from as? From.At)?.spot
     if (item is Folder) when (to) {
-        is Target.Before -> if (to.spot !is Spot.Apps) throw LayoutError(if (to.spot is Spot.Dock) "folders don't go in the dock" else "folders don't nest")
-        is Target.AtEnd -> when (to.place) {
-            Place.Dock -> throw LayoutError("folders don't go in the dock")
-            is Place.InFolder -> throw LayoutError("folders don't nest")
-            else -> {}
-        }
+        is Target.Before -> if (to.spot !is Spot.Apps) throw LayoutError("folders don't nest")
+        is Target.AtEnd -> if (to.place is Place.InFolder) throw LayoutError("folders don't nest")
         is Target.Onto -> throw LayoutError("folders don't nest")
         Target.Remove -> {}
     }
@@ -336,10 +308,6 @@ fun LayoutFile.drop(
             is Spot.Apps -> {
                 layout = layout.withItems(spot.at, layout.items(spot.at)!!.filterIndexed { i, _ -> i != spot.index })
                 target = target.shifted(spot)
-            }
-            is Spot.Dock -> {
-                layout = layout.copy(dock = layout.dock.filterIndexed { i, _ -> i != spot.index })
-                target = target.shiftedInDock(spot.index)
             }
             is Spot.InFolder -> {
                 val items = layout.items(spot.at)!!.toMutableList()
@@ -357,17 +325,10 @@ fun LayoutFile.drop(
         }
     }
 
-    // The rules that depend on what is left.
-    val fromHome = spot is Spot.Apps || spot is Spot.InFolder
-    val toHome = target.toHome
-    if (ref != null && toHome && !fromHome) {
+    // The rule that depends on what is left.
+    if (ref != null && target.toHome && spot == null) {
         val onHome = layout.allItems.flatMap { if (it is Folder) it.apps else listOf(it as AppRef) }
         if (onHome.any { sameApp(it, ref, installed) }) throw LayoutError("it's already on home")
-    }
-    val toDock = (target as? Target.Before)?.spot is Spot.Dock || (target as? Target.AtEnd)?.place == Place.Dock
-    if (ref != null && toDock && spot !is Spot.Dock) {
-        if (layout.dock.any { sameApp(it, ref, installed) }) throw LayoutError("it's already in the dock")
-        if (layout.dock.size >= LayoutFile.MAX_DOCK) throw LayoutError("the dock is full (${LayoutFile.MAX_DOCK} apps)")
     }
 
     // Into the target. A folder moved by hand is Sumeet's now (pinned), as any hand edit to a folder.
@@ -377,7 +338,6 @@ fun LayoutFile.drop(
         Target.Remove -> {}
         is Target.Before -> when (val s = t.spot) {
             is Spot.Apps -> { layout = layout.insertInApps(s.at, s.index, placed); at = s }
-            is Spot.Dock -> { layout = layout.copy(dock = layout.dock.toMutableList().apply { add(s.index.coerceIn(0, size), ref!!) }); at = s }
             is Spot.InFolder -> { layout = layout.insertInFolder(s.folder, s.app, ref!!); at = s }
         }
         is Target.AtEnd -> when (val p = t.place) {
@@ -387,7 +347,6 @@ fun LayoutFile.drop(
                 at = Spot.Apps(p.at, size)
                 layout = layout.insertInApps(p.at, size, placed)
             }
-            Place.Dock -> { at = Spot.Dock(layout.dock.size); layout = layout.copy(dock = layout.dock + ref!!) }
             is Place.InFolder -> {
                 val f = layout.items(p.folder.at)?.getOrNull(p.folder.index) as? Folder ?: throw LayoutError(HOME_CHANGED)
                 at = Spot.InFolder(p.folder.at, p.folder.index, f.apps.size)
@@ -416,27 +375,19 @@ fun LayoutFile.drop(
     return Dropped(withCurrent(layout), at)
 }
 
-/** Whether this target is on home: an `apps` block, a folder or a new panel, not the dock and not Remove. */
-private val Target.toHome: Boolean
-    get() = when (this) {
-        is Target.Before -> spot !is Spot.Dock
-        is Target.AtEnd -> place != Place.Dock
-        is Target.Onto -> true
-        Target.Remove -> false
-    }
+/** Whether this target is on home: anything but Remove. */
+private val Target.toHome: Boolean get() = this != Target.Remove
 
 /** Whether dropping the item at [spot] on [to] leaves it where it is. */
 private fun LayoutFile.inPlace(spot: Spot, to: Target): Boolean = when (to) {
     is Target.Before -> when {
         to.spot == spot -> true
         spot is Spot.Apps && to.spot is Spot.Apps -> to.spot.at == spot.at && to.spot.index == spot.index + 1
-        spot is Spot.Dock && to.spot is Spot.Dock -> to.spot.index == spot.index + 1
         spot is Spot.InFolder && to.spot is Spot.InFolder -> to.spot.folder == spot.folder && to.spot.app == spot.app + 1
         else -> false
     }
     is Target.AtEnd -> when (val p = to.place) {
         is Place.InApps -> spot is Spot.Apps && spot.at == p.at && spot.index == current.items(p.at)?.lastIndex
-        Place.Dock -> spot is Spot.Dock && spot.index == current.dock.lastIndex
         is Place.InFolder -> spot is Spot.InFolder && spot.folder == p.folder &&
             spot.app == (itemAt(p.folder) as? Folder)?.apps?.lastIndex
         Place.NewPanel -> false
@@ -455,7 +406,6 @@ private fun Target.shifted(gone: Spot.Apps): Target {
                 val f = s.folder.after()
                 Target.Before(Spot.InFolder(f.at, f.index, s.app))
             }
-            is Spot.Dock -> this
         }
         is Target.AtEnd -> when (val p = place) {
             is Place.InFolder -> Target.AtEnd(Place.InFolder(p.folder.after()))
@@ -465,9 +415,6 @@ private fun Target.shifted(gone: Spot.Apps): Target {
         Target.Remove -> this
     }
 }
-
-private fun Target.shiftedInDock(gone: Int): Target =
-    if (this is Target.Before && spot is Spot.Dock && spot.index > gone) Target.Before(Spot.Dock(spot.index - 1)) else this
 
 private fun Target.shiftedInFolder(gone: Spot.InFolder): Target =
     if (this is Target.Before && spot is Spot.InFolder && spot.folder == gone.folder && spot.app > gone.app) {

@@ -9,7 +9,7 @@ class GridTest {
     private fun c(column: Int, row: Int) = Cell(column, row)
 
     /** The default grid from a version 1 file with two extra pages: t3, home, page 1, page 2; the drawer under home. */
-    private val default = Layout.grid("d", emptyList(), emptyList(), listOf(emptyList(), emptyList())).panels.map { it.at }
+    private val default = Layout.grid("d", emptyList(), listOf(emptyList(), emptyList())).panels.map { it.at }
 
     @Test
     fun theDefaultGridIsTodaysHome() {

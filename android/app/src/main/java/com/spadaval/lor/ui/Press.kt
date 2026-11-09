@@ -62,7 +62,7 @@ class PressScale(private val pressed: Float) : IndicationNodeFactory {
     }
 
     companion object {
-        /** An app or folder tile (home, the dock, a folder, the drawer, search's apps). */
+        /** An app or folder tile (home, a folder, the drawer, search's apps). */
         val Tile = PressScale(0.9f)
 
         /** A full-width row of search results: the same feedback, by fewer dp. */

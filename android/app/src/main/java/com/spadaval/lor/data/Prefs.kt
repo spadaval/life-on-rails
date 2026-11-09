@@ -10,7 +10,7 @@ enum class Sensor(val key: String, val label: String, val unit: String, val desc
     CALLS("calls", "Calls", "calls", "Who you called or who called you, and for how long. Never audio.", true),
     TEXTS("texts", "Texts", "texts", "Every text, who and when and what was said, back to the oldest on the phone. RCS chats are not visible to other apps.", true),
     HEALTH("health", "Sleep, exercise, steps", "health records", "Read from Health Connect.", true),
-    LAUNCHES("launches", "Launches", "launches", "How each app was opened from this launcher: home, the dock, a folder, the drawer, search (with what was typed), or an agent card.", true),
+    LAUNCHES("launches", "Launches", "launches", "How each app was opened from this launcher: home, a folder, the drawer, search (with what was typed), or an agent card.", true),
     LOCATION("location", "Location", "locations", "Where the phone was, every 15 minutes or so.", false),
     WHATSAPP("whatsapp", "WhatsApp", "backups", "Uploads WhatsApp's nightly backup, still encrypted, over Wi-Fi. LoR reads every message with your 64-digit backup key.", false),
 }

@@ -19,6 +19,9 @@ import java.time.format.DateTimeParseException
  * phone writes version 2. Agents edit this file, so parsing is strict and every error names where
  * it is.
  *
+ * Home has no dock (lor-bdus). A file written before that may still hold a layout's `dock` list
+ * and `dock` blocks; the parser converts them ([Layout.withDockApps]) and the phone writes neither.
+ *
  * ```
  * {
  *   "version": 2,
@@ -29,15 +32,13 @@ import java.time.format.DateTimeParseException
  *     { "name": "default",
  *       "expires": "2026-11-18T00:00:00Z",                 // optional; read, not acted on yet
  *       "start": { "narrow": [1, 0], "wide": [1, 0] },     // wide optional, defaults to narrow
- *       "dock": ["com.google.android.dialer"],             // the one dock every `dock` block draws
  *       "panels": [
  *         { "at": [0, 0], "type": "t3" },                 // "wide": "full" or "half"; absent, the type's
  *         { "at": [1, 0], "type": "stack", "blocks": [     // default (stack half, t3 full, drawer half, lor full)
  *             { "type": "clock" },
  *             { "type": "today" },                         // also "needs-you", "running", "t3-queue"
  *             { "type": "widget", "id": 42, "provider": "com.example/.Clock", "height": 160 },
- *             { "type": "apps", "items": ["com.whatsapp", { "folder": "Dev", "apps": ["com.github.android"] }] },
- *             { "type": "dock" }] },
+ *             { "type": "apps", "items": ["com.whatsapp", { "folder": "Dev", "apps": ["com.github.android"] }] }] },
  *         { "at": [2, 0], "type": "lor" },
  *         { "at": [1, 1], "type": "drawer" }] }
  *   ]
@@ -80,7 +81,6 @@ data class LayoutFile(
         const val VERSION = 2
         /** Items in an `apps` block (version 1: on a page). */
         const val MAX_HOME = 24
-        const val MAX_DOCK = 5
         /** Stack panels with an `apps` block in one row: home and 4 more, as version 1's pages. */
         const val MAX_APPS_PANELS = 5
         /** Version 1's pages after home (launcher polish 4.1). */
@@ -94,6 +94,22 @@ data class LayoutFile(
         fun unescapeSlashes(json: String): String = ESCAPED_SLASH.replace(json) { it.groupValues[1] + "/" }
 
         private val ESCAPED_SLASH = Regex("""(?<!\\)((?:\\\\)*)\\/""")
+
+        /**
+         * A fresh install's file: home holds [essentials] (the dialer, SMS app, browser and camera)
+         * then a few common apps, those of [mine] (the main profile's installed packages). Every
+         * other app is in the drawer only: no folder of Google's apps (lor-bdus).
+         */
+        fun firstRun(mine: Set<String>, essentials: List<String>): LayoutFile {
+            val home = (essentials + COMMON).distinct().filter { it in mine }.take(MAX_HOME)
+            return LayoutFile("default", listOf(Layout.grid("default", home.map(::AppRef))))
+        }
+
+        private val COMMON = listOf(
+            "com.whatsapp", "com.google.android.gm", "com.google.android.calendar", "com.samsung.android.calendar",
+            "com.google.android.apps.maps", "com.google.android.apps.photos", "com.sec.android.gallery3d",
+            "com.spotify.music", "com.google.android.youtube", "com.spadaval.lor", "com.android.settings",
+        )
 
         /** The largest file home reads; a real layout is a few KB. */
         const val MAX_BYTES = 256 * 1024L
@@ -193,10 +209,9 @@ data class LayoutFile(
             }
         } else null
 
+        /** An old file's `dock` list, which the parser moves onto home ([Layout.withDockApps]). */
         private fun parseDock(at: String, v: JSONObject): List<AppRef> {
-            val dock = if (v.has("dock")) v.array(at, "dock").mapIndexed { i, item -> parseRef("$at.dock[$i]", item) } else emptyList()
-            if (dock.size > MAX_DOCK) throw LayoutError("$at.dock: at most $MAX_DOCK apps, got ${dock.size}")
-            return dock
+            return if (v.has("dock")) v.array(at, "dock").mapIndexed { i, item -> parseRef("$at.dock[$i]", item) } else emptyList()
         }
 
         private fun parseItems(at: String, v: JSONObject, key: String): List<LayoutItem> {
@@ -215,7 +230,7 @@ data class LayoutFile(
             val dock = parseDock(at, v)
             val pages = if (v.has("pages")) v.array(at, "pages").mapIndexed { i, p -> parsePageV1("$at.pages[$i]", p) } else emptyList()
             if (pages.size > V1_MAX_PAGES) throw LayoutError("$at.pages: at most $V1_MAX_PAGES pages after home, got ${pages.size}")
-            return Layout.grid(name, home, dock, pages, expires)
+            return Layout.grid(name, home, pages, expires).withDockApps(at, dock)
         }
 
         private fun parsePageV1(at: String, v: Any): List<LayoutItem> {
@@ -243,12 +258,19 @@ data class LayoutFile(
                 val first = widgets.indexOfFirst { it.second == id }
                 if (first != i) throw LayoutError("$at.$place.id: $id is taken by ${widgets[first].first}")
             }
-            panels.filter { it.hasApps }.groupBy { it.at.row }.entries.firstOrNull { it.value.size > MAX_APPS_PANELS }?.let { (row, ps) ->
-                throw LayoutError("$at.panels: row $row holds ${ps.size} stacks with an apps block, at most $MAX_APPS_PANELS")
-            }
             if (!v.has("start")) throw LayoutError("$at.start: must be an object")
             val start = parseStart("$at.start", v.opt("start")!!, panels)
-            return Layout(name, panels, dock, start, expires)
+            // A stack an old file's `dock` blocks alone made is empty now, and goes; at a start cell
+            // it stays, as an empty page.
+            val kept = panels.mapNotNull { p ->
+                if (p !is Panel.Stack || p.blocks.isNotEmpty()) p
+                else if (p.at == start.narrow || p.at == start.wide) p.copy(blocks = listOf(StackBlock.Apps(emptyList())))
+                else null
+            }
+            kept.filter { it.hasApps }.groupBy { it.at.row }.entries.firstOrNull { it.value.size > MAX_APPS_PANELS }?.let { (row, ps) ->
+                throw LayoutError("$at.panels: row $row holds ${ps.size} stacks with an apps block, at most $MAX_APPS_PANELS")
+            }
+            return Layout(name, kept, start, expires).withDockApps(at, dock)
         }
 
         private fun parseStart(at: String, v: Any, panels: List<Panel>): Start {
@@ -269,6 +291,7 @@ data class LayoutFile(
             return Cell(n[0] as Int, n[1] as Int)
         }
 
+        /** A panel; a stack whose only blocks were `dock` blocks comes back empty. */
         private fun parsePanel(at: String, v: Any): Panel {
             if (v !is JSONObject) throw LayoutError("$at: must be an object")
             val type = v.string(at, "type")
@@ -277,12 +300,13 @@ data class LayoutFile(
             return when (type) {
                 "stack" -> {
                     v.onlyKeys(at, "at", "type", "wide", "blocks")
-                    val blocks = v.array(at, "blocks").mapIndexed { i, b -> parseBlock("$at.blocks[$i]", b) }
-                    if (blocks.isEmpty()) throw LayoutError("$at.blocks: a stack needs at least one block")
-                    blocks.forEachIndexed { i, b ->
-                        if (!Panel.Stack(cell, blocks.take(i)).takes(b.type)) throw LayoutError("$at.blocks[$i]: a stack holds one \"${b.type}\" block")
+                    val written = v.array(at, "blocks").mapIndexed { i, b -> parseBlock("$at.blocks[$i]", b) }
+                    if (written.isEmpty()) throw LayoutError("$at.blocks: a stack needs at least one block")
+                    val blocks = written.withIndex().filter { it.value != null }
+                    blocks.forEachIndexed { k, (i, b) ->
+                        if (!Panel.Stack(cell, blocks.take(k).map { it.value!! }).takes(b!!.type)) throw LayoutError("$at.blocks[$i]: a stack holds one \"${b.type}\" block")
                     }
-                    Panel.Stack(cell, blocks).let { it.copy(wide = wide ?: it.wide) }
+                    Panel.Stack(cell, blocks.map { it.value!! }).let { it.copy(wide = wide ?: it.wide) }
                 }
                 "t3" -> { v.onlyKeys(at, "at", "type", "wide"); Panel.T3(cell).let { it.copy(wide = wide ?: it.wide) } }
                 "drawer" -> { v.onlyKeys(at, "at", "type", "wide"); Panel.Drawer(cell).let { it.copy(wide = wide ?: it.wide) } }
@@ -296,12 +320,13 @@ data class LayoutFile(
             return Wide.entries.firstOrNull { it.id == s } ?: throw LayoutError("$at: \"$s\" is not \"full\" or \"half\"")
         }
 
-        private fun parseBlock(at: String, v: Any): StackBlock {
+        /** A block, or null for an old file's `dock` block, which is read and dropped. */
+        private fun parseBlock(at: String, v: Any): StackBlock? {
             if (v !is JSONObject) throw LayoutError("$at: must be an object")
             return when (val type = v.string(at, "type")) {
                 "clock" -> { v.onlyKeys(at, "type"); StackBlock.Clock }
                 "apps" -> { v.onlyKeys(at, "type", "items"); StackBlock.Apps(parseItems(at, v, "items")) }
-                "dock" -> { v.onlyKeys(at, "type"); StackBlock.Dock }
+                "dock" -> { v.onlyKeys(at, "type"); null }
                 in StackBlock.LOR -> { v.onlyKeys(at, "type"); StackBlock.bare(type)!! }
                 "widget" -> {
                     v.onlyKeys(at, "type", "id", "provider", "height")
@@ -367,14 +392,12 @@ data class LayoutFile(
 }
 
 /**
- * One named layout: a sparse grid of [panels], the one [dock] every `dock` block draws, and the
- * [start] cell for each screen class. [expires] is kept for temporary layouts; nothing acts on it yet.
+ * One named layout: a sparse grid of [panels], and the [start] cell for each screen class. [expires] is kept for temporary layouts; nothing acts on it yet.
  * Home draws the grid itself ([GridHost.kt]); [pages] are what the edits call home's pages.
  */
 data class Layout(
     val name: String,
     val panels: List<Panel>,
-    val dock: List<AppRef>,
     val start: Start,
     val expires: Instant? = null,
 ) {
@@ -417,13 +440,30 @@ data class Layout(
     val roomForPanel: Boolean get() = panels.count { it.hasApps && it.at.row == start.narrow.row } < LayoutFile.MAX_APPS_PANELS
 
     /**
-     * A new stack of `apps` (holding [items]) and `dock` after the last panel in the start row, as
-     * an extra version 1 page converts; with where its `apps` block is.
+     * A new stack of only `apps` (holding [items]) after the last panel in the start row, as an
+     * extra version 1 page converts; with where its `apps` block is.
      */
     fun withNewPanel(items: List<LayoutItem>): Pair<Layout, BlockAt> {
         val row = start.narrow.row
         val cell = Cell((panels.filter { it.at.row == row }.maxOfOrNull { it.at.column } ?: -1) + 1, row)
-        return copy(panels = panels + Panel.Stack(cell, listOf(StackBlock.Apps(items), StackBlock.Dock))) to BlockAt(cell, 0)
+        return copy(panels = panels + Panel.Stack(cell, listOf(StackBlock.Apps(items)))) to BlockAt(cell, 0)
+    }
+
+    /**
+     * An old file's [dock] apps moved onto home (lor-bdus): each not already in an `apps` block or a
+     * folder of this layout goes, in dock order, to the end of the first page ([pages]) with room,
+     * else to a new page ([withNewPanel]). Refuses, naming the app, when home has no room, so the
+     * file is not read and nothing overwrites it. [at] names the layout in the error.
+     */
+    internal fun withDockApps(at: String, dock: List<AppRef>): Layout = dock.withIndex().fold(this) { layout, (i, ref) ->
+        val onHome = layout.allItems.flatMap { if (it is Folder) it.apps else listOf(it as AppRef) }
+        if (onHome.any { it.overlaps(ref) }) return@fold layout
+        val page = layout.pages.firstOrNull { layout.items(it)!!.size < LayoutFile.MAX_HOME }
+        when {
+            page != null -> layout.withItems(page, layout.items(page)!! + ref)
+            layout.roomForPanel -> layout.withNewPanel(listOf(ref)).first
+            else -> throw LayoutError("$at.dock[$i]: home is full (${LayoutFile.MAX_APPS_PANELS} pages of ${LayoutFile.MAX_HOME}), so \"$ref\" can't move there from the dock, which is gone; make room on home or take it out of \"dock\"")
+        }
     }
 
     /**
@@ -442,29 +482,25 @@ data class Layout(
         put("name", name)
         if (expires != null) put("expires", expires.toString())
         put("start", start.toJson())
-        put("dock", JSONArray(dock.map { it.toString() }))
         put("panels", JSONArray(panels.map { it.toJson() }))
     }
 
     companion object {
         /**
          * The default grid, which a version 1 layout converts to: the `t3` panel left of home; home
-         * as a stack of `clock`, `apps` ([home]) and `dock`; each of [pages] as a stack of `apps` and
-         * `dock` to its right; one `drawer` panel in home's column on row 1 (decision lor-y7qi);
-         * `start` on home.
+         * as a stack of `clock` and `apps` ([home]); each of [pages] as a stack of only `apps` to its
+         * right; one `drawer` panel in home's column on row 1 (decision lor-y7qi); `start` on home.
          */
         fun grid(
             name: String,
             home: List<LayoutItem>,
-            dock: List<AppRef>,
             pages: List<List<LayoutItem>> = emptyList(),
             expires: Instant? = null,
         ): Layout = Layout(
             name,
-            listOf(Panel.T3(Cell(0, 0)), Panel.Stack(HOME, listOf(StackBlock.Clock, StackBlock.Apps(home), StackBlock.Dock))) +
-                pages.mapIndexed { i, items -> Panel.Stack(Cell(HOME.column + 1 + i, 0), listOf(StackBlock.Apps(items), StackBlock.Dock)) } +
+            listOf(Panel.T3(Cell(0, 0)), Panel.Stack(HOME, listOf(StackBlock.Clock, StackBlock.Apps(home)))) +
+                pages.mapIndexed { i, items -> Panel.Stack(Cell(HOME.column + 1 + i, 0), listOf(StackBlock.Apps(items))) } +
                 Panel.Drawer(Cell(HOME.column, 1)),
-            dock,
             Start(HOME),
             expires,
         )
@@ -547,10 +583,9 @@ sealed interface Panel {
     /** Whether this is a stack with an `apps` block. */
     val hasApps: Boolean get() = this is Stack && blocks.any { it is StackBlock.Apps }
 
-    /** Whether this is an empty extra page: a stack of only `apps` and `dock` whose `apps` block is empty. */
+    /** Whether this is an empty extra page: a stack of only an empty `apps` block. */
     val isEmptyPage: Boolean
-        get() = this is Stack && blocks.any { it is StackBlock.Apps } &&
-            blocks.all { it is StackBlock.Dock || (it is StackBlock.Apps && it.items.isEmpty()) }
+        get() = this is Stack && blocks.singleOrNull().let { it is StackBlock.Apps && it.items.isEmpty() }
 
     /** This panel at [cell]. */
     fun movedTo(cell: Cell): Panel = when (this) {
@@ -586,11 +621,6 @@ sealed interface StackBlock {
     data class Apps(val items: List<LayoutItem>) : StackBlock {
         override val type = "apps"
         override fun toJson(): JSONObject = super.toJson().put("items", JSONArray(items.map { it.toJsonValue() }))
-    }
-
-    /** The layout's one `dock`. */
-    data object Dock : StackBlock {
-        override val type = "dock"
     }
 
     /**
@@ -640,13 +670,12 @@ sealed interface StackBlock {
     companion object {
         /** LoR's blocks (lor-lz97), none with a field of its own. */
         val LOR = listOf("today", "needs-you", "running", "t3-queue")
-        val TYPES = listOf("clock", "apps", "dock", Widget.TYPE) + LOR
+        val TYPES = listOf("clock", "apps", Widget.TYPE) + LOR
 
         /** A new block of [type], for a type that takes no field (an `apps` block empty); null for any other, as `widget`. */
         fun bare(type: String): StackBlock? = when (type) {
             "clock" -> Clock
             "apps" -> Apps(emptyList())
-            "dock" -> Dock
             "today" -> Today
             "needs-you" -> NeedsYou
             "running" -> Running

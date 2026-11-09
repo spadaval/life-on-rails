@@ -149,7 +149,7 @@ import java.time.format.DateTimeFormatter
 /*
  * The home shell (T3 Launcher, Increment 3.2), drawn from the layout's grid of panels since
  * lor-qdmy ([GridHost.kt]): the agent page left of home, home's pages to its right, the drawer with
- * search under home; stacks draw the layout file's apps, folders, header and dock by block.
+ * search under home; stacks draw the layout file's apps, folders, and header by block.
  *
  * The shape follows Launcher3 / Lawnchair (Apache-2.0): a workspace with the -1 page on its left
  * (there `LauncherOverlay`, here the `t3` panel left of home), a hotseat (`Hotseat.java`) fixed under the grid, a
@@ -369,8 +369,8 @@ internal sealed interface Placed {
     }
 }
 
-/** Home's `apps` blocks and dock as drawn: each item with the place it holds in the file. */
-internal class PlacedHome(val blocks: Map<BlockAt, List<Placed>>, val dock: List<Pair<HomeApp, From.At>>) {
+/** Home's `apps` blocks as drawn: each item with the place it holds in the file. */
+internal class PlacedHome(val blocks: Map<BlockAt, List<Placed>>) {
     val count: Int get() = blocks.values.sumOf { it.size }
     val all: List<Placed> get() = blocks.values.flatten()
 }
@@ -388,7 +388,7 @@ private fun place(layout: Layout, apps: List<HomeApp>): PlacedHome {
             }
         }
     }
-    return PlacedHome(blocks, layout.dock.mapIndexedNotNull { i, ref -> resolve(ref, apps)?.let { it to From.At(Spot.Dock(i), ref) } })
+    return PlacedHome(blocks)
 }
 
 /** The folder [item] at [at] with its installed apps, or null when none is installed. */
@@ -729,7 +729,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         TopBar(ui, Modifier.align(Alignment.TopCenter).safeDrawingPadding())
         held?.let { HeldItem(it) }
         drag.settling?.let { SettleItem(it, drag, file?.current) { it.progress.value } }
-        // Above the drawer and folders, clear of the dock.
+        // Above the drawer and folders, clear of the page dots.
         UndoBar(ui.undo, actions::undo, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 112.dp))
     }
     }
@@ -741,8 +741,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
  * home's pages after the first did (launcher polish 6.7). Home's notes (the broken file, set-up,
  * empty home) are drawn on the [start] cell's stack.
  *
- * Blocks taller than the panel scroll (lor-r0f9): the blocks above the dock scroll together in
- * [StackScroll], the dock stays at the bottom, and the grid moves at the scroll's edges.
+ * Blocks taller than the panel scroll (lor-r0f9): they scroll together in [StackScroll], and the
+ * grid moves at the scroll's edges.
  */
 @Composable
 private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, layout: LayoutState, appsLoad: AppsLoad, ui: HomeUi, home: HomeContext) {
@@ -815,37 +815,30 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
                 }
             }
         }
-        val dock = @Composable {
-            if (body == HomeBody.SKELETON) DockSkeleton(home.file!!.current.dock.size) else Dock(placed?.dock.orEmpty(), home, cell)
-        }
-        // Blocks, each with its place in the stack, top to bottom, the dock under them all; with no
-        // `apps` block, the space goes after the others, so they sit under the header and the dock
-        // stays at the bottom. The clock is home's header, drawn where it stands in the stack
-        // (lor-9uc1 orders it); a column that starts with anything else starts clear of the Remove bar.
+        // Blocks, each with its place in the stack, top to bottom; with no `apps` block, the space
+        // goes after the others, so they sit under the header. The clock is home's header, drawn
+        // where it stands in the stack (lor-9uc1 orders it); a column that starts with anything else
+        // starts clear of the Remove bar.
         val blocks = @Composable { mod: Modifier, list: List<IndexedValue<StackBlock>> ->
-            Column(mod) {
-                StackScroll(Modifier.weight(1f).fillMaxWidth(), background = emptyHome) {
-                    if (list.firstOrNull { it.value !is StackBlock.Dock }?.value !is StackBlock.Clock) clear()
-                    list.forEach { (i, block) ->
-                        when (block) {
-                            StackBlock.Clock -> header()
-                            StackBlock.Dock -> {}
-                            is StackBlock.Apps -> apps(BlockAt(cell, i))
-                            is StackBlock.Widget -> key(block.id) { WidgetBlock(block, panelHeight, ui, home) }
-                            StackBlock.Today, StackBlock.NeedsYou, StackBlock.Running, StackBlock.T3Queue -> key(block.type) { LorBlock(block, ui.grid) }
-                        }
+            StackScroll(mod, background = emptyHome) {
+                if (list.firstOrNull()?.value !is StackBlock.Clock) clear()
+                list.forEach { (i, block) ->
+                    when (block) {
+                        StackBlock.Clock -> header()
+                        is StackBlock.Apps -> apps(BlockAt(cell, i))
+                        is StackBlock.Widget -> key(block.id) { WidgetBlock(block, panelHeight, ui, home) }
+                        StackBlock.Today, StackBlock.NeedsYou, StackBlock.Running, StackBlock.T3Queue -> key(block.type) { LorBlock(block, ui.grid) }
                     }
-                    if (list.none { it.value is StackBlock.Apps }) Spacer(Modifier.layoutId(Fill))
                 }
-                if (list.any { it.value is StackBlock.Dock }) dock()
+                if (list.none { it.value is StackBlock.Apps }) Spacer(Modifier.layoutId(Fill))
             }
         }
         val all = panel.blocks.withIndex().toList()
         if (wide) {
             // The platform's flow (lor-j87u): the clock and the first half of the blocks left, the
-            // rest with the dock right; a page of apps and a dock is one column. Each column scrolls on its own.
+            // rest right; a page of only apps is one column. Each column scrolls on its own.
             Row(Modifier.fillMaxSize()) {
-                StackFlow.wide(all) { it.value is StackBlock.Dock }.forEach { column ->
+                StackFlow.wide(all).forEach { column ->
                     blocks(Modifier.weight(1f).fillMaxSize(), column)
                 }
             }
@@ -897,7 +890,7 @@ internal fun FillColumn(modifier: Modifier = Modifier, endPad: () -> Int = { 0 }
 }
 
 /**
- * A stack's blocks above its dock (lor-r0f9, reused by lor-clgw's blocks): a [FillColumn] at least
+ * A stack's blocks (lor-r0f9, reused by lor-clgw's blocks): a [FillColumn] at least
  * the space's height, so the `apps` block (or the space before the blocks) fills what is left as
  * before; taller than the space, it scrolls, reporting [scrollsInGrid] so the grid moves at its
  * edges. Scrolling is off while it fits, so a swipe on a page that fits is the grid's as before.
@@ -905,7 +898,7 @@ internal fun FillColumn(modifier: Modifier = Modifier, endPad: () -> Int = { 0 }
  *
  * Scrolling, its content ends with room for home's page dots, so the last row scrolls clear of
  * them (lor-leh4): the dots stand [DotsAbove] above the panel's bottom, which is its parent's
- * (the stack's column), and what lies below the scroll (the dock) already covers part of that.
+ * (the stack's column), and what lies below the scroll, if anything, already covers part of that.
  */
 @Composable
 internal fun StackScroll(modifier: Modifier, background: @Composable (Modifier) -> Unit, content: @Composable () -> Unit) {
@@ -950,21 +943,6 @@ private fun Skeleton(items: List<LayoutItem>, columns: Int) {
                 repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
-    }
-}
-
-@Composable
-private fun DockSkeleton(count: Int) {
-    if (count == 0) return
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 12.dp)
-            .framedPanel(PanelFace.copy(alpha = 0.92f))
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-    ) {
-        repeat(count) { Box(Modifier.size(iconSize).background(Line, CircleShape)) }
     }
 }
 
@@ -1074,52 +1052,6 @@ internal fun Modifier.animatePlacement(drag: DragState): Modifier = composed {
                 }
             }
         }
-}
-
-@Composable
-private fun Dock(apps: List<Pair<HomeApp, From.At>>, home: HomeContext, cell: Cell) {
-    // An empty dock shows while something is held, so it can take it.
-    if (apps.isEmpty() && home.drag.held == null) return
-    val drag = home.drag
-    val dockIcon = iconSize
-    val iconPx = with(LocalDensity.current) { dockIcon.toPx() }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 12.dp)
-            .framedPanel(PanelFace.copy(alpha = 0.92f))
-            .dropZone(drag, "dock" to cell) { b -> DropMark.Area(Space.Dock, b) }
-            .padding(vertical = 10.dp)
-            .height(dockIcon),
-    ) {
-        val at = At(LaunchFrom.DOCK)
-        val layout = home.file?.current
-        val slots = remember(apps, layout) { apps.map { layout?.slotOf(it.second.spot) as? Slot.Dock } }
-        apps.forEachIndexed { i, (app, spot) -> val slot = slots[i] ?: return@forEachIndexed; key(slot.key) {
-            // Equal cells, so the space between icons belongs to one of them.
-            Box(
-                Modifier.weight(1f)
-                    // Keyed by cell too: every `dock` block draws the dock, and neighbours stay composed.
-                    .dropZone(drag, Triple("dock", cell, slot.key)) { b -> DropMark.Item(slot, b, b.top, iconPx) }
-                    .dragSource(drag, Triple("dock", cell, slot.key)) { b -> Source(b, slot, 0) }
-                    .animatePlacement(drag)
-                    .alpha(if (drag.hides(spot.spot)) 0f else 1f),
-                contentAlignment = Alignment.Center,
-            ) {
-                val icon = remember { IconSpot() }
-                WithAppMenu(app, at, home, spot, icon) { menu ->
-                    Box {
-                        AppIcon(
-                            app, dockIcon,
-                            Modifier.iconSpot(icon).semantics { contentDescription = app.label }
-                                .combinedClickable(interactionSource = null, indication = PressScale.Tile, onLongClickLabel = "Menu", onLongClick = menu) { if (!drag.editing) home.actions.open(app, at, icon) },
-                        )
-                        if (app.dotKey in LocalDots.current) Dot()
-                    }
-                }
-            }
-        } }
-    }
 }
 
 /**
@@ -1693,12 +1625,12 @@ private fun SettleItem(s: Settle, drag: DragState, layout: Layout?, progress: ()
     // The tile that is at [Settle.to] in the layout drawn, by what it is (4's review item (a)).
     val slot = remember(s, layout) { s.to?.let { layout?.slotOf(it) } }
     fun target(): Offset? {
-        val to = s.to ?: return null
+        if (s.to == null) return null
         if (s.kind == Settle.Kind.FADE || slot == null) return null
         val src = drag.sources.values.firstOrNull { it.slot == slot && it.layer != 2 && !it.box.empty && it.box.centerX in 0f..width.toFloat() } ?: return null
         val b = src.box
-        // The dock's icons are centred in their cells; a tile's sits 4 dp down.
-        return Offset(b.centerX, if (to is Spot.Dock) (b.top + b.bottom) / 2 else b.top + iconTop + half)
+        // A tile's icon sits 4 dp down.
+        return Offset(b.centerX, b.top + iconTop + half)
     }
     Box(Modifier.fillMaxSize().onSizeChanged { width = it.width }) {
         Box(

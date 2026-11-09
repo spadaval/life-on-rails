@@ -13,7 +13,6 @@ import org.json.JSONObject
 /** Where on the launcher an app was opened from: the `from` of a `kind: "launch"` observation. */
 enum class LaunchFrom(val wire: String) {
     HOME("home"),
-    DOCK("dock"),
     FOLDER("folder"),
     /** The drawer with nothing typed. */
     DRAWER("drawer"),

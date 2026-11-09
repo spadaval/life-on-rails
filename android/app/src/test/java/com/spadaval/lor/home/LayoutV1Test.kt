@@ -11,7 +11,8 @@ import java.time.Instant
 
 /**
  * A version 1 file is read as the default grid, and the phone's next write is version 2
- * (lor-euec). The fixtures are the version 1 files the tests used before version 2.
+ * (lor-euec). The fixtures are the version 1 files the tests used before version 2. A layout's
+ * `dock` apps join the end of home, as home has no dock (lor-bdus).
  */
 class LayoutV1Test {
     @get:Rule
@@ -69,17 +70,15 @@ class LayoutV1Test {
     private fun expected(
         name: String,
         home: List<LayoutItem>,
-        dock: List<AppRef> = emptyList(),
         pages: List<List<LayoutItem>> = emptyList(),
         expires: Instant? = null,
     ) = Layout(
         name,
         listOf(
             Panel.T3(Cell(0, 0)),
-            Panel.Stack(Cell(1, 0), listOf(StackBlock.Clock, StackBlock.Apps(home), StackBlock.Dock)),
-        ) + pages.mapIndexed { i, items -> Panel.Stack(Cell(2 + i, 0), listOf(StackBlock.Apps(items), StackBlock.Dock)) } +
+            Panel.Stack(Cell(1, 0), listOf(StackBlock.Clock, StackBlock.Apps(home))),
+        ) + pages.mapIndexed { i, items -> Panel.Stack(Cell(2 + i, 0), listOf(StackBlock.Apps(items))) } +
             Panel.Drawer(Cell(1, 1)),
-        dock,
         Start(Cell(1, 0)),
         expires,
     )
@@ -89,8 +88,11 @@ class LayoutV1Test {
         val dev = Folder("Dev", listOf(ref("com.github.android"), ref("org.example/.Term")), "You open these together.", pinned = true)
         assertEquals(
             LayoutFile("trip", listOf(
-                expected("default", listOf(ref("com.whatsapp"), ref("com.android.chrome/com.google.android.apps.chrome.Main"), dev),
-                    listOf(ref("com.google.android.dialer"), ref("com.google.android.apps.messaging"))),
+                // The dock's two apps, after home's.
+                expected("default", listOf(
+                    ref("com.whatsapp"), ref("com.android.chrome/com.google.android.apps.chrome.Main"), dev,
+                    ref("com.google.android.dialer"), ref("com.google.android.apps.messaging"),
+                )),
                 expected("trip", listOf(ref("com.ubercab")), expires = Instant.parse("2026-11-18T08:00:00Z")),
             )),
             LayoutFile.parse(full),
@@ -103,8 +105,10 @@ class LayoutV1Test {
                         ref("com.whatsapp"),
                         Folder("Dev", listOf(ref("com.github.android"), ref("org.example/.Term")), "Together."),
                         Folder("Solo", listOf(ref("com.github.android"))),
-                    ), listOf(ref("com.google.android.dialer")), expires = Instant.parse("2026-11-18T00:00:00Z")),
-                    expected("trip", listOf(ref("com.whatsapp"), Folder("Dev", listOf(ref("com.whatsapp"), ref("a.b")))), listOf(ref("com.whatsapp"))),
+                        ref("com.google.android.dialer"),
+                    ), expires = Instant.parse("2026-11-18T00:00:00Z")),
+                    // Its dock's one app is on home already, so it isn't added again.
+                    expected("trip", listOf(ref("com.whatsapp"), Folder("Dev", listOf(ref("com.whatsapp"), ref("a.b"))))),
                 ),
                 hidden = listOf(ref("com.x")),
                 drawer = Drawer(DrawerView.AZ, keyboard = true),
@@ -122,7 +126,7 @@ class LayoutV1Test {
         assertEquals(LayoutFile("default", listOf(expected("default", listOf(ref("com.whatsapp"), ref("com.android.chrome/.Main"))))), LayoutFile.parse(hand))
         assertEquals(LayoutFile("a", listOf(expected("a", emptyList()))), LayoutFile.parse(empty))
         // Layout.grid, which the first run's default uses, makes the same grid.
-        assertEquals(expected("a", listOf(ref("a.a")), listOf(ref("d.d")), listOf(listOf(ref("b.b")))), Layout.grid("a", listOf(ref("a.a")), listOf(ref("d.d")), listOf(listOf(ref("b.b")))))
+        assertEquals(expected("a", listOf(ref("a.a")), listOf(listOf(ref("b.b")))), Layout.grid("a", listOf(ref("a.a")), listOf(listOf(ref("b.b")))))
     }
 
     @Test
@@ -131,7 +135,7 @@ class LayoutV1Test {
             val f = LayoutFile.parse(text)
             val json = f.toJson()
             assertTrue(json.contains("\"version\": 2"))
-            assertFalse("no version 1 field is written", Regex("\"(home|pages)\"").containsMatchIn(json))
+            assertFalse("no version 1 field is written", Regex("\"(home|pages|dock)\"").containsMatchIn(json))
             assertFalse("no wide is written: every panel has its type's default", json.contains("\"wide\""))
             assertEquals(f, LayoutFile.parse(json))
         }
@@ -177,7 +181,7 @@ class LayoutV1Test {
         assertEquals(LayoutFile.parse(edits), read.layout)
         assertEquals("a read leaves the file as it is", edits, store.file.readText())
         assertEquals("the last good copy takes version 1 text", edits, store.good.readText())
-        val edited = store.edit { it.addToDock(AppId("org.example", "org.example.Main"), AppRef("org.example")) }.getOrThrow()
+        val edited = store.edit { it.addToHome(AppId("org.example", "org.example.Main"), AppRef("org.example")) }.getOrThrow()
         val text = store.file.readText()
         assertTrue(text.contains("\"version\": 2"))
         assertEquals(edited.layout, LayoutFile.parse(text))

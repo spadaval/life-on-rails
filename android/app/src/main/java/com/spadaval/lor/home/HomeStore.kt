@@ -499,10 +499,9 @@ class HomeStore(private val context: Context) {
     }
 
     /**
-     * The first run's layout, from the apps on this phone. The dock is the default dialer, SMS
-     * app, browser and camera, resolved from intents as Launcher3's default workspace does
-     * (`res/xml/default_workspace_*.xml`, Apache-2.0). Home holds a few common apps, then a
-     * Google folder with the rest of Google's.
+     * The first run's layout, from the apps on this phone ([LayoutFile.firstRun]): the default
+     * dialer, SMS app, browser and camera, resolved from intents as Launcher3's default workspace
+     * does (`res/xml/default_workspace_*.xml`, Apache-2.0), then a few common apps.
      */
     private fun defaultLayout(): LayoutFile {
         val pm = context.packageManager
@@ -511,25 +510,17 @@ class HomeStore(private val context: Context) {
             pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName
                 ?.takeIf { it != "android" }
                 ?: pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY).firstOrNull()?.activityInfo?.packageName
-        val dock = listOfNotNull(
+        val essentials = listOfNotNull(
             resolve(Intent(Intent.ACTION_DIAL)),
             Telephony.Sms.getDefaultSmsPackage(context),
             resolve(Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")).addCategory(Intent.CATEGORY_BROWSABLE)),
             resolve(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)),
-        ).distinct().filter { it in mine }
-        val home = COMMON.filter { it in mine && it !in dock }
-        val google = mine.filter { it.startsWith("com.google.") && it !in dock && it !in home }.sorted()
-        val items = home.map(::AppRef) + listOfNotNull(google.takeIf { it.isNotEmpty() }?.let { Folder("Google", it.map(::AppRef)) })
-        return LayoutFile("default", listOf(Layout.grid("default", items.take(LayoutFile.MAX_HOME), dock.map(::AppRef))))
+        )
+        return LayoutFile.firstRun(mine, essentials)
     }
 
     companion object {
         private const val TAG = "LorHome"
         const val SEARCH_TAG = "LorSearch"
-        private val COMMON = listOf(
-            "com.whatsapp", "com.google.android.gm", "com.google.android.calendar", "com.samsung.android.calendar",
-            "com.google.android.apps.maps", "com.google.android.apps.photos", "com.sec.android.gallery3d",
-            "com.spotify.music", "com.google.android.youtube", "com.spadaval.lor", "com.android.settings",
-        )
     }
 }

@@ -79,7 +79,7 @@ class WidgetTest {
         val twoStacks = """{"version": 2, "active": "a", "layouts": [{"name": "a", "start": {"narrow": [0, 0]}, "panels": [
             {"at": [0, 0], "type": "t3"},
             {"at": [1, 0], "type": "stack", "blocks": [{"type": "clock"}, ${w(42)}]},
-            {"at": [2, 0], "type": "stack", "blocks": [${w(42)}, {"type": "dock"}]}]}]}"""
+            {"at": [2, 0], "type": "stack", "blocks": [${w(42)}, {"type": "today"}]}]}]}"""
         assertEquals("layouts[0].panels[2].blocks[0].id: 42 is taken by panels[1].blocks[1]", error(twoStacks))
         assertEquals("layouts[0].panels[1].blocks[2].id: 7 is taken by panels[1].blocks[1]", error(second("${w(7)}, ${w(7)}")))
         // The same id in two layouts is two layouts' business, not an error.
@@ -91,17 +91,17 @@ class WidgetTest {
     @Test
     fun aStackHoldsSeveralWidgetsButOneOfEachOtherType() {
         fun w(id: Int) = """{"type": "widget", "id": $id, "provider": "a.b/.W", "height": 100}"""
-        val f = LayoutFile.parse(second("${w(1)}, ${w(2)}, {\"type\": \"apps\"}, ${w(3)}, {\"type\": \"dock\"}"))
+        val f = LayoutFile.parse(second("${w(1)}, ${w(2)}, {\"type\": \"apps\"}, ${w(3)}"))
         assertEquals(listOf(1, 2, 3), f.current.widgets.map { it.id })
         val at = "layouts[0].panels[1].blocks"
         assertEquals("$at[2]: a stack holds one \"clock\" block", error(second("""${w(1)}, {"type": "clock"}""")))
         assertEquals("$at[3]: a stack holds one \"apps\" block", error(second("""{"type": "apps"}, ${w(1)}, {"type": "apps"}""")))
-        assertEquals("$at[3]: a stack holds one \"dock\" block", error(second("""{"type": "dock"}, ${w(1)}, {"type": "dock"}""")))
+        assertEquals("$at[3]: a stack holds one \"today\" block", error(second("""{"type": "today"}, ${w(1)}, {"type": "today"}""")))
     }
 
     /** The default grid with two widgets in home's stack and one in the page to its right, as the phone writes it. */
     private val phone: LayoutFile by lazy {
-        val grid = Layout.grid("default", listOf(ref("com.whatsapp")), listOf(ref("com.android.chrome")), listOf(listOf(ref("org.example"))))
+        val grid = Layout.grid("default", listOf(ref("com.whatsapp")), listOf(listOf(ref("org.example"))))
         LayoutFile("default", listOf(grid))
             .addWidget(Layout.HOME, 42, clockProvider, 160)
             .addWidget(Layout.HOME, 43, "com.teslamotors.tesla/.widget.TeslaWidget", 220)
@@ -129,25 +129,23 @@ class WidgetTest {
     }
 
     @Test
-    fun addWidgetGoesBeforeTheAppsBlockElseTheDockElseLast() {
-        val grid = LayoutFile("a", listOf(Layout.grid("a", emptyList(), emptyList())))
+    fun addWidgetGoesBeforeTheAppsBlockElseLast() {
+        val grid = LayoutFile("a", listOf(Layout.grid("a", emptyList())))
         val f = grid.withCurrent(
             grid.current.copy(
                 panels = grid.current.panels +
-                    Panel.Stack(Cell(2, 0), listOf(StackBlock.Clock, StackBlock.Dock)) +
                     Panel.Stack(Cell(3, 0), listOf(StackBlock.Clock)),
             ),
         )
         val twice = f.addWidget(Layout.HOME, 1, "a.b/.W", 100).addWidget(Layout.HOME, 2, "a.b/.V", 120)
         assertEquals(
-            listOf(StackBlock.Clock, StackBlock.Widget(1, "a.b/a.b.W", 100), StackBlock.Widget(2, "a.b/a.b.V", 120), StackBlock.Apps(emptyList()), StackBlock.Dock),
+            listOf(StackBlock.Clock, StackBlock.Widget(1, "a.b/a.b.W", 100), StackBlock.Widget(2, "a.b/a.b.V", 120), StackBlock.Apps(emptyList())),
             blocks(twice, 1),
         )
-        assertEquals(listOf(StackBlock.Clock, StackBlock.Widget(3, "a.b/a.b.W", 100), StackBlock.Dock), blocks(f.addWidget(Cell(2, 0), 3, "a.b/.W", 100), 2))
         assertEquals(listOf(StackBlock.Clock, StackBlock.Widget(3, "a.b/a.b.W", 100)), blocks(f.addWidget(Cell(3, 0), 3, "a.b/.W", 100), 3))
         assertEquals(twice, LayoutFile.parse(twice.toJson()))
         // Refusals.
-        assertEquals("widget 2 is already on home", refused { twice.addWidget(Cell(2, 0), 2, "a.b/.W", 100) })
+        assertEquals("widget 2 is already on home", refused { twice.addWidget(Cell(3, 0), 2, "a.b/.W", 100) })
         assertEquals(HOME_CHANGED, refused { f.addWidget(Cell(0, 0), 3, "a.b/.W", 100) })
         assertEquals(HOME_CHANGED, refused { f.addWidget(Cell(5, 0), 3, "a.b/.W", 100) })
         assertEquals("\"com.tesla\" is not package/class", refused { f.addWidget(Layout.HOME, 3, "com.tesla", 100) })
@@ -167,7 +165,7 @@ class WidgetTest {
         val alone = phone.withCurrent(phone.current.copy(panels = phone.current.panels + Panel.Stack(Cell(3, 0), listOf(StackBlock.Widget(9, "a.b/a.b.W", 100)))))
         assertEquals(LAST_BLOCK, refused { alone.removeWidget(9) })
         // Only the active layout's widgets are on home.
-        val other = phone.copy(layouts = phone.layouts + Layout("b", listOf(Panel.Stack(Cell(0, 0), listOf(StackBlock.Widget(9, "a.b/a.b.W", 100), StackBlock.Dock))), emptyList(), Start(Cell(0, 0))))
+        val other = phone.copy(layouts = phone.layouts + Layout("b", listOf(Panel.Stack(Cell(0, 0), listOf(StackBlock.Widget(9, "a.b/a.b.W", 100)))), Start(Cell(0, 0))))
         assertEquals("widget 9 isn't on home", refused { other.removeWidget(9) })
     }
 
@@ -186,12 +184,12 @@ class WidgetTest {
 
     @Test
     fun theSweepDeletesOnlyIdsNoLayoutOfAnyParsedFileNames() {
-        val b = Layout("b", listOf(Panel.Stack(Cell(0, 0), listOf(StackBlock.Widget(50, "a.b/a.b.W", 100)))), emptyList(), Start(Cell(0, 0)))
+        val b = Layout("b", listOf(Panel.Stack(Cell(0, 0), listOf(StackBlock.Widget(50, "a.b/a.b.W", 100)))), Start(Cell(0, 0)))
         val file = phone.copy(layouts = phone.layouts + b)
         // 42, 43, 44 in the active layout; 50 in layout b, which isn't active.
         assertEquals(listOf(7, 8), widgetIdsToDelete(listOf(7, 42, 43, 44, 50, 8), listOf(file)))
         // An id only layout.good.json names is kept.
-        val good = file.copy(layouts = listOf(Layout("default", listOf(Panel.Stack(Cell(0, 0), listOf(StackBlock.Widget(7, "a.b/a.b.W", 100)))), emptyList(), Start(Cell(0, 0)))))
+        val good = file.copy(layouts = listOf(Layout("default", listOf(Panel.Stack(Cell(0, 0), listOf(StackBlock.Widget(7, "a.b/a.b.W", 100)))), Start(Cell(0, 0)))))
         assertEquals(listOf(8), widgetIdsToDelete(listOf(7, 42, 8), listOf(file, good)))
         // With no parsed file, nothing is deleted.
         assertEquals(emptyList<Int>(), widgetIdsToDelete(listOf(7, 42, 8), emptyList()))

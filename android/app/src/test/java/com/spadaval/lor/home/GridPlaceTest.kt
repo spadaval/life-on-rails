@@ -13,7 +13,7 @@ class GridPlaceTest {
 
     /** The default grid with two extra pages, standing on [at]. */
     private fun place(at: Cell) = GridPlace().apply {
-        panels = Layout.grid("d", emptyList(), emptyList(), listOf(emptyList(), emptyList())).panels
+        panels = Layout.grid("d", emptyList(), listOf(emptyList(), emptyList())).panels
         goTo(at, animate = false)
     }
 
@@ -59,7 +59,7 @@ class GridPlaceTest {
     /** The default grid with [pages] extra pages, halves paired, standing on [at]. */
     private fun inner(pages: Int, at: Cell = Cell(1, 0)) = GridPlace().apply {
         pair(true)
-        edited(Layout.grid("d", emptyList(), emptyList(), List(pages) { emptyList() }).panels, Layout.HOME)
+        edited(Layout.grid("d", emptyList(), List(pages) { emptyList() }).panels, Layout.HOME)
         goTo(at, animate = false)
     }
 
@@ -150,14 +150,14 @@ class GridPlaceTest {
         // a move right finds nothing past it rather than the row's first screen.
         val g = inner(0)
         assertEquals(InnerScreen(Cell(1, 0)), g.inner.screen)
-        g.edited(Layout.grid("d", emptyList(), emptyList(), listOf(emptyList())).panels, Layout.HOME)
+        g.edited(Layout.grid("d", emptyList(), listOf(emptyList())).panels, Layout.HOME)
         assertEquals(InnerPlace(InnerScreen(Cell(1, 0), Cell(2, 0))), g.inner)
         assertNull(g.nextMove(Way.RIGHT))
         assertEquals(Cell(0, 0), g.next(Way.LEFT))
         // Standing on page 4 with it the focus, page 4 removed: home stands on page 3's screen, no focus.
         val p = inner(3)
         p.goTo(Cell(4, 0), animate = false, focus = Cell(4, 0))
-        p.edited(Layout.grid("d", emptyList(), emptyList(), List(2) { emptyList() }).panels, Layout.HOME)
+        p.edited(Layout.grid("d", emptyList(), List(2) { emptyList() }).panels, Layout.HOME)
         assertEquals(InnerPlace(InnerScreen(Cell(3, 0))), p.inner)
     }
 
@@ -178,7 +178,7 @@ class GridPlaceTest {
         // lor-aow8: picking up an app adds an empty page after the start row's last; it is its own
         // screen, so a lone half beside it stays full and a pair keeps its focus.
         for (pages in 0..3) {
-            val layout = Layout.grid("d", emptyList(), emptyList(), List(pages) { emptyList() })
+            val layout = Layout.grid("d", emptyList(), List(pages) { emptyList() })
             val held = heldPanel(layout)!!
             assertEquals(Wide.FULL, held.wide)
             val last = Cell(1 + pages, 0)
@@ -215,7 +215,7 @@ class GridPlaceTest {
     fun aPairReachedBySwipeAndUntouchedFoldsToItsLeft() {
         // Unfolded from page 1, then a swipe to pages 2 and 3 and back: no half was touched, so the left.
         val g = GridPlace().apply {
-            edited(Layout.grid("d", emptyList(), emptyList(), List(3) { emptyList() }).panels, Layout.HOME)
+            edited(Layout.grid("d", emptyList(), List(3) { emptyList() }).panels, Layout.HOME)
             goTo(Cell(2, 0), animate = false)
         }
         g.pair(true)

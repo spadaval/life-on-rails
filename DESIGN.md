@@ -188,7 +188,7 @@ The launcher on the phone draws some things straight on Sumeet's wallpaper: app 
 - **Dark ink**, when Android says the wallpaper supports dark text (`WallpaperColors.HINT_SUPPORTS_DARK_TEXT`): Deep Space for text and asides alike, no shadow. The darkest wallpaper with that hint is about `#858585`, where Deep Space reads at about 5.3:1 and a grey aside wouldn't.
 - The hint describes the wallpaper as a whole, so a light patch on a dark wallpaper (or a dark one on a light wallpaper) is not guaranteed to read; the shadow carries light ink there.
 - The system bar icons follow the same choice on home's pages: dark over a light wallpaper, light on the agent page, the drawer and an open folder.
-- Everything LoR draws as a surface (the drawer, the dock's panel, folders, cards, menus, settings) stays dark on any wallpaper.
+- Everything LoR draws as a surface (the drawer, folders, cards, menus, settings) stays dark on any wallpaper.
 - The agent page sits on a veil of Deep Space at 92% over the wallpaper, enough for Far Dust to read at 4.5:1 even over white, so it doesn't follow the wallpaper.
 
 ## Typography

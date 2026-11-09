@@ -338,7 +338,7 @@ private fun LookRows(look: HomeLook, set: (String, (HomeLook) -> HomeLook) -> Un
         Choices("Label size", "In sp", HomeLook.LABEL_SIZES.toList(), look.labelSize) {
             set("Labels are $it sp.") { l -> l.copy(labelSize = it) }
         }
-        Choices("Icon size", "In dp, on home, in the dock, folders and the drawer", HomeLook.ICON_SIZES.step(4).toList(), look.iconSize) {
+        Choices("Icon size", "In dp, on home, in folders and the drawer", HomeLook.ICON_SIZES.step(4).toList(), look.iconSize) {
             set("Icons are $it dp.") { l -> l.copy(iconSize = it) }
         }
         Options("Header", "Over home's first page; a tap opens the calendar", HomeLook.Header.entries.map { it.title }, look.header.ordinal) {
