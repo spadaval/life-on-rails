@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "The drawer is tabs from drawer.tabs, with search behind a button"
-updated_at: "2026-11-09T04:40:33.490158619+00:00"
+updated_at: "2026-11-09T05:27:54.637119042+00:00"
 ---
 
 ## Goal
@@ -53,6 +53,7 @@ Mission lor-5qkq; the strategy's Shape says what tabs are. Search's engine (`Sea
 ## Notes
 
 - 2026-11-08 [note] Handoff (implementer, claude-opus-5-5): implemented on t3/drawer-tabs-floating-search, code 930520d and records 7bc57c0. Boat's assembleDebug testDebugUnitTest passes: 405 tests, 0 failures. Emulator receipts lor-59ju, lor-zw30, lor-jyrq, lor-3j1z, lor-sh9o, lor-mz40. Review requested but not yet done. Open items are in the Report.
+- 2026-11-09 [observation] Correction to the log receipts lor-e930 and lor-39qr (review lor-6fv0): they say no error lines, but both logcats hold ConnectException lines and E/FrameTracker timeouts. The ConnectException lines are the launcher's LoR reads failing because no LoR server was reachable: these checks ran on boat's T3_Phone_API35, which can't reach the test server on this host (10.0.2.2:3857 is the boat VM itself), and the drawer's tabs, search and Move to tab read no server. The FrameTracker lines are Android's jank tracker timing out on the slow emulator. So there is no server log for these runs, and none applies: the verify skill asks for the server's log only for API and web surfaces, and AGENTS.md's launcher evidence is the agent-device screenshots and logs output, which are attached. No crash and no app exception besides the absent server.
 
 ## Report
 
