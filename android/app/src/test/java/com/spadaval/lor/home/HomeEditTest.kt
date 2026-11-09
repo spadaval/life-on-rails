@@ -356,4 +356,46 @@ class HomeEditTest {
         // An app on home itself still refuses.
         assertEquals("it's already on home", refused { f.drop(From.Drawer(app("a.a"), ref("a.a")), Target.AtEnd(Place.InApps(page(0)))) })
     }
+
+    @Test
+    fun aDrawerDragPreviewedOverHomeKeepsTheFolderUnlessItEndsOnHome() {
+        // lor-83uq's review, R1: as Held.step and dropHeld do it. A step over home takes y.y out of Google
+        // in the working copy; the drop then starts from where the step put it.
+        val f = file(listOf(ref("a.a"), Folder("Google", listOf(ref("g.g"), ref("y.y")))), dock = listOf(ref("d.d")))
+        val drawer = From.Drawer(app("y.y"), ref("y.y"))
+        val step = f.drop(drawer, Target.AtEnd(Place.InApps(page(0))), strip = false)
+        assertEquals(listOf(listOf("a.a", "[Google: g.g]", "y.y")), step.file.pages)
+        val held = From.At(step.at!!, step.file.itemAt(step.at!!)!!)
+        fun end(to: Target): Dropped {
+            val d = step.file.drop(held, to, strip = false)
+            return drawerDragResult(f, d.file, drawer, d.at)
+        }
+        // Then Remove: nothing changes, as a drawer app dropped on Remove never did.
+        val removed = end(Target.Remove)
+        assertSame(f, removed.file)
+        assertNull(removed.at)
+        // Then the dock: the same as a drop straight from the drawer into the dock.
+        val docked = end(Target.AtEnd(Place.Dock))
+        assertEquals(f.drop(drawer, Target.AtEnd(Place.Dock), strip = false).file, docked.file)
+        assertEquals(listOf(listOf("a.a", "[Google: g.g, y.y]")), docked.file.pages)
+        assertEquals(listOf(ref("d.d"), ref("y.y")), docked.file.current.dock)
+        assertEquals(Spot.Dock(1), docked.at)
+        val dockedFirst = end(Target.Before(Spot.Dock(0)))
+        assertEquals(listOf(ref("y.y"), ref("d.d")), dockedFirst.file.current.dock)
+        // Then home: out of the folder, where it landed.
+        val home = end(Target.Before(Spot.Apps(page(0), 0)))
+        assertEquals(listOf(listOf("y.y", "a.a", "[Google: g.g]")), home.file.pages)
+        assertEquals(Spot.Apps(page(0), 0), home.at)
+        // A solo folder comes back whole after a preview and Remove.
+        val solo = file(listOf(Folder("Solo", listOf(ref("y.y"))), ref("a.a")))
+        val soloStep = solo.drop(drawer, Target.AtEnd(Place.InApps(page(0))), strip = false)
+        assertEquals(listOf(listOf("a.a", "y.y")), soloStep.file.pages)
+        val gone = soloStep.file.drop(From.At(soloStep.at!!, ref("y.y")), Target.Remove, strip = false)
+        assertSame(solo, drawerDragResult(solo, gone.file, drawer, gone.at).file)
+        // A drawer app in no folder keeps the working copy's result.
+        val plain = file(listOf(ref("a.a")))
+        val z = From.Drawer(app("z.z"), ref("z.z"))
+        val w = plain.drop(z, Target.AtEnd(Place.Dock), strip = false)
+        assertSame(w.file, drawerDragResult(plain, w.file, z, w.at).file)
+    }
 }

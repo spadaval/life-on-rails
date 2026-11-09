@@ -58,7 +58,11 @@ Every Done when line holds. The emulator checks ran on boat's `T3_Phone_API35`, 
 - `LorMotion`'s line now also names the move's size in dp, so a release's travel can be read from the log.
 - With the app in two folders, Add to home takes it out of the first, the folder `placesOf` names.
 
+### Review fixes
+
+- R1 (lor-kh3g): a drawer drag that a step over home took out of its folder, then ended on Remove or in the dock, lost the folder entry. `drawerDragResult` (`HomeEdit.kt`), called from `dropHeld`, now rebuilds such a drag from the file it began on, so the folder keeps the app; only a drag that ends on home takes it out. `HomeEditTest.aDrawerDragPreviewedOverHomeKeepsTheFolderUnlessItEndsOnHome` steps over home as `Held.step` does, then ends on Remove (the file unchanged), in the dock (equal to a direct drawer-to-dock drop), and on home (out of the folder), and checks a solo folder coming back whole. The emulator checks (Add to home from the menu, and swipes) don't touch this path, so they weren't rerun.
+- R2 (lor-c4ap): this Report's Open items no longer says the emulator checks are undone; they were done in receipts lor-rgfe and lor-qbxn.
+
 ### Open items
 
-- Done when lines 2 and 4 (the emulator checks) are not done. The APK from this branch is installed on `T3_Phone_API35` (`verify-lor install`), but the device was held by agent-device session `t3-96ff96c08099e0cc482de91b`, idle since 13:52. `open --wait 30000` timed out, and the rules say not to close or reuse another session. Once that session is released, run: a swipe up of about 130 dp at moderate speed and one of 60 dp slowly, each with a screenshot and its `LorMotion` line; and Add to home from the drawer menu on Settings, which is in the default layout's Tools folder.
-- The installed APK may have replaced whatever build that other session was checking.
+- None from this work. While the local emulator was held by the stale session, `verify-lor install` put this branch's APK on it, which may have replaced the build that session had been checking.

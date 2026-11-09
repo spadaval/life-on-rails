@@ -128,6 +128,21 @@ fun LayoutFile.folderSpotOf(app: AppId, installed: List<AppId> = emptyList()): S
 }
 
 /**
+ * What a drag of [drawer]'s app from the drawer writes, [work] being the file once it ended at [at]
+ * (null: removed) and [original] the file the drag began on. A step over home takes an app in a
+ * folder out of it, so when the drag ends off home (on Remove, or in the dock) the result is made
+ * from [original] instead, and the folder keeps the app (lor-83uq's review, R1).
+ */
+fun drawerDragResult(original: LayoutFile, work: LayoutFile, drawer: From.Drawer, at: Spot?, installed: List<AppId> = emptyList()): Dropped {
+    if (original.folderSpotOf(drawer.app, installed) == null) return Dropped(work, at)
+    return when (at) {
+        null -> Dropped(original, null)
+        is Spot.Dock -> original.drop(drawer, Target.Before(at), installed, strip = false)
+        else -> Dropped(work, at)
+    }
+}
+
+/**
  * Adds [ref] (written for [app]) to the end of the first page ([Layout.pages]) with room; when
  * every page is full, to a new panel while the start row has room ([Layout.roomForPanel]). An app
  * in a folder on home moves out of it, its ref as the folder wrote it, and a folder that leaves
