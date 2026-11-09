@@ -25,7 +25,7 @@ updated_at: "2026-11-08T03:36:23.318563681+00:00"
 
 ## Goal
 
-Home is edited on the web page: the minimap's panel edits (the phone's own `Minimap.kt`, moved into the shared module by lor-xdoi), a stack's blocks, and dragging apps, folders and the dock on the drawn home, with the same edits, refusals and Undo as the phone (the shared `GridEdit` and drag code). Save writes a version with a note; the phone takes it on its next resume.
+Home is edited on the web page: the minimap's panel edits (the phone's own `Minimap.kt`, moved into the shared module by lor-xdoi), a stack's blocks, and dragging apps and folders on the drawn home, with the same edits, refusals and Undo as the phone (the shared `GridEdit` and drag code). Save writes a version with a note; the phone takes it on its next resume.
 
 ## Done when
 

@@ -21,7 +21,7 @@ updated_at: "2026-11-08T17:57:12.134104993+00:00"
 
 ## Outcome
 
-Home's layout lives in LoR: every version from the phone, an agent or the web is one history, and a new version reaches the phone on home's next resume, with Undo. A page in the dashboard draws home as the phone does, with its icons, wallpaper, font and widget snapshots, on both of the Fold's screens and at the phone's real size once calibrated against the phone itself. Panels, blocks, apps, folders and the dock are edited there with the phone's own edits, because the web runs home's Compose code through Kotlin Multiplatform (`wasmJs`). The strategy is `docs/missions/web-layout-editor/strategy.md`.
+Home's layout lives in LoR: every version from the phone, an agent or the web is one history, and a new version reaches the phone on home's next resume, with Undo. A page in the dashboard draws home as the phone does, with its icons, wallpaper, font and widget snapshots, on both of the Fold's screens and at the phone's real size once calibrated against the phone itself. Panels, blocks, apps and folders are edited there with the phone's own edits, because the web runs home's Compose code through Kotlin Multiplatform (`wasmJs`). The strategy is `docs/missions/web-layout-editor/strategy.md`.
 
 ## Background
 

@@ -25,7 +25,7 @@ With themed icons on, every app on home is drawn in one style, not only the apps
 
 Provisional:
 - An app with no `monochrome` layer and no icon-pack entry gets a generated themed icon in LoR's colours (Dust on Panel Face, as 6.5's themed icons), made off the main thread and kept in the icon cache. `iconSource` gains the case, with JVM tests.
-- On `T3_Phone_API35` with themed icons on: home, the dock, a folder and the drawer screenshotted, with no full-colour icon left among the apps shown. In the screenshots, Settings, Camera, Chrome, Files and at least four sideloaded third-party apps can each be told apart from the others; any that can't are listed on this item with the method's other failure cases.
+- On `T3_Phone_API35` with themed icons on: home, a folder and the drawer screenshotted, with no full-colour icon left among the apps shown. In the screenshots, Settings, Camera, Chrome, Files and at least four sideloaded third-party apps can each be told apart from the others; any that can't are listed on this item with the method's other failure cases.
 - Turning themed icons off brings back every app's own icon; the setting's line in Home settings says it now covers every app.
 
 ## Unknowns

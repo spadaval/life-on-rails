@@ -1,6 +1,6 @@
 ---
 status: draft
-last_changed: "2026-11-08: approved by Sumeet; one wallpaper on both screens, All files access granted on the phone; Panels landed: the split no longer waits on Panels branches, Kotlin 2.3.20 is an item of its own (lor-3hnk), the minimap joins the shared module, the spike is committed on `spike/kmp-browser`; the spike answered (lor-llmf): Kotlin 2.3.20, Animated text (lor-mc37), the bundle built in GitHub Actions (lor-kbog); 2026-11-07: live panels compared by frame, and what the web draws in them (review lor-3fxs); fixes from the planning review (Saira not uploaded, the code inventory, AGP 9, the spec's Stack, the split after the sync); created from Sumeet's direction in the thread about a cloud layout editor"
+last_changed: "2026-11-08: no dock and drawer tabs instead of sections, from mission lor-5qkq (Sumeet's direction); approved by Sumeet; one wallpaper on both screens, All files access granted on the phone; Panels landed: the split no longer waits on Panels branches, Kotlin 2.3.20 is an item of its own (lor-3hnk), the minimap joins the shared module, the spike is committed on `spike/kmp-browser`; the spike answered (lor-llmf): Kotlin 2.3.20, Animated text (lor-mc37), the bundle built in GitHub Actions (lor-kbog); 2026-11-07: live panels compared by frame, and what the web draws in them (review lor-3fxs); fixes from the planning review (Saira not uploaded, the code inventory, AGP 9, the spec's Stack, the split after the sync); created from Sumeet's direction in the thread about a cloud layout editor"
 ---
 
 # Why
@@ -12,7 +12,7 @@ Home is now a grid of panels in `layout.json`, but the only way to arrange it is
 - **Home's layout lives in LoR.** Every version, from the phone, an agent or the web, is one row in one history, and any version can be reverted. A new version reaches the phone the next time home comes to the front, and the phone says what changed, with Undo.
 - **A page in the dashboard draws home as the phone does,** each cell of the grid, on the cover screen and the inner screen, with the phone's icons (its icon pack and themed icons), its wallpaper, its fonts (Saira, which ships in the app) and its widgets as they last looked.
 - **At real size.** Once calibrated by holding the phone against the monitor, the drawn phone is as big as the real one.
-- **Home is edited there:** panels, blocks, apps, folders and the dock, with the same edits and the same refusals as the phone's minimap and drags, saved as a new version.
+- **Home is edited there:** panels, blocks, apps and folders, with the same edits and the same refusals as the phone's minimap and drags, saved as a new version.
 
 Worth shipping on its own: the sync with a plain history page (the agent can edit home again, and a version can be reverted from the web), then the real-size view, before editing on the web.
 
@@ -35,11 +35,11 @@ Worth shipping on its own: the sync with a plain history page (the agent can edi
 
 # Scope
 
-In: bringing `agent-layout`'s sync and `lor phone layout` up to schema version 2 and onto `main`; a history page in the dashboard (versions per device, view, revert, and editing a version as JSON); the shared Kotlin module and the Android app on it; the wasm build and how it reaches `pnpm build`, with the spec's Stack line updated for it; the phone's uploads listed under Shape and their storage in LoR; the real-size view with calibration, both Fold screens and folding; editing panels, blocks, apps, folders and the dock on the web.
+In: bringing `agent-layout`'s sync and `lor phone layout` up to schema version 2 and onto `main`; a history page in the dashboard (versions per device, view, revert, and editing a version as JSON); the shared Kotlin module and the Android app on it; the wasm build and how it reaches `pnpm build`, with the spec's Stack line updated for it; the phone's uploads listed under Shape and their storage in LoR; the real-size view with calibration, both Fold screens and folding; editing panels, blocks, apps and folders on the web (home has no dock after lor-5qkq).
 
 Out:
 - adding a widget from the web (binding a widget needs the phone's widget host and its permission dialog), though a placed widget can be moved or removed;
-- Home settings' look, hidden apps and drawer sections on the web (an agent or the phone sets them; later if missed);
+- Home settings' look, hidden apps and drawer tabs on the web (an agent or the phone sets them; later if missed);
 - named and temporary layouts, and agent-sorted folders (T3 Launcher's Increments 9 and 10, still later);
 - a live stream of the phone's screen.
 

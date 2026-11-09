@@ -17,7 +17,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "backlog"
 title: "A palette drop of Dock above another block is refused instead of adding it last"
-updated_at: "2026-11-08T07:28:25.432356627+00:00"
+updated_at: "2026-11-09T01:36:39.696003253+00:00"
 ---
 
 ## Goal
