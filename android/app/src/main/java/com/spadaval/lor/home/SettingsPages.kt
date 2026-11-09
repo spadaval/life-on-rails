@@ -48,7 +48,7 @@ data class SettingsPage(val title: String, val aliases: List<String>, val action
             SettingsPage("Cast", listOf("screen cast", "chromecast"), "android.settings.CAST_SETTINGS"),
             SettingsPage("VPN", emptyList(), "android.settings.VPN_SETTINGS"),
             SettingsPage("Usage access", emptyList(), "android.settings.USAGE_ACCESS_SETTINGS"),
-            SettingsPage("Home settings", listOf("launcher settings", "hidden apps", "drawer sections"), LOR_HOME),
+            SettingsPage("Home settings", listOf("launcher settings", "hidden apps", "drawer tabs"), LOR_HOME),
             SettingsPage("LoR app settings", listOf("life on rails"), LOR_APP),
         )
 

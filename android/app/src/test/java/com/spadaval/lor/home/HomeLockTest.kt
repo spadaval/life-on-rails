@@ -17,15 +17,15 @@ class HomeLockTest {
 
     @Test
     fun unlockedTheMenuIsAsBefore() {
-        assertEquals(listOf(AppEdit.REMOVE_FROM_HOME, AppEdit.MOVE_TO_SECTION, AppEdit.HIDE), appEdits(onHome, false))
-        assertEquals(listOf(AppEdit.REMOVE_FROM_FOLDER, AppEdit.ADD_TO_HOME, AppEdit.MOVE_TO_SECTION, AppEdit.HIDE), appEdits(inFolder, false))
-        assertEquals(listOf(AppEdit.ADD_TO_HOME, AppEdit.MOVE_TO_SECTION, AppEdit.HIDE), appEdits(nowhere, false))
+        assertEquals(listOf(AppEdit.REMOVE_FROM_HOME, AppEdit.MOVE_TO_TAB, AppEdit.HIDE), appEdits(onHome, false))
+        assertEquals(listOf(AppEdit.REMOVE_FROM_FOLDER, AppEdit.ADD_TO_HOME, AppEdit.MOVE_TO_TAB, AppEdit.HIDE), appEdits(inFolder, false))
+        assertEquals(listOf(AppEdit.ADD_TO_HOME, AppEdit.MOVE_TO_TAB, AppEdit.HIDE), appEdits(nowhere, false))
     }
 
     @Test
     fun lockedOnlyWhatTheStoreTakesShows() {
-        listOf(onHome, inFolder).forEach { assertEquals(listOf(AppEdit.MOVE_TO_SECTION), appEdits(it, true)) }
-        assertEquals(listOf(AppEdit.MOVE_TO_SECTION, AppEdit.HIDE), appEdits(nowhere, true))
+        listOf(onHome, inFolder).forEach { assertEquals(listOf(AppEdit.MOVE_TO_TAB), appEdits(it, true)) }
+        assertEquals(listOf(AppEdit.MOVE_TO_TAB, AppEdit.HIDE), appEdits(nowhere, true))
     }
 
     private val one = LayoutFile("default", listOf(Layout.grid("default", listOf(AppRef("com.whatsapp")))))

@@ -119,7 +119,8 @@ class LayoutTest {
         assertFalse(AppRef("a.b").overlaps(AppRef("a.b", "a.b.Main", work = true)))
         // Written and read back in every place a ref goes; a file without the prefix reads as before.
         val text = """{"version": 2, "active": "a", "hidden": ["work:h.h", "h.h"],
-            "drawer": {"sections": [{"name": "Work", "apps": ["work:s.s", "s.s"]}]},
+            "drawer": {"tabs": [{"name": "Quick dial", "icon": "bolt", "kind": "quick"},
+              {"name": "Work", "icon": "brief", "apps": ["work:s.s", "s.s"]}, {"name": "All", "icon": "all", "kind": "all"}]},
             "layouts": [{"name": "a", "start": {"narrow": [0, 0]}, "panels": [
             {"at": [0, 0], "type": "stack", "blocks": [{"type": "apps", "items": ["work:a.b/.Short", "a.b",
               {"folder": "F", "apps": ["work:c.c", "c.c"], "cover": "work:c.c"}]}]}]}]}"""

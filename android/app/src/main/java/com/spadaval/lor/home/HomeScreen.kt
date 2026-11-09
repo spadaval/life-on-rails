@@ -186,7 +186,7 @@ class HomeUi {
      * Where home is on the grid of panels and the move under way (lor-qdmy). A finger moves it;
      * otherwise [HomeScreen]'s [SettleGrid] finishes the move. The drawer is one of its cells.
      */
-    val grid = GridPlace().also { it.onLeftDrawer = { query = "" } }
+    val grid = GridPlace().also { it.onLeftDrawer = ::leaveDrawer }
 
     /** The blocks that take a vertical swipe while they can scroll (the drawer's list, the agent page). */
     val scrolls = GridScrolls()
@@ -239,6 +239,24 @@ class HomeUi {
      */
     var folder by mutableStateOf<OpenFolder?>(null)
     var query by mutableStateOf("")
+
+    /** The drawer's search button grown into its field, the tabs folded away (lor-iyc3). */
+    var searchOpen by mutableStateOf(false)
+
+    /** The drawer's tab on screen, by index into `drawer.tabs`. */
+    var tab by mutableIntStateOf(0)
+
+    /** Folds the drawer's search back into its button, the text gone. */
+    fun foldSearch() {
+        query = ""
+        searchOpen = false
+    }
+
+    /** What leaving the drawer resets: the search, and the tab, so the drawer opens on the first. */
+    fun leaveDrawer() {
+        foldSearch()
+        tab = 0
+    }
     var homePresses by mutableStateOf(0)
     /**
      * Home goes to its start after a screen-off (lor-ozj2), once composed with the screen it came
@@ -312,13 +330,13 @@ class HomeUi {
         resizing = null
         // Every floating view closes, as Launcher3's onNewIntent closes them (launcher polish 7.3).
         menu = null
-        query = ""
+        leaveDrawer()
         homePresses++
     }
 }
 
 /** What a back gesture will close (launcher polish 7.3). */
-private enum class Back { FOLDER, EDIT, DRAWER, PAGE }
+private enum class Back { FOLDER, EDIT, SEARCH, DRAWER, PAGE }
 
 /** How much smaller back draws the drawer or a folder at the gesture's end (Material's predictive back). */
 private const val BACK_SCALE = 0.1f
@@ -640,6 +658,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         val what = when {
             ui.folder != null -> Back.FOLDER
             drag.editing -> Back.EDIT
+            ui.drawer && ui.searchOpen -> Back.SEARCH
             ui.drawer -> Back.DRAWER
             else -> Back.PAGE
         }
@@ -654,7 +673,9 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         when (what) {
             Back.FOLDER -> ui.folder = null
             Back.EDIT -> drag.editing = false
-            Back.DRAWER -> { ui.closeDrawer(); ui.query = "" }
+            // Back folds the drawer's search first, the drawer staying open (lor-iyc3).
+            Back.SEARCH -> ui.foldSearch()
+            Back.DRAWER -> { ui.closeDrawer(); ui.leaveDrawer() }
             Back.PAGE -> grid.goTo(grid.start, animate = true)
         }
     }
@@ -1567,7 +1588,7 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
                 haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                 if (source.layer == 2) {
                     ui.closeDrawer()
-                    ui.query = ""
+                    ui.leaveDrawer()
                 }
                 break
             }

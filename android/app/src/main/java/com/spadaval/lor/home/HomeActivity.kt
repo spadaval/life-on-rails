@@ -437,11 +437,6 @@ class HomeActivity : ComponentActivity() {
             }
         }
 
-        override fun setView(view: DrawerView) {
-            ui.undo.message = null
-            lifecycleScope.launch { model.edit(undoable = false) { it.copy(drawer = it.drawer.copy(view = view)) } }
-        }
-
         override fun openSetting(page: SettingsPage, query: String) {
             if (page.lor) store.searched(query)
             when (page.action) {

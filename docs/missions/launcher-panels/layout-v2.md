@@ -11,7 +11,10 @@ Home's layout file. Version 2 makes each layout a sparse grid of panels, so home
   "version": 2,
   "active": "default",
   "hidden": ["com.example.game"],
-  "drawer": { "view": "sections", "sections": [{ "name": "Work", "category": "work", "apps": ["com.slack"] }] },
+  "drawer": { "tabs": [
+    { "name": "Quick dial", "icon": "bolt", "kind": "quick" },
+    { "name": "Work", "icon": "brief", "apps": ["com.slack", "work:com.microsoft.office.outlook"] },
+    { "name": "All", "icon": "all", "kind": "all" }] },
   "look": { "header": "clock" },
   "layouts": [
     { "name": "default",
@@ -41,11 +44,25 @@ Home's layout file. Version 2 makes each layout a sparse grid of panels, so home
 
 ### Top-level fields
 
-These keep version 1's meaning, as Launcher polish's Schema additions describe them: `hidden` (1.1), `drawer` (2.1, and `keyboard` from 5.5) and `look` (Increment 6, with `header` from 6.7). `layout.good.json` and `layout.json.broken` are not part of the schema (Launcher polish 3.1).
+These keep version 1's meaning, as Launcher polish's Schema additions describe them: `hidden` (1.1), `drawer`'s `keyboard` (5.5) and `look` (Increment 6, with `header` from 6.7). `drawer`'s `tabs` replaced its sections and view in lor-iyc3 ([The drawer's tabs](#the-drawers-tabs)). `layout.good.json` and `layout.json.broken` are not part of the schema (Launcher polish 3.1).
 
 `locked` (optional; a version 2 addition, lor-v692, decision lor-73li): the layout lock, `true` or `false`. Any other value is an error (`locked: must be true or false`); absent means false, and the phone writes it only when true. While it is `true`, the phone refuses any edit of its own that changes `active` or `layouts` ("home is locked; unlock it from the home menu") and writes nothing; edits to `hidden`, `drawer` and `look` alone are taken, and so is unlocking. Hide of an app on home changes `layouts`, so it is refused. It covers every layout. Undo isn't checked, so Undo after locking unlocks. An agent's or a hand edit of the file isn't stopped.
 
-The top-level `drawer` is the drawer's settings: its view and its sections. The `drawer` panel type is where the drawer sits in a layout's grid. They are different things; the panel draws the drawer that the settings describe.
+The top-level `drawer` is the drawer's settings: its tabs and `keyboard`. The `drawer` panel type is where the drawer sits in a layout's grid. They are different things; the panel draws the drawer that the settings describe.
+
+### The drawer's tabs
+
+`drawer.tabs` (optional; a version 2 addition, lor-iyc3) is the drawer's tabs in order, the floating bar's icons left to right. Each tab is an object with a `name` (non-empty; names unique ignoring case) and an `icon`, and either `apps` or `kind`, never both:
+
+- `{ "name", "icon", "kind": "quick" }`: quick dial. Exactly one, and it is first. Until quick dial's own content (lor-2imw) it shows the apps installed in the last three days (New).
+- `{ "name", "icon", "kind": "all" }`: All, every app A–Z with the letter rail. Exactly one, and it is last.
+- `{ "name", "icon", "apps": [...] }`: a list tab, between them. `apps` are refs as in an `apps` block (a package name means each of its launchable activities), shown in the list's order; a ref to an app that isn't installed shows nothing. An app no list names is in no list tab, but still in All, in quick dial's New while new, and among quick dial's ranked apps. Two refs that name one activity, in one tab or two, are an error: an app is in at most one list tab. A hidden app shows in no tab.
+
+At most 8 tabs. `icon` is one of `bolt`, `star`, `brief`, `chat`, `play`, `compass`, `wallet`, `all` (`TabIcon` in `Drawer.kt`, after the launcher-use mocks); any other non-empty name is kept, and the button draws the tab name's first letter. Without `tabs` the drawer has `{ "name": "Quick dial", "icon": "bolt", "kind": "quick" }` then `{ "name": "All", "icon": "all", "kind": "all" }`, and the phone writes `tabs` only when they differ from those two. Errors name their place: `drawer.tabs: needs exactly one "quick" tab, got 0`, `drawer.tabs[2]: the "all" tab must be last`, `drawer.tabs: at most 8 tabs, got 9`, `drawer.tabs[1].kind: must be "quick" or "all", got "list"`.
+
+A file's `drawer.sections` and `drawer.view` (Launcher polish 2.1, before lor-iyc3) are read and dropped, whatever they hold; the phone's next write leaves them out.
+
+The phone's edits: an app's menu has Move to tab…, which writes the app's ref into the chosen list tab and out of any other (a package ref in another tab, when the app is one of its activities, is replaced by the package's other activities, so they stay there). Home settings' Drawer tabs renames a tab, sets its icon, moves a list tab left or right between quick dial and All, deletes a list tab, and adds an empty list tab before All. A new folder made by dropping one app on another takes the name of the list tab both are in, else "Folder".
 
 ### A layout
 
@@ -75,7 +92,7 @@ A block is `{ "type": … }`.
 
 - `clock`: today's header: the time and date in the style `look.header` names (date, clock or none), the next event, the next alarm, and the weather (lor-sbth; lor-leh4 draws the last three). No other field.
 - `apps`: `"items": [item, …]` (optional; absent or empty means none), at most 24, in reading order. The block fills its grid row by row with the columns `look.grid` sets. An item is written as version 1's `home` items are:
-  - An app is a string: a package name (that package's launchable activity in its profile that comes first by label, in `Collator` order) or `package/activity` (`package/.Short` expands as `ComponentName.unflattenFromString` does). With `work:` in front (`work:com.microsoft.office.outlook`, `work:com.cisco.wx2.android/com.webex.teams.WebexLauncherActivity`) it names the app in the work profile, the one profile `LauncherApps.getProfiles()` gives besides the phone's own; without a prefix, the main profile's. An app and its work twin are two apps, so each can be on home, in a folder or hidden alone. `work:` is the only prefix: any other (`personal:com.x`) is an error naming its place. Everywhere an app goes takes the prefix: `apps` items, folders' `apps` and `cover`, `hidden` and `drawer.sections[].apps`; a widget's `provider` doesn't.
+  - An app is a string: a package name (that package's launchable activity in its profile that comes first by label, in `Collator` order) or `package/activity` (`package/.Short` expands as `ComponentName.unflattenFromString` does). With `work:` in front (`work:com.microsoft.office.outlook`, `work:com.cisco.wx2.android/com.webex.teams.WebexLauncherActivity`) it names the app in the work profile, the one profile `LauncherApps.getProfiles()` gives besides the phone's own; without a prefix, the main profile's. An app and its work twin are two apps, so each can be on home, in a folder or hidden alone. `work:` is the only prefix: any other (`personal:com.x`) is an error naming its place. Everywhere an app goes takes the prefix: `apps` items, folders' `apps` and `cover`, `hidden` and `drawer.tabs[].apps`; a widget's `provider` doesn't.
   - A folder has `folder` (its name) and `apps` (one or more apps; folders don't nest). Optional: `reason`, one line shown when it opens; `pinned` (default false), meaning Sumeet arranged it and an agent leaves it alone; and `cover`, one of the folder's `apps`, written as it is there, drawn as its tile (while that app isn't installed, the four-app preview shows; an edit that takes the app out of the folder drops `cover`).
 - `widget` (a version 2 addition, lor-sbth, decision lor-9wlx): an Android widget, `{ "type": "widget", "id": 42, "provider": "com.google.android.deskclock/com.android.alarmclock.DigitalAppWidgetProvider", "height": 160 }`. All three fields are required, and no other field is allowed.
   - `id`: the appWidgetId the phone's widget host bound, a whole number from 1. An `id` is used once in a layout; the error names both places (`layouts[0].panels[2].blocks[0].id: 42 is taken by panels[1].blocks[1]`).

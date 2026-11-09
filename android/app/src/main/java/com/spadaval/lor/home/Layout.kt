@@ -172,42 +172,47 @@ data class LayoutFile(
 
         private fun parseDrawer(v: Any): Drawer {
             if (v !is JSONObject) throw LayoutError("drawer: must be an object")
-            v.onlyKeys("drawer", "view", "sections", "keyboard")
-            val view = if (v.has("view")) {
-                val id = v.string("drawer", "view")
-                DrawerView.entries.firstOrNull { it.id == id }
-                    ?: throw LayoutError("drawer.view: must be one of ${DrawerView.entries.joinToString { it.id }}, got \"$id\"")
-            } else null
-            val sections = if (v.has("sections")) v.array("drawer", "sections").mapIndexed { i, s -> parseSection("drawer.sections[$i]", s) } else emptyList()
-            sections.groupBy { it.name.lowercase() }.filterValues { it.size > 1 }.values.firstOrNull()?.let {
-                throw LayoutError("drawer.sections: the name \"${it[0].name}\" is used twice")
-            }
-            sections.mapNotNull { it.category }.groupBy { it }.filterValues { it.size > 1 }.keys.firstOrNull()?.let {
-                throw LayoutError("drawer.sections: the category \"${it.id}\" is taken twice")
-            }
-            // Two refs may not name one activity, in one section or two.
-            val refs = sections.flatMap { s -> s.apps.map { s to it } }
-            refs.forEachIndexed { i, (s, a) ->
-                refs.drop(i + 1).firstOrNull { (_, b) -> a.overlaps(b) }?.let { (t, b) ->
-                    throw LayoutError("drawer.sections: \"$b\" in \"${t.name}\" names an app \"$a\" in \"${s.name}\" already names")
-                }
-            }
-            return Drawer(view, sections, keyboard = v.bool("drawer", "keyboard"))
+            // `view` and `sections` are an older drawer's (before lor-iyc3): read and dropped.
+            v.onlyKeys("drawer", "tabs", "keyboard", "view", "sections")
+            val tabs = if (v.has("tabs")) parseTabs(v.array("drawer", "tabs")) else Drawer.DEFAULT_TABS
+            return Drawer(tabs, keyboard = v.bool("drawer", "keyboard"))
         }
 
-        private fun parseSection(at: String, v: Any): DrawerSection {
+        private fun parseTabs(list: List<Any>): List<DrawerTab> {
+            if (list.size > Drawer.MAX_TABS) throw LayoutError("drawer.tabs: at most ${Drawer.MAX_TABS} tabs, got ${list.size}")
+            val tabs = list.mapIndexed { i, t -> parseTab("drawer.tabs[$i]", t) }
+            tabs.groupBy { it.name.lowercase() }.filterValues { it.size > 1 }.values.firstOrNull()?.let {
+                throw LayoutError("drawer.tabs: the name \"${it[0].name}\" is used twice")
+            }
+            for ((kind, place) in listOf(TabKind.QUICK to "first", TabKind.ALL to "last")) {
+                val at = tabs.indices.filter { tabs[it].kind == kind }
+                if (at.size != 1) throw LayoutError("drawer.tabs: needs exactly one \"${kind.id}\" tab, got ${at.size}")
+                val want = if (kind == TabKind.QUICK) 0 else tabs.lastIndex
+                if (at[0] != want) throw LayoutError("drawer.tabs[${at[0]}]: the \"${kind.id}\" tab must be $place")
+            }
+            // Two refs may not name one activity, in one tab or two.
+            val refs = tabs.flatMap { t -> t.apps.map { t to it } }
+            refs.forEachIndexed { i, (s, a) ->
+                refs.drop(i + 1).firstOrNull { (_, b) -> a.overlaps(b) }?.let { (t, b) ->
+                    throw LayoutError("drawer.tabs: \"$b\" in \"${t.name}\" names an app \"$a\" in \"${s.name}\" already names")
+                }
+            }
+            return tabs
+        }
+
+        private fun parseTab(at: String, v: Any): DrawerTab {
             if (v !is JSONObject) throw LayoutError("$at: must be an object")
-            v.onlyKeys(at, "name", "category", "apps", "hidden", "pinned", "reason")
-            val category = if (v.has("category")) {
-                val id = v.string(at, "category")
-                Category.of(id) ?: throw LayoutError("$at.category: must be one of ${Category.entries.joinToString { it.id }}, got \"$id\"")
-            } else null
-            val apps = if (v.has("apps")) v.array(at, "apps").mapIndexed { i, a -> parseRef("$at.apps[$i]", a) } else emptyList()
-            return DrawerSection(
-                v.string(at, "name"), category, apps,
-                hidden = v.bool(at, "hidden"), pinned = v.bool(at, "pinned"),
-                reason = if (v.has("reason")) v.string(at, "reason") else null,
-            )
+            v.onlyKeys(at, "name", "icon", "apps", "kind")
+            val name = v.string(at, "name")
+            val icon = v.string(at, "icon")
+            if (v.has("kind") == v.has("apps")) throw LayoutError("$at: needs \"apps\" (a list tab) or \"kind\" (\"quick\" or \"all\"), not both")
+            if (v.has("kind")) {
+                val id = v.string(at, "kind")
+                val kind = TabKind.entries.firstOrNull { it.id == id && it != TabKind.LIST }
+                    ?: throw LayoutError("$at.kind: must be \"quick\" or \"all\", got \"$id\"")
+                return DrawerTab(name, icon, kind)
+            }
+            return DrawerTab(name, icon, apps = v.array(at, "apps").mapIndexed { i, a -> parseRef("$at.apps[$i]", a) })
         }
 
         private fun JSONObject.bool(at: String, key: String): Boolean =
@@ -771,46 +776,49 @@ class LayoutError(message: String) : Exception(message)
 /** Why [LayoutStore.edit] refuses an edit to home while the file is locked (decision lor-73li). */
 const val LOCKED = "home is locked; unlock it from the home menu"
 
-/** How the drawer opens: on its sections, A–Z, or by launch count. */
-enum class DrawerView(val id: String) { SECTIONS("sections"), AZ("az"), USED("used") }
-
 /**
- * The drawer's part of the file (launcher polish 2.1). [view] is the last view chosen, null until
- * one is. [sections] are the sections the file holds, in order; see [allSections] and [sort].
+ * The drawer's part of the file: its [tabs] in order (lor-iyc3), quick dial first and All last,
+ * the list tabs between; see [DrawerTab].
  */
 data class Drawer(
-    val view: DrawerView? = null,
-    val sections: List<DrawerSection> = emptyList(),
-    /** Open the drawer with the search field focused and the keyboard up (launcher polish 5.5); written only when true. */
+    val tabs: List<DrawerTab> = DEFAULT_TABS,
+    /** Open the drawer with the search field grown and the keyboard up (launcher polish 5.5); written only when true. */
     val keyboard: Boolean = false,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
-        if (view != null) put("view", view.id)
-        if (sections.isNotEmpty()) put("sections", JSONArray(sections.map { it.toJson() }))
+        if (tabs != DEFAULT_TABS) put("tabs", JSONArray(tabs.map { it.toJson() }))
         if (keyboard) put("keyboard", true)
+    }
+
+    companion object {
+        const val MAX_TABS = 8
+
+        /** A fresh install's tabs, and a file's without `tabs`: Quick dial, then All. */
+        val DEFAULT_TABS = listOf(
+            DrawerTab("Quick dial", "bolt", TabKind.QUICK),
+            DrawerTab("All", "all", TabKind.ALL),
+        )
     }
 }
 
+/** What a drawer tab shows: quick dial, a list of apps, or All (A–Z). */
+enum class TabKind(val id: String) { QUICK("quick"), LIST("list"), ALL("all") }
+
 /**
- * A drawer section: its [name], the [category] whose apps it takes, the [apps] put in it by hand
- * (a package name means every activity), and whether it is [hidden] from the Sections view.
- * [pinned] marks one edited by hand; [reason] is a line an agent wrote (T3 Launcher Increment 9).
+ * A drawer tab: its [name], the [icon] its button draws (a name from [TabIcon]; an unknown one
+ * draws the name's first letter), and for a [TabKind.LIST] tab the [apps] it shows, in order (a
+ * package name means every activity).
  */
-data class DrawerSection(
+data class DrawerTab(
     val name: String,
-    val category: Category? = null,
+    val icon: String,
+    val kind: TabKind = TabKind.LIST,
     val apps: List<AppRef> = emptyList(),
-    val hidden: Boolean = false,
-    val pinned: Boolean = false,
-    val reason: String? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("name", name)
-        if (category != null) put("category", category.id)
-        if (apps.isNotEmpty()) put("apps", JSONArray(apps.map { it.toString() }))
-        if (hidden) put("hidden", true)
-        if (pinned) put("pinned", true)
-        if (reason != null) put("reason", reason)
+        put("icon", icon)
+        if (kind == TabKind.LIST) put("apps", JSONArray(apps.map { it.toString() })) else put("kind", kind.id)
     }
 }
 

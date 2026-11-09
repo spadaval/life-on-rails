@@ -44,20 +44,20 @@ import kotlin.math.roundToInt
 const val LOCKED_SAY = "Home is locked. Unlock it from the home menu."
 
 /** The entries of an app's menu that edit `layout.json`, in the order drawn. */
-enum class AppEdit { REMOVE_FROM_FOLDER, REMOVE_FROM_HOME, ADD_TO_HOME, MOVE_TO_SECTION, HIDE }
+enum class AppEdit { REMOVE_FROM_FOLDER, REMOVE_FROM_HOME, ADD_TO_HOME, MOVE_TO_TAB, HIDE }
 
 /**
  * The edit entries an app at [places] shows. While [locked], only those [LayoutStore.edit] would
- * take: Move to section…, and Hide of an app on neither home nor a folder (decision lor-73li).
+ * take: Move to tab…, and Hide of an app on neither home nor a folder (decision lor-73li).
  */
 fun appEdits(places: Places, locked: Boolean): List<AppEdit> {
     val placed = places.home || places.folder != null
-    if (locked) return listOfNotNull(AppEdit.MOVE_TO_SECTION, AppEdit.HIDE.takeIf { !placed })
+    if (locked) return listOfNotNull(AppEdit.MOVE_TO_TAB, AppEdit.HIDE.takeIf { !placed })
     return listOfNotNull(
         AppEdit.REMOVE_FROM_FOLDER.takeIf { places.folder != null },
         // In a folder and not on home itself, Add to home moves it out of the folder (lor-83uq).
         if (places.home) AppEdit.REMOVE_FROM_HOME else AppEdit.ADD_TO_HOME,
-        AppEdit.MOVE_TO_SECTION,
+        AppEdit.MOVE_TO_TAB,
         AppEdit.HIDE,
     )
 }
@@ -105,9 +105,6 @@ interface HomeActions {
 
     /** Takes back the last edit ([HomeStore.undo]). */
     fun undo()
-
-    /** Writes the drawer's view: a view, not a change to home, so it shows no Undo and drops the pending one. */
-    fun setView(view: DrawerView)
 
     /** Opens a settings page search found (launcher polish 5.3), recording a launch unless it is LoR's own. */
     fun openSetting(page: SettingsPage, query: String)
@@ -165,10 +162,10 @@ class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: Lis
     /** The apps of both profiles in label order, as the edits resolve refs (launcher polish 4.1, lor-72c3). */
     val installed: List<AppId> = apps.map { it.id }
 
-    /** A new folder's name from the two apps' category. */
+    /** A new folder's name from the drawer tab the two apps share. */
     fun nameFor(a: AppRef, b: AppRef): String {
-        fun cat(r: AppRef) = r.resolve(installed)?.let { id -> apps.firstOrNull { it.id == id } }?.category
-        return folderName(cat(a), cat(b))
+        fun tab(r: AppRef) = r.resolve(installed)?.let { file?.drawer?.tabOf(it)?.name }
+        return folderName(tab(a), tab(b))
     }
 
     /** How Add writes [app]: its package name when that is its one launchable activity in its profile; `work:` for the work profile's. */
@@ -237,17 +234,19 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
     val installed = home.installed
     val places = file?.placesOf(app.id, installed)
     val removable = (app.info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
-    // "Move to section" turns the menu into the list of sections (launcher polish 2.3).
+    // "Move to tab…" turns the menu into the list tabs (lor-iyc3).
     var picking by remember(app) { mutableStateOf(false) }
     val anchor = { icon.bounds()?.toBounds() }
     if (picking && file != null) {
-        val current = file.drawer.sectionOf(app.id, app.category)
+        val current = file.drawer.tabOf(app.id)
         Popover(home.ui.popovers, anchor, close) {
-            file.drawer.allSections().forEach { s ->
-                val here = s.name == current
-                PopoverItem(if (here) "${s.name} ✓" else s.name) {
+            val lists = file.drawer.tabs.filter { it.kind == TabKind.LIST }
+            if (lists.isEmpty()) PopoverItem("No list tabs yet; add one in Home settings") { close(); actions.settings() }
+            lists.forEach { t ->
+                val here = t === current
+                PopoverItem(if (here) "${t.name} ✓" else t.name) {
                     close()
-                    if (!here) actions.edit("${app.label} is in ${s.name} now.") { it.moveToSection(app.id, home.refFor(app), app.category, s.name, installed) }
+                    if (!here) actions.edit("${app.label} is in ${t.name} now.") { it.moveToTab(app.id, home.refFor(app), t.name, installed) }
                 }
             }
         }
@@ -265,14 +264,14 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
             }
         }
         if (shortcuts.isNotEmpty()) PopoverDivider()
-        // The rows: what opens more (Move to section…) or adds (Add to home); then the row of icons.
+        // The rows: what opens more (Move to tab…) or adds (Add to home); then the row of icons.
         if (places != null) edits.forEach { e ->
             when (e) {
                 AppEdit.ADD_TO_HOME -> PopoverItem("Add to home") {
                     close()
                     actions.edit(places.folder?.let { "${app.label} is on home, out of $it." } ?: "${app.label} is on home.") { it.addToHome(app.id, home.refFor(app), installed) }
                 }
-                AppEdit.MOVE_TO_SECTION -> PopoverItem("Move to section…") { picking = true }
+                AppEdit.MOVE_TO_TAB -> PopoverItem("Move to tab…") { picking = true }
                 else -> {}
             }
         }

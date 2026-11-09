@@ -4,6 +4,9 @@ id: "lor-iyc3"
 issue_type: "feature"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: t3/drawer-tabs-floating-search
 priority: "P2"
 relationships:
   blocks: []
@@ -18,9 +21,9 @@ relationships:
     type: "blocked_by"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "The drawer is tabs from drawer.tabs, with search behind a button"
-updated_at: "2026-11-09T01:36:22.992237695+00:00"
+updated_at: "2026-11-09T04:16:55.005362678+00:00"
 ---
 
 ## Goal

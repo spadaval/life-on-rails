@@ -18,7 +18,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.DropdownMenuItem
@@ -206,19 +205,18 @@ private fun HomeSettings(
             }
         }
         if (file != null) {
-            item { Section("Drawer sections") }
-            val all = file.drawer.allSections()
-            // Keyed by name (unique, ignoring case), so a row's open dialog stays with its section.
-            items(all.size, key = { "section:" + all[it].name.lowercase() }) { i ->
-                val s = all[i]
-                SectionRow(file, s, first = i == 0, last = i == all.lastIndex, edit)
+            item { Section("Drawer tabs") }
+            val tabs = file.drawer.tabs
+            // Keyed by name (unique, ignoring case), so a row's open dialog stays with its tab.
+            items(tabs.size, key = { "tab:" + tabs[it].name.lowercase() }) { i ->
+                TabRow(tabs[i], i, tabs.size, edit)
             }
-            item {
+            if (tabs.size < Drawer.MAX_TABS) item {
                 var naming by remember { mutableStateOf(false) }
-                TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { naming = true }, modifier = Modifier.padding(horizontal = 8.dp)) { Text("New section") }
-                if (naming) NameDialog("New section", "") { name ->
+                TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { naming = true }, modifier = Modifier.padding(horizontal = 8.dp)) { Text("New tab") }
+                if (naming) NameDialog("New tab", "") { name ->
                     naming = false
-                    if (name != null) edit("$name is the last section.") { it.newSection(name) }
+                    if (name != null) edit("$name is a tab, before All.") { it.newTab(name) }
                 }
             }
         }
@@ -468,73 +466,72 @@ private fun Link(title: String, subtitle: String, onClick: () -> Unit) {
     }
 }
 
-/** One drawer section, with its edits behind a menu (launcher polish 2.3). */
+/**
+ * One drawer tab, with its edits behind a menu (lor-iyc3): every tab can be renamed and given an
+ * icon; a list tab also moves between quick dial and All, and can be deleted.
+ */
 @Composable
-private fun SectionRow(file: LayoutFile, s: DrawerSection, first: Boolean, last: Boolean, edit: (String?, (LayoutFile) -> LayoutFile) -> Unit) {
-    val inFile = file.drawer.sections.any { it.name == s.name }
+private fun TabRow(t: DrawerTab, i: Int, count: Int, edit: (String?, (LayoutFile) -> LayoutFile) -> Unit) {
     var menu by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
-    val about = listOfNotNull(
-        s.category?.let { "Takes ${it.title}" } ?: "No category",
-        s.apps.size.takeIf { it > 0 }?.let { "$it put here" },
-        "hidden".takeIf { s.hidden },
-    ).joinToString(" · ")
+    val list = t.kind == TabKind.LIST
+    val about = when (t.kind) {
+        TabKind.QUICK -> "Quick dial, always first"
+        TabKind.ALL -> "Every app, A–Z, always last"
+        TabKind.LIST -> if (t.apps.size == 1) "1 app" else "${t.apps.size} apps"
+    }
     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) { TabGlyph(t, MaterialTheme.colorScheme.onSurface) }
+        Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(s.name, style = MaterialTheme.typography.bodyLarge)
+            Text(t.name, style = MaterialTheme.typography.bodyLarge)
             Text(about, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Box {
             TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { menu = true }) { Text("Edit") }
             DropdownMenu(menu, { menu = false }) {
                 DropdownMenuItem(text = { Text("Rename…") }, onClick = { menu = false; renaming = true })
-                DropdownMenuItem(text = { Text("Category…") }, onClick = { menu = false; picking = true })
-                if (!first) DropdownMenuItem(text = { Text("Move up") }, onClick = { menu = false; edit(null) { it.moveSection(s.name, -1) } })
-                if (!last) DropdownMenuItem(text = { Text("Move down") }, onClick = { menu = false; edit(null) { it.moveSection(s.name, 1) } })
-                DropdownMenuItem(
-                    text = { Text(if (s.hidden) "Show in the drawer" else "Hide from the drawer") },
-                    onClick = { menu = false; edit(null) { it.setSectionHidden(s.name, !s.hidden) } },
-                )
-                if (inFile) DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; edit("${s.name} is deleted.") { it.deleteSection(s.name) } })
+                DropdownMenuItem(text = { Text("Icon…") }, onClick = { menu = false; picking = true })
+                // A list tab moves only between quick dial (first) and All (last).
+                if (list && i > 1) DropdownMenuItem(text = { Text("Move left") }, onClick = { menu = false; edit(null) { it.moveTab(t.name, -1) } })
+                if (list && i < count - 2) DropdownMenuItem(text = { Text("Move right") }, onClick = { menu = false; edit(null) { it.moveTab(t.name, 1) } })
+                if (list) DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; edit("${t.name} is deleted; its apps are still in All.") { it.deleteTab(t.name) } })
             }
         }
     }
-    if (renaming) NameDialog("Rename ${s.name}", s.name) { name ->
+    if (renaming) NameDialog("Rename ${t.name}", t.name) { name ->
         renaming = false
-        if (name != null && name != s.name) edit(null) { it.renameSection(s.name, name) }
+        if (name != null && name != t.name) edit(null) { it.renameTab(t.name, name) }
     }
     if (picking) {
-        // The categories it may take: none, its own, or one no other section in the file takes
-        // (for a section not in the file yet, one no other section in the drawer takes).
-        val others = (if (inFile) file.drawer.sections else file.drawer.allSections()).filter { it.name != s.name }
-        val free = listOf<Category?>(null) + Category.entries.filter { c -> others.none { it.category == c } }
         AlertDialog(
             onDismissRequest = { picking = false },
             confirmButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { picking = false }) { Text("Cancel") } },
-            title = { Text("${s.name} takes") },
+            title = { Text("${t.name}'s icon") },
             text = {
-                Column {
-                    free.forEach { c ->
-                        Row(
-                            Modifier.fillMaxWidth().clickable {
-                                picking = false
-                                if (c != s.category) edit(null) { it.setSectionCategory(s.name, c) }
-                            }.padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = c == s.category, onClick = null)
-                            Spacer(Modifier.width(12.dp))
-                            Text(c?.title ?: "No category (only the apps put here)")
-                        }
+                // Two rows of four, so every icon shows at a phone's width.
+                Column { TabIcon.entries.chunked(4).forEach { row -> Row {
+                    row.forEach { icon ->
+                        val on = icon.id == t.icon
+                        Box(
+                            Modifier.size(48.dp)
+                                .then(if (on) Modifier.selection() else Modifier)
+                                .semantics { contentDescription = icon.id }
+                                .selectable(on, role = Role.RadioButton) {
+                                    picking = false
+                                    if (!on) edit(null) { it.setTabIcon(t.name, icon) }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) { IconGlyph(icon, MaterialTheme.colorScheme.onSurface) }
                     }
-                }
+                } } }
             },
         )
     }
 }
 
-/** Asks for a section's name; [done] gets it, or null when cancelled. */
+/** Asks for a tab's name; [done] gets it, or null when cancelled. */
 @Composable
 private fun NameDialog(title: String, initial: String, done: (String?) -> Unit) {
     var text by remember { mutableStateOf(initial) }

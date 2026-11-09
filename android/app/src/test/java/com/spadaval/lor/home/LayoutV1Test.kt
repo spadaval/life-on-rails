@@ -111,7 +111,8 @@ class LayoutV1Test {
                     expected("trip", listOf(ref("com.whatsapp"), Folder("Dev", listOf(ref("com.whatsapp"), ref("a.b"))))),
                 ),
                 hidden = listOf(ref("com.x")),
-                drawer = Drawer(DrawerView.AZ, keyboard = true),
+                // The old view is read and dropped (lor-iyc3).
+                drawer = Drawer(keyboard = true),
                 look = HomeLook(header = HomeLook.Header.CLOCK),
             ),
             LayoutFile.parse(edits),
