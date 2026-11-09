@@ -35,8 +35,9 @@ class HomeApp(val label: String, val info: LauncherActivityInfo) {
     val packageName: String get() = info.componentName.packageName
     val user: UserHandle get() = info.user
     val key = "${info.componentName.flattenToString()}#${info.user}"
-    val id = AppId(packageName, info.componentName.className)
     val mainProfile: Boolean get() = user == Process.myUserHandle()
+    /** As refs name it: any profile but the main one is the work profile (a phone has at most one, lor-72c3). */
+    val id = AppId(packageName, info.componentName.className, work = !mainProfile)
     val category: Category by lazy {
         val a = info.applicationInfo
         categoryOf(packageName, a.category, a.flags and ApplicationInfo.FLAG_SYSTEM != 0)

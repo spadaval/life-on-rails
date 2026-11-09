@@ -94,14 +94,57 @@ class LayoutTest {
 
     @Test
     fun refsMatchPackageOrActivity() {
-        assertTrue(AppRef("a.b").matches("a.b", "a.b.Main"))
-        assertTrue(AppRef("a.b", "a.b.Main").matches("a.b", "a.b.Main"))
-        assertFalse(AppRef("a.b", "a.b.Other").matches("a.b", "a.b.Main"))
-        assertFalse(AppRef("a.b").matches("a.bc", "a.bc.Main"))
+        assertTrue(AppRef("a.b").matches(AppId("a.b", "a.b.Main")))
+        assertTrue(AppRef("a.b", "a.b.Main").matches(AppId("a.b", "a.b.Main")))
+        assertFalse(AppRef("a.b", "a.b.Other").matches(AppId("a.b", "a.b.Main")))
+        assertFalse(AppRef("a.b").matches(AppId("a.bc", "a.bc.Main")))
         assertNull(AppRef.parse("whatsapp"))
         assertNull(AppRef.parse("com.x/"))
         assertNull(AppRef.parse("com.x/a b"))
         assertNull(AppRef.parse(""))
+    }
+
+    @Test
+    fun aWorkPrefixNamesTheWorkProfile() {
+        // lor-72c3: `work:` names the work profile; no prefix, the main one.
+        assertEquals(AppRef("com.microsoft.office.outlook", work = true), AppRef.parse("work:com.microsoft.office.outlook"))
+        assertEquals(AppRef("com.cisco.wx2.android", "com.webex.teams.WebexLauncherActivity", work = true),
+            AppRef.parse("work:com.cisco.wx2.android/com.webex.teams.WebexLauncherActivity"))
+        assertEquals(AppRef("a.b", "a.b.Short", work = true), AppRef.parse("work:a.b/.Short"))
+        assertEquals("work:a.b/a.b.Short", AppRef("a.b", "a.b.Short", work = true).toString())
+        assertNull(AppRef.parse("work:"))
+        assertNull(AppRef.parse("work:work:a.b"))
+        assertNull(AppRef.parse("personal:a.b"))
+        val work = AppId("a.b", "a.b.Main", work = true)
+        val main = AppId("a.b", "a.b.Main")
+        assertTrue(AppRef("a.b", work = true).matches(work))
+        assertFalse("a main ref doesn't name the work twin", AppRef("a.b").matches(work))
+        assertFalse("a work ref doesn't name the main app", AppRef("a.b", work = true).matches(main))
+        assertFalse(AppRef("a.b").overlaps(AppRef("a.b", "a.b.Main", work = true)))
+        // Written and read back in every place a ref goes; a file without the prefix reads as before.
+        val text = """{"version": 2, "active": "a", "hidden": ["work:h.h", "h.h"],
+            "drawer": {"sections": [{"name": "Work", "apps": ["work:s.s", "s.s"]}]},
+            "layouts": [{"name": "a", "start": {"narrow": [0, 0]}, "dock": ["work:d.d"], "panels": [
+            {"at": [0, 0], "type": "stack", "blocks": [{"type": "apps", "items": ["work:a.b/.Short", "a.b",
+              {"folder": "F", "apps": ["work:c.c", "c.c"], "cover": "work:c.c"}]}]}]}]}"""
+        val f = LayoutFile.parse(text)
+        assertEquals(listOf(AppRef("h.h", work = true), AppRef("h.h")), f.hidden)
+        assertEquals(listOf(AppRef("d.d", work = true)), f.current.dock)
+        assertEquals(AppRef("c.c", work = true), (f.current.allItems[2] as Folder).cover)
+        assertEquals(f, LayoutFile.parse(f.toJson()))
+        assertTrue(f.toJson().contains("\"work:a.b/a.b.Short\""))
+        assertTrue(f.isHidden(AppId("h.h", "h.h.Main", work = true)))
+        assertFalse(f.isHidden(AppId("x.x", "x.x.Main", work = true)))
+    }
+
+    @Test
+    fun anUnknownPrefixIsAnErrorThatSaysWhere() {
+        assertEquals("layouts[0].panels[0].blocks[0].items[1]: \"personal:com.x\" has the prefix \"personal:\"; the only prefix is \"work:\"",
+            error(apps("""["com.x", "personal:com.x"]""")))
+        assertEquals("hidden[0]: \"Work:com.x\" has the prefix \"Work:\"; the only prefix is \"work:\"",
+            error("""{"version": 2, "active": "a", "hidden": ["Work:com.x"], "layouts": [{"name": "a", "start": {"narrow": [0, 0]}, "panels": [$t3]}]}"""))
+        assertEquals("layouts[0].panels[0].blocks[0].items[0]: \"work:WhatsApp\" is not a package name or package/activity",
+            error(apps("""["work:WhatsApp"]""")))
     }
 
     @Test

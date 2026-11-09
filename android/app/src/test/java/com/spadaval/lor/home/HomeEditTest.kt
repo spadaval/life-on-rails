@@ -11,7 +11,7 @@ import org.junit.Test
 /** Pages, covers, edits by place and the drop edit (launcher polish 4.1). */
 class HomeEditTest {
     private fun ref(s: String) = AppRef.parse(s)!!
-    private fun app(s: String) = ref(s).let { AppId(it.packageName, it.className ?: "${it.packageName}.Main") }
+    private fun app(s: String) = ref(s).let { AppId(it.packageName, it.className ?: "${it.packageName}.Main", it.work) }
 
     private fun file(vararg pages: List<LayoutItem>, dock: List<AppRef> = emptyList()) = LayoutFile(
         "a",
@@ -51,6 +51,41 @@ class HomeEditTest {
         assertEquals("layouts[0].panels[0].blocks[0].items[0].cover: \"x.x\" is not one of the folder's apps", bad(stack(0, """{"folder": "F", "apps": ["c.c"], "cover": "x.x"}""")))
         val plain = file(listOf(ref("a.a"), Folder("F", listOf(ref("b.b")))))
         assertFalse("neither field is written when unset", plain.toJson().contains("pages") || plain.toJson().contains("cover"))
+    }
+
+    @Test
+    fun aWorkTwinIsAnotherApp() {
+        // lor-72c3: T3 Code is installed in both profiles on the Fold; each is its own app.
+        val main = app("t.t")
+        val work = app("work:t.t")
+        val installed = listOf(main, work)
+        val f = file(listOf(ref("x.x"), ref("t.t")))
+        assertEquals(main, ref("t.t").resolve(installed))
+        assertEquals(work, ref("work:t.t").resolve(installed))
+        assertTrue(f.placesOf(main, installed).home)
+        assertEquals(Places(home = false, dock = false, folder = null), f.placesOf(work, installed))
+        // Added to home beside its twin, into a folder with it, removed and hidden without touching it.
+        val added = f.addToHome(work, ref("work:t.t"), installed)
+        assertEquals(listOf(listOf("x.x", "t.t", "work:t.t")), added.pages)
+        roundTrips(added)
+        assertEquals("it's already on home", refused { added.addToHome(work, ref("work:t.t"), installed) })
+        val folded = added.drop(at(added, Spot.Apps(page(0), 2)), Target.Onto(Spot.Apps(page(0), 1)), installed) { _, _ -> "T3" }.file
+        assertEquals(listOf(listOf("x.x", "[T3: t.t, work:t.t]")), folded.pages)
+        assertEquals("T3", folded.placesOf(work, installed).folder)
+        assertEquals(listOf(listOf("x.x", "[T3: t.t]")), folded.removeFromFolder(work, installed).pages)
+        // Add to home takes the work app out of the folder and leaves the main one (lor-83uq).
+        assertEquals(listOf(listOf("x.x", "[T3: t.t]", "work:t.t")), folded.addToHome(work, ref("work:t.t"), installed).pages)
+        val hidden = folded.hide("t.t", work = true)
+        assertEquals(listOf(AppRef("t.t", work = true)), hidden.hidden)
+        assertEquals(listOf(listOf("x.x", "[T3: t.t]")), hidden.pages)
+        assertTrue(hidden.isHidden(work))
+        assertFalse(hidden.isHidden(main))
+        assertEquals("it's already hidden", refused { hidden.hide("t.t", work = true) })
+        assertEquals("it isn't hidden", refused { hidden.unhide("t.t") })
+        assertEquals(emptyList<AppRef>(), hidden.unhide("t.t", work = true).hidden)
+        // A drag from the drawer onto home writes the work ref.
+        val dragged = f.drop(From.Drawer(work, ref("work:t.t")), Target.AtEnd(Place.InApps(page(0))), installed).file
+        assertEquals(added, dragged)
     }
 
     @Test

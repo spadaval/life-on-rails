@@ -15,9 +15,10 @@ package com.spadaval.lor.home
  * "On home" means in any `apps` block of the grid.
  *
  * Which app a ref names is worked out as home draws it (R3 of Increment 1's review): a package
- * name draws as the first main-profile activity of the package in label order, so it names that
- * activity only. The edits that ask take the installed main-profile apps in label order; an app
- * the list doesn't hold is taken as installed after all of them.
+ * name draws as the first activity of the package in its profile, in label order, so it names that
+ * activity only. A ref names an app of its own profile only (`work:`, lor-72c3), so an app and its
+ * work twin are two apps. The edits that ask take the installed apps of both profiles in label
+ * order; an app the list doesn't hold is taken as installed after all of them.
  *
  * Places in the file are [Spot]s, the file's indices (not the drawn order: home skips a ref that
  * isn't installed but keeps its place). An edit by place also takes what home drew there, and
@@ -69,7 +70,7 @@ data class Places(val home: Boolean, val dock: Boolean, val folder: String?)
 data class Dropped(val file: LayoutFile, val at: Spot?)
 
 /** The activity [this] draws as: the first of [installed] it matches, in their (label) order. */
-fun AppRef.resolve(installed: List<AppId>): AppId? = installed.firstOrNull { matches(it.packageName, it.className) }
+fun AppRef.resolve(installed: List<AppId>): AppId? = installed.firstOrNull { matches(it) }
 
 /** Whether [this] names [app] as home draws it. */
 fun AppRef.names(app: AppId, installed: List<AppId> = emptyList()): Boolean =
@@ -201,12 +202,13 @@ fun LayoutFile.removeFromFolder(app: AppId, installed: List<AppId> = emptyList()
 fun LayoutFile.removeAt(from: From.At): LayoutFile = drop(from, Target.Remove).file
 
 /**
- * Hides every activity of [packageName]: adds it to `hidden` and removes, in every layout, each
- * ref to that package from every `apps` block, the dock and folders.
+ * Hides every activity of [packageName] in one profile (the work profile when [work]): adds it to
+ * `hidden` and removes, in every layout, each ref to that package in that profile from every
+ * `apps` block, the dock and folders.
  */
-fun LayoutFile.hide(packageName: String): LayoutFile {
-    if (hidden.any { it.packageName == packageName && it.className == null }) throw LayoutError("it's already hidden")
-    val gone = { ref: AppRef -> ref.packageName == packageName }
+fun LayoutFile.hide(packageName: String, work: Boolean = false): LayoutFile {
+    if (hidden.any { it.packageName == packageName && it.work == work && it.className == null }) throw LayoutError("it's already hidden")
+    val gone = { ref: AppRef -> ref.packageName == packageName && ref.work == work }
     val layouts = layouts.map { layout ->
         layout.mapApps { items ->
             items.mapNotNull { item ->
@@ -217,13 +219,14 @@ fun LayoutFile.hide(packageName: String): LayoutFile {
             }
         }.copy(dock = layout.dock.filterNot(gone)).stripEmptyPanels(layout)
     }
-    return copy(layouts = layouts, hidden = hidden + AppRef(packageName))
+    return copy(layouts = layouts, hidden = hidden + AppRef(packageName, work = work))
 }
 
-/** Takes [packageName] out of `hidden`, nothing else: what hiding removed stays removed. */
-fun LayoutFile.unhide(packageName: String): LayoutFile {
-    if (hidden.none { it.packageName == packageName }) throw LayoutError("it isn't hidden")
-    return copy(hidden = hidden.filterNot { it.packageName == packageName })
+/** Takes [packageName] in one profile out of `hidden`, nothing else: what hiding removed stays removed. */
+fun LayoutFile.unhide(packageName: String, work: Boolean = false): LayoutFile {
+    val named = { ref: AppRef -> ref.packageName == packageName && ref.work == work }
+    if (hidden.none(named)) throw LayoutError("it isn't hidden")
+    return copy(hidden = hidden.filterNot(named))
 }
 
 /** Renames the folder [at] holds. */

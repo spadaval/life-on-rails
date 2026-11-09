@@ -171,7 +171,7 @@ private fun HomeSettings(
     val file = (layout as? LayoutState.Ready)?.file
     val hidden = remember(apps, file) {
         file?.hidden.orEmpty().map { ref ->
-            Hidden(ref, apps.firstOrNull { it.mainProfile && ref.matches(it.packageName, it.id.className) })
+            Hidden(ref, apps.firstOrNull { ref.matches(it.id) })
         }
     }
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -201,7 +201,7 @@ private fun HomeSettings(
                     if (h.app != null) AppIcon(h.app, 40.dp) else Spacer(Modifier.size(40.dp))
                     Spacer(Modifier.width(16.dp))
                     Text(h.label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { edit("${h.label} is back in the drawer.") { it.unhide(h.ref.packageName) } }) { Text("Unhide") }
+                    TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { edit("${h.label} is back in the drawer.") { it.unhide(h.ref.packageName, h.ref.work) } }) { Text("Unhide") }
                 }
             }
         }

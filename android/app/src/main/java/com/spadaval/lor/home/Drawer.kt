@@ -210,16 +210,17 @@ fun Drawer.allSections(): List<DrawerSection> {
 }
 
 /**
- * Places each of [apps] (main-profile apps, in the order to show them) in a section: the first
- * section whose `apps` names it, else the section of its category. Every app lands in exactly
- * one section, since every category has one.
+ * Places each of [apps] (in the order to show them) in a section: the first section whose `apps`
+ * names it, else the section of its category. Every app lands in exactly one section, since every
+ * category has one. The drawer passes main-profile apps and the work apps a section names
+ * ([lists]); the rest of the work profile's go under their own header.
  */
 fun <T> Drawer.sort(apps: List<T>, id: (T) -> AppId, category: (T) -> Category): List<SortedSection<T>> {
     val all = allSections()
     val inFile = sections.size
     val placed = apps.groupBy { app ->
         val a = id(app)
-        all.indexOfFirst { s -> s.apps.any { it.matches(a.packageName, a.className) } }
+        all.indexOfFirst { s -> s.apps.any { it.matches(a) } }
             .takeIf { it >= 0 }
             ?: all.indexOfFirst { it.category == category(app) }
     }
@@ -254,9 +255,13 @@ private fun Drawer.checkName(name: String, except: String? = null): String {
     return n
 }
 
-/** The section [app] is in now, as [sort] places it. */
+/** Whether a section of the file names [app]. */
+fun Drawer.lists(app: AppId): Boolean = sections.any { s -> s.apps.any { it.matches(app) } }
+
+/** The section [app] is in now, as [sort] places it; null for a work app no section names, which the drawer shows under its profile. */
 fun Drawer.sectionOf(app: AppId, category: Category): String? =
-    sort(listOf(app), { it }, { category }).firstOrNull { it.apps.isNotEmpty() }?.name
+    if (app.work && !lists(app)) null
+    else sort(listOf(app), { it }, { category }).firstOrNull { it.apps.isNotEmpty() }?.name
 
 /**
  * Moves [app] (written as [ref]) to the section named [target]. A section that listed [app]'s
@@ -272,14 +277,14 @@ fun LayoutFile.moveToSection(app: AppId, ref: AppRef, category: Category, target
     }
     // Refs naming the app go; a package ref also takes every other ref of its package, so no two
     // refs ever name one activity (a ref to an activity an update removed included).
-    val names = { r: AppRef -> r.matches(app.packageName, app.className) || (ref.className == null && r.packageName == app.packageName) }
+    val names = { r: AppRef -> r.matches(app) || (ref.className == null && r.work == app.work && r.packageName == app.packageName) }
     full.copy(sections = full.sections.mapIndexed { i, s ->
         when {
             i == to -> s.copy(apps = s.apps.filterNot(names) + ref, pinned = true)
             s.apps.any(names) -> {
                 // Only an activity ref is moved while a package ref stays elsewhere: keep its siblings.
-                val others = if (ref.className != null && s.apps.any { it.packageName == app.packageName && it.className == null }) {
-                    installed.filter { it.packageName == app.packageName && it.className != app.className }.map { AppRef(it.packageName, it.className) }
+                val others = if (ref.className != null && s.apps.any { it.work == app.work && it.packageName == app.packageName && it.className == null }) {
+                    installed.filter { it.work == app.work && it.packageName == app.packageName && it.className != app.className }.map { AppRef(it.packageName, it.className, it.work) }
                 } else emptyList()
                 s.copy(apps = s.apps.filterNot(names) + others, pinned = true)
             }

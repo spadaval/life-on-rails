@@ -176,19 +176,19 @@ fun Modifier.iconSpot(spot: IconSpot): Modifier = onGloballyPositioned(spot::pla
 class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: List<HomeApp>, val ui: HomeUi) {
     val drag: DragState get() = ui.drag
 
-    /** The main-profile apps in label order, as the edits resolve refs (launcher polish 4.1). */
-    val installed: List<AppId> = apps.filter { it.mainProfile }.map { it.id }
+    /** The apps of both profiles in label order, as the edits resolve refs (launcher polish 4.1, lor-72c3). */
+    val installed: List<AppId> = apps.map { it.id }
 
     /** A new folder's name from the two apps' category. */
     fun nameFor(a: AppRef, b: AppRef): String {
-        fun cat(r: AppRef) = r.resolve(installed)?.let { id -> apps.firstOrNull { it.mainProfile && it.id == id } }?.category
+        fun cat(r: AppRef) = r.resolve(installed)?.let { id -> apps.firstOrNull { it.id == id } }?.category
         return folderName(cat(a), cat(b))
     }
 
-    /** How Add writes [app]: its package name when that is its one launchable activity. */
+    /** How Add writes [app]: its package name when that is its one launchable activity in its profile; `work:` for the work profile's. */
     fun refFor(app: HomeApp): AppRef =
-        if (apps.count { it.mainProfile && it.packageName == app.packageName } == 1) AppRef(app.packageName)
-        else AppRef(app.packageName, app.id.className)
+        if (apps.count { it.id.work == app.id.work && it.packageName == app.packageName } == 1) AppRef(app.packageName, work = app.id.work)
+        else AppRef(app.packageName, app.id.className, app.id.work)
 
     /** Home is locked (decision lor-73li): what would edit it is hidden or does nothing. */
     val locked: Boolean get() = file?.locked == true
@@ -197,7 +197,7 @@ class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: Lis
     fun sayLocked() = ui.undo.say(LOCKED_SAY, failed = false)
 
     /** Hidden by the layout file: left out of the drawer and search. */
-    fun hidden(app: HomeApp): Boolean = app.mainProfile && file?.isHidden(app.id) == true
+    fun hidden(app: HomeApp): Boolean = file?.isHidden(app.id) == true
 }
 
 /**
@@ -248,9 +248,8 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
     LaunchedEffect(app) { shortcuts = home.actions.shortcuts(app) }
     val actions = home.actions
     val file = home.file
-    val main = app.mainProfile && file != null
     val installed = home.installed
-    val places = if (main) file!!.placesOf(app.id, installed) else null
+    val places = file?.placesOf(app.id, installed)
     val removable = (app.info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
     // "Move to section" turns the menu into the list of sections (launcher polish 2.3).
     var picking by remember(app) { mutableStateOf(false) }
@@ -301,7 +300,7 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
                     AppEdit.ADD_TO_DOCK -> Item("Add to dock") { close(); actions.edit("${app.label} is in the dock.") { it.addToDock(app.id, ref, installed) } }
                     AppEdit.MOVE_TO_SECTION -> Item("Move to section…") { picking = true }
                     AppEdit.HIDE -> Item("Hide") {
-                        close(); actions.edit("${app.label} is hidden. Home settings brings it back.") { it.hide(app.packageName) }
+                        close(); actions.edit("${app.label} is hidden. Home settings brings it back.") { it.hide(app.packageName, app.id.work) }
                     }
                 }
             }

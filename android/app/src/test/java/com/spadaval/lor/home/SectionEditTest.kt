@@ -36,6 +36,24 @@ class SectionEditTest {
     }
 
     @Test
+    fun aWorkAppMovesToASectionApartFromItsTwin() {
+        // lor-72c3: a work app no section names is under the Work profile header, in no section.
+        val work = chrome.copy(work = true)
+        val workRef = chromeRef.copy(work = true)
+        assertEquals(null, base.drawer.sectionOf(work, Category.TOOLS))
+        val f = base.moveToSection(work, workRef, Category.TOOLS, "Tools")
+        assertEquals(listOf(workRef), f.section("Tools").apps)
+        assertTrue(f.drawer.lists(work))
+        assertFalse("its twin stays in its category's section", f.drawer.lists(chrome))
+        assertEquals("Tools", f.drawer.sectionOf(work, Category.TOOLS))
+        assertEquals("it's already in Tools", refused { f.moveToSection(work, workRef, Category.TOOLS, "Tools") })
+        val both = f.moveToSection(chrome, chromeRef, Category.TOOLS, "Media")
+        assertEquals(listOf(workRef), both.section("Tools").apps)
+        assertEquals(listOf(chromeRef), both.section("Media").apps)
+        roundTrips(both)
+    }
+
+    @Test
     fun movingAgainTakesItOutOfTheFirstAndPinsBoth() {
         val f = base.moveToSection(chrome, chromeRef, Category.TOOLS, "Work").moveToSection(chrome, chromeRef, Category.TOOLS, "Media")
         assertEquals(emptyList<AppRef>(), f.section("Work").apps)

@@ -376,7 +376,7 @@ internal class PlacedHome(val blocks: Map<BlockAt, List<Placed>>, val dock: List
 }
 
 private fun resolve(ref: AppRef, apps: List<HomeApp>): HomeApp? =
-    apps.firstOrNull { it.mainProfile && ref.matches(it.packageName, it.info.componentName.className) }
+    apps.firstOrNull { ref.matches(it.id) }
 
 private fun place(layout: Layout, apps: List<HomeApp>): PlacedHome {
     val blocks = layout.appsBlocks.associateWith { p ->
@@ -407,7 +407,7 @@ private class Picked(val from: From, val item: LayoutItem, val app: HomeApp?, va
  * its tile was laid out (4's review item (a)); null when it has gone or isn't installed.
  */
 private fun HomeContext.pick(slot: Slot): Picked? {
-    if (slot is Slot.DrawerApp) return apps.firstOrNull { it.key == slot.app && it.mainProfile }?.let { a -> refFor(a).let { Picked(From.Drawer(a.id, it), it, a, null) } }
+    if (slot is Slot.DrawerApp) return apps.firstOrNull { it.key == slot.app }?.let { a -> refFor(a).let { Picked(From.Drawer(a.id, it), it, a, null) } }
     val at = file?.current?.find(slot) ?: return null
     return when (val item = at.item) {
         is AppRef -> resolve(item, apps)?.let { Picked(at, item, it, null) }
@@ -1457,7 +1457,7 @@ private fun AppPicker(folder: ResolvedFolder, home: HomeContext, done: () -> Uni
     val name = folder.folder.name
     val inFolder = remember(folder) { folder.apps.map { it.first.id }.toSet() }
     val apps = remember(home.apps, inFolder) {
-        home.apps.filter { it.mainProfile && !home.hidden(it) && it.id !in inFolder }.sortedBy { it.label.lowercase() }
+        home.apps.filter { !home.hidden(it) && it.id !in inFolder }.sortedBy { it.label.lowercase() }
     }
     var picked by remember { mutableStateOf(listOf<AppId>()) }
     Column(
@@ -1505,7 +1505,7 @@ private fun AppPicker(folder: ResolvedFolder, home: HomeContext, done: () -> Uni
  */
 private fun addToFolder(folder: ResolvedFolder, home: HomeContext, picked: List<AppId>) {
     val file = home.file ?: return
-    val adding = picked.mapNotNull { id -> home.apps.firstOrNull { it.mainProfile && it.id == id }?.let { id to home.refFor(it) } }
+    val adding = picked.mapNotNull { id -> home.apps.firstOrNull { it.id == id }?.let { id to home.refFor(it) } }
     val d = try {
         file.addToFolder(folder.at, adding, home.installed)
     } catch (e: LayoutError) {
