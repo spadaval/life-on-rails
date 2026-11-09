@@ -231,7 +231,8 @@ class HomeStore(private val context: Context) {
             _stats.value = _stats.value.launched(app.key, at)
             writeAtomically(statsFile, _stats.value.toJson())
             if (!app.mainProfile) {
-                _opens.value = _opens.value.opened(opensKey(app.id), at, ZoneId.systemDefault())
+                // Rebased first for a clock set since the last read, so the open lands on the right basis.
+                _opens.value = _opens.value.corrected(at, SystemClock.elapsedRealtime(), bootCount()).opened(opensKey(app.id), at, ZoneId.systemDefault())
                 writeAtomically(opensFile, _opens.value.toJson())
             }
         }
@@ -245,8 +246,9 @@ class HomeStore(private val context: Context) {
     fun readUsage() = serially {
         val now = System.currentTimeMillis()
         val clock = SystemClock.elapsedRealtime()
-        val old = _opens.value
-        val from = if (old.cursor > 0) old.readFrom(now, clock) else now - USAGE_FIRST_MS
+        val boot = bootCount()
+        val old = _opens.value.corrected(now, clock, boot)
+        val from = if (old.cursor > 0) old.cursor else now - USAGE_FIRST_MS
         val usm = context.getSystemService(UsageStatsManager::class.java)
         val events = mutableListOf<Resumed>()
         val it = usm.queryEvents(from, now)
@@ -255,11 +257,14 @@ class HomeStore(private val context: Context) {
             it.getNextEvent(e)
             if (e.eventType == UsageEvents.Event.ACTIVITY_RESUMED && e.packageName != null) events += Resumed(e.packageName, e.timeStamp)
         }
-        val next = old.withUsage(events, ignoredForOpens(), now, clock, ZoneId.systemDefault())
+        val next = old.withUsage(events, ignoredForOpens(), now, clock, boot, ZoneId.systemDefault())
         _opens.value = next
         writeAtomically(opensFile, next.toJson())
         Log.i(TAG, "quick dial read ${events.size} app resumes since ${if (old.cursor > 0) "the last read" else "a week ago"} in ${System.currentTimeMillis() - now} ms (${next.counts.size} apps counted)")
     }
+
+    /** Which boot this is (`Settings.Global.BOOT_COUNT`), so quick dial compares `elapsedRealtime` only within one; 0 when unknown. */
+    private fun bootCount(): Int = android.provider.Settings.Global.getInt(context.contentResolver, android.provider.Settings.Global.BOOT_COUNT, 0)
 
     /** LoR (this launcher), the default home if another, and the system UI: being in front of them isn't opening an app. */
     private fun ignoredForOpens(): Set<String> {
