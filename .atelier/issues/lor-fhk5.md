@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Long-press menus are chamfered popovers pointing at their icon"
-updated_at: "2026-11-09T03:52:23.452952887+00:00"
+updated_at: "2026-11-09T04:06:48.059419849+00:00"
 ---
 
 ## Goal
@@ -55,7 +55,7 @@ Mission lor-5qkq. `IconSpot` already reports an icon's bounds in the window. Lau
   Rejected: A Compose Popup window for the popover
 - 2026-11-08 [handoff] Implemented on t3/home-long-press-centered-popovers (48660f9 code, records after). Review requested, none dispatched. Proof: PopoverTest and boat assembleDebug testDebugUnitTest (414 tests) pass; emulator receipt lor-7l83. See ## Report
 
-All six Done when lines hold at e4f6f82, the second as rewritten after review (lor-ic8q accepted opening on the roomier side with no flip). Every long-press menu on home (an app's on home, in a folder, in the drawer and in search; a folder's; a widget's; empty home's) is drawn by one `Popover` (`home/Popover.kt`), and none of `AppMenu.kt`, the folder menu or the widget menu uses `DropdownMenu`. The Jump menu, the minimap's tile menu and Home settings' keep it. Placement is `PopoverPlace.place`, tested in `PopoverTest` (10 tests: the middle, both edges, both halves, a menu too tall for its side clamped and scrolling, a screen narrower than the menu, `theSideItOpensOnIsAlwaysTheRoomier`, `atTheEdgeTheTipStillPointsAtTheFingerAndTheBaseStaysOnTheBody`, `aSourceFillingTheScreenStillGetsAUsableMenu` with the review's witness, and `aWidgetsMenuAtThePressHasRoom`). Boat's `assembleDebug testDebugUnitTest` passed at e4f6f82 with all 416 unit tests. The first round's emulator screenshots are receipt lor-7l83; the review fixes' are the second receipt on this item (files `r1`-`r5`).
+All six Done when lines hold at e4f6f82, the second as rewritten after review (lor-ic8q accepted opening on the roomier side with no flip). Every long-press menu on home (an app's on home, in a folder, in the drawer and in search; a folder's; a widget's; empty home's) is drawn by one `Popover` (`home/Popover.kt`), and none of `AppMenu.kt`, the folder menu or the widget menu uses `DropdownMenu`. The Jump menu, the minimap's tile menu and Home settings' keep it. Placement is `PopoverPlace.place`, tested in `PopoverTest` (10 tests: the middle, both edges, both halves, a menu too tall for its side clamped and scrolling, a screen narrower than the menu, `theSideItOpensOnIsAlwaysTheRoomier`, `atTheEdgeTheTipStillPointsAtTheFingerAndTheBaseStaysOnTheBody`, `aSourceFillingTheScreenStillGetsAUsableMenu` with the review's witness, and `aWidgetsMenuAtThePressHasRoom`). Boat's `assembleDebug testDebugUnitTest` passed at e4f6f82 with all 416 unit tests. The first round's emulator screenshots are receipt lor-7l83; the review fixes' are receipt lor-rm7a (files `r1`-`r5`).
 
 ### Review fixes (lor-ayib)
 
@@ -79,3 +79,4 @@ All six Done when lines hold at e4f6f82, the second as rewritten after review (l
 - Any change of home's size closes an open menu, so an IME that resized home's window would close one too. Home draws edge to edge and the search-result menu stayed open with the keyboard up, so this isn't seen today.
 - The arrow covers part of the pressed icon's label when the menu opens below, as in the mock.
 - Real-Fold checks of the menus belong to the mission's existing real-device items, not this one.
+- 2026-11-08 [handoff] Review lor-ayib's five FIX NOW findings fixed in e4f6f82 (code) and d5bf9dc (records): R1 close on size change, R2 widget menu at the press with a minimum height, R3 or-deep outline, R4 Done when line 2 rewritten, R5 tip exact on the source. Boat assembleDebug testDebugUnitTest passes (416 tests, PopoverTest 10). Emulator receipt lor-rm7a. Re-review not requested.
