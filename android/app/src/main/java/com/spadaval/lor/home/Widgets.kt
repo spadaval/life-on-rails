@@ -42,7 +42,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -77,7 +76,6 @@ import com.spadaval.lor.ui.Chamfer
 import com.spadaval.lor.ui.DismissColors
 import com.spadaval.lor.ui.Or
 import com.spadaval.lor.ui.PanelFace
-import com.spadaval.lor.ui.Raised
 import com.spadaval.lor.ui.Scrim
 import com.spadaval.lor.ui.StateFill
 import com.spadaval.lor.ui.Txt
@@ -197,6 +195,9 @@ class WidgetHost(context: Context) {
 class LorWidgetView(context: Context) : AppWidgetHostView(context) {
     /** Opens the widget's menu; null when the menu would be empty. */
     var onLongPress: (() -> Unit)? = null
+    /** Where in the window the finger held for the menu; null when TalkBack opened it. */
+    var pressedAt: Bounds? = null
+        private set
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
     private var check: Runnable? = null
     private var longPressed = false
@@ -206,7 +207,7 @@ class LorWidgetView(context: Context) : AppWidgetHostView(context) {
 
     init {
         // TalkBack's long press reaches the menu the same way.
-        setOnLongClickListener { onLongPress?.let { it(); true } ?: false }
+        setOnLongClickListener { onLongPress?.let { pressedAt = null; it(); true } ?: false }
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
@@ -232,6 +233,8 @@ class LorWidgetView(context: Context) : AppWidgetHostView(context) {
                     val open = onLongPress
                     if (open != null && parent != null && hasWindowFocus()) {
                         longPressed = true
+                        val at = IntArray(2).also(::getLocationInWindow)
+                        pressedAt = Bounds(at[0] + downX, at[1] + downY, at[0] + downX, at[1] + downY)
                         performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                         open()
                     }
@@ -330,7 +333,9 @@ internal fun WidgetBlock(block: StackBlock.Widget, panelHeight: Float, ui: HomeU
     val hasMenu = !locked || reconfigurable
     BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
         val width = WidgetSize.width(maxWidth.value, dp(info.maxResizeWidth))
-        Box(Modifier.align(Alignment.TopCenter).size(width.dp, height.dp)) {
+        // Where the widget is, which its menu points at (lor-fhk5).
+        val spot = remember { IconSpot() }
+        Box(Modifier.align(Alignment.TopCenter).size(width.dp, height.dp).iconSpot(spot)) {
             val view = remember { arrayOfNulls<LorWidgetView>(1) }
             AndroidView(
                 factory = { widgets.view(block.id, info).also { v -> view[0] = v; v.contentDescription = label } },
@@ -367,17 +372,19 @@ internal fun WidgetBlock(block: StackBlock.Widget, panelHeight: Float, ui: HomeU
                 }
             }
             if (menu.open) {
-                DropdownMenu(true, { menu.open = false }, containerColor = Raised, shape = RectangleShape) {
-                    if (!locked) Item("Resize") {
+                // It points at the finger and rings the widget: a tall widget leaves no room beside its box.
+                val box = { spot.bounds()?.toBounds() }
+                Popover(ui.popovers, { view[0]?.pressedAt ?: box() }, { menu.open = false }, PopoverRing.BOX, source = box) {
+                    if (!locked) PopoverItem("Resize") {
                         menu.open = false
                         dragged = block.height.toFloat()
                         ui.resizing = block.id
                     }
-                    if (reconfigurable) Item("Settings") {
+                    if (reconfigurable) PopoverItem("Settings") {
                         menu.open = false
                         home.actions.widgetSettings(block.id)
                     }
-                    if (!locked) Item("Remove") {
+                    if (!locked) PopoverItem("Remove") {
                         menu.open = false
                         home.actions.edit("$label is off home.") { it.removeWidget(block.id) }
                     }

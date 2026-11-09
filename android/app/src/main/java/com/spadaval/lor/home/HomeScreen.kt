@@ -102,8 +102,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.BoxScope
@@ -249,7 +247,7 @@ class HomeUi {
     var toStart by mutableStateOf(false)
     /** Home settings' Panels arrived while [toStart] waits: the minimap opens after that home press. */
     var minimapAfterStart = false
-    /** Where on home a long press on empty space opened the home menu. */
+    /** Where in the window a long press on empty home opened the home menu, which points at it. */
     var homeMenu by mutableStateOf<Offset?>(null)
     /** The cell that long press was on, so only that cell draws the menu. */
     var homeMenuCell by mutableStateOf<Cell?>(null)
@@ -266,6 +264,8 @@ class HomeUi {
     var resizeFrame: Rect? = null
     /** The Undo bar after an edit (launcher polish 4.2). */
     val undo = UndoBarState()
+    /** The long-press menu open over home (lor-fhk5), drawn at home's root. */
+    val popovers = PopoverHost()
     /** What is held, and edit mode (launcher polish 4.3). */
     val drag = DragState()
     /**
@@ -731,6 +731,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
         drag.settling?.let { SettleItem(it, drag, file?.current) { it.progress.value } }
         // Above the drawer and folders, clear of the page dots.
         UndoBar(ui.undo, actions::undo, Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 112.dp))
+        // Over everything: a long-press menu dims home and points at what opened it (lor-fhk5).
+        PopoverLayer(ui.popovers)
     }
     }
 }
@@ -748,8 +750,6 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
 private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, layout: LayoutState, appsLoad: AppsLoad, ui: HomeUi, home: HomeContext) {
     val haptics = LocalHapticFeedback.current
     val cell = panel.at
-    // Where the panel's content is, so a press inside the scroll opens the home menu where it was.
-    val panelAt = remember { arrayOfNulls<androidx.compose.ui.layout.LayoutCoordinates>(1) }
     // A long press that no app, folder or widget took, on empty home, opens the home menu, and a
     // double tap opens quick send (launcher polish 7.6), not in edit mode. Drawn under what it
     // serves: overlapping siblings get a touch only when the ones drawn above it don't, so a tap
@@ -763,15 +763,14 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
                     onLongPress = { p ->
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         val mine = at[0]
-                        val inPanel = panelAt[0]
-                        ui.homeMenu = if (mine != null && inPanel != null && mine.isAttached && inPanel.isAttached) inPanel.localPositionOf(mine, p) else p
+                        ui.homeMenu = if (mine != null && mine.isAttached) mine.localToWindow(p) else p
                         ui.homeMenuCell = cell
                     },
                 )
             },
         )
     }
-    BoxWithConstraints(Modifier.fillMaxSize().cellInsetsPadding().onGloballyPositioned { panelAt[0] = it }) {
+    BoxWithConstraints(Modifier.fillMaxSize().cellInsetsPadding()) {
         emptyHome(Modifier.matchParentSize())
         val wide = maxWidth >= 600.dp
         val widthDp = maxWidth.value
@@ -1139,7 +1138,8 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: (Rect
     val held = home.drag.held
     LaunchedEffect(held) { if (held != null) menu = false }
     // Rename… opens the folder with its name field focused (lor-gnk0), from its tile like a tap.
-    if (menu) FolderMenu(folder, home, rename = { home.ui.folderRename = true; onClick(icon[0]) }) { menu = false }
+    val spot = remember { IconSpot() }
+    if (menu) FolderMenu(folder, home, spot, rename = { home.ui.folderRename = true; onClick(icon[0]) }) { menu = false }
     val label = LocalHomeLook.current.labels
     Column(
         Modifier.fillMaxWidth().widthIn(max = 76.dp)
@@ -1152,7 +1152,7 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: (Rect
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.onGloballyPositioned { icon[0] = it.boundsInRoot() }) {
+        Box(Modifier.onGloballyPositioned { icon[0] = it.boundsInRoot() }.iconSpot(spot)) {
             FolderIcon(folder)
             // A folder has a dot when an app in it has one (Launcher3's FolderIcon).
             val dots = LocalDots.current
@@ -1520,8 +1520,8 @@ private fun Modifier.dragging(ui: HomeUi, haptics: HapticFeedback, home: () -> H
     val edge = 24.dp.toPx()
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-        // The minimap's own drags aren't home's (lor-6get).
-        if (ui.minimap) return@awaitEachGesture
+        // The minimap's own drags aren't home's (lor-6get); under an open menu a press only closes it.
+        if (ui.minimap || ui.popovers.open != null) return@awaitEachGesture
         val layer = when {
             ui.drawer -> 2
             ui.folder != null -> 1
@@ -1725,12 +1725,13 @@ private fun TopBar(ui: HomeUi, modifier: Modifier) {
  * folder with its name field focused ([rename]; lor-gnk0), where the name is edited in place.
  */
 @Composable
-private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, rename: () -> Unit, close: () -> Unit) {
+private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, icon: IconSpot, rename: () -> Unit, close: () -> Unit) {
     var covering by remember { mutableStateOf(false) }
     val at = folder.at
     val name = folder.folder.name
+    val anchor = { icon.bounds()?.toBounds() }
     when {
-        covering -> DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
+        covering -> Popover(home.ui.popovers, anchor, close) {
             val cover = folder.folder.cover
             folder.apps.forEach { (app, a) ->
                 val ref = a.item as AppRef
@@ -1742,7 +1743,7 @@ private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, rename: () -> 
                 close(); if (cover != null) home.actions.edit("$name shows four apps.") { it.setCover(at, null) }
             }
         }
-        else -> DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
+        else -> Popover(home.ui.popovers, anchor, close) {
             FolderMenuItem("Rename…") { close(); rename() }
             FolderMenuItem("Cover app…") { covering = true }
             FolderMenuItem("Remove from home") { close(); home.actions.edit("$name is off home.") { it.removeAt(at) } }
@@ -1751,6 +1752,4 @@ private fun FolderMenu(folder: ResolvedFolder, home: HomeContext, rename: () -> 
 }
 
 @Composable
-private fun FolderMenuItem(text: String, onClick: () -> Unit) {
-    DropdownMenuItem(text = { Text(text, style = Type.body.copy(color = Txt, fontSize = 15.sp)) }, onClick = onClick)
-}
+private fun FolderMenuItem(text: String, onClick: () -> Unit) = PopoverItem(text, onClick = onClick)

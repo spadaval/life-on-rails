@@ -238,7 +238,7 @@ Depth is tonal and by framing first: `well` below the page, `bg` as the ground, 
 
 ## Shapes
 
-Square everywhere. Buttons, inputs, chips, lanes, blocks and panels have no radius. The one silhouette is the chamfer: outer framed panels clip their top-left and bottom-right corners at 6px, drawn as a 1px `frame` outer shell with the `panel` face clipped to the same polygon inside it. Inner elements (buttons, inputs, inline editors, notices) are never chamfered.
+Square everywhere. Buttons, inputs, chips, lanes, blocks and panels have no radius. The one silhouette is the chamfer: outer framed panels clip their top-left and bottom-right corners at 6px, drawn as a 1px `frame` outer shell with the `panel` face clipped to the same polygon inside it. Inner elements (buttons, inputs, inline editors, notices) are never chamfered. Floating menus are outer panels too: chamfered, with a pointer at what opened them (see Floating menus).
 
 Round shapes are reserved for small status dots (6px: the timer dot, the health dot) and for project and task bodies on the star map. The four-point star (a 20-unit path with a narrow waist) marks goals, flagged tasks and now; habits are small hollow squares. The reticle is four L-shaped corner brackets in 1.5px amber around the selected body or around now on the arc. Calendar events are 10px squares rotated 45 degrees.
 
@@ -276,6 +276,15 @@ Quiet, rectangular, sentence case. They outline until touched.
 - **Shadow Strategy:** none; panels lie in the page. Floating surfaces take the shadow in Elevation & Depth.
 - **Border:** the 1px bronze frame is the border.
 - **Internal Padding:** 16px vertical, 20px horizontal. A header row holds the condensed section title left and a 13px `mute` aside right (a count, a link, a unit like "hours / target").
+
+### Floating menus
+A menu opened by a press (on the phone, every long-press menu on home) is a chamfered panel that points at what opened it.
+- **Shape:** the outer panel's 6px two-corner chamfer, with an arrow 22px wide and 10px tall out of the edge facing the source, drawn in the same 1px outline as the body.
+- **Face:** `raised` inside a 1px `or-deep` outline, brighter than a panel's `frame` because the menu floats (the approved mock's colour); the float shadow of Elevation & Depth under it.
+- **Place:** centred on the source's centre (the icon, the finger on empty space, the finger on a widget), kept 8px inside the screen. Below a source in the top half of the screen, above one in the bottom half, which is always the roomier side; a menu taller than that room is cut to it (never below about two rows) and scrolls. When the body is pushed in from an edge, the arrow's base stays on the body's straight edge and the arrow leans so its tip is still on the source.
+- **Around it:** a light dim over the page (near-black at 35%), and a 1.5px amber ring round the pressed icon or widget. A tap anywhere outside, back, or a fold or rotation closes it.
+- **Motion:** it opens with a 150ms fade and a slight scale out of the arrow's tip.
+- **Content:** 15px `txt` rows (an app's shortcuts with their icons first); App info, Remove, Hide and Uninstall as a row of line glyphs over 11px `mute` labels; a 1px `line` rule between groups.
 
 ### Inputs / Fields
 - **Style:** `well` background, 1px `edge` border, square, 6px 10px padding, 14px `txt`, `dim` placeholder. Selects reserve 28px on the right.

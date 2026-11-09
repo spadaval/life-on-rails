@@ -1,18 +1,9 @@
 package com.spadaval.lor.home
 
-import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
 import android.content.pm.ApplicationInfo
 import android.content.pm.ShortcutInfo
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -25,14 +16,10 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.spadaval.lor.collect.LaunchFrom
 import kotlin.math.roundToInt
 
@@ -44,7 +31,7 @@ import kotlin.math.roundToInt
  * a few at most; queried as `ShortcutRequest.PUBLISHED`, `FLAG_MATCH_DYNAMIC | FLAG_MATCH_MANIFEST`),
  * then the system shortcuts (`SystemShortcut`: App info, Uninstall). And Kvaesitso (GPL-3.0,
  * `LauncherApp.kt`): App info through `LauncherApps.startAppDetailsActivity`, Uninstall as an
- * `ACTION_DELETE` intent. Here the popup is Material's `DropdownMenu`, which closes on a tap
+ * `ACTION_DELETE` intent. Here the popup is home's [Popover] (lor-fhk5), which closes on a tap
  * elsewhere or back.
  *
  * The layout lock (lor-zzyy, decision lor-73li) follows Lawnchair (Apache-2.0, at aeb92c1):
@@ -252,12 +239,13 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
     val removable = (app.info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
     // "Move to section" turns the menu into the list of sections (launcher polish 2.3).
     var picking by remember(app) { mutableStateOf(false) }
+    val anchor = { icon.bounds()?.toBounds() }
     if (picking && file != null) {
         val current = file.drawer.sectionOf(app.id, app.category)
-        DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
+        Popover(home.ui.popovers, anchor, close) {
             file.drawer.allSections().forEach { s ->
                 val here = s.name == current
-                Item(if (here) "${s.name} ✓" else s.name) {
+                PopoverItem(if (here) "${s.name} ✓" else s.name) {
                     close()
                     if (!here) actions.edit("${app.label} is in ${s.name} now.") { it.moveToSection(app.id, home.refFor(app), app.category, s.name, installed) }
                 }
@@ -265,74 +253,74 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
         }
         return
     }
-    DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
+    val edits = if (places != null) appEdits(places, home.locked) else emptyList()
+    // Opened from a tile, the tile's own place is edited (and checked); otherwise by what the refs draw as.
+    val here = spot?.spot
+    // Both removes show only for an app on home and in a folder, opened from the drawer: then they say which.
+    val removes = edits.count { it == AppEdit.REMOVE_FROM_FOLDER || it == AppEdit.REMOVE_FROM_HOME }
+    Popover(home.ui.popovers, anchor, close) {
         shortcuts.forEach { s ->
-            Item(s.info.shortLabel?.toString() ?: s.info.longLabel?.toString() ?: "Shortcut", s.icon) {
+            PopoverItem(s.info.shortLabel?.toString() ?: s.info.longLabel?.toString() ?: "Shortcut", s.icon) {
                 close(); actions.openShortcut(app, s.info, at, icon)
             }
         }
-        if (shortcuts.isNotEmpty()) HorizontalDivider(color = Line)
-        Item("App info") { close(); actions.appInfo(app) }
-        if (removable) Item("Uninstall") { close(); actions.uninstall(app) }
-        if (places != null) {
-            val ref = home.refFor(app)
-            // Opened from a tile, the tile's own place is edited (and checked); otherwise by what the refs draw as.
-            val here = spot?.spot
-            appEdits(places, home.locked).forEach { e ->
+        if (shortcuts.isNotEmpty()) PopoverDivider()
+        // The rows: what opens more (Move to section…) or adds (Add to home); then the row of icons.
+        if (places != null) edits.forEach { e ->
+            when (e) {
+                AppEdit.ADD_TO_HOME -> PopoverItem("Add to home") {
+                    close()
+                    actions.edit(places.folder?.let { "${app.label} is on home, out of $it." } ?: "${app.label} is on home.") { it.addToHome(app.id, home.refFor(app), installed) }
+                }
+                AppEdit.MOVE_TO_SECTION -> PopoverItem("Move to section…") { picking = true }
+                else -> {}
+            }
+        }
+        PopoverActions {
+            PopoverAction("App info", Glyph.INFO) { close(); actions.appInfo(app) }
+            if (places != null) edits.forEach { e ->
                 when (e) {
-                    AppEdit.REMOVE_FROM_FOLDER -> Item("Remove from folder") {
+                    AppEdit.REMOVE_FROM_FOLDER -> PopoverAction(if (removes > 1) "From folder" else "Remove", Glyph.REMOVE) {
                         close()
                         actions.edit("${app.label} is out of ${places.folder}.") { if (here is Spot.InFolder) it.removeAt(spot) else it.removeFromFolder(app.id, installed) }
                     }
-                    AppEdit.REMOVE_FROM_HOME -> Item("Remove from home") {
+                    AppEdit.REMOVE_FROM_HOME -> PopoverAction(if (removes > 1) "Off home" else "Remove", Glyph.REMOVE) {
                         close()
                         actions.edit("${app.label} is off home.") { if (here is Spot.Apps) it.removeAt(spot) else it.removeFromHome(app.id, installed) }
                     }
-                    AppEdit.ADD_TO_HOME -> Item("Add to home") {
-                        close()
-                        actions.edit(places.folder?.let { "${app.label} is on home, out of $it." } ?: "${app.label} is on home.") { it.addToHome(app.id, ref, installed) }
-                    }
-                    AppEdit.MOVE_TO_SECTION -> Item("Move to section…") { picking = true }
-                    AppEdit.HIDE -> Item("Hide") {
+                    AppEdit.HIDE -> PopoverAction("Hide", Glyph.HIDE) {
                         close(); actions.edit("${app.label} is hidden. Home settings brings it back.") { it.hide(app.packageName, app.id.work) }
                     }
+                    else -> {}
                 }
             }
+            if (removable) PopoverAction("Uninstall", Glyph.UNINSTALL) { close(); actions.uninstall(app) }
         }
     }
 }
 
+/** An [android.graphics.Rect] in the window as [Bounds]. */
+internal fun android.graphics.Rect.toBounds() = Bounds(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
+
 /**
- * The menu for a long press on empty home, at [at] within home's content (launcher polish 1.3).
- * [addWidget] is null where the menu offers no Add widget: while home is locked (decision lor-73li).
+ * The menu for a long press on empty home, pointing at the finger, [at] in the window (launcher
+ * polish 1.3). [addWidget] is null where the menu offers no Add widget: while home is locked
+ * (decision lor-73li).
  */
 @Composable
 fun HomeMenu(at: Offset, home: HomeContext, onEdit: () -> Unit, onPanels: () -> Unit, addWidget: (() -> Unit)?, close: () -> Unit) {
     val locked = home.locked
-    Box(Modifier.offset { IntOffset(at.x.roundToInt(), at.y.roundToInt()) }) {
-        DropdownMenu(true, close, containerColor = Raised, shape = androidx.compose.ui.graphics.RectangleShape) {
-            // Locked, what edits home is left out, as Lawnchair drops edit mode and Widgets; the
-            // caller passes no addWidget then.
-            if (!locked) Item("Edit home") { close(); onEdit() }
-            if (addWidget != null) Item("Add widget") { close(); addWidget() }
-            // The minimap (lor-6get) opens locked too: it draws the map, with Show and its padlock.
-            Item("Panels") { close(); onPanels() }
-            Item("Wallpaper") { close(); home.actions.wallpaper() }
-            Item("Home settings") { close(); home.actions.settings() }
-            // HomeScreen leaves edit mode when the file it draws is locked.
-            if (locked) Item("Unlock home") { close(); home.actions.edit("Home is unlocked.") { it.setLocked(false) } }
-            else Item("Lock home") { close(); home.actions.edit("Home is locked.") { it.setLocked(true) } }
-        }
+    Popover(home.ui.popovers, { Bounds(at.x, at.y, at.x, at.y) }, close, PopoverRing.NONE) {
+        // Locked, what edits home is left out, as Lawnchair drops edit mode and Widgets; the
+        // caller passes no addWidget then.
+        if (!locked) PopoverItem("Edit home") { close(); onEdit() }
+        if (addWidget != null) PopoverItem("Add widget") { close(); addWidget() }
+        // The minimap (lor-6get) opens locked too: it draws the map, with Show and its padlock.
+        PopoverItem("Panels") { close(); onPanels() }
+        PopoverItem("Wallpaper") { close(); home.actions.wallpaper() }
+        PopoverItem("Home settings") { close(); home.actions.settings() }
+        // HomeScreen leaves edit mode when the file it draws is locked.
+        if (locked) PopoverItem("Unlock home") { close(); home.actions.edit("Home is unlocked.") { it.setLocked(false) } }
+        else PopoverItem("Lock home") { close(); home.actions.edit("Home is locked.") { it.setLocked(true) } }
     }
-}
-
-@Composable
-internal fun Item(text: String, icon: ImageBitmap? = null, onClick: () -> Unit) {
-    DropdownMenuItem(
-        text = { Text(text, style = Type.body.copy(color = Txt, fontSize = 15.sp)) },
-        onClick = onClick,
-        leadingIcon = if (icon != null) {
-            { Image(icon, contentDescription = null, modifier = Modifier.size(22.dp)) }
-        } else null,
-    )
 }
