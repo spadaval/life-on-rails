@@ -785,20 +785,25 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
         val body = homeBody(appsLoad, home.file, placed?.count ?: 0)
         // The apps block takes the space the other blocks leave ([FillColumn]'s fill), and no less
         // than it needs when they leave too little, so it scrolls with them.
+        // Home's notes on the start stack: the broken-file banner, and until the first run is done
+        // (launcher polish 3.5) the set-up card, with the block [notesBlock] names.
+        val notes = @Composable {
+            if (layout is LayoutState.Broken) {
+                BrokenBanner(
+                    layout, appsLoad == AppsLoad.LOADED, Type.body.copy(color = Txt, fontSize = 13.sp),
+                    Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp).fillMaxWidth()
+                        .framedPanel(StateFill)
+                        .padding(horizontal = 14.dp),
+                    home.actions::restore,
+                )
+            }
+            SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
+        }
+        val notesAt = if (start) notesBlock(panel) else -1
         val apps = @Composable { at: BlockAt ->
             val columns = LocalHomeLook.current.columnsFor(widthDp).home
             FillColumn(Modifier.layoutId(Fill).fillMaxWidth()) {
-                if (start && layout is LayoutState.Broken) {
-                    BrokenBanner(
-                        layout, appsLoad == AppsLoad.LOADED, Type.body.copy(color = Txt, fontSize = 13.sp),
-                        Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp).fillMaxWidth()
-                            .framedPanel(StateFill)
-                            .padding(horizontal = 14.dp),
-                        home.actions::restore,
-                    )
-                }
-                // Until the first run is done (launcher polish 3.5); the default layout is drawn under it.
-                if (start) SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
+                if (at.block == notesAt) notes()
                 val drops = body == HomeBody.GRID || body == HomeBody.EMPTY
                 // The block's space, from its first row to what follows it, takes a drop after its last item.
                 Box(
@@ -829,6 +834,8 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
                         is StackBlock.Widget -> key(block.id) { WidgetBlock(block, panelHeight, ui, home) }
                         StackBlock.Today, StackBlock.NeedsYou, StackBlock.Running, StackBlock.T3Queue -> key(block.type) { LorBlock(block, ui.grid) }
                     }
+                    // With no `apps` block, the notes go under the block [notesBlock] names (lor-bdus's review, R4).
+                    if (i == notesAt && block !is StackBlock.Apps) notes()
                 }
                 if (list.none { it.value is StackBlock.Apps }) Spacer(Modifier.layoutId(Fill))
             }
@@ -852,6 +859,13 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
         }
     }
 }
+
+/**
+ * The block of a start stack that home's notes (the broken-file banner, the set-up card) are drawn
+ * with: its `apps` block, at the top of it, else its first block, under it. So a start stack
+ * without apps, as an old dock-only one converts to (lor-bdus), still shows them.
+ */
+internal fun notesBlock(stack: Panel.Stack): Int = stack.blocks.indexOfFirst { it is StackBlock.Apps }.coerceAtLeast(0)
 
 /** Marks the child of a [FillColumn] that takes the space the others leave. */
 internal object Fill

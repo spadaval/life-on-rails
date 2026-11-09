@@ -219,6 +219,33 @@ class NoDockTest {
         assertEquals("layout.json has an error. Showing the last good layout.", brokenLine(LayoutState.Broken("x", store.readGood())))
     }
 
+    /**
+     * lor-bdus's review, R4: R2 and R3 together. A dock-only start beside five full pages, the same
+     * old file in layout.json and layout.good.json: home shows a clock-only start without the dock
+     * app, and that start, which has no apps block, still carries the banner (its block 0).
+     */
+    @Test
+    fun aDockOnlyStartBesideAFullHomeStillCarriesTheBanner() {
+        val full = (1..5).joinToString { c -> stackAt(c, appsOf(*(1..24).map { "p$c.p$it" }.toTypedArray())) }
+        val text = v2("\"d.d\"", "${stackAt(0, dockBlock)}, $full", start = "[0, 0]")
+        val store = LayoutStore(tmp.root.resolve("layout.json"))
+        store.file.writeText(text)
+        store.good.writeText(text)
+        assertTrue(store.edit { it }.isFailure)
+        assertNull(store.readGood())
+        val shown = store.readLastGood()!!
+        assertEquals(listOf(ref("d.d")), shown.left)
+        assertEquals(120, shown.layout.current.allItems.size)
+        val start = shown.layout.current.panelAt(Cell(0, 0)) as Panel.Stack
+        assertEquals(listOf(StackBlock.Clock), start.blocks)
+        assertEquals(0, notesBlock(start))
+        assertEquals("layout.json has an error. Showing the last good layout without 1 old dock app.", brokenLine(LayoutState.Broken("x", shown.layout, shown.left)))
+        assertEquals(text, store.file.readText())
+        assertEquals(text, store.good.readText())
+        // With an apps block, the notes go with it, wherever it is in the stack.
+        assertEquals(1, notesBlock(Panel.Stack(Cell(0, 0), listOf(StackBlock.Clock, StackBlock.Apps(emptyList())))))
+    }
+
     @Test
     fun aFreshInstallHasNoDockAndNoGoogleFolder() {
         val google = (1..21).map { "com.google.android.app$it" }
