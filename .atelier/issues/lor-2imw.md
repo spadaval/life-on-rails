@@ -4,6 +4,9 @@ id: "lor-2imw"
 issue_type: "feature"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: t3/drawer-quick-dial
 priority: "P2"
 relationships:
   blocks: []
@@ -18,9 +21,9 @@ relationships:
     type: "blocked_by"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "Quick dial: the drawer's first tab, ranked for the hour"
-updated_at: "2026-11-09T01:36:23.048955294+00:00"
+updated_at: "2026-11-09T05:44:18.567170196+00:00"
 ---
 
 ## Goal
@@ -44,3 +47,16 @@ The drawer's first tab is quick dial: what Sumeet is likely to want right now, r
 ## Context
 
 Mission lor-5qkq. LoR already holds Usage access (`collect/AppUsageCollector.kt` reads the same events). LoR's usage data (Oct 13 to Nov 7) shows real time-of-day patterns: United and Uber in the morning, WhatsApp in the evening, YouTube Music during the day.
+
+## Notes
+
+- 2026-11-09 [decision] Estimate: about 600 changed lines (QuickDial.kt ~200, QuickDialRows.kt ~90, DrawerScreen/HomeStore ~150, tests ~170, spec).
+  Reason: The assignment's 500 to 800; written down before the build as implement asks.
+- 2026-11-09 [decision] Quick dial's 'how often and how lately' is a count per slot (five hour bands x weekday/weekend) where each open adds 1 and every count halves in 14 days, not LaunchStats' per-launch weight. Score = total x (n_slot + 4u)/(total + 4), u the slot's share of the week's hours.
+  Reason: LaunchStats moves every weight by alpha=0.03 per launch. Fed with usage events (well over 100 app changes a day) its half-life is about 23 opens, a few hours, so an app opened every morning has decayed to nothing by evening and the hour weighting has nothing to work with. A time half-life keeps the same idea (often and lately) at any event volume. The strategy lets the orchestrator choose the score's weights.
+  Rejected: Reuse LaunchStats' weight fed with usage events (decays too fast)
+  Rejected: Tune LaunchStats' alpha down (changes search's tie order too)
+- 2026-11-09 [decision] People are deduped by the shortcut's label, not its Person key.
+  Reason: ShortcutInfo.getPersons() is a @SystemApi: it is not in the public android.jar (checked with javap on android-37.0), so a launcher can't read the Person. The Done when line's 'else its label' is what applies. The same person in WhatsApp and Messages usually has the same name, which the test covers.
+- 2026-11-09 [decision] Emulator check on boat's T3_Phone_API35 with the host's test server forwarded into the VM by 'boat forward --reverse --local 3857', so the app's server_url stays http://10.0.2.2:3857 (the emulator's 10.0.2.2 is the VM's loopback).
+  Reason: The local T3_Phone_API35 is still held by another thread's agent-device session (t3-96ff96...), which this thread may not reuse or close. A forward reaches the real test server, so the card is shown from a real /device/home with a pin set on the test database, not faked.

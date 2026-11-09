@@ -9,6 +9,8 @@ import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
+import android.app.usage.UsageEvents
+import android.app.usage.UsageStatsManager
 import android.database.ContentObserver
 import android.net.Uri
 import android.os.Process
@@ -28,6 +30,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.text.Collator
+import java.time.ZoneId
 
 /** One launchable activity, its label read once (`getLabel` loads it from the package each call). */
 class HomeApp(val label: String, val info: LauncherActivityInfo) {
@@ -132,6 +135,7 @@ class HomeStore(private val context: Context) {
     private val byLabel = Comparator<HomeApp> { a, b -> collator.compare(a.label, b.label) }
     private val store = LayoutStore(File(context.filesDir, "layout.json"))
     private val statsFile = File(context.filesDir, "launch-stats.json")
+    private val opensFile = File(context.filesDir, "quick-dial.json")
     private var stamp = -1L
 
     /** The app list loaded in full at least once; until then no default layout is written. */
@@ -149,6 +153,9 @@ class HomeStore(private val context: Context) {
     val reads: StateFlow<Int> = _reads
     private val _stats = MutableStateFlow(LaunchStats())
     val stats: StateFlow<LaunchStats> = _stats
+    private val _opens = MutableStateFlow(AppOpens())
+    /** Quick dial's open counts (lor-2imw), from usage events and work apps' launcher taps. */
+    val opens: StateFlow<AppOpens> = _opens
     private val _search = MutableStateFlow(SearchSources())
     /** Search's sources besides the app list (launcher polish 5.1). */
     val search: StateFlow<SearchSources> = _search
@@ -210,15 +217,52 @@ class HomeStore(private val context: Context) {
         serially { if (store.file.exists()) readLayout() }
         serially { loadApps() }
         serially { if (statsFile.exists()) _stats.value = LaunchStats.parse(statsFile.readText()) }
+        serially { if (opensFile.exists()) _opens.value = AppOpens.parse(opensFile.readText()) }
     }
 
-    /** Counts a launch of [app] from the launcher, for the drawer's Recent, Frequent and Most used. */
+    /**
+     * Counts a launch of [app] from the launcher, for search's weight; a work app's also for quick
+     * dial, whose usage events the main profile can't read (a main app's open is a usage event).
+     */
     fun launched(app: HomeApp) {
         val at = System.currentTimeMillis()
         serially {
             _stats.value = _stats.value.launched(app.key, at)
             writeAtomically(statsFile, _stats.value.toJson())
+            if (!app.mainProfile) {
+                _opens.value = _opens.value.opened(opensKey(app.id), at, ZoneId.systemDefault())
+                writeAtomically(opensFile, _opens.value.toJson())
+            }
         }
+    }
+
+    /**
+     * Reads the usage events since the last read into quick dial's counts (lor-2imw), when the
+     * drawer opens: Android keeps them only a few days, so the counts live in the launcher's file.
+     * A first read looks back a week. Without Usage access the system returns none.
+     */
+    fun readUsage() = serially {
+        val now = System.currentTimeMillis()
+        val old = _opens.value
+        val from = if (old.cursor > 0) old.cursor else now - USAGE_FIRST_MS
+        val usm = context.getSystemService(UsageStatsManager::class.java)
+        val events = mutableListOf<Resumed>()
+        val it = usm.queryEvents(from, now)
+        val e = UsageEvents.Event()
+        while (it.hasNextEvent()) {
+            it.getNextEvent(e)
+            if (e.eventType == UsageEvents.Event.ACTIVITY_RESUMED && e.packageName != null) events += Resumed(e.packageName, e.timeStamp)
+        }
+        val next = old.withUsage(events, ignoredForOpens(), now, ZoneId.systemDefault())
+        _opens.value = next
+        writeAtomically(opensFile, next.toJson())
+        Log.i(TAG, "quick dial read ${events.size} app resumes since ${if (old.cursor > 0) "the last read" else "a week ago"} in ${System.currentTimeMillis() - now} ms (${next.counts.size} apps counted)")
+    }
+
+    /** LoR (this launcher), the default home if another, and the system UI: being in front of them isn't opening an app. */
+    private fun ignoredForOpens(): Set<String> {
+        val home = context.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY)
+        return setOfNotNull(context.packageName, "com.android.systemui", home?.activityInfo?.packageName)
     }
 
     /** Records [query] as a recent search (launcher polish 5.5): something was opened from it. */
@@ -527,5 +571,7 @@ class HomeStore(private val context: Context) {
     companion object {
         private const val TAG = "LorHome"
         const val SEARCH_TAG = "LorSearch"
+        /** How far back quick dial's first read of usage events looks; Android keeps less. */
+        private const val USAGE_FIRST_MS = 7L * 24 * 60 * 60 * 1000
     }
 }

@@ -54,7 +54,7 @@ The top-level `drawer` is the drawer's settings: its tabs and `keyboard`. The `d
 
 `drawer.tabs` (optional; a version 2 addition, lor-iyc3) is the drawer's tabs in order, the floating bar's icons left to right. Each tab is an object with a `name` (non-empty; names unique ignoring case) and an `icon`, and either `apps` or `kind`, never both:
 
-- `{ "name", "icon", "kind": "quick" }`: quick dial. Exactly one, and it is first. Until quick dial's own content (lor-2imw) it shows the apps installed in the last three days (New).
+- `{ "name", "icon", "kind": "quick" }`: quick dial. Exactly one, and it is first. Its content isn't in the file: the phone ranks it from use (the spec's drawer line, lor-2imw).
 - `{ "name", "icon", "kind": "all" }`: All, every app A–Z with the letter rail. Exactly one, and it is last.
 - `{ "name", "icon", "apps": [...] }`: a list tab, between them. `apps` are refs as in an `apps` block (a package name means each of its launchable activities), shown in the list's order; a ref to an app that isn't installed shows nothing. An app no list names is in no list tab, but still in All, in quick dial's New while new, and among quick dial's ranked apps. Two refs that name one activity, in one tab or two, are an error: an app is in at most one list tab. A hidden app shows in no tab.
 

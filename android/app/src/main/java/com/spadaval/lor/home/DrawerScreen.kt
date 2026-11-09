@@ -82,6 +82,14 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.spadaval.lor.LorApp
+import java.time.Instant
+import java.time.ZoneId
 
 /*
  * The drawer (lor-iyc3): tabs from `drawer.tabs`, quick dial first and All last, with a floating
@@ -94,19 +102,25 @@ import kotlinx.coroutines.withContext
  * screen, `look.grid.wide`'s columns and the controls at most 560 dp wide, centred.
  */
 
-/** How long an app counts as new. */
-private const val NEW_FOR_MS = 3L * 24 * 60 * 60 * 1000
-
 /** One cell or full-width line of the drawer's grid. Keys are unique. */
 internal sealed interface Entry {
     val key: String
 
-    class Header(val title: String, override val key: String) : Entry
+    /** A section's title, with [sub] beside it (quick dial's "Sunday evening"). */
+    class Header(val title: String, override val key: String, val sub: String? = null) : Entry
     class Tile(val app: HomeApp, val dot: Boolean, override val key: String, val go: Boolean = false) : Entry
     /** A search result drawn as a row: a shortcut, a settings page, a contact (launcher polish 5.2 on). */
     class Row(val value: Any, override val key: String, val go: Boolean) : Entry
     /** A line saying why a tab is empty. */
     class Note(val text: String, override val key: String) : Entry
+    /** Quick dial's card for what's next from LoR. */
+    class Card(val card: QuickCard) : Entry {
+        override val key = "quick-card"
+    }
+    /** Quick dial's people row. */
+    class People(val people: List<SearchShortcut>) : Entry {
+        override val key = "quick-people"
+    }
     class HiddenApps(val count: Int) : Entry {
         override val key = "hidden-apps"
     }
@@ -115,23 +129,35 @@ internal sealed interface Entry {
 /** The grid's entries for a tab, and All's letters with the index of each header. */
 internal class Built(val entries: List<Entry>, val letters: List<Pair<String, Int>>)
 
-private fun build(tab: DrawerTab, apps: List<HomeApp>, file: LayoutFile?, stats: LaunchStats, now: Long): Built {
+/** What quick dial shows besides the app list: its card and people, read in [Drawer]. */
+internal class QuickParts(val opens: AppOpens, val card: QuickCard?, val people: List<SearchShortcut>)
+
+private fun build(tab: DrawerTab, apps: List<HomeApp>, file: LayoutFile?, stats: LaunchStats, quick: QuickParts, now: Long): Built {
     val launched = stats.entries
-    // New, and not opened from the launcher since it was installed.
-    fun dot(app: HomeApp) = app.mainProfile && now - app.firstInstalled < NEW_FOR_MS && (launched[app.key]?.last ?: 0) < app.firstInstalled
+    // New, and not opened since it was installed: from the launcher, or anywhere usage events saw.
+    // Main-profile apps only: a work-profile app's install time can't be read (see HomeApp.firstInstalled).
+    fun dot(app: HomeApp) = app.mainProfile &&
+        isNew(app.firstInstalled, maxOf(launched[app.key]?.last ?: 0, quick.opens.last[opensKey(app.id)] ?: 0), now)
     val out = mutableListOf<Entry>()
-    fun header(title: String) = out.add(Entry.Header(title, "h${out.size}:$title"))
+    fun header(title: String, sub: String? = null) = out.add(Entry.Header(title, "h${out.size}:$title", sub))
     fun tiles(prefix: String, list: List<HomeApp>) = list.forEach { out.add(Entry.Tile(it, dot(it), "$prefix:${it.key}")) }
     fun note(text: String) = out.add(Entry.Note(text, "n${out.size}"))
     val letters = mutableListOf<Pair<String, Int>>()
     when (tab.kind) {
-        // Until quick dial's own content (lor-2imw): what is new.
+        // Quick dial (lor-2imw): the card, the apps for now, the people, the new installs.
         TabKind.QUICK -> {
-            header(tab.name)
-            // Main-profile apps only: a work-profile app's install time can't be read (see HomeApp.firstInstalled).
-            val new = apps.filter { it.mainProfile && now - it.firstInstalled < NEW_FOR_MS }.sortedByDescending { it.firstInstalled }
-            if (new.isEmpty()) note("Nothing new installed this week.")
-            else { header("New"); tiles("new", new) }
+            quick.card?.let { out.add(Entry.Card(it)) }
+            val zone = ZoneId.systemDefault()
+            header("Now", HourSlot.of(Instant.ofEpochMilli(now), zone).words(Instant.ofEpochMilli(now), zone))
+            val ranked = rankForNow(apps, { it.id }, quick.opens, now, zone)
+            if (ranked.isEmpty()) note("The apps you open at this time of day will show here.")
+            else tiles("now", ranked)
+            if (quick.people.isNotEmpty()) {
+                header("People")
+                out.add(Entry.People(quick.people))
+            }
+            val new = apps.filter(::dot).sortedByDescending { it.firstInstalled }
+            if (new.isNotEmpty()) { header("New"); tiles("new", new) }
         }
         TabKind.LIST -> {
             header(tab.name)
@@ -208,6 +234,18 @@ internal fun searchAll(query: String, apps: List<HomeApp>, sources: SearchSource
 internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSources, ui: HomeUi, home: HomeContext) {
     val tabs = home.file?.drawer?.tabs ?: Drawer.DEFAULT_TABS
     val current = ui.tab.coerceIn(tabs.indices)
+    val lor = LocalContext.current.applicationContext as LorApp
+    // Quick dial's counts, read up to now each time the drawer opens (lor-2imw).
+    val opens by lor.home.opens.collectAsStateWithLifecycle()
+    LaunchedEffect(ui.drawer) { if (ui.drawer) lor.home.readUsage() }
+    // Quick dial's card holds LoR's reader while it shows, as home's header does.
+    val quickShown = ui.drawer && tabs[current].kind == TabKind.QUICK
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(quickShown, lifecycle) { if (quickShown) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { lor.reads.hold() } }
+    val reads = lor.reads
+    val card = quickCard(reads.home?.one, reads.current, reads.homeRead.at, ZoneId.systemDefault())
+    val people = remember(apps, sources.shortcuts) { quickPeople(apps, sources, System.currentTimeMillis()) }
+    val quick = QuickParts(opens, card, people)
     val open = ui.searchOpen
     // Something typed makes it a search, recorded with the text as typed.
     val searching = open && ui.query.isNotBlank()
@@ -289,12 +327,12 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
     // The list and the controls end at the keyboard: only the drawer lifts, never the grid (lor-sqfe).
     BoxWithConstraints(Modifier.fillMaxSize().background(Bg).swallowTaps().cellInsetsPadding().imePadding()) {
         val columns = LocalHomeLook.current.columnsFor(maxWidth.value).drawer
-        val now = remember(apps, stats) { System.currentTimeMillis() }
         val goKey = if (focused && fresh) results.go?.key else null
         val tab = tabs[current]
-        val built = remember(tab, apps, home.file, stats, searching, results, goKey) {
+        val built = remember(tab, apps, home.file, stats, searching, results, goKey, quick.opens, quick.card, quick.people, ui.drawer) {
             if (searching) searchEntries(results, goKey)
-            else build(tab, apps, home.file, stats, now)
+            // Now is read again each time the drawer opens, so quick dial ranks for the hour it opens in.
+            else build(tab, apps, home.file, stats, quick, System.currentTimeMillis())
         }
         // A tab's place and the results' are kept apart, so clearing a search goes back to where the tab was.
         val browse = rememberLazyGridState()
@@ -323,7 +361,9 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
         ) {
             items(built.entries, key = { it.key }, span = { if (it is Entry.Tile) GridItemSpan(1) else GridItemSpan(maxLineSpan) }) { e ->
                 when (e) {
-                    is Entry.Header -> SectionHeader(e.title)
+                    is Entry.Header -> SectionHeader(e.title, e.sub)
+                    is Entry.Card -> QuickCardView(e.card, home.actions::calendar)
+                    is Entry.People -> PeopleRow(e.people, at, home)
                     // An app of either profile can be picked up and dragged onto home (launcher polish 4.6, lor-72c3).
                     is Entry.Tile -> Box(
                         Modifier.dragSource(home.drag, e.key) { b -> Source(b, Slot.DrawerApp(e.app.key), 2) },
@@ -440,10 +480,26 @@ private fun Chip(text: String, color: Color, edge: Color, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SectionHeader(title: String) {
-    Column(Modifier.fillMaxWidth().padding(start = 12.dp, top = 10.dp).semantics(mergeDescendants = true) { heading() }) {
-        Text(title.uppercase(), style = Type.title)
+private fun SectionHeader(title: String, sub: String? = null) {
+    Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 10.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.Bottom) {
+        Text(title.uppercase(), style = Type.title, modifier = Modifier.weight(1f))
+        sub?.let { Text(it, style = Type.body.copy(color = Dim, fontSize = 12.sp)) }
     }
+}
+
+/**
+ * Quick dial's people (lor-2imw): the conversation shortcuts search holds, cached ones included,
+ * of apps the drawer lists, by [recentPeople].
+ */
+internal fun quickPeople(apps: List<HomeApp>, sources: SearchSources, now: Long): List<SearchShortcut> {
+    val owners = apps.map { Owner(it.packageName, it.id.className, it.user.toString()) to it }
+    val chats = sources.shortcuts.mapNotNull { f ->
+        val hit = f.value as ShortcutHit
+        if (!hit.conversation) return@mapNotNull null
+        val i = hit.info
+        ownerOf(owners, i.`package`, i.activity?.className, i.userHandle.toString())?.let { Chat(hit.label, i.lastChangedTimestamp, SearchShortcut(hit, it)) }
+    }
+    return recentPeople(chats, now).map { it.value }
 }
 
 /**
