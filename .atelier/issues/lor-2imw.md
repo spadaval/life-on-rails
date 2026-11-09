@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Quick dial: the drawer's first tab, ranked for the hour"
-updated_at: "2026-11-09T08:15:06.676037527+00:00"
+updated_at: "2026-11-09T08:15:38.531922582+00:00"
 ---
 
 ## Goal
@@ -69,6 +69,8 @@ Mission lor-5qkq. LoR already holds Usage access (`collect/AppUsageCollector.kt`
 - 2026-11-09 [decision] The card greys when the kept /device/home isn't current or the last read failed (reads.current && reads.error == null), as the lor panel's lists do.
   Reason: LorReads sets current = true after any read, failed ones included, so current alone left the card bright with the network off; seen on the emulator in airplane mode before the fix.
 - 2026-11-09 [handoff] Implemented on t3/drawer-quick-dial (head 1994dfb, worktree /home/supadava/.t3/worktrees/life-on-rails/t3-e27663ba). Review requested, no reviewer dispatched. See ## Report: the score deviates from 'the existing decaying weight' (decision note), which the orchestrator should confirm.
+- 2026-11-09 [decision] Accepted: quick dial ranks by per-slot counts with a 14-day half-life times the smoothed share in the current slot, not LaunchStats' decaying weight; the Done when line's 'existing decaying weight' is read as this (orchestrator, within the strategy's Authority).
+  Reason: The strategy's Authority lets the orchestrator choose the quick-dial score's weights within its Shape (how often and how lately each app was opened, weighted by its share at this hour and kind of day). Per-slot counts that halve in 14 days measure often and lately; the smoothed share of the current slot is the affinity. LaunchStats' per-launch decay was built for a few launcher taps a day: at usage-event volume (100+ foreground switches a day) it fades a morning app to nothing by evening, so it can't carry an hour weighting.
 
 ## Report
 
