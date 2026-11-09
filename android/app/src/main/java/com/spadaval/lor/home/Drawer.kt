@@ -22,6 +22,26 @@ enum class TabIcon(val id: String) {
     }
 }
 
+/**
+ * The floating bar's sizes in dp (TabBar.kt), kept here so [tabWidth] is tested on the JVM: the
+ * search button (square, as tall as the bar), the gap before it and the bar's own padding.
+ */
+object BarSize {
+    const val SEARCH = 44f
+    const val GAP = 8f
+    /** The bar's padding, both sides together. */
+    const val PADDING = 6f
+    /** A tab button's width when there is room, as in the mocks. */
+    const val TAB = 40f
+}
+
+/**
+ * A tab button's width in dp when the bar and the search button have [room] dp: [BarSize.TAB], or
+ * narrower so [tabs] buttons fit beside the search button, which always keeps its size.
+ */
+fun tabWidth(room: Float, tabs: Int): Float =
+    minOf(BarSize.TAB, (room - BarSize.SEARCH - BarSize.GAP - BarSize.PADDING) / tabs.coerceAtLeast(1))
+
 /** What a tab's button draws when its icon is unknown: its name's first letter or digit, upper case. */
 fun tabLetter(name: String): String = name.firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "?"
 

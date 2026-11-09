@@ -383,11 +383,12 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AnimatedVisibility(!open, enter = fadeIn(Motion.move()) + expandHorizontally(Motion.move()), exit = fadeOut(Motion.quick()) + shrinkHorizontally(Motion.move())) {
                         Row {
-                            TabBar(tabs, current) { i ->
+                            // Search keeps its size; the tabs take what is left (lor-81d4).
+                            TabBar(tabs, current, tabWidth(full.value, tabs.size).dp) { i ->
                                 ui.tab = i
                                 flash = tabs[i].name to System.nanoTime()
                             }
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(BarSize.GAP.dp))
                         }
                     }
                     if (open) {

@@ -59,27 +59,27 @@ import com.spadaval.lor.ui.Well
  */
 
 /** The height of the bar, the search button and the field. */
-internal val BarHeight = 44.dp
+internal val BarHeight = BarSize.SEARCH.dp
 
 /** Floating things' face: Raised, a little see-through, as the mock's 86% (DESIGN.md: menus float). */
 private val Float = Raised.copy(alpha = 0.92f)
 
-/** The bar of one icon per tab. */
+/** The bar of one icon per tab, each [tabWidth] wide ([tabWidth] in Drawer.kt fits them beside search). */
 @Composable
-internal fun TabBar(tabs: List<DrawerTab>, current: Int, choose: (Int) -> Unit) {
+internal fun TabBar(tabs: List<DrawerTab>, current: Int, tabWidth: Dp, choose: (Int) -> Unit) {
     Row(
         Modifier
             .shadow(10.dp, Chamfer, ambientColor = Color.Black, spotColor = Color.Black)
             .background(Float, Chamfer)
             .border(1.dp, Edge, Chamfer)
-            .padding(3.dp),
+            .padding((BarSize.PADDING / 2).dp),
     ) {
         tabs.forEachIndexed { i, t ->
             val on = i == current
             val color = if (on) Or else Dim
             Box(
                 Modifier
-                    .width(40.dp)
+                    .width(tabWidth)
                     .height(BarHeight - 6.dp)
                     .background(if (on) Or.copy(alpha = 0.1f) else Color.Transparent)
                     .semantics { role = Role.Tab; selected = on; contentDescription = t.name }

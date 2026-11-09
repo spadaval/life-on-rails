@@ -89,6 +89,17 @@ class DrawerTest {
     }
 
     @Test
+    fun eightTabsNarrowSoSearchKeepsItsSizeOnANarrowScreen() {
+        // A 360 dp phone: the bar's row is 328 dp inside its 16 dp margins.
+        val w = tabWidth(328f, 8)
+        assertEquals(33.75f, w, 0.001f)
+        assertEquals(328f, 8 * w + BarSize.PADDING + BarSize.GAP + BarSize.SEARCH, 0.001f)
+        // With room, a tab is the mock's 40 dp, however few.
+        assertEquals(40f, tabWidth(379f, 8), 0.001f)
+        assertEquals(40f, tabWidth(328f, 2), 0.001f)
+    }
+
+    @Test
     fun anOlderDrawersSectionsAndViewAreReadAndDropped() {
         val f = parse("""{"view": "az", "keyboard": true, "sections": [{"name": "Work", "category": "work", "apps": ["com.slack"]}]}""")
         assertEquals(Drawer(keyboard = true), f.drawer)
