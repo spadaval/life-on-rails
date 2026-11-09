@@ -4,6 +4,9 @@ id: "lor-57bm"
 issue_type: "spike"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: lor-57bm
 priority: "P2"
 relationships:
   blocks: []
@@ -15,9 +18,9 @@ relationships:
     type: "related"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "Spike: LoR's emulators on its boat VM, reached over Tailscale"
-updated_at: "2026-11-08T18:31:14.862726511+00:00"
+updated_at: "2026-11-08T23:58:50.968115939+00:00"
 ---
 
 ## Goal
@@ -47,3 +50,5 @@ Find out whether LoR's emulator checks can move off this host onto LoR's boat VM
 ## Notes
 
 - 2026-11-08 [note] Tailscale OAuth client received from Sumeet (2026-11-08) through request_secret and stored in ~/.config/homelab/tailscale-oauth (mode 0600); its token reads the policy (HTTP 200). The policy today: one allow-all grant (src *, dst *, ip *), tagOwners {tag:Buildbot: [autogroup:admin]} (no device carries it), and an ssh check rule for autogroup:member to autogroup:self. So the allow-all grant must be narrowed (for example src autogroup:member) for tag:boat to reach nothing; no tagged device exists today, so nothing else loses access. Not yet checked: the auth-keys and devices scopes (first key mint).
+- 2026-11-08 [decision] Estimate: no app code. Changes are this issue's records, a VM setup script (about 50-100 lines, beside android/boat-setup.sh), the tailnet policy diff, and T3 Code's device-host config. If the spike needs a change to T3 Code itself, stop and report.
+  Reason: implement asks for an estimate when the assignment gives none
