@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Work-profile apps go on home, in folders and hidden: refs name a profile"
-updated_at: "2026-11-09T02:15:39.152989595+00:00"
+updated_at: "2026-11-09T02:26:59.534174736+00:00"
 ---
 
 ## Goal
@@ -52,6 +52,10 @@ Mission lor-5qkq. The work profile is the one `LauncherApps.getProfiles()` gives
 - How to make a managed profile on the API 35 emulator without a device policy app (`pm create-user --profileOf 0 --managed`, or Test DPC). The first to work is recorded on this item.
   - Answered: `pm create-user --profileOf 0 --managed Work`, then `am start-user -w 10` and `pm install-existing --user 10 <package>` for each app (boat's `T3_Phone_API35`, 2026-11-09). The profile is `profile.MANAGED`, `RUNNING_UNLOCKED`, with no device policy app, and `LauncherApps` lists its 18 launchable activities. The brief's "Work section with Calendar, Drive and Life on Rails" was the Work category section of main-profile apps; the emulator had no profile until this.
 
+## Notes
+
+- 2026-11-08 [note] Handoff: implemented on t3/work-profile-app-refs (2fa3ba8 code, 5c9723d records). Proof: boat assembleDebug testDebugUnitTest 397/0; 15 emulator receipts. Review requested, no reviewer dispatched. See ## Report.
+
 ## Report
 
 All six Done when lines hold. A ref may start with `work:`; `LayoutTest.aWorkPrefixNamesTheWorkProfile` covers parse, write and round trip in every place a ref goes (apps, folders, cover, dock, hidden, drawer sections) and that a file without the prefix reads as before, and `LayoutTest.anUnknownPrefixIsAnErrorThatSaysWhere` covers `personal:` and `Work:` errors naming `items[1]` and `hidden[0]`. `AppRef` and `AppId` carry `work`, so `matches`, `resolve`, `names`, `placesOf`, `isHidden`, hide, unhide and the edits keep twins apart: `HomeEditTest.aWorkTwinIsAnotherApp` (add, folder, remove from folder, add out of folder, hide, unhide and a drawer drop of the work twin of `t.t` beside the main one) and `SectionEditTest.aWorkAppMovesToASectionApartFromItsTwin`. On boat, `assembleDebug testDebugUnitTest` passed with 397 tests and 0 failures. On boat's `T3_Phone_API35` with a managed profile, the work Calendar was added to home from its menu, drawn with the work badge, opened as `u10`, dragged onto the main Calendar into a folder, hidden from the folder, unhidden from Home settings, and dragged from the drawer onto home, each with a screenshot and `layout.json` read after it (receipts on this item).
@@ -72,4 +76,3 @@ All six Done when lines hold. A ref may start with `work:`; `LayoutTest.aWorkPre
 
 - The real Fold's Meraki profile is not checked here; that falls to lor-37bx.
 - New still skips work apps (install time unreadable), as the Context says.
-
