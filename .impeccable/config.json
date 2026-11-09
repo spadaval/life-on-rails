@@ -1,0 +1,44 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "tiny-text",
+        "value": "*",
+        "files": [
+          "docs/missions/launcher-use/mocks/home-quick-dial.html"
+        ],
+        "createdAt": "2026-11-09T01:34:30.173Z",
+        "reason": "agent: phone mock drawn at 73% of the Fold cover's 411dp width, so 10.5px labels stand for the phone's ~14sp labels"
+      },
+      {
+        "rule": "tiny-text",
+        "value": "*",
+        "files": [
+          "docs/missions/launcher-use/mocks/drawer-search-popover.html"
+        ],
+        "createdAt": "2026-11-09T01:34:30.189Z",
+        "reason": "agent: phone mock drawn at 73% of the Fold cover's 411dp width, so 10.5px labels stand for the phone's ~14sp labels"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          "docs/missions/launcher-use/mocks/home-quick-dial.html"
+        ],
+        "createdAt": "2026-11-09T01:37:55.212Z",
+        "reason": "agent: phone mock drawn at 73% of the Fold cover's 411dp width, so 10.5px labels stand for the phone's ~14sp labels"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          "docs/missions/launcher-use/mocks/drawer-search-popover.html"
+        ],
+        "createdAt": "2026-11-09T01:37:55.229Z",
+        "reason": "agent: phone mock drawn at 73% of the Fold cover's 411dp width, so 10.5px labels stand for the phone's ~14sp labels"
+      }
+    ]
+  }
+}
