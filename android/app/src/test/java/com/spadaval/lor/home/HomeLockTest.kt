@@ -19,7 +19,7 @@ class HomeLockTest {
     @Test
     fun unlockedTheMenuIsAsBefore() {
         assertEquals(listOf(AppEdit.REMOVE_FROM_HOME, AppEdit.ADD_TO_DOCK, AppEdit.MOVE_TO_SECTION, AppEdit.HIDE), appEdits(onHome, false))
-        assertEquals(listOf(AppEdit.REMOVE_FROM_FOLDER, AppEdit.ADD_TO_DOCK, AppEdit.MOVE_TO_SECTION, AppEdit.HIDE), appEdits(inFolder, false))
+        assertEquals(listOf(AppEdit.REMOVE_FROM_FOLDER, AppEdit.ADD_TO_HOME, AppEdit.ADD_TO_DOCK, AppEdit.MOVE_TO_SECTION, AppEdit.HIDE), appEdits(inFolder, false))
         assertEquals(listOf(AppEdit.ADD_TO_HOME, AppEdit.REMOVE_FROM_DOCK, AppEdit.MOVE_TO_SECTION, AppEdit.HIDE), appEdits(inDock, false))
         assertEquals(listOf(AppEdit.ADD_TO_HOME, AppEdit.ADD_TO_DOCK, AppEdit.MOVE_TO_SECTION, AppEdit.HIDE), appEdits(nowhere, false))
     }

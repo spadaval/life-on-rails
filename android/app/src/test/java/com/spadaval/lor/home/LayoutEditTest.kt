@@ -84,7 +84,6 @@ class LayoutEditTest {
     @Test
     fun refusesDuplicatesAndLimits() {
         assertEquals("it's already on home", refused { file.addToHome(wa, AppRef("com.whatsapp")) })
-        assertEquals("it's already on home, in Dev", refused { file.addToHome(gh, AppRef("com.github.android")) })
         assertEquals("it's already in the dock", refused { file.addToDock(dialer, AppRef("com.google.android.dialer")) })
         var full = file
         repeat(LayoutFile.MAX_HOME - file.current.home.size) { full = full.addToHome(AppId("a.a$it", "a.a$it.M"), AppRef("a.a$it")) }

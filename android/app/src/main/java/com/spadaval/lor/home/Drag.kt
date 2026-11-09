@@ -209,6 +209,9 @@ class Held(
     /** Picked up in the drawer: not yet on home, so the drop adds rather than moves. */
     val fromDrawer: Boolean = start is From.Drawer
 
+    /** The folder on home a drawer app sits in, which a drop on home takes it out of (lor-83uq). */
+    val outOf: String? = (start as? From.Drawer)?.let { d -> original.folderSpotOf(d.app, home.installed)?.let { (original.itemAt(it.folder) as Folder).name } }
+
     /** Where the held item sits in [work], when it sits in it. */
     val spot: Spot? get() = (from as? From.At)?.spot
 

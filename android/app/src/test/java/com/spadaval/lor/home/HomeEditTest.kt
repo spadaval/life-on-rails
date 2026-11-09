@@ -145,7 +145,7 @@ class HomeEditTest {
         assertEquals("folders don't go in the dock", refused { f.drop(at(f, Spot.Apps(page(0), 1)), Target.AtEnd(Place.Dock)) })
         assertEquals("folders don't nest", refused { f.drop(at(f, Spot.Apps(page(0), 1)), Target.Onto(Spot.Apps(page(0), 0))) })
         assertEquals("folders don't nest", refused { f.drop(at(f, Spot.Apps(page(0), 1)), Target.Before(Spot.InFolder(page(0), 1, 0))) })
-        assertEquals("it's already on home", refused { f.drop(From.Drawer(app("x.x"), ref("x.x")), Target.AtEnd(Place.InApps(page(0)))) })
+        assertEquals("it's already on home", refused { f.drop(From.Drawer(app("a.a"), ref("a.a")), Target.AtEnd(Place.InApps(page(0)))) })
         assertEquals("it's already in the dock", refused { f.drop(From.Drawer(app("d.d"), ref("d.d")), Target.AtEnd(Place.Dock)) })
         val fullDock = file(listOf(ref("a.a")), dock = (1..5).map { ref("d.d$it") })
         assertEquals("the dock is full (5 apps)", refused { fullDock.drop(at(fullDock, Spot.Apps(page(0), 0)), Target.AtEnd(Place.Dock)) })
@@ -308,5 +308,52 @@ class HomeEditTest {
         assertEquals("a folder needs a name", refused { f.renameFolder(folder, "") })
         // Renaming again from the name drawn before the first landed refuses rather than renaming the wrong thing.
         assertEquals(HOME_CHANGED, refused { renamed.renameFolder(folder, "Trips") })
+    }
+
+    @Test
+    fun addToHomeMovesAnAppOutOfItsFolder() {
+        // lor-83uq: YouTube Music in "Google" on home; the menu's Add to home puts it at the end of the first page with room.
+        val f = file(listOf(ref("a.a"), Folder("Google", listOf(ref("g.g"), ref("y.y"), ref("m.m")), cover = ref("y.y"))))
+        val added = f.addToHome(app("y.y"), ref("y.y"))
+        assertEquals(listOf(listOf("a.a", "[Google: g.g, m.m]", "y.y")), added.pages)
+        val google = added.current.home[1] as Folder
+        assertTrue("an edited folder is pinned", google.pinned)
+        assertNull("its cover went with it", google.cover)
+        assertEquals(Places(home = true, dock = false, folder = null), added.placesOf(app("y.y")))
+        roundTrips(added)
+        // An app on home itself still refuses, even when a folder also holds it.
+        val twice = file(listOf(ref("y.y"), Folder("Google", listOf(ref("g.g"), ref("y.y")))))
+        assertEquals("it's already on home", refused { twice.addToHome(app("y.y"), ref("y.y")) })
+        assertNull(twice.folderSpotOf(app("y.y")))
+    }
+
+    @Test
+    fun aFolderThatAddToHomeEmptiesGoes() {
+        // The last app out of a folder on an extra page: the folder goes, and the page with it.
+        val f = file(listOf(ref("a.a")), listOf(Folder("Solo", listOf(ref("y.y")))))
+        val added = f.addToHome(app("y.y"), ref("y.y"))
+        assertEquals(listOf(listOf("a.a", "y.y")), added.pages)
+        // A folder on the first page that empties goes too, and the app takes its page's end.
+        val g = file(listOf(Folder("Solo", listOf(ref("y.y"))), ref("b.b")))
+        assertEquals(listOf(listOf("b.b", "y.y")), g.addToHome(app("y.y"), ref("y.y")).pages)
+    }
+
+    @Test
+    fun aDrawerDropOnHomeMovesAnAppOutOfItsFolder() {
+        val f = file(listOf(ref("a.a"), Folder("Google", listOf(ref("g.g"), ref("y.y")))), dock = listOf(ref("d.d")))
+        val d = f.drop(From.Drawer(app("y.y"), ref("y.y")), Target.Before(Spot.Apps(page(0), 0)))
+        assertEquals(listOf(listOf("y.y", "a.a", "[Google: g.g]")), d.file.pages)
+        assertEquals(Spot.Apps(page(0), 0), d.at)
+        // Its last app dropped elsewhere on home: the folder goes, and the drop's place counts without it.
+        val solo = file(listOf(Folder("Solo", listOf(ref("y.y"))), ref("a.a")))
+        val s = solo.drop(From.Drawer(app("y.y"), ref("y.y")), Target.AtEnd(Place.InApps(page(0))))
+        assertEquals(listOf(listOf("a.a", "y.y")), s.file.pages)
+        assertEquals(Spot.Apps(page(0), 1), s.at)
+        // Into the dock it stays in its folder too, as before.
+        val docked = f.drop(From.Drawer(app("y.y"), ref("y.y")), Target.AtEnd(Place.Dock))
+        assertEquals(listOf(listOf("a.a", "[Google: g.g, y.y]")), docked.file.pages)
+        assertEquals(listOf(ref("d.d"), ref("y.y")), docked.file.current.dock)
+        // An app on home itself still refuses.
+        assertEquals("it's already on home", refused { f.drop(From.Drawer(app("a.a"), ref("a.a")), Target.AtEnd(Place.InApps(page(0)))) })
     }
 }

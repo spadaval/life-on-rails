@@ -568,6 +568,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             else -> Settle(h.app, h.folder, h.finger, to, Settle.Kind.SLOT)
         }
         if (final == h.original) return
+        val out = h.outOf
+        if (out != null && !refused && h.app != null && final.placesOf(h.app.id, h.home.installed).home) said = "${h.app.label} is on home, out of $out."
         drag.landing = final
         actions.edit(said ?: "Added.", after = { drag.landing = null }) { now -> landOver(now, h.original, final) }
     }

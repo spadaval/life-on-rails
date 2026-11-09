@@ -37,6 +37,39 @@ class MotionTest {
     }
 
     @Test
+    fun aVerticalMoveCommitsAt110DpOrAFlingPast24Dp() {
+        // lor-83uq: releases from the Fold's log, on a 960 dp tall cover screen.
+        val h = 960f
+        assertTrue(FollowMotion.settles(fromOpen = false, start = 0f, shown = 0.155f, upDpS = 700f, sizeDp = h))
+        assertTrue(FollowMotion.settles(fromOpen = false, start = 0f, shown = 0.194f, upDpS = 462f, sizeDp = h))
+        assertFalse(FollowMotion.settles(fromOpen = false, start = 0f, shown = 0.15f, upDpS = -489f, sizeDp = h))
+        assertFalse(FollowMotion.settles(fromOpen = false, start = 0f, shown = 0.01f, upDpS = 440f, sizeDp = h))
+        // A slow release goes by distance: 110 dp is 0.1146 of 960.
+        assertFalse(FollowMotion.settles(fromOpen = false, start = 0f, shown = 0.11f, upDpS = 0f, sizeDp = h))
+        assertTrue(FollowMotion.settles(fromOpen = false, start = 0f, shown = 0.12f, upDpS = 0f, sizeDp = h))
+        // A fling just past 24 dp (0.025 of 960) goes; at 400 dp/s or under it goes by distance.
+        assertTrue(FollowMotion.settles(fromOpen = false, start = 0f, shown = 0.026f, upDpS = 401f, sizeDp = h))
+        assertFalse(FollowMotion.settles(fromOpen = false, start = 0f, shown = 0.05f, upDpS = 400f, sizeDp = h))
+        // The mirror, from open (the drawer closing): down 120 dp slowly closes, 100 dp stays open.
+        assertFalse(FollowMotion.settles(fromOpen = true, start = 1f, shown = 0.875f, upDpS = 0f, sizeDp = h))
+        assertTrue(FollowMotion.settles(fromOpen = true, start = 1f, shown = 0.896f, upDpS = 0f, sizeDp = h))
+        // From open, a fling down past 24 dp closes, and one back up keeps it open however far it went.
+        assertFalse(FollowMotion.settles(fromOpen = true, start = 1f, shown = 0.97f, upDpS = -500f, sizeDp = h))
+        assertTrue(FollowMotion.settles(fromOpen = true, start = 1f, shown = 0.5f, upDpS = 500f, sizeDp = h))
+        // Caught near the far end, the point is still short of it: 30% of what is left.
+        assertTrue(FollowMotion.commitPoint(false, 0.95f, h) < 1f)
+        assertTrue(FollowMotion.settles(fromOpen = false, start = 0.95f, shown = 1f, upDpS = 0f, sizeDp = h))
+    }
+
+    @Test
+    fun aHorizontalMoveKeepsThirtyPercentAnd800DpS() {
+        // The same releases as a page swipe: 0.155 at 700 dp/s and 0.194 at 462 dp/s stay.
+        assertFalse(FollowMotion.settles(fromOpen = false, start = 0f, shown = 0.155f, upDpS = 700f))
+        assertFalse(FollowMotion.settles(fromOpen = false, start = 0f, shown = 0.194f, upDpS = 462f))
+        assertTrue(FollowMotion.settles(fromOpen = false, start = 0f, shown = 0.05f, upDpS = 801f))
+    }
+
+    @Test
     fun theTickIsAtTheCommitPointEitherWay() {
         val p = FollowMotion.commitPoint(false, 0f)
         assertTrue(FollowMotion.crossed(p, 0.2f, 0.4f))

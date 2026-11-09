@@ -41,18 +41,21 @@ class Follow(initial: Float = 0f) {
  * the commit point either way, and on release the target [FollowMotion.settles] picks, from the
  * finger's velocity. It takes the follow from where it is, going away from its target: a finger
  * on a follow headed for 1 is taking it toward 0. [onCommit] gets whether it ends at 1, and the
- * velocity in dp/s toward 1, before the follow is let go.
+ * velocity in dp/s toward 1, before the follow is let go. A [vertical] move takes the vertical
+ * rule, in dp of its size (lor-83uq).
  */
 class FollowFinger(
     private val follow: Follow,
     private val sizePx: Float,
     private val density: Float,
+    vertical: Boolean = false,
     private val onTick: () -> Unit,
     private val onCommit: (toOne: Boolean, dpS: Float) -> Unit,
 ) {
     private val fromOne = follow.target == 1f
     private val start = follow.position
-    private val point = FollowMotion.commitPoint(fromOne, start)
+    private val sizeDp = if (vertical) sizePx / density else null
+    private val point = FollowMotion.commitPoint(fromOne, start, sizeDp)
     init {
         follow.held = true
     }
@@ -68,7 +71,7 @@ class FollowFinger(
     /** Let go at [v] px/s, positive toward 0. */
     fun release(v: Float) {
         val dpS = -v / density
-        val toOne = FollowMotion.settles(fromOne, start, follow.position, dpS)
+        val toOne = FollowMotion.settles(fromOne, start, follow.position, dpS, sizeDp)
         follow.fling = -v / sizePx
         follow.target = if (toOne) 1f else 0f
         onCommit(toOne, dpS)

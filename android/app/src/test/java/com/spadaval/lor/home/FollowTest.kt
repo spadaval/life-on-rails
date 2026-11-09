@@ -110,4 +110,20 @@ class FollowTest {
         p.finger.release(0f)
         assertEquals(1f, p.follow.target, 0f)
     }
+
+    @Test
+    fun aVerticalFingerTakesTheVerticalRuleInDp() {
+        // 1000 px at density 2 is 500 dp: 110 dp is 220 px, where it ticks, and a slow release past it goes.
+        val follow = Follow(0f)
+        var ticks = 0
+        var committed: Boolean? = null
+        val finger = FollowFinger(follow, 1000f, 2f, vertical = true, onTick = { ticks++ }) { toOne, _ -> committed = toOne }
+        finger.move(-200f)
+        assertEquals(0, ticks)
+        finger.move(-240f)
+        assertEquals(1, ticks)
+        finger.release(0f)
+        assertEquals(true, committed)
+        assertEquals(1f, follow.target, 0f)
+    }
 }
