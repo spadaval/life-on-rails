@@ -14,9 +14,9 @@ relationships:
   relates: []
 schema: "atelier.issue"
 schema_version: 2
-status: "draft"
+status: "todo"
 title: "Home and drawer built around what Sumeet opens"
-updated_at: "2026-11-09T01:35:04.880290408+00:00"
+updated_at: "2026-11-09T01:52:07.783492317+00:00"
 ---
 
 ## Outcome
