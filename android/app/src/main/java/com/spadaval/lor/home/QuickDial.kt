@@ -170,22 +170,27 @@ const val QUICK_APPS = 8
 /**
  * A conversation shortcut as quick dial's people row reads it: [person] names who it is with
  * (the shortcut's label; Android keeps a shortcut's `Person` from launchers), [changed] is
- * `ShortcutInfo.lastChangedTimestamp`.
+ * `ShortcutInfo.lastChangedTimestamp`, [manifest] that the app declared it in its manifest, as
+ * Messages does its "New conversation" with the conversation category: a chat with someone is
+ * always dynamic or cached. [rank] is the app's own order (`ShortcutInfo.rank`).
  */
-data class Chat<T>(val person: String, val changed: Long, val value: T)
+data class Chat<T>(val person: String, val changed: Long, val value: T, val manifest: Boolean = false, val rank: Int = 0)
 
 /** How far back a conversation counts as recent. */
 const val PEOPLE_DAYS = 14L
 const val PEOPLE = 4
 
 /**
- * The people talked to most recently: [chats] changed within [PEOPLE_DAYS] of [now], newest first,
+ * The people talked to most recently: [chats] changed within [PEOPLE_DAYS] of [now], not from a
+ * manifest, newest first (to the second, then by the app's rank),
  * one per person (by name, ignoring case and spaces at the ends), at most [PEOPLE].
  */
 fun <T> recentPeople(chats: List<Chat<T>>, now: Long, most: Int = PEOPLE): List<Chat<T>> {
     val since = now - PEOPLE_DAYS * 24 * 60 * 60 * 1000
-    return chats.filter { it.changed >= since && it.person.isNotBlank() }
-        .sortedByDescending { it.changed }
+    return chats.filter { it.changed >= since && it.person.isNotBlank() && !it.manifest }
+        // Messages republishes every chat at once when one changes, a few milliseconds apart: chats
+        // changed in the same second are one publish, in the app's own order.
+        .sortedWith(compareByDescending<Chat<T>> { it.changed / 1000 }.thenBy { it.rank }.thenByDescending { it.changed })
         .distinctBy { it.person.trim().lowercase() }
         .take(most)
 }

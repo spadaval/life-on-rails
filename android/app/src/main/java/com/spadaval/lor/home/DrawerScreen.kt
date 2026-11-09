@@ -497,7 +497,7 @@ internal fun quickPeople(apps: List<HomeApp>, sources: SearchSources, now: Long)
         val hit = f.value as ShortcutHit
         if (!hit.conversation) return@mapNotNull null
         val i = hit.info
-        ownerOf(owners, i.`package`, i.activity?.className, i.userHandle.toString())?.let { Chat(hit.label, i.lastChangedTimestamp, SearchShortcut(hit, it)) }
+        ownerOf(owners, i.`package`, i.activity?.className, i.userHandle.toString())?.let { Chat(hit.label, i.lastChangedTimestamp, SearchShortcut(hit, it), manifest = i.isDeclaredInManifest, rank = i.rank) }
     }
     return recentPeople(chats, now).map { it.value }
 }

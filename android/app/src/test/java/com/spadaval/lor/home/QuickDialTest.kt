@@ -131,8 +131,18 @@ class QuickDialTest {
             Chat("alice ", now - 2 * day, "messages:alice"), // the same person in another app, older
             Chat("Bob", now - 3 * day, "messages:bob"),
             Chat("Old friend", now - 15 * day, "messages:old"), // more than 14 days ago
+            // Messages' manifest "New conversation" carries the conversation category; it is no one.
+            Chat("New conversation", now, "messages:new", manifest = true),
         )
         assertEquals(listOf("whatsapp:alice", "messages:bob"), recentPeople(chats, now).map { it.value })
+    }
+
+    @Test
+    fun chatsPublishedTogetherKeepTheAppsOrder() {
+        // Messages republished all five in one batch: Dana (rank 0) is newest though 3 ms older.
+        val t = now - 500
+        val chats = listOf("Priya" to 4, "Marco" to 3, "Aiko" to 1, "Sam" to 2).map { (n, r) -> Chat(n, t + 3, n, rank = r) } + Chat("Dana", t, "Dana", rank = 0)
+        assertEquals(listOf("Dana", "Aiko", "Sam", "Marco"), recentPeople(chats, now).map { it.value })
     }
 
     @Test
