@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "No dock: its apps join home"
-updated_at: "2026-11-09T03:08:21.693089243+00:00"
+updated_at: "2026-11-09T03:08:37.540131059+00:00"
 ---
 
 ## Goal
@@ -54,6 +54,7 @@ Mission lor-5qkq. lor-slux (a palette drop of Dock) is superseded by this item.
   Rejected: Leave the four essentials in the drawer only
 - 2026-11-08 [decision] An old dock app counts as already on home when a ref on home or in a folder overlaps it (same package, either a package or the same activity, same profile)
   Reason: Dock apps were already placed by hand; the edits' on-home-once rule needs the installed list, which the parser doesn't have, so it matches by ref overlap in the same profile
+- 2026-11-08 [handoff] Code done on t3/remove-home-dock (93030ff); see ## Report. Blocked: the emulator Done when line, because boat's T3_Phone_API35 is held by agent-device session t3-97c947e08f10e154875b2349 (receipt lor-ulyw). review request refuses until that line holds. Proof: NoDockTest and the rewritten dock tests; boat assembleDebug testDebugUnitTest, 402 tests, 0 failures.
 
 ## Report
 
