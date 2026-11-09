@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Long-press menus are chamfered popovers pointing at their icon"
-updated_at: "2026-11-09T03:51:59.230859731+00:00"
+updated_at: "2026-11-09T03:52:23.452952887+00:00"
 ---
 
 ## Goal
@@ -53,6 +53,7 @@ Mission lor-5qkq. `IconSpot` already reports an icon's bounds in the window. Lau
   Reason: With the halves measured on the same area as the room, an anchor whose centre is in the top half always has at least as much room below as above (and the mirror for the bottom half), so a body too tall for its preferred side never fits the other; PopoverTest.theSideItOpensOnIsAlwaysTheRoomier checks this over anchors down the whole screen. A Popup window is sized to the visible display frame, not home's window, so its dim would miss the bars and every anchor would need converting.
   Rejected: A flip branch to the other side, as Launcher3's ArrowPopup has: it could never run here
   Rejected: A Compose Popup window for the popover
+- 2026-11-08 [handoff] Implemented on t3/home-long-press-centered-popovers (48660f9 code, records after). Review requested, none dispatched. Proof: PopoverTest and boat assembleDebug testDebugUnitTest (414 tests) pass; emulator receipt lor-7l83. See ## Report for the deviation on the flip rule and open items.
 
 ## Report
 
