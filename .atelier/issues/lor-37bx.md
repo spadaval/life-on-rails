@@ -31,9 +31,10 @@ relationships:
     type: "blocked_by"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+closed_at: "2026-11-09T14:09:57.862429444+00:00"
+status: "done"
 title: "On the Fold: the mission's launcher, a home built from use, and the first tab sort"
-updated_at: "2026-11-09T01:36:23.138491107+00:00"
+updated_at: "2026-11-09T14:09:57.862429444+00:00"
 ---
 
 ## Goal
@@ -46,3 +47,7 @@ Put the mission's launcher on Sumeet's Fold with a home built from his usage and
 - [ ] Its `layout.json` is written with a backup kept: home's stack holds, in reading order, the folders Money (Chase, Robinhood, Robinhood Banking, Rocket Money), Travel (United, Uber, Tesla, Priceline), Access (STRATIS, PDK Access, Tailscale, Duo Mobile) and Work (the work profile's Webex, Outlook, AnyConnect, Meraki); then Maps, Wallet, Clock, Settings; Gmail, Messages, Phone, Grok; Claude, X, Reddit, YouTube Music; T3 Code, WhatsApp, Vivaldi, YouTube. Each is checked as installed first (by package and profile); one missing is left out and named in the result. Recheck the order against LoR's `app` observations from the Fold since 2026-11-05 before writing, swapping an app into the thumb rows only if it now has clearly more days of use.
 - [ ] `drawer.tabs` holds Quick dial, Work, Talk, Media, Go, Money and All, with every launchable app sorted into one list tab or left to All, by an agent reading the phone's app list.
 - [ ] A screenshot of home and of each tab from the Fold, sent to Sumeet.
+
+## Report
+
+Installed main 42a3c80 (debug, boat) on the Fold over adb with Sumeet's go-ahead; wrote the usage-built home (Money, Travel, Access, Work folders; Maps, Wallet, Clock, Settings; Reddit, Messages, Phone, Grok; Claude, X, YT Music, Gmail; T3 Code, WhatsApp, Vivaldi, YouTube; Gmail and Reddit swapped from the plan on the Fold's 2026-11-05..09 usage) and tabs Quick dial, Work 46, Talk 21, Media 28, Go 24, Money 24, All, every ref checked installed by profile. Backup of the old layout.json, layout.good.json and launch-stats.json in ~/.local/share/lor-evidence/lor-37bx/backup-before; screenshots there show home, quick dial with the brief card and people, and the Work tab; a 150 dp swipe opened the drawer; no crash.
