@@ -15,7 +15,7 @@ import kotlin.math.roundToInt
 
 /**
  * Adds a widget block of [id], [provider] (`package/class`, `package/.Short` expanded) and [height]
- * (dp) to the stack at [at]: before its `apps` block, else before its `dock`, else last. Refuses an
+ * (dp) to the stack at [at]: before its `apps` block, else last. Refuses an
  * [id] the active layout already holds, and a provider or height the file can't hold.
  */
 fun LayoutFile.addWidget(at: Cell, id: Int, provider: String, height: Int): LayoutFile {
@@ -26,7 +26,6 @@ fun LayoutFile.addWidget(at: Cell, id: Int, provider: String, height: Int): Layo
     val full = StackBlock.Widget.provider(provider) ?: throw LayoutError("\"$provider\" is not package/class")
     checkHeight(height)
     val index = stack.blocks.indexOfFirst { it is StackBlock.Apps }.takeIf { it >= 0 }
-        ?: stack.blocks.indexOfFirst { it is StackBlock.Dock }.takeIf { it >= 0 }
         ?: stack.blocks.size
     val blocks = stack.blocks.toMutableList().apply { add(index, StackBlock.Widget(id, full, height)) }
     return withCurrent(layout.withPanel(stack.copy(blocks = blocks)))

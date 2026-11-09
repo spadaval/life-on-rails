@@ -75,8 +75,12 @@ data class SearchSources(
 sealed interface LayoutState {
     data object Loading : LayoutState
     data class Ready(val file: LayoutFile) : LayoutState
-    /** The file can't be used; home shows [lastGood], the last file that parsed, if there is one (launcher polish 3.1). */
-    data class Broken(val message: String, val lastGood: LayoutFile?) : LayoutState
+    /**
+     * The file can't be used; home shows [lastGood], the last file that parsed, if there is one
+     * (launcher polish 3.1). [left] names the old dock apps it has no room for (lor-bdus): shown
+     * without them, it is not offered as a restore.
+     */
+    data class Broken(val message: String, val lastGood: LayoutFile?, val left: List<AppRef> = emptyList()) : LayoutState
 }
 
 /** The layout home draws: the file, or while it is broken, the last good one. */
@@ -426,6 +430,8 @@ class HomeStore(private val context: Context) {
      */
     suspend fun restore(): Result<LayoutFile> = withContext(serial) {
         runCatching {
+            // A last good file shown without dock apps that didn't fit is not written (lor-bdus).
+            store.readLastGood()?.left?.takeIf { it.isNotEmpty() }?.let { throw LayoutError(leftOutLine(it)) }
             val fallback = store.readGood()
                 ?: if (loaded) defaultLayout() else throw LayoutError("the app list hasn't loaded, so there is no default layout yet")
             stamp = store.restore(fallback)
@@ -471,6 +477,11 @@ class HomeStore(private val context: Context) {
     private fun activities(pkg: String?, user: UserHandle): List<HomeApp> =
         launcherApps.getActivityList(pkg, user).map { HomeApp(it.label.toString(), it) }
 
+    private fun broken(message: String): LayoutState.Broken {
+        val good = store.readLastGood()
+        return LayoutState.Broken(message, good?.layout, good?.left.orEmpty())
+    }
+
     /** Reads the layout file; any failure shows as Broken rather than leaving home on Loading. */
     private fun readLayout() {
         // No file and no app list yet: the default can't be made, so home is still loading.
@@ -489,20 +500,19 @@ class HomeStore(private val context: Context) {
             LayoutState.Ready(read.layout)
         } catch (e: LayoutError) {
             stamp = store.file.lastModified()
-            LayoutState.Broken(e.message ?: "invalid", store.readGood())
+            broken(e.message ?: "invalid")
         } catch (e: IOException) {
-            LayoutState.Broken("can't read ${store.file.path}: ${e.message}", store.readGood())
+            broken("can't read ${store.file.path}: ${e.message}")
         } catch (e: Exception) {
             Log.w(TAG, "layout read failed", e)
-            LayoutState.Broken("can't be read: ${e.message ?: e.javaClass.simpleName}", store.readGood())
+            broken("can't be read: ${e.message ?: e.javaClass.simpleName}")
         }
     }
 
     /**
-     * The first run's layout, from the apps on this phone. The dock is the default dialer, SMS
-     * app, browser and camera, resolved from intents as Launcher3's default workspace does
-     * (`res/xml/default_workspace_*.xml`, Apache-2.0). Home holds a few common apps, then a
-     * Google folder with the rest of Google's.
+     * The first run's layout, from the apps on this phone ([LayoutFile.firstRun]): the default
+     * dialer, SMS app, browser and camera, resolved from intents as Launcher3's default workspace
+     * does (`res/xml/default_workspace_*.xml`, Apache-2.0), then a few common apps.
      */
     private fun defaultLayout(): LayoutFile {
         val pm = context.packageManager
@@ -511,25 +521,17 @@ class HomeStore(private val context: Context) {
             pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName
                 ?.takeIf { it != "android" }
                 ?: pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY).firstOrNull()?.activityInfo?.packageName
-        val dock = listOfNotNull(
+        val essentials = listOfNotNull(
             resolve(Intent(Intent.ACTION_DIAL)),
             Telephony.Sms.getDefaultSmsPackage(context),
             resolve(Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")).addCategory(Intent.CATEGORY_BROWSABLE)),
             resolve(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)),
-        ).distinct().filter { it in mine }
-        val home = COMMON.filter { it in mine && it !in dock }
-        val google = mine.filter { it.startsWith("com.google.") && it !in dock && it !in home }.sorted()
-        val items = home.map(::AppRef) + listOfNotNull(google.takeIf { it.isNotEmpty() }?.let { Folder("Google", it.map(::AppRef)) })
-        return LayoutFile("default", listOf(Layout.grid("default", items.take(LayoutFile.MAX_HOME), dock.map(::AppRef))))
+        )
+        return LayoutFile.firstRun(mine, essentials)
     }
 
     companion object {
         private const val TAG = "LorHome"
         const val SEARCH_TAG = "LorSearch"
-        private val COMMON = listOf(
-            "com.whatsapp", "com.google.android.gm", "com.google.android.calendar", "com.samsung.android.calendar",
-            "com.google.android.apps.maps", "com.google.android.apps.photos", "com.sec.android.gallery3d",
-            "com.spotify.music", "com.google.android.youtube", "com.spadaval.lor", "com.android.settings",
-        )
     }
 }

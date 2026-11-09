@@ -17,7 +17,6 @@ Home's layout file. Version 2 makes each layout a sparse grid of panels, so home
     { "name": "default",
       "expires": "2026-11-18T00:00:00Z",
       "start": { "narrow": [1, 0] },
-      "dock": ["com.google.android.dialer", "com.google.android.apps.messaging"],
       "panels": [
         { "at": [0, 0], "type": "t3" },
         { "at": [1, 0], "type": "stack", "blocks": [
@@ -26,11 +25,9 @@ Home's layout file. Version 2 makes each layout a sparse grid of panels, so home
                 "com.whatsapp",
                 "com.android.chrome/com.google.android.apps.chrome.Main",
                 { "folder": "Dev", "apps": ["com.github.android", "org.example/.Term"],
-                  "reason": "You open these together.", "pinned": true, "cover": "com.github.android" }] },
-            { "type": "dock" }] },
+                  "reason": "You open these together.", "pinned": true, "cover": "com.github.android" }] }] },
         { "at": [2, 0], "type": "stack", "blocks": [
-            { "type": "apps", "items": ["org.example"] },
-            { "type": "dock" }] },
+            { "type": "apps", "items": ["org.example"] }] },
         { "at": [1, 1], "type": "drawer" }] }
   ]
 }
@@ -46,7 +43,7 @@ Home's layout file. Version 2 makes each layout a sparse grid of panels, so home
 
 These keep version 1's meaning, as Launcher polish's Schema additions describe them: `hidden` (1.1), `drawer` (2.1, and `keyboard` from 5.5) and `look` (Increment 6, with `header` from 6.7). `layout.good.json` and `layout.json.broken` are not part of the schema (Launcher polish 3.1).
 
-`locked` (optional; a version 2 addition, lor-v692, decision lor-73li): the layout lock, `true` or `false`. Any other value is an error (`locked: must be true or false`); absent means false, and the phone writes it only when true. While it is `true`, the phone refuses any edit of its own that changes `active` or `layouts` ("home is locked; unlock it from the home menu") and writes nothing; edits to `hidden`, `drawer` and `look` alone are taken, and so is unlocking. Hide of an app on home or in the dock changes `layouts`, so it is refused. It covers every layout. Undo isn't checked, so Undo after locking unlocks. An agent's or a hand edit of the file isn't stopped.
+`locked` (optional; a version 2 addition, lor-v692, decision lor-73li): the layout lock, `true` or `false`. Any other value is an error (`locked: must be true or false`); absent means false, and the phone writes it only when true. While it is `true`, the phone refuses any edit of its own that changes `active` or `layouts` ("home is locked; unlock it from the home menu") and writes nothing; edits to `hidden`, `drawer` and `look` alone are taken, and so is unlocking. Hide of an app on home changes `layouts`, so it is refused. It covers every layout. Undo isn't checked, so Undo after locking unlocks. An agent's or a hand edit of the file isn't stopped.
 
 The top-level `drawer` is the drawer's settings: its view and its sections. The `drawer` panel type is where the drawer sits in a layout's grid. They are different things; the panel draws the drawer that the settings describe.
 
@@ -55,7 +52,7 @@ The top-level `drawer` is the drawer's settings: its view and its sections. The 
 - `name` (required): non-empty, unique among the layouts.
 - `expires` (optional): an ISO-8601 date-time with an offset. It's read and kept, but nothing acts on it yet.
 - `start` (required): `{ "narrow": [column, row], "wide": [column, row] }`, the cell home starts on for each screen class: `narrow` for screens under 600 dp wide (the phone, the Fold's cover screen), `wide` from 600 dp (the Fold's inner screen). `wide` is optional and is `narrow` when absent. Each must name a cell that holds a panel.
-- `dock` (optional): at most 5 apps. A layout has one dock; every `dock` block draws it, so an edit to the dock shows in all of them.
+- Home has no dock (lor-bdus). A file written before that may hold a layout's `dock`, a list of apps, and `dock` blocks; see [An old file's dock](#an-old-files-dock). The phone writes neither.
 - `panels` (required): the grid's panels, a list in any order.
 
 ### Panels
@@ -78,9 +75,8 @@ A block is `{ "type": … }`.
 
 - `clock`: today's header: the time and date in the style `look.header` names (date, clock or none), the next event, the next alarm, and the weather (lor-sbth; lor-leh4 draws the last three). No other field.
 - `apps`: `"items": [item, …]` (optional; absent or empty means none), at most 24, in reading order. The block fills its grid row by row with the columns `look.grid` sets. An item is written as version 1's `home` items are:
-  - An app is a string: a package name (that package's launchable activity in its profile that comes first by label, in `Collator` order) or `package/activity` (`package/.Short` expands as `ComponentName.unflattenFromString` does). With `work:` in front (`work:com.microsoft.office.outlook`, `work:com.cisco.wx2.android/com.webex.teams.WebexLauncherActivity`) it names the app in the work profile, the one profile `LauncherApps.getProfiles()` gives besides the phone's own; without a prefix, the main profile's. An app and its work twin are two apps, so each can be on home, in a folder or hidden alone. `work:` is the only prefix: any other (`personal:com.x`) is an error naming its place. Everywhere an app goes takes the prefix: `apps` items, folders' `apps` and `cover`, `dock`, `hidden` and `drawer.sections[].apps`; a widget's `provider` doesn't.
+  - An app is a string: a package name (that package's launchable activity in its profile that comes first by label, in `Collator` order) or `package/activity` (`package/.Short` expands as `ComponentName.unflattenFromString` does). With `work:` in front (`work:com.microsoft.office.outlook`, `work:com.cisco.wx2.android/com.webex.teams.WebexLauncherActivity`) it names the app in the work profile, the one profile `LauncherApps.getProfiles()` gives besides the phone's own; without a prefix, the main profile's. An app and its work twin are two apps, so each can be on home, in a folder or hidden alone. `work:` is the only prefix: any other (`personal:com.x`) is an error naming its place. Everywhere an app goes takes the prefix: `apps` items, folders' `apps` and `cover`, `hidden` and `drawer.sections[].apps`; a widget's `provider` doesn't.
   - A folder has `folder` (its name) and `apps` (one or more apps; folders don't nest). Optional: `reason`, one line shown when it opens; `pinned` (default false), meaning Sumeet arranged it and an agent leaves it alone; and `cover`, one of the folder's `apps`, written as it is there, drawn as its tile (while that app isn't installed, the four-app preview shows; an edit that takes the app out of the folder drops `cover`).
-- `dock`: the layout's `dock`. No other field.
 - `widget` (a version 2 addition, lor-sbth, decision lor-9wlx): an Android widget, `{ "type": "widget", "id": 42, "provider": "com.google.android.deskclock/com.android.alarmclock.DigitalAppWidgetProvider", "height": 160 }`. All three fields are required, and no other field is allowed.
   - `id`: the appWidgetId the phone's widget host bound, a whole number from 1. An `id` is used once in a layout; the error names both places (`layouts[0].panels[2].blocks[0].id: 42 is taken by panels[1].blocks[1]`).
   - `provider`: the widget provider's component, `package/class` (`package/.Short` expands as `ComponentName.unflattenFromString` does; the phone writes the class in full). A package alone is an error (`layouts[0].panels[1].blocks[1].provider: "com.tesla" is not package/class`).
@@ -99,39 +95,49 @@ A block is `{ "type": … }`.
 
 Launcher polish's rules carry over, with "home" meaning every `apps` block of the active layout's grid:
 
-- `hidden` and Hide apply to every `apps` block, the dock and folders, in every layout.
-- An app is on home once (any `apps` block, folders included) and in the dock once. This is a rule of the edits; the parser doesn't refuse duplicates.
+- `hidden` and Hide apply to every `apps` block and folder, in every layout.
+- An app is on home once (any `apps` block, folders included). This is a rule of the edits; the parser doesn't refuse duplicates.
 - A folder an edit touches becomes `pinned`; a folder an edit empties is removed.
 - Edits by place address a panel's cell, the block, and the index in it, so removing one panel moves no other item's place.
 - Add to home appends to the first stack with room in the start row, by column; when all are full, it makes a new stack. An app in a folder on home (and not on home itself) moves out of the folder, from the menu or a drag from the drawer onto home, and the Undo bar names the folder ("YouTube Music is on home, out of Google."); one on home itself is refused (lor-83uq).
-- A drop past the last page makes a new stack of `apps` and `dock` after the last panel in the start row (Launcher polish 4.5).
-- An extra page goes when an edit empties or made it, not when it was already empty: after Remove from home, Hide, the open folder's + and a drop, a stack of only `apps` and `dock` whose `apps` block is empty is removed, unless the layout before the edit held such an empty stack at that cell, or it is at a `start` cell. So a page an edit or a drag empties goes, a page a drag made and then left goes (the drop compares with the file the drag began on), and an empty stack the minimap made stays. Home's stack stays, even empty. The parser accepts an empty one.
+- A drop past the last page makes a new stack of only `apps` after the last panel in the start row (Launcher polish 4.5).
+- An extra page goes when an edit empties or made it, not when it was already empty: after Remove from home, Hide, the open folder's + and a drop, a stack of only an empty `apps` block is removed, unless the layout before the edit held such an empty stack at that cell, or it is at a `start` cell. So a page an edit or a drag empties goes, a page a drag made and then left goes (the drop compares with the file the drag began on), and an empty stack the minimap made stays. Home's stack stays, even empty. The parser accepts an empty one.
 - The minimap's edits (lor-f3vn; `GridEdit.kt`):
   - A new or moved panel goes in a cell in reach: columns 0 to one past the last panel's, and rows 0 to one past the last panel's, of the active layout. A hand-written far cell still draws; the phone never writes one.
   - A layout holds one `t3` panel, one `drawer` panel and one `lor` panel.
-  - A new stack is an empty `apps` block and `dock`, as a new page is. A block added to a stack is a type that takes no field (`clock`, an empty `apps`, `dock`, and LoR's four), and a stack holds each type once. A `widget` isn't added here ("a widget is added from the home menu"), but it moves and is removed like any block.
+  - A new stack is an empty `apps` block, as a new page is. A block added to a stack is a type that takes no field (`clock`, an empty `apps`, and LoR's four), and a stack holds each type once. A `widget` isn't added here ("a widget is added from the home menu"), but it moves and is removed like any block.
   - A panel moved onto another swaps with it. A `start` that named a moved panel's cell names its new cell. Setting the wide start on the narrow start's cell clears `start.wide`, and so does setting the narrow start on the wide start's cell.
   - A panel a `start` names can't be removed ("home starts there; choose another start first"), and a stack's last block can't be moved out or removed ("a stack needs a block; remove the panel instead"). Removing a stack or an `apps` block takes its apps off home.
-  - No edit puts a block below a stack's `dock` or moves a `dock` up ("the dock stays under the other blocks"), so the file's order matches what home draws. A stack a hand edit left with its dock elsewhere can still be edited.
   - The row limit holds in the rows an added or moved stack or `apps` block lands in.
   - An edit of a panel or a block names its cell (and the block's index) and what the minimap drew there, and is refused ("Home changed; try again") when the file holds something else there.
 - The widget edits (`WidgetEdit.kt`) address a widget by its `id`, in the active layout, so other edits don't move it:
-  - Add puts a new `widget` block in a stack before its `apps` block, else before its `dock`, else last. It refuses an `id` the layout already holds.
+  - Add puts a new `widget` block in a stack before its `apps` block, else last. It refuses an `id` the layout already holds.
   - Remove takes the block out; Resize sets its `height`. Each refuses an `id` the active layout doesn't hold ("widget 9 isn't on home"), and Remove refuses a stack's last block, as the minimap's does. Resizing to the height it has changes nothing.
   - Like the minimap's, these edits don't remove an extra page they empty.
-- The phone writes only fields that differ from their defaults (`start.wide` only when set, a panel's `wide` only when it differs from its type's default, `look` and `drawer` only when not default), and writes `start`, `dock` and `panels` in every layout. So a `wide` the file states that equals the type's default is dropped at the next write; any other is kept.
+- The phone writes only fields that differ from their defaults (`start.wide` only when set, a panel's `wide` only when it differs from its type's default, `look` and `drawer` only when not default), and writes `start` and `panels` in every layout. So a `wide` the file states that equals the type's default is dropped at the next write; any other is kept.
 
-Home draws the grid (lor-qdmy): one cell on screen, the narrow `start` after a home press. A swipe moves to the nearest cell that way in the row (the ends stop), or up and down by decision lor-y7qi's rule (the next row that way with a panel, wrapping; back to the cell a move came from, else the same column or the nearest, the left one on a tie). A move follows the finger. Sideways, a release commits past 30% of the screen's width or faster than 800 dp/s. Up and down (to the drawer too), it commits once the finger has gone 110 dp toward the other cell, or on a release faster than 400 dp/s toward it after 24 dp; a release faster than 400 dp/s back does not (lor-83uq; `FollowMotion` in `home/Motion.kt`). Each stack draws its `dock` last, under its other blocks, wherever the file puts it; the other blocks are drawn top to bottom in the file's order: `clock` as home's header wherever it stands, `apps` taking the space between. A stack whose first block other than the dock isn't a `clock` starts where home's grid would.
+Home draws the grid (lor-qdmy): one cell on screen, the narrow `start` after a home press. A swipe moves to the nearest cell that way in the row (the ends stop), or up and down by decision lor-y7qi's rule (the next row that way with a panel, wrapping; back to the cell a move came from, else the same column or the nearest, the left one on a tie). A move follows the finger. Sideways, a release commits past 30% of the screen's width or faster than 800 dp/s. Up and down (to the drawer too), it commits once the finger has gone 110 dp toward the other cell, or on a release faster than 400 dp/s toward it after 24 dp; a release faster than 400 dp/s back does not (lor-83uq; `FollowMotion` in `home/Motion.kt`). Each stack draws its blocks top to bottom in the file's order: `clock` as home's header wherever it stands, `apps` taking the space between. A stack whose first block isn't a `clock` starts where home's grid would.
 
 ## Reading a version 1 file
 
 A version 1 file is parsed with version 1's rules (its errors name version 1's places, as `layouts[0].home[3]`) and each layout is converted to the default grid:
 
 - the `t3` panel at `[0, 0]`, left of home;
-- home at `[1, 0]`: a stack of `clock`, `apps` (version 1's `home`) and `dock`;
-- each of version 1's `pages` at `[2, 0]`, `[3, 0]` and on: a stack of `apps` (the page's `items`) and `dock`;
+- home at `[1, 0]`: a stack of `clock` and `apps` (version 1's `home`);
+- each of version 1's `pages` at `[2, 0]`, `[3, 0]` and on: a stack of only `apps` (the page's `items`);
 - one `drawer` panel at `[1, 1]`, in home's column on row 1 (decision lor-y7qi: every page reaches it by the grid's movement rule);
 - `start` is `{ "narrow": [1, 0] }`;
-- `name`, `expires` and `dock` as they were, and the top-level fields unchanged; no panel gets a `wide`.
+- `name` and `expires` as they were, and the top-level fields unchanged; no panel gets a `wide`;
+- the `dock`'s apps join home as an old version 2 file's do ([An old file's dock](#an-old-files-dock)).
 
-Reading converts in memory only: the file stays version 1 until the phone next writes it, and then it is version 2. `layout.good.json` and the broken-file restore take a version 1 file the same way, and Undo of the first version 2 write puts the version 1 text back, byte for byte. The first run's default layout is this grid, with home's apps and no extra pages.
+Reading converts in memory only: the file stays version 1 until the phone next writes it, and then it is version 2. `layout.good.json` and the broken-file restore take a version 1 file the same way, and Undo of the first version 2 write puts the version 1 text back, byte for byte. The first run's default layout is this grid with no extra pages; home holds the default dialer, SMS app, browser and camera, then a few common apps (`LayoutFile.firstRun`). Every other app is in the drawer only: there is no folder of Google's apps (lor-bdus).
+
+## An old file's dock
+
+Home has no dock since lor-bdus. A file written before then is read without losing a dock app:
+
+- Every `dock` block is dropped. A stack left with no blocks is removed, unless it is at a `start` cell. There it stays: as a stack of an empty `apps` block when its row holds fewer than 5 stacks with an `apps` block, else as a stack of a `clock`, so the conversion never takes a row past its limit. A `dock` block still takes no field (`layouts[0].panels[1].blocks[2]: unknown field "items" (allowed: type)`).
+- Each app in the layout's `dock`, in order, that isn't on home already is appended to the first page with room (the `apps` blocks in the narrow start's row, by column), else to a new page, as Add to home makes one. "On home already" means the same ref in an `apps` block or a folder, in the same profile (`f.f/.Main` and `f.f/f.f.Main` are the same ref). The parser doesn't know which activity a package ref draws as, so `p.p` on home and `p.p/p.p.B` in the dock are both kept: a near-duplicate on home is harmless, a lost app is not.
+- A dock app that can't be placed, every page full and no room for a new one, makes the file an error naming it (`layouts[0].dock[1]: home is full (5 pages of 24), so "e.e" can't move there from the dock, which is gone; make room on home or take it out of "dock"`). Home then shows the last good file, and nothing is written over the file. When the last good copy (`layout.good.json`) is the same old file, as it is on the upgrade, home shows it converted as far as it goes, without the dock apps that didn't fit; the banner says how many were left out and the details name them. That home is for showing only: it isn't offered as a restore, and neither file is written until `layout.json` is fixed by hand or by an agent.
+
+The phone writes no `dock`, so its next write drops both.

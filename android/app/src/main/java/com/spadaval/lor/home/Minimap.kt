@@ -130,11 +130,10 @@ object MinimapRules {
     /** The apps an `apps` block holds, a folder's counted one by one. */
     fun appCount(items: List<LayoutItem>): Int = items.sumOf { if (it is Folder) it.apps.size else 1 }
 
-    /** A block as a tile lists it: "Clock", "12 apps", "Dock". */
+    /** A block as a tile lists it: "Clock", "12 apps", "Widget". */
     fun blockName(block: StackBlock): String = when (block) {
         is StackBlock.Clock -> "Clock"
         is StackBlock.Apps -> appCount(block.items).let { if (it == 1) "1 app" else "$it apps" }
-        is StackBlock.Dock -> "Dock"
         is StackBlock.Widget -> "Widget"
         // LoR's blocks (lor-lz97), by the names the agent page gives their sections.
         is StackBlock.Today -> "Today"
@@ -144,7 +143,7 @@ object MinimapRules {
     }
 
     /**
-     * A stack's blocks, top to bottom: "Clock · 12 apps · Dock". Each name, and the dot after it,
+     * A stack's blocks, top to bottom: "Clock · 12 apps · Today". Each name, and the dot after it,
      * hold together with no-break spaces, so a narrow tile wraps only after a dot.
      */
     fun blocks(stack: Panel.Stack): String = stack.blocks.joinToString("\u00A0· ") { blockName(it).replace(' ', '\u00A0') }
@@ -214,7 +213,6 @@ object MinimapRules {
     fun blockTitle(block: StackBlock, label: (StackBlock.Widget) -> String = PROVIDER): String = when (block) {
         is StackBlock.Clock -> "Clock"
         is StackBlock.Apps -> "Apps"
-        is StackBlock.Dock -> "Dock"
         is StackBlock.Widget -> label(block)
         is StackBlock.Today, StackBlock.NeedsYou, StackBlock.Running, StackBlock.T3Queue -> blockName(block)
     }
@@ -229,15 +227,12 @@ object MinimapRules {
     /** A stack as Move to… names it: "Column 2", with its row when it isn't row 0. */
     fun stackName(cell: Cell): String = if (cell.row == 0) "Column ${cell.column}" else "Column ${cell.column}, row ${cell.row}"
 
-    /** A Move to… entry: "Column 2: 3 apps · Dock". */
+    /** A Move to… entry: "Column 2: Clock · 3 apps". */
     fun stackEntry(stack: Panel.Stack): String = "${stackName(stack.at)}: ${blocks(stack).replace('\u00A0', ' ')}"
 
     /** The stacks a block of the stack at [from] can be moved to: every other one, by row, then column. */
     fun otherStacks(layout: Layout, from: Cell): List<Panel.Stack> =
         layout.panels.filterIsInstance<Panel.Stack>().filter { it.at != from }.sortedWith(compareBy({ it.at.row }, { it.at.column }))
-
-    /** Where a block moved or added to [stack] by a tap goes: before its `dock`, else last. */
-    fun tapIndex(stack: Panel.Stack): Int = stack.blocks.indexOfFirst { it is StackBlock.Dock }.takeIf { it >= 0 } ?: stack.blocks.size
 
     /** The block palette: each type that takes no field ([StackBlock.bare]) that [stack] doesn't hold. */
     fun blockPalette(stack: Panel.Stack): List<String> = StackBlock.TYPES.filter { StackBlock.bare(it) != null && stack.takes(it) }
@@ -256,30 +251,19 @@ object MinimapRules {
     }
 
     /**
-     * How many of [stack]'s blocks, from the top, the list lets move: all but a dock pinned last
-     * (GridEdit's [DOCK_LAST]: home draws the dock under the others, so the list keeps it there).
-     */
-    fun movable(stack: Panel.Stack): Int =
-        if (stack.blocks.lastOrNull() is StackBlock.Dock && stack.dockLast) stack.blocks.size - 1 else stack.blocks.size
-
-    /** Whether block [index] of [stack] is its dock pinned last: no handle, no Move up or down. */
-    fun pinned(stack: Panel.Stack, index: Int): Boolean = index >= movable(stack)
-
-    /**
      * Where a block dropped at [y] goes in a list whose rows' middles, top to bottom, are
-     * [middles]: between them, and never past the first [movable] rows (above a pinned dock).
+     * [middles]: between them.
      */
-    fun dropIndex(middles: List<Float>, y: Float, movable: Int = middles.size): Int = middles.count { it < y }.coerceAtMost(movable)
+    fun dropIndex(middles: List<Float>, y: Float): Int = middles.count { it < y }
 
     /**
      * A block row being dragged by its handle, as Kvaesitso's `WidgetColumn` edit mode does (GPL-3.0,
      * ideas only): the list on screen in [order] (block indices), the dragged one at [at], drawn
      * [offset] px from its slot. It swaps with a neighbour once it passes that neighbour's middle:
      * its top above the one over it, or its bottom below the one under it. Only the list on screen
-     * changes; letting go writes one `moveBlock`, so one drag is one Undo. It stays within the
-     * first [limit] places, so it never passes a pinned dock.
+     * changes; letting go writes one `moveBlock`, so one drag is one Undo.
      */
-    data class Reorder(val order: List<Int>, val at: Int, val offset: Float, val limit: Int = order.size) {
+    data class Reorder(val order: List<Int>, val at: Int, val offset: Float) {
         /** The dragged block's index in the file. */
         val block: Int get() = order[at]
 
@@ -293,17 +277,17 @@ object MinimapRules {
                 o.add(a - 1, o.removeAt(a))
                 a--
             }
-            while (a < limit - 1 && off > height(o[a + 1]) / 2) {
+            while (a < o.size - 1 && off > height(o[a + 1]) / 2) {
                 off -= height(o[a + 1])
                 o.add(a + 1, o.removeAt(a))
                 a++
             }
-            return Reorder(o, a, off, limit)
+            return Reorder(o, a, off)
         }
 
         companion object {
-            /** The drag of block [block] of [count] starting, nothing moved yet, within the first [limit]. */
-            fun start(block: Int, count: Int, limit: Int = count) = Reorder((0 until count).toList(), block, 0f, limit)
+            /** The drag of block [block] of [count] starting, nothing moved yet. */
+            fun start(block: Int, count: Int) = Reorder((0 until count).toList(), block, 0f)
         }
     }
 
@@ -793,7 +777,7 @@ private fun BlockEditor(
         if (l == null || !l.block || l.settling) return null
         val f = l.finger
         if (f.x !in list.left..list.right || f.y !in (list.top - reach)..(list.bottom + reach)) return null
-        return MinimapRules.dropIndex(order.mapNotNull { rows[it]?.center?.y }, f.y, MinimapRules.movable(current))
+        return MinimapRules.dropIndex(order.mapNotNull { rows[it]?.center?.y }, f.y)
     }
     val insert = insertAt(lifted)
 
@@ -816,7 +800,7 @@ private fun BlockEditor(
             MapButton("Back", describe = "Back to the panel's actions", onClick = close)
         }
         if (!locked) Text(
-            "Drag a handle to reorder. Tap a block for its menu." + if (MinimapRules.movable(stack) < stack.blocks.size) " The dock stays at the bottom." else "",
+            "Drag a handle to reorder. Tap a block for its menu.",
             style = Type.bodySmall,
         )
         Column(
@@ -842,9 +826,7 @@ private fun BlockEditor(
                         dragging = r?.block == b,
                         offset = if (r?.block == b) r.offset else 0f,
                         first = place == 0,
-                        // The last block a move can reach: the one above a pinned dock.
-                        last = place >= MinimapRules.movable(stack) - 1,
-                        pinned = MinimapRules.pinned(stack, b),
+                        last = place == order.lastIndex,
                         modifier = Modifier.onGloballyPositioned {
                             rows[b] = it.boundsInRoot()
                             heights[b] = it.size.height + gapPx
@@ -853,7 +835,7 @@ private fun BlockEditor(
                             detectVerticalDragGestures(
                                 onDragStart = {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    reorder = MinimapRules.Reorder.start(b, current.blocks.size, MinimapRules.movable(current))
+                                    reorder = MinimapRules.Reorder.start(b, current.blocks.size)
                                 },
                                 onVerticalDrag = { change, dy ->
                                     change.consume()
@@ -906,7 +888,7 @@ private fun BlockEditor(
                                 onDragCancel = { held?.let(settle); held = null },
                             )
                         },
-                ) { add(type, MinimapRules.tapIndex(current)) }
+                ) { add(type, current.blocks.size) }
             } }
         }
     }
@@ -929,7 +911,6 @@ private fun BlockRow(
     offset: Float,
     first: Boolean,
     last: Boolean,
-    pinned: Boolean,
     modifier: Modifier,
     handle: Modifier,
     moveWithin: (Int) -> Unit,
@@ -958,8 +939,7 @@ private fun BlockRow(
                 .semantics(mergeDescendants = true) {},
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // A pinned dock has no handle; the space keeps its name in line with the others'.
-            if (!locked) Box((if (pinned) Modifier else handle).size(48.dp).clearAndSetSemantics {}, contentAlignment = Alignment.Center) { if (!pinned) Grip() }
+            if (!locked) Box(handle.size(48.dp).clearAndSetSemantics {}, contentAlignment = Alignment.Center) { Grip() }
             Column(Modifier.weight(1f).padding(start = if (locked) 12.dp else 0.dp, top = 8.dp, bottom = 8.dp, end = 12.dp)) {
                 Text(title, style = Type.body.copy(color = Txt))
                 MinimapRules.blockDetail(block)?.let { Text(it, style = Type.bodySmall) }
@@ -973,14 +953,14 @@ private fun BlockRow(
                     MenuItem(MinimapRules.stackEntry(to)) {
                         close()
                         actions.edit("$title moved to ${MinimapRules.stackName(to.at)}.") {
-                            it.moveBlock(BlockAt(cell, index), block, to.at, MinimapRules.tapIndex(to))
+                            it.moveBlock(BlockAt(cell, index), block, to.at, to.blocks.size)
                         }
                     }
                 }
                 return@DropdownMenu
             }
-            MenuItem("Move up", enabled = !first && !pinned) { close(); moveWithin(index - 1) }
-            MenuItem("Move down", enabled = !last && !pinned) { close(); moveWithin(index + 1) }
+            MenuItem("Move up", enabled = !first) { close(); moveWithin(index - 1) }
+            MenuItem("Move down", enabled = !last) { close(); moveWithin(index + 1) }
             MenuItem("Move to…") {
                 // A stack's last block stays (GridEdit's moveBlock), so say so before listing the stacks.
                 if (stack.blocks.size == 1) {

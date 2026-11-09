@@ -110,9 +110,8 @@ class LorLayoutTest {
         })
         val none = f.removePanel(Cell(1, 0), Panel.Lor(Cell(1, 0)))
         assertEquals(Panel.Lor(Cell(1, 0)), none.addPanel(Cell(1, 0), "lor").current.panelAt(Cell(1, 0)))
-        val bare = LayoutFile.parse(file("""{"type": "dock"}"""))
+        val bare = LayoutFile.parse(file("""{"type": "apps"}"""))
         for ((type, block) in lorBlocks) {
-            // Before the dock, which stays last (lor-f3vn's dock rule).
             assertEquals(block, (bare.addBlock(Cell(0, 0), 1, type).current.panelAt(Cell(0, 0)) as Panel.Stack).blocks[1])
         }
         assertEquals("a stack holds one \"today\" block", try {

@@ -12,7 +12,7 @@ class MinimapTest {
 
     /** The default grid with two pages: t3 [0, 0], home [1, 0], pages [2, 0] and [3, 0], drawer [1, 1]. */
     private val home = listOf(ref("a.a"), ref("b.b"), Folder("Dev", listOf(ref("c.c"), ref("d.d"))))
-    private val grid = LayoutFile("a", listOf(Layout.grid("a", home, listOf(ref("x.x")), listOf(listOf(ref("e.e")), emptyList()))))
+    private val grid = LayoutFile("a", listOf(Layout.grid("a", home, listOf(listOf(ref("e.e")), emptyList()))))
 
     private fun tile(f: LayoutFile, column: Int, row: Int) = MinimapRules.rows(f.current)[row][column]
 
@@ -31,11 +31,11 @@ class MinimapTest {
     @Test
     fun aStackListsItsBlocksWithEveryAppCounted() {
         // Two apps and a folder of two: four apps.
-        assertEquals("Clock\u00A0· 4\u00A0apps\u00A0· Dock", tile(grid, 1, 0).blocks)
-        assertEquals("1\u00A0app\u00A0· Dock", tile(grid, 2, 0).blocks)
-        assertEquals("0\u00A0apps\u00A0· Dock", tile(grid, 3, 0).blocks)
+        assertEquals("Clock\u00A0· 4\u00A0apps", tile(grid, 1, 0).blocks)
+        assertEquals("1\u00A0app", tile(grid, 2, 0).blocks)
+        assertEquals("0\u00A0apps", tile(grid, 3, 0).blocks)
         assertNull(tile(grid, 0, 0).blocks)
-        assertEquals("Stack at [1, 0]. Clock · 4 apps · Dock. Half. Phone start. Inner start", tile(grid, 1, 0).description)
+        assertEquals("Stack at [1, 0]. Clock · 4 apps. Half. Phone start. Inner start", tile(grid, 1, 0).description)
         assertEquals("Empty cell [4, 0]", tile(grid, 4, 0).description)
     }
 
@@ -105,22 +105,15 @@ class MinimapTest {
     @Test
     fun theBlockListNamesEachBlockWithTheAppsCounted() {
         val home = stack(grid, 1)
-        assertEquals(listOf("Clock", "Apps", "Dock"), home.blocks.map { MinimapRules.blockTitle(it) })
-        assertEquals(listOf(null, "4 apps", null), home.blocks.map { MinimapRules.blockDetail(it) })
+        assertEquals(listOf("Clock", "Apps"), home.blocks.map { MinimapRules.blockTitle(it) })
+        assertEquals(listOf(null, "4 apps"), home.blocks.map { MinimapRules.blockDetail(it) })
     }
 
     @Test
-    fun moveToListsTheOtherStacksByTheirBlocksAndGoesBeforeTheDock() {
+    fun moveToListsTheOtherStacksByTheirBlocks() {
         val others = MinimapRules.otherStacks(grid.current, Cell(1, 0))
-        assertEquals(listOf("Column 2: 1 app · Dock", "Column 3: 0 apps · Dock"), others.map { MinimapRules.stackEntry(it) })
+        assertEquals(listOf("Column 2: 1 app", "Column 3: 0 apps"), others.map { MinimapRules.stackEntry(it) })
         assertEquals("Column 2, row 1", MinimapRules.stackName(Cell(2, 1)))
-        // Before the dock, else last.
-        assertEquals(1, MinimapRules.tapIndex(others.first()))
-        val noDock = grid.removeBlock(BlockAt(Cell(2, 0), 1), StackBlock.Dock)
-        assertEquals(1, MinimapRules.tapIndex(stack(noDock, 2)))
-        // Moving home's clock there with that index puts it over the dock.
-        val moved = grid.moveBlock(BlockAt(Cell(1, 0), 0), StackBlock.Clock, Cell(2, 0), MinimapRules.tapIndex(others.first()))
-        assertEquals(listOf("apps", "clock", "dock"), stack(moved, 2).blocks.map { it.type })
     }
 
     @Test
@@ -128,10 +121,8 @@ class MinimapTest {
         // LoR's blocks (lor-lz97) are offered to every stack that lacks them.
         assertEquals(StackBlock.LOR, MinimapRules.blockPalette(stack(grid, 1)))
         assertEquals(listOf("clock") + StackBlock.LOR, MinimapRules.blockPalette(stack(grid, 2)))
-        val bare = grid.removeBlock(BlockAt(Cell(2, 0), 1), StackBlock.Dock)
-        assertEquals(listOf("clock", "dock") + StackBlock.LOR, MinimapRules.blockPalette(stack(bare, 2)))
-        // Each one the palette offers, addBlock takes.
-        MinimapRules.blockPalette(stack(bare, 2)).forEach { bare.addBlock(Cell(2, 0), MinimapRules.tapIndex(stack(bare, 2)), it) }
+        // Each one the palette offers, addBlock takes, last as a tap adds it.
+        MinimapRules.blockPalette(stack(grid, 2)).forEach { grid.addBlock(Cell(2, 0), stack(grid, 2).blocks.size, it) }
     }
 
     @Test
@@ -147,39 +138,15 @@ class MinimapTest {
         }))
         assertEquals(StackBlock.LOR, MinimapRules.blockPalette(stack(two, 1)))
         assertEquals(listOf("clock") + StackBlock.LOR, MinimapRules.blockPalette(stack(two, 2)))
-        assertFalse(MinimapRules.blockPalette(stack(grid.removeBlock(BlockAt(Cell(2, 0), 1), StackBlock.Dock), 2)).contains(StackBlock.Widget.TYPE))
+        assertFalse(MinimapRules.blockPalette(stack(grid, 2)).contains(StackBlock.Widget.TYPE))
         // The Undo bar names it by its label.
         assertEquals("Analog clock moved under Notes.", MinimapRules.movedWithin(stack(two, 1).blocks, 1, 2) { if (it.id == 7) "Analog clock" else "Notes" })
         assertEquals("Notes moved to the top.", MinimapRules.movedWithin(stack(two, 1).blocks, 2, 0) { if (it.id == 7) "Analog clock" else "Notes" })
         assertEquals("Notes removed from Column 1.", MinimapRules.removed(stack(two, 1).blocks[2], Cell(1, 0)) { "Notes" })
-        // Move to… page 2 keeps its id and height, before page 2's dock.
+        // Move to… page 2 keeps its id and height, last.
         val page2 = stack(two, 2)
-        val moved = two.moveBlock(BlockAt(Cell(1, 0), 1), w, Cell(2, 0), MinimapRules.tapIndex(page2))
-        assertEquals(listOf(StackBlock.Apps(page2.blocks[0].let { (it as StackBlock.Apps).items }), w, StackBlock.Dock), stack(moved, 2).blocks)
-    }
-
-    @Test
-    fun aDockLastIsPinnedAndNothingMovesPastIt() {
-        val home = stack(grid, 1)
-        assertEquals(2, MinimapRules.movable(home))
-        assertEquals(listOf(false, false, true), home.blocks.indices.map { MinimapRules.pinned(home, it) })
-        // A drop below the dock lands above it.
-        assertEquals(2, MinimapRules.dropIndex(listOf(50f, 150f, 250f), 400f, MinimapRules.movable(home)))
-        // A drag stops above the dock.
-        val h = listOf(100f, 100f, 100f)
-        val dragged = MinimapRules.Reorder.start(0, 3, MinimapRules.movable(home)).dragged(500f) { h[it] }
-        assertEquals(listOf(1, 0, 2), dragged.order)
-        assertEquals(1, dragged.at)
-        // What the list leaves movable, moveBlock takes; one more place is refused.
-        grid.moveBlock(BlockAt(Cell(1, 0), 0), StackBlock.Clock, Cell(1, 0), MinimapRules.movable(home) - 1)
-        assertEquals(DOCK_LAST, try { grid.moveBlock(BlockAt(Cell(1, 0), 0), StackBlock.Clock, Cell(1, 0), MinimapRules.movable(home)); null } catch (e: LayoutError) { e.message })
-        // Without a dock, or with one a hand edit put elsewhere, every block moves.
-        val noDock = grid.removeBlock(BlockAt(Cell(2, 0), 1), StackBlock.Dock)
-        assertEquals(1, MinimapRules.movable(stack(noDock, 2)))
-        val hand = grid.withCurrent(grid.current.copy(panels = grid.current.panels.map {
-            if (it.at == Cell(2, 0)) (it as Panel.Stack).copy(blocks = it.blocks.reversed()) else it
-        }))
-        assertEquals(2, MinimapRules.movable(stack(hand, 2)))
+        val moved = two.moveBlock(BlockAt(Cell(1, 0), 1), w, Cell(2, 0), page2.blocks.size)
+        assertEquals(listOf(StackBlock.Apps(page2.blocks[0].let { (it as StackBlock.Apps).items }), w), stack(moved, 2).blocks)
     }
 
     @Test
@@ -220,7 +187,7 @@ class MinimapTest {
     fun aBlockMoveSaysWhatItNowSitsUnder() {
         val blocks = stack(grid, 1).blocks
         assertEquals("Clock moved under Apps.", MinimapRules.movedWithin(blocks, 0, 1))
-        assertEquals("Dock moved to the top.", MinimapRules.movedWithin(blocks, 2, 0))
+        assertEquals("Apps moved to the top.", MinimapRules.movedWithin(blocks, 1, 0))
         assertEquals("Apps removed from Column 1; 4 apps left home.", MinimapRules.removed(blocks[1], Cell(1, 0)))
         assertEquals("Clock removed from Column 1.", MinimapRules.removed(blocks[0], Cell(1, 0)))
     }

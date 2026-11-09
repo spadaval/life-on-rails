@@ -13,9 +13,9 @@ class HomeEditTest {
     private fun ref(s: String) = AppRef.parse(s)!!
     private fun app(s: String) = ref(s).let { AppId(it.packageName, it.className ?: "${it.packageName}.Main", it.work) }
 
-    private fun file(vararg pages: List<LayoutItem>, dock: List<AppRef> = emptyList()) = LayoutFile(
+    private fun file(vararg pages: List<LayoutItem>) = LayoutFile(
         "a",
-        listOf(Layout.grid("a", pages[0], dock, pages.drop(1))),
+        listOf(Layout.grid("a", pages[0], pages.drop(1))),
     )
 
     private fun refused(edit: () -> Any): String = try {
@@ -32,11 +32,11 @@ class HomeEditTest {
 
     @Test
     fun pagesAndCoverParseRefuseAndRoundTrip() {
-        // Version 1's pages are stacks of apps and dock to home's right (lor-euec).
+        // Version 1's pages are stacks of apps to home's right (lor-euec).
         val text = """{"version": 2, "active": "a", "layouts": [{"name": "a", "start": {"narrow": [1, 0]}, "panels": [
-            {"at": [1, 0], "type": "stack", "blocks": [{"type": "clock"}, {"type": "apps", "items": ["a.a"]}, {"type": "dock"}]},
-            {"at": [2, 0], "type": "stack", "blocks": [{"type": "apps", "items": ["b.b", {"folder": "F", "apps": ["c.c", "d.d/.X"], "cover": "d.d/d.d.X"}]}, {"type": "dock"}]},
-            {"at": [3, 0], "type": "stack", "blocks": [{"type": "apps"}, {"type": "dock"}]}]}]}"""
+            {"at": [1, 0], "type": "stack", "blocks": [{"type": "clock"}, {"type": "apps", "items": ["a.a"]}]},
+            {"at": [2, 0], "type": "stack", "blocks": [{"type": "apps", "items": ["b.b", {"folder": "F", "apps": ["c.c", "d.d/.X"], "cover": "d.d/d.d.X"}]}]},
+            {"at": [3, 0], "type": "stack", "blocks": [{"type": "apps"}]}]}]}"""
         val f = LayoutFile.parse(text)
         assertEquals(listOf(listOf("a.a"), listOf("b.b", "[F: c.c, d.d/d.d.X]"), emptyList()), f.pages)
         assertEquals(AppRef("d.d", "d.d.X"), (f.current.items(page(1))!![1] as Folder).cover)
@@ -63,7 +63,7 @@ class HomeEditTest {
         assertEquals(main, ref("t.t").resolve(installed))
         assertEquals(work, ref("work:t.t").resolve(installed))
         assertTrue(f.placesOf(main, installed).home)
-        assertEquals(Places(home = false, dock = false, folder = null), f.placesOf(work, installed))
+        assertEquals(Places(home = false, folder = null), f.placesOf(work, installed))
         // Added to home beside its twin, into a folder with it, removed and hidden without touching it.
         val added = f.addToHome(work, ref("work:t.t"), installed)
         assertEquals(listOf(listOf("x.x", "t.t", "work:t.t")), added.pages)
@@ -95,8 +95,8 @@ class HomeEditTest {
         val b = AppId("p.p", "p.p.B")
         val installed = listOf(a, b)
         val f = file(listOf(ref("x.x"), ref("p.p")))
-        assertEquals(Places(home = true, dock = false, folder = null), f.placesOf(a, installed))
-        assertEquals(Places(home = false, dock = false, folder = null), f.placesOf(b, installed))
+        assertEquals(Places(home = true, folder = null), f.placesOf(a, installed))
+        assertEquals(Places(home = false, folder = null), f.placesOf(b, installed))
         assertEquals("it isn't on home", refused { f.removeFromHome(b, installed) })
         val added = f.addToHome(b, AppRef("p.p", "p.p.B"), installed)
         assertEquals(listOf(listOf("x.x", "p.p", "p.p/p.p.B")), added.pages)
@@ -122,7 +122,7 @@ class HomeEditTest {
         val drawn = From.At(Spot.Apps(page(0), 0), ref("a.a"))
         val changed = file(listOf(ref("b.b"), ref("a.a")))
         assertEquals(HOME_CHANGED, refused { changed.removeAt(drawn) })
-        assertEquals(HOME_CHANGED, refused { changed.drop(drawn, Target.AtEnd(Place.Dock)) })
+        assertEquals(HOME_CHANGED, refused { changed.drop(drawn, Target.AtEnd(Place.NewPanel)) })
         assertEquals(listOf(listOf("b.b")), f.removeAt(drawn).pages)
     }
 
@@ -130,7 +130,7 @@ class HomeEditTest {
     fun theSectionCarryKeepsAPackagesOtherActivities() {
         val a = AppId("p.p", "p.p.A")
         val b = AppId("p.p", "p.p.B")
-        val f = LayoutFile("a", listOf(Layout.grid("a", emptyList(), emptyList())), drawer = Drawer(sections = listOf(DrawerSection("Mine", apps = listOf(ref("p.p"))))))
+        val f = LayoutFile("a", listOf(Layout.grid("a", emptyList())), drawer = Drawer(sections = listOf(DrawerSection("Mine", apps = listOf(ref("p.p"))))))
         val moved = f.moveToSection(a, AppRef("p.p", "p.p.A"), Category.TOOLS, "Work", listOf(a, b))
         assertEquals(listOf(AppRef("p.p", "p.p.B")), moved.drawer.sections.first { it.name == "Mine" }.apps)
         assertEquals("Work", moved.drawer.sectionOf(a, Category.TOOLS))
@@ -140,25 +140,23 @@ class HomeEditTest {
 
     @Test
     fun dropsMoveReorderAndMakeFolders() {
-        val f = file(listOf(ref("a.a"), ref("b.b"), ref("c.c")), listOf(ref("e.e")), dock = listOf(ref("d.d")))
+        val f = file(listOf(ref("a.a"), ref("b.b"), ref("c.c")), listOf(ref("e.e")))
         // Reorder on a page, both ways.
         assertEquals(listOf("b.b", "c.c", "a.a"), f.drop(at(f, Spot.Apps(page(0), 0)), Target.AtEnd(Place.InApps(page(0)))).file.pages[0])
         val moved = f.drop(at(f, Spot.Apps(page(0), 2)), Target.Before(Spot.Apps(page(0), 0)))
         assertEquals(listOf("c.c", "a.a", "b.b"), moved.file.pages[0])
         assertEquals(Spot.Apps(page(0), 0), moved.at)
         assertEquals(listOf("b.b", "a.a", "c.c"), f.drop(at(f, Spot.Apps(page(0), 0)), Target.Before(Spot.Apps(page(0), 2))).file.pages[0])
-        // To another page, and the dock both ways.
+        // To another page and back.
         assertEquals(listOf(listOf("b.b", "c.c"), listOf("a.a", "e.e")), f.drop(at(f, Spot.Apps(page(0), 0)), Target.Before(Spot.Apps(page(1), 0))).file.pages)
-        val docked = f.drop(at(f, Spot.Apps(page(0), 1)), Target.Before(Spot.Dock(0))).file
-        assertEquals(listOf(ref("b.b"), ref("d.d")), docked.current.dock)
-        assertEquals(listOf("a.a", "b.b", "c.c", "d.d"), f.drop(at(f, Spot.Dock(0)), Target.AtEnd(Place.InApps(page(0)))).file.pages[0])
+        assertEquals(listOf(listOf("a.a", "b.b", "c.c", "e.e")), f.drop(at(f, Spot.Apps(page(1), 0)), Target.AtEnd(Place.InApps(page(0)))).file.pages)
         // Onto an app makes a folder there; onto a folder appends to it.
         val made = f.drop(at(f, Spot.Apps(page(0), 2)), Target.Onto(Spot.Apps(page(0), 0)), nameFor = { _, _ -> "Media" })
         assertEquals(listOf("[Media: a.a, c.c]", "b.b"), made.file.pages[0])
         assertTrue((made.file.current.home[0] as Folder).pinned)
         assertEquals(Spot.InFolder(page(0), 0, 1), made.at)
-        val filled = made.file.drop(at(made.file, Spot.Dock(0)), Target.Onto(Spot.Apps(page(0), 0))).file
-        assertEquals(listOf("[Media: a.a, c.c, d.d]", "b.b"), filled.pages[0])
+        val filled = made.file.drop(at(made.file, Spot.Apps(page(1), 0)), Target.Onto(Spot.Apps(page(0), 0))).file
+        assertEquals(listOf("[Media: a.a, c.c, e.e]", "b.b"), filled.pages[0])
         // In and out of a folder, and reorder inside it.
         assertEquals(listOf("[Media: c.c, a.a]", "b.b"), made.file.drop(at(made.file, Spot.InFolder(page(0), 0, 0)), Target.AtEnd(Place.InFolder(Spot.Apps(page(0), 0)))).file.pages[0])
         val out = made.file.drop(at(made.file, Spot.InFolder(page(0), 0, 0)), Target.AtEnd(Place.InApps(page(0)))).file
@@ -176,14 +174,10 @@ class HomeEditTest {
     @Test
     fun dropsRefuse() {
         val folder = Folder("F", listOf(ref("x.x")))
-        val f = file(listOf(ref("a.a"), folder), dock = listOf(ref("d.d")))
-        assertEquals("folders don't go in the dock", refused { f.drop(at(f, Spot.Apps(page(0), 1)), Target.AtEnd(Place.Dock)) })
+        val f = file(listOf(ref("a.a"), folder))
         assertEquals("folders don't nest", refused { f.drop(at(f, Spot.Apps(page(0), 1)), Target.Onto(Spot.Apps(page(0), 0))) })
         assertEquals("folders don't nest", refused { f.drop(at(f, Spot.Apps(page(0), 1)), Target.Before(Spot.InFolder(page(0), 1, 0))) })
         assertEquals("it's already on home", refused { f.drop(From.Drawer(app("a.a"), ref("a.a")), Target.AtEnd(Place.InApps(page(0)))) })
-        assertEquals("it's already in the dock", refused { f.drop(From.Drawer(app("d.d"), ref("d.d")), Target.AtEnd(Place.Dock)) })
-        val fullDock = file(listOf(ref("a.a")), dock = (1..5).map { ref("d.d$it") })
-        assertEquals("the dock is full (5 apps)", refused { fullDock.drop(at(fullDock, Spot.Apps(page(0), 0)), Target.AtEnd(Place.Dock)) })
         val fullPage = file((1..24).map { ref("p.p$it") }, listOf(ref("a.a")))
         assertEquals("this page is full (24 items)", refused { fullPage.drop(at(fullPage, Spot.Apps(page(1), 0)), Target.AtEnd(Place.InApps(page(0)))) })
         val fivePages = file(listOf(ref("a.a"), ref("b.b")), listOf(ref("c.c")), listOf(ref("d.d")), listOf(ref("e.e")), listOf(ref("f.f")))
@@ -284,7 +278,6 @@ class HomeEditTest {
         assertTrue((f.drop(at(f, Spot.Apps(page(0), 1)), Target.AtEnd(Place.NewPanel)).file.current.items(page(2))!![0] as Folder).pinned)
         assertFalse("in place, nothing changes", (f.drop(at(f, Spot.Apps(page(0), 1)), Target.AtEnd(Place.InApps(page(0)))).file.current.home[1] as Folder).pinned)
         assertEquals(HOME_CHANGED, refused { f.drop(at(f, Spot.Apps(page(0), 0)), Target.AtEnd(Place.InApps(page(3)))) })
-        assertEquals(listOf(ref("a.a")), f.drop(at(f, Spot.Apps(page(0), 0)), Target.Before(Spot.Dock(7))).file.current.dock)
     }
 
     @Test
@@ -301,11 +294,10 @@ class HomeEditTest {
 
     @Test
     fun theOpenFoldersPlusAddsAppsAndMovesThemFromElsewhereOnHome() {
-        // lor-gnk0. Page 0: x.x, [F: a.a], [G: b.b, c.c]; page 1: d.d; dock: x.x.
+        // lor-gnk0. Page 0: x.x, [F: a.a], [G: b.b, c.c]; page 1: d.d.
         val f = file(
             listOf(ref("x.x"), Folder("F", listOf(ref("a.a"))), Folder("G", listOf(ref("b.b"), ref("c.c")))),
             listOf(ref("d.d")),
-            dock = listOf(ref("x.x")),
         )
         val folder = at(f, Spot.Apps(page(0), 1))
         // A new app goes last; the folder stays where it is and is pinned.
@@ -314,11 +306,10 @@ class HomeEditTest {
         assertEquals(Spot.Apps(page(0), 1), one.at)
         assertTrue((one.file.current.home[1] as Folder).pinned)
         // From elsewhere on home they move, in the order picked: an app ahead of it moves the folder up,
-        // an extra page emptied goes, another folder keeps the rest; the dock keeps its own.
+        // an extra page emptied goes, another folder keeps the rest.
         val many = f.addToFolder(folder, listOf(app("d.d") to ref("d.d"), app("x.x") to ref("x.x"), app("b.b") to ref("b.b")))
         assertEquals(listOf(listOf("[F: a.a, d.d, x.x, b.b]", "[G: c.c]")), many.file.pages)
         assertEquals(Spot.Apps(page(0), 0), many.at)
-        assertEquals(listOf(ref("x.x")), many.file.current.dock)
         assertEquals(many.file.current.home[0], many.file.itemAt(many.at!!))
         // A folder emptied by it goes.
         val g = f.addToFolder(folder, listOf(app("b.b") to ref("b.b"), app("c.c") to ref("c.c")))
@@ -354,7 +345,7 @@ class HomeEditTest {
         val google = added.current.home[1] as Folder
         assertTrue("an edited folder is pinned", google.pinned)
         assertNull("its cover went with it", google.cover)
-        assertEquals(Places(home = true, dock = false, folder = null), added.placesOf(app("y.y")))
+        assertEquals(Places(home = true, folder = null), added.placesOf(app("y.y")))
         roundTrips(added)
         // An app on home itself still refuses, even when a folder also holds it.
         val twice = file(listOf(ref("y.y"), Folder("Google", listOf(ref("g.g"), ref("y.y")))))
@@ -375,7 +366,7 @@ class HomeEditTest {
 
     @Test
     fun aDrawerDropOnHomeMovesAnAppOutOfItsFolder() {
-        val f = file(listOf(ref("a.a"), Folder("Google", listOf(ref("g.g"), ref("y.y")))), dock = listOf(ref("d.d")))
+        val f = file(listOf(ref("a.a"), Folder("Google", listOf(ref("g.g"), ref("y.y")))))
         val d = f.drop(From.Drawer(app("y.y"), ref("y.y")), Target.Before(Spot.Apps(page(0), 0)))
         assertEquals(listOf(listOf("y.y", "a.a", "[Google: g.g]")), d.file.pages)
         assertEquals(Spot.Apps(page(0), 0), d.at)
@@ -384,10 +375,6 @@ class HomeEditTest {
         val s = solo.drop(From.Drawer(app("y.y"), ref("y.y")), Target.AtEnd(Place.InApps(page(0))))
         assertEquals(listOf(listOf("a.a", "y.y")), s.file.pages)
         assertEquals(Spot.Apps(page(0), 1), s.at)
-        // Into the dock it stays in its folder too, as before.
-        val docked = f.drop(From.Drawer(app("y.y"), ref("y.y")), Target.AtEnd(Place.Dock))
-        assertEquals(listOf(listOf("a.a", "[Google: g.g, y.y]")), docked.file.pages)
-        assertEquals(listOf(ref("d.d"), ref("y.y")), docked.file.current.dock)
         // An app on home itself still refuses.
         assertEquals("it's already on home", refused { f.drop(From.Drawer(app("a.a"), ref("a.a")), Target.AtEnd(Place.InApps(page(0)))) })
     }
@@ -396,7 +383,7 @@ class HomeEditTest {
     fun aDrawerDragPreviewedOverHomeKeepsTheFolderUnlessItEndsOnHome() {
         // lor-83uq's review, R1: as Held.step and dropHeld do it. A step over home takes y.y out of Google
         // in the working copy; the drop then starts from where the step put it.
-        val f = file(listOf(ref("a.a"), Folder("Google", listOf(ref("g.g"), ref("y.y")))), dock = listOf(ref("d.d")))
+        val f = file(listOf(ref("a.a"), Folder("Google", listOf(ref("g.g"), ref("y.y")))))
         val drawer = From.Drawer(app("y.y"), ref("y.y"))
         val step = f.drop(drawer, Target.AtEnd(Place.InApps(page(0))), strip = false)
         assertEquals(listOf(listOf("a.a", "[Google: g.g]", "y.y")), step.file.pages)
@@ -409,14 +396,6 @@ class HomeEditTest {
         val removed = end(Target.Remove)
         assertSame(f, removed.file)
         assertNull(removed.at)
-        // Then the dock: the same as a drop straight from the drawer into the dock.
-        val docked = end(Target.AtEnd(Place.Dock))
-        assertEquals(f.drop(drawer, Target.AtEnd(Place.Dock), strip = false).file, docked.file)
-        assertEquals(listOf(listOf("a.a", "[Google: g.g, y.y]")), docked.file.pages)
-        assertEquals(listOf(ref("d.d"), ref("y.y")), docked.file.current.dock)
-        assertEquals(Spot.Dock(1), docked.at)
-        val dockedFirst = end(Target.Before(Spot.Dock(0)))
-        assertEquals(listOf(ref("y.y"), ref("d.d")), dockedFirst.file.current.dock)
         // Then home: out of the folder, where it landed.
         val home = end(Target.Before(Spot.Apps(page(0), 0)))
         assertEquals(listOf(listOf("y.y", "a.a", "[Google: g.g]")), home.file.pages)
@@ -430,7 +409,7 @@ class HomeEditTest {
         // A drawer app in no folder keeps the working copy's result.
         val plain = file(listOf(ref("a.a")))
         val z = From.Drawer(app("z.z"), ref("z.z"))
-        val w = plain.drop(z, Target.AtEnd(Place.Dock), strip = false)
+        val w = plain.drop(z, Target.AtEnd(Place.InApps(page(0))), strip = false)
         assertSame(w.file, drawerDragResult(plain, w.file, z, w.at).file)
     }
 }

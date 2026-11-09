@@ -35,8 +35,20 @@ import androidx.compose.ui.unit.dp
 
 
 /** The banner's line for [state]. */
-internal fun brokenLine(state: LayoutState.Broken): String =
-    if (state.lastGood != null) "layout.json has an error. Showing the last good layout." else "layout.json has an error. Tap to put it right."
+internal fun brokenLine(state: LayoutState.Broken): String = when {
+    state.lastGood == null -> "layout.json has an error. Tap to put it right."
+    state.left.isEmpty() -> "layout.json has an error. Showing the last good layout."
+    else -> "layout.json has an error. Showing the last good layout without ${state.left.size} old dock ${if (state.left.size == 1) "app" else "apps"}."
+}
+
+/**
+ * Why a last good file shown without [left] (old dock apps home has no room for, lor-bdus) can't
+ * be put back as it is, and what to do.
+ */
+internal fun leftOutLine(left: List<AppRef>): String =
+    "Home has no room for ${left.joinToString { "\"$it\"" }} from the old dock, so the last good layout is shown without " +
+        "${if (left.size == 1) "it" else "them"} and nothing is written. Make room on home in layout.json, or take " +
+        "${if (left.size == 1) "it" else "them"} out of its \"dock\"."
 
 /**
  * The banner: a coral status dot, one line in [style], and "Details", at least 48 dp tall; a tap
@@ -61,6 +73,8 @@ internal fun BrokenBanner(state: LayoutState.Broken, appsLoaded: Boolean, style:
 @Composable
 private fun BrokenLayoutDialog(state: LayoutState.Broken, appsLoaded: Boolean, restore: () -> Unit, close: () -> Unit) {
     val action = when {
+        // Shown without apps that didn't fit, it isn't written over anything.
+        state.left.isNotEmpty() -> null
         state.lastGood != null -> "Use the last good layout"
         appsLoaded -> "Start from the default layout"
         else -> null
@@ -71,6 +85,7 @@ private fun BrokenLayoutDialog(state: LayoutState.Broken, appsLoaded: Boolean, r
         text = {
             Column {
                 Text(state.message)
+                if (state.left.isNotEmpty()) Text(leftOutLine(state.left), modifier = Modifier.padding(top = 12.dp))
                 if (action != null) {
                     Text(
                         "$action sets the broken file aside as layout.json.broken.",

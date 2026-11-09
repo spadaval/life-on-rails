@@ -14,8 +14,8 @@ class LayoutStoreTest {
     @get:Rule
     val tmp = TemporaryFolder()
 
-    private val one = LayoutFile("default", listOf(Layout.grid("default", listOf(AppRef("com.whatsapp")), listOf(AppRef("com.android.chrome")))))
-    private val two = one.copy(layouts = listOf(Layout.grid("default", listOf(AppRef("org.example")), emptyList())))
+    private val one = LayoutFile("default", listOf(Layout.grid("default", listOf(AppRef("com.whatsapp")))))
+    private val two = one.copy(layouts = listOf(Layout.grid("default", listOf(AppRef("org.example")))))
     private val brokenText = """{ "version": 2, "active": "default", "layouts": [{ "name": "default", "panles": [] }] }"""
 
     private fun store() = LayoutStore(tmp.root.resolve("layout.json"))
@@ -47,8 +47,8 @@ class LayoutStoreTest {
         store.write(one)
         store.write(two)
         assertEquals(two, store.readGood())
-        store.edit { it.addToDock(AppId("com.whatsapp", "com.whatsapp.Main"), AppRef("com.whatsapp")) }.getOrThrow()
-        assertEquals(listOf(AppRef("com.whatsapp")), store.readGood()!!.current.dock)
+        store.edit { it.addToHome(AppId("com.whatsapp", "com.whatsapp.Main"), AppRef("com.whatsapp")) }.getOrThrow()
+        assertEquals(listOf(AppRef("org.example"), AppRef("com.whatsapp")), store.readGood()!!.current.allItems)
     }
 
     @Test
@@ -114,7 +114,7 @@ class LayoutStoreTest {
     fun undoRefusesAfterAnotherWrite() {
         val store = store()
         store.write(one)
-        val undo = store.edit { it.addToDock(AppId("org.example", "org.example.Main"), AppRef("org.example")) }.getOrThrow().undo!!
+        val undo = store.edit { it.addToHome(AppId("org.example", "org.example.Main"), AppRef("org.example")) }.getOrThrow().undo!!
         store.file.writeText(two.toJson())
         assertEquals("layout.json changed since; nothing was undone", undoFails(store, undo))
         assertEquals(two.toJson(), store.file.readText())
@@ -136,7 +136,7 @@ class LayoutStoreTest {
     fun aNonDefaultWideKeepsThroughAnEditAndUndo() {
         val text = """{"version": 2, "active": "a", "layouts": [{"name": "a", "start": {"narrow": [1, 0]}, "panels": [
             {"at": [0, 0], "type": "t3", "wide": "half"},
-            {"at": [1, 0], "type": "stack", "wide": "full", "blocks": [{"type": "apps", "items": ["com.whatsapp"]}, {"type": "dock"}]}]}]}"""
+            {"at": [1, 0], "type": "stack", "wide": "full", "blocks": [{"type": "apps", "items": ["com.whatsapp"]}]}]}]}"""
         val store = store()
         store.file.writeText(text)
         fun wides(file: LayoutFile) = file.current.panels.map { it.wide }
@@ -153,7 +153,7 @@ class LayoutStoreTest {
 
     /**
      * The layout lock (lor-v692, decision lor-73li): while the file is locked, every phone edit that
-     * changes the grid, the dock or a folder is refused and writes nothing; the rest are taken.
+     * changes the grid or a folder is refused and writes nothing; the rest are taken.
      */
     @Test
     fun aLockedFileRefusesEditsToHomeAndTakesTheRest() {
@@ -162,7 +162,7 @@ class LayoutStoreTest {
         val folder = Folder("F", listOf(ref("b.b"), ref("c.c")))
         val open = LayoutFile(
             "default",
-            listOf(Layout.grid("default", listOf(ref("a.a"), folder), listOf(ref("d.d")), listOf(listOf(ref("e.e"))))),
+            listOf(Layout.grid("default", listOf(ref("a.a"), folder), listOf(listOf(ref("e.e"))))),
             hidden = listOf(ref("h.h")),
         )
         val locked = open.copy(locked = true)
@@ -176,9 +176,7 @@ class LayoutStoreTest {
         val f = From.At(Spot.Apps(homeApps, 1), folder)
         val refusals: List<Pair<String, (LayoutFile) -> LayoutFile>> = listOf(
             "addToHome" to { it.addToHome(app("z.z"), ref("z.z")) },
-            "addToDock" to { it.addToDock(app("z.z"), ref("z.z")) },
             "removeFromHome" to { it.removeFromHome(app("a.a")) },
-            "removeFromDock" to { it.removeFromDock(app("d.d")) },
             "removeFromFolder" to { it.removeFromFolder(app("b.b")) },
             "removeAt" to { it.removeAt(From.At(Spot.Apps(homeApps, 0), ref("a.a"))) },
             "hide of an app on home" to { it.hide("a.a") },
@@ -211,7 +209,7 @@ class LayoutStoreTest {
             "a look change" to { it.copy(look = it.look.copy(labels = false)) },
             "unhide" to { it.unhide("h.h") },
             "moveToSection" to { it.moveToSection(app("a.a"), ref("a.a"), Category.TOOLS, "Work") },
-            "hide of an app on neither home nor the dock" to { it.hide("q.q") },
+            "hide of an app not on home" to { it.hide("q.q") },
         )
         for ((name, edit) in taken) {
             val read = store.edit(edit).getOrThrow()
