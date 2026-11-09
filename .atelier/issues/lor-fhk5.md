@@ -4,6 +4,9 @@ id: "lor-fhk5"
 issue_type: "feature"
 labels:
 - "launcher"
+workflow_branch:
+  branch_base: main
+  work_branch: t3/home-long-press-centered-popovers
 priority: "P2"
 relationships:
   blocks: []
@@ -18,9 +21,9 @@ relationships:
     type: "blocked_by"
 schema: "atelier.issue"
 schema_version: 2
-status: "todo"
+status: "in_progress"
 title: "Long-press menus are chamfered popovers pointing at their icon"
-updated_at: "2026-11-09T01:36:22.934763025+00:00"
+updated_at: "2026-11-09T03:36:13.172637714+00:00"
 ---
 
 ## Goal
