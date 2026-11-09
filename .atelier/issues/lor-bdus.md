@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "No dock: its apps join home"
-updated_at: "2026-11-09T03:21:42.730660705+00:00"
+updated_at: "2026-11-09T03:30:40.034020671+00:00"
 ---
 
 ## Goal
@@ -65,6 +65,8 @@ Mission lor-5qkq. lor-slux (a palette drop of Dock) is superseded by this item.
 - 2026-11-08 [decision] When the last good copy converts only by leaving out dock apps that don't fit, home shows it without them (LayoutStore.readLastGood), names them in the banner and details, and offers no restore, so neither file is written
   Reason: Review R3 (lor-y93g): on the upgrade, layout.good.json is the same old file, so a strict read of it fails too and home had nothing to show
   Rejected: Restoring the partly converted copy (writes over layout.good.json and leaves out apps)
+- 2026-11-08 [decision] Fix R4 once; if its fix draws another finding, merge with it deferred.
+  Reason: Orchestrate's stop signal: a fix drew a finding on its own change (R4 lor-9s7d, from R2's clock-only start meeting R3's recovery banner). The fix is small (draw the banner apart from the apps block, about 30 lines plus a test), and the case is rare (a full home of 120 apps with an old dock), so fixing beats shrinking; a further finding on that fix is deferred unless it is a regression.
 
 ## Report
 
