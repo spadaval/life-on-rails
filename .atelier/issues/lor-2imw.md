@@ -23,7 +23,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "in_progress"
 title: "Quick dial: the drawer's first tab, ranked for the hour"
-updated_at: "2026-11-09T08:26:25.002007213+00:00"
+updated_at: "2026-11-09T08:31:32.463028729+00:00"
 ---
 
 ## Goal
@@ -75,6 +75,7 @@ Mission lor-5qkq. LoR already holds Usage access (`collect/AppUsageCollector.kt`
 - 2026-11-09 [decision] Quick dial's clock-set correction is only applied within one boot, by Settings.Global.BOOT_COUNT saved with the cursor; across a restart (or with no boot count) the wall cursor is kept as it is.
   Reason: Review R9: elapsedRealtime restarts at boot, and a longer new uptime is indistinguishable from a clock set by uptime alone. Boot wall time (now - elapsedRealtime) can't tell them apart either, since a clock set moves it too. A clock set across a restart is then missed, which only means some events may be counted twice or missed once.
   Rejected: Boot time as now - elapsedRealtime (moves with a clock set, so it can't separate the two)
+- 2026-11-09 [handoff] See ## Report / Review fixes. Outcome: independent fix-only review b5f281f..9149fb45 approved by gpt-6.1-sol as lor-1et6, pinned to 9149fb450c77f75c02644c26876709400fe0c1c0. Verdict merge; complexity low, value high, risk medium; Contract pass and Fitness pass. Changes: review records only on t3/drawer-quick-dial. Proof: reran android/boat-build.sh on this checkout into /tmp/lor-2imw-fix-review-boat; assembleDebug testDebugUnitTest passed, 422 tests including 16 QuickDialTest, no failures/errors/skips; full log and XML read. Original R9/R10/R11 reproductions now pass on the unmodified boat-built classes; receipt lor-kd7r also covers legacy JSON, boot identity, forward/backward timestamps, work taps, next-read idempotence, cross-profile ranks and per-app batches. Both fix-commit and scoped-range git diff --check pass. Review: lor-f0j4, lor-usc6 and lor-a3gy resolve as fixed through approval lor-1et6; no new findings or FIX NOW remain. Open questions: none. Residual risk: clock changes spanning reboot or unknown boot identity can duplicate/miss opens and mis-age existing ranking weights; acceptable for the local suggestion cache, without touching source activity records. No emulator or phone used, and no fresh device validation claimed. No code edit, branch switch, merge or push performed.
 
 ## Report
 
