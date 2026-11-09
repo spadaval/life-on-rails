@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.cos
@@ -128,12 +129,12 @@ private fun RowText(title: String, sub: String, modifier: Modifier = Modifier) {
 
 /** The shortcut's icon, loaded when drawn; the app's icon until then (or when it has none). */
 @Composable
-private fun ShortcutIcon(s: SearchShortcut, home: HomeContext, modifier: Modifier) {
+internal fun ShortcutIcon(s: SearchShortcut, home: HomeContext, modifier: Modifier, size: Dp = 36.dp) {
     var icon by remember(s.hit.info.id, s.owner.key) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(s.hit.info.id, s.owner.key) { icon = home.actions.shortcutIcon(s.hit.info) }
-    Box(modifier.size(36.dp), contentAlignment = Alignment.Center) {
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
         val b = icon
-        if (b != null) Image(b, contentDescription = null, modifier = Modifier.size(36.dp)) else AppIcon(s.owner, 36.dp)
+        if (b != null) Image(b, contentDescription = null, modifier = Modifier.size(size)) else AppIcon(s.owner, size)
     }
 }
 
