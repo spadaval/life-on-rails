@@ -11,13 +11,16 @@ relationships:
   attachments: []
   relates:
   - kind: "issue"
+    id: "lor-l9a7"
+    type: "advances"
+  - kind: "issue"
     id: "lor-sfh9"
     type: "discovered_from"
 schema: "atelier.issue"
 schema_version: 2
-status: "backlog"
+status: "todo"
 title: "Fix scripts/ui-check.mjs so the today and goals flows check what Today and Goals do on main"
-updated_at: "2026-11-08T06:09:27.358768702+00:00"
+updated_at: "2026-11-10T06:11:33.811943369+00:00"
 ---
 
 ## Goal

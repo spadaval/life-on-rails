@@ -3,6 +3,7 @@ created_at: "2026-11-10T05:48:59.678516339+00:00"
 id: "lor-sgl4"
 issue_type: "bug"
 labels:
+- "chain"
 - "launcher"
 priority: "P2"
 relationships:
@@ -11,31 +12,45 @@ relationships:
   attachments: []
   relates:
   - kind: "issue"
+    id: "lor-f86f"
+    type: "blocked_by"
+  - kind: "issue"
     id: "lor-l2zj"
     type: "discovered_from"
+  - kind: "issue"
+    id: "lor-l9a7"
+    type: "advances"
 schema: "atelier.issue"
 schema_version: 2
-status: "backlog"
-title: "The LoR and T3 panels connect within seconds of Tailscale coming up"
-updated_at: "2026-11-10T05:48:59.678516339+00:00"
+status: "todo"
+title: "The LoR and T3 panels and the upload retry the moment a network returns"
+updated_at: "2026-11-10T06:11:33.741700458+00:00"
 ---
 
 ## Goal
 
-On the Fold the LoR and T3 panels are usable soon after Tailscale is switched on. Sumeet (2026-11-10): they need Tailscale connected and "seem to take an absolute eternity" to connect once it is enabled, which makes them "too frustrating to use mostly".
+On the Fold the LoR and T3 panels are usable soon after Tailscale is switched on, and queued rows upload then. Sumeet (2026-11-10): the panels need Tailscale connected and "seem to take an absolute eternity" to connect once it is enabled, which makes them "too frustrating to use mostly".
 
 ## Done when
 
-- [ ] With a panel on screen and Tailscale switched on, the T3 panel and the LoR blocks show live data within 5 seconds of the tunnel being up, timed on the real Fold.
-- [ ] The wait that remains is named: how much is Tailscale's own connect and how much is the app's.
+- [ ] `LorApp` registers one default-network callback. When a network becomes available, or the active one gains the VPN transport, it enqueues the upload, resets `T3Connection`'s backoff and connects now, and asks `LorReads` to read now. JVM tests cover each of the three calls from a fake callback.
+- [ ] On `T3_Phone_API35` against the test server and a scratch T3 server, with a LoR block and the agent page on screen: the emulator's network is switched off until both show their greyed last reply, then on, and both show live data within 5 seconds (the flow log with times, and screenshots, as receipts).
+- [ ] No timer or polling is added: `LorReads` still reads once a minute while held, and the backoff's limits are unchanged.
+- [ ] The spec's launcher lines on reading LoR and on T3 say the app retries on a network change.
+- [ ] `assembleDebug testDebugUnitTest` passes on boat.
+
+## Scope
+
+`android/` `LorApp.kt`, `t3/T3Connection.kt`, `net/LorReads.kt`, `sync/` for the enqueue; the spec.
 
 ## Context
 
 - `t3/T3Connection.kt` retries with a backoff that doubles from 1 s to 30 s (lines 213 to 229, 340 to 341), so a tunnel that comes up mid-wait is not tried for up to 30 s.
 - `net/LorReads.kt` reads once a minute while held; nothing asks again when a network appears.
-- Nothing in the launcher listens for network changes (`ConnectivityManager` is used only in `collect/WhatsAppBackup.kt`). A network callback that retries at once and resets the backoff is the likely fix.
-- `net/LorClient.kt` waits 15 s to connect, so a request started just before the tunnel is up can hold the reader that long.
+- Nothing in the launcher listens for network changes (`ConnectivityManager` is used only in `collect/WhatsAppBackup.kt`).
+- `net/LorClient.kt` waits 15 s to connect, so a request started just before the tunnel is up can hold the reader that long; cancel a read in flight when the callback fires if that is what the 5 seconds needs.
+- The emulator cannot run Tailscale. The real tunnel on One UI is checked after merge in lor-4rdv.
 
 ## Unknowns
 
-- Whether Tailscale is off on the Fold most of the time. If it is, the same cause explains the phone sensor's upload gaps (54.9 hours from 7 to 9 November with collection still running), and a route that needs no VPN (the Cloudflare tunnel Sumeet raised on 2026-11-08) is the larger fix.
+- How much of the wait Sumeet sees is Tailscale's own connect. lor-4rdv measures it on the Fold; nothing here can shorten that part.
