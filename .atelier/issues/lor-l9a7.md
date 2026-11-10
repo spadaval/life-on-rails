@@ -25,7 +25,7 @@ On the surfaces LoR already has: the phone collects with no network, uploads the
 
 ## Success criteria
 
-- link-heals: On `T3_Phone_API35` against the test server, with the emulator's network off while the app collects for 30 minutes and then on, the queued observations and status rows reach the server within one minute of the network returning, and `lor status` on the test server shows the phone's link as down for that span.
+- link-heals: On `T3_Phone_API35` against the test server, with the emulator's network off while the app collects for 30 minutes and then on, the queued observations and status rows reach the server within one minute of the network returning, and `lor status` on the test server shows the phone's link as down for that span, worked out from status reports that arrived more than five minutes after they were made.
 - one-line: On the test server, a brief written and pinned the way the `agent` page then instructs gives a wall Today frame whose one thing is at most 60 characters and is drawn whole, and Today's Needs you lists each decision the brief names, with no `lor:flag` message sent for them.
 
 ## Background

@@ -33,9 +33,9 @@ The figures LoR shows are true, and where nothing was measured it says so. Seen 
 - [ ] A past day's hero figure is labelled time, and unlabelled phone and place time is shown beside it by that name. A pure test covers a day of place fill only.
 - [ ] A goal with no committed time in the window reads "no data yet" on Today's Goals this week and on `/goals`, and "no data" on the wall's Goals frame with no empty meter. A goal with any committed time reads as now. Tests cover both, and a Goals frame is rendered and looked at (receipt).
 - [ ] The wall's Tasks and Goals frames draw "late" in the regular weight.
-- [ ] `important()` in `src/server/people.ts` no longer counts a contact as important for not coming from Google, and the People list leaves out places and organisations. A database test covers a SIM contact, a place and a person with a cadence.
+- [ ] `important()` in `src/server/people.ts` no longer counts a contact as important for not coming from Google. An entity whose only identifiers are short codes (phone numbers of six digits or fewer) is not important for contact within 90 days either; it still lists with a page, a cadence or priority, and under All. Places are left out of every people filter. Organisations are unchanged. A database test covers: a contact not from Google with no page, cadence or recent contact (out); a short code texted yesterday (out of the default list, in All); a short code with a cadence (in); a place (out); a person with a cadence (in); an organisation in touch yesterday (in, as today).
 - [ ] Overdue days on People are drawn in the secondary ink.
-- [ ] `verify-lor screen today` and `screen people` pass on the test server, with screenshots as receipts.
+- [ ] `verify-lor screen today` and `screen people` pass on the test server, with screenshots as receipts. The people flow's organisation (Acme, `scripts/ui-check.mjs`) still lists and takes a cadence.
 - [ ] `pnpm test`, `pnpm test:db` and `pnpm typecheck` pass.
 
 ## Scope

@@ -28,7 +28,7 @@ LoR can tell a phone that stopped collecting from a phone that could not reach i
 
 - [ ] Each sync pass queues one observation with `payload.kind = "status"`: `vpn`, `network`, `queue_rows`, `queue_oldest_s`, `last_upload_error`, `battery_unrestricted`, `background_restricted`, `permissions` by sensor, and `app_version`, as the strategy's Design gives them. A JVM test builds one from fake inputs.
 - [ ] `POST /device/ingest` stores it, and a database test shows `kind = 'status'` on the row.
-- [ ] `lor status` and `/status` show the phone's last arrival and the share of the last 24 hours its reports had `vpn: true`, and name a span with no reports as a gap. A database test covers a day with a gap.
+- [ ] `lor status` and `/status` show, for the last 24 hours: the phone's last arrival; the share of reports with `vpn: true`; each span the link was down, from the first report that arrived more than 5 minutes after it was made (its `t_start`) to that batch's arrival; and each stretch of more than 45 minutes with no report made in it, by `t_start`, as not collecting. Database tests cover a day whose reports were held for two hours and then arrived together (a link-down span, and no not-collecting span), and a day with no reports made for two hours (a not-collecting span).
 - [ ] On `T3_Phone_API35` against the test server a sync uploads a status row (the API response saved as a receipt).
 - [ ] The spec's sensor table lists it.
 - [ ] `pnpm test`, `pnpm test:db`, and `assembleDebug testDebugUnitTest` on boat pass.
@@ -41,4 +41,5 @@ LoR can tell a phone that stopped collecting from a phone that could not reach i
 
 - `observation.kind` is generated from `payload->>'kind'` (`src/db/schema.ts`), so no migration is needed.
 - `vpn` is whether the active network has the VPN transport, from `ConnectivityManager`.
+- Reports made during an outage are queued and arrive together afterwards, so arrival times alone show no gap once the queue has drained; that is why the link is read from `t_start` against `ingested_at`.
 - Target: the test server and `T3_Phone_API35`; nothing reaches the real phone before Sumeet says to install.
