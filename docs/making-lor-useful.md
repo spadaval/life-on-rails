@@ -1,6 +1,6 @@
 # Making LoR useful
 
-Proposed 2026-11-10. Not agreed: the questions at the end are Sumeet's, and no work under this plan starts before he answers them.
+Proposed 2026-11-10 and agreed in outline by Sumeet the same day: the slice comes first, and new features pause until the current ones have been improved. His answers are under "Decisions" at the end.
 
 ## The short version
 
@@ -43,9 +43,9 @@ Measured on 2026-11-10 unless a row says otherwise. "How the numbers were measur
 ## Why it is not useful yet
 
 1. **The chain from sensing to saying something is broken at every link.** Sensing fails silently. What is sensed becomes spans with no meaning. Little is concluded from them: 13 labelled blocks, and day write-ups that describe a day but do not add it up. What the agent does say is long, and on the wall it is cut off. What he then does is not recorded.
-2. **The screens' main controls are ones he has not used.** Timers, confirmations, habit check-ins and cadence pickers lead Today, Goals and People. There are two readings of that. One is that he will not do data entry, which the product rules already assume. The other is that these screens are too poor to invite it: they were built in mid-October and have had little work since, with 6 file changes in the web UI since 2 November. The data cannot tell the two apart, because LoR does not record a dashboard visit. The first slice does not need to settle it. It stops depending on entry, and it starts recording use.
+2. **What was built is not good enough to be used, so low use says little about what he wants.** Sumeet's reading (10 November): he does not use time tracking because the time tracking page is horrible, and he typed "t3" into search because the T3 panel did not work and search was the only reliable way to open the app. Timers, confirmations, habit check-ins and cadence pickers lead Today, Goals and People, and those screens have had little work since mid-October: 6 file changes in the web UI since 2 November. So the usage numbers in this plan show where something is broken or poor. They are not evidence that a feature is unwanted, and nothing is cut on their strength alone.
 3. **Width before depth.** Eight web screens, three wall screens on custom firmware, a launcher with about thirteen capabilities, four app tabs, money, people and a wiki. Each is mostly built. Few have been used into shape. Where one was, it worked: the home built from his usage is the clearest win in the record.
-4. **LoR measures everything except its own use.** So work goes where it is interesting, and nothing says afterwards whether it helped.
+4. **LoR measures everything except its own use.** So nothing says afterwards whether a change helped. Use is one signal beside what he says, never the judge on its own.
 5. **By accident, parts of it read as a scorecard of failure.** "0 / 3h this week" where the truth is "unknown". "LATE 2" in bold on the fridge. "1385 days past the cadence" in orange. A task list that grows.
 
 ## What already works
@@ -87,7 +87,7 @@ This is the riskiest part of the plan. The work laptop is invisible, a place doe
 - The People list drops carrier short codes, places and organisations (`important()` in `src/server/people.ts`).
 - The `me` page stops calling the retired phone current and WhatsApp unavailable.
 
-One 30-minute session on the Fold belongs in the same week: the eight real-Fold checks, and timing a home press and a drawer open. It is the only way to learn which launcher features are good on the device.
+The real-Fold checks belong in the same week. Sumeet has used the launcher daily since 5 November, so most are answered from his use, and what he reports as broken (the T3 panel, for one) becomes a bug ahead of anything new.
 
 **At the end of the week,** Sumeet and the agent look at `lor use` and the trial's three numbers, and he says what he noticed, used and ignored.
 
@@ -99,7 +99,8 @@ Nothing below is scheduled. Each has the result that would start it.
 | --- | --- |
 | The trial's accounts are about right and affordable | Inference in the nightly, under the contract below. Then a weekly message: hours by category, each goal's week, and one suggested change. It is sent only when there is something to say. |
 | He acts on the short action line | The wall as one screen: the action in very large type, the next fixed commitment, the weather as advice, one countdown, a quiet evening and night. A middle tap marks the shown item done: a flagged task is completed as the web's tick completes it, and the brief's action is recorded as done for the day, so the wall moves to the next item. |
-| He opens the dashboard, or says what would make him | Today rebuilt around what needs him, what is next, yesterday and the week. Time-fixing moves below. The phone layout is repaired. |
+| The trial's accounts are worth correcting | The time tracking page rebuilt so that reading a day and fixing a span is pleasant. He named this page as the reason he does not track time. |
+| He says what the dashboard should be for him | Today rebuilt around what needs him, what is next, yesterday and the week. The phone layout is repaired. |
 | The phone stays quiet for reasons the heartbeat names | Set-up that proves a reading arrived and covers One UI's battery limits. The app's first screen becomes sensor status and repair. |
 | Evenings stay Unknown | A sensor on the home PC. |
 | The Fold session and `lor use` show which launcher parts he uses | Launcher work on those parts. |
@@ -136,15 +137,17 @@ The spec changes with the step that needs it.
 - The heartbeat: LoR sends a message of its own when the phone goes quiet. Today the agent decides every message. Three outages that nobody noticed for days are the reason.
 - Inferred time, if adopted: inference writes spans, and categories that are not goals are new ("Time tracking", "Evidence split", "A proposal means one thing"). The proposal and confirm path leaves the screens.
 - The wall's tap, if adopted: the wall's listener writes. The tap carries the id of the item on the frame being shown, and applies only to a flagged task or the brief's action, so a stale frame cannot complete something else.
-- The brief's daily Projects section, which Sumeet asked for, would become weekly.
+- The brief's daily Projects section is weekly from 10 November (the `agent` page, version 10).
 
-## Decisions for Sumeet
+## Decisions
 
-1. **The slice first, and the pause on new launcher capabilities and the web layout editor while it runs.**
-2. **Naming Work.** Work stays out of the goals, but the account of a day would label it, with Sleep and Leisure, so the day adds up.
-3. **LoR messaging him itself** when the phone has been quiet for an hour.
-4. **The project tour** moving from the daily brief to a weekly one.
-5. **A 30-minute Fold session** this week.
+Sumeet's answers, 10 November.
+
+1. **The slice first, and new features pause until the current ones have been improved.** Agreed. Current usage data is not to be taken too seriously: much of it is driven by what is broken.
+2. **Naming Work.** Yes. Work stays out of the goals, and the account of a day labels it.
+3. **LoR messaging him itself** when the phone has been quiet. Yes, over WhatsApp, which has been reliable. A channel of its own inside the LoR app is also acceptable later.
+4. **The project tour** moves to a weekly brief. The daily brief becomes much shorter: projects only for major recent or major planned activity. The `agent` page says so from version 10, with the tour on Mondays.
+5. **The real-Fold checks.** He has probably done most of them through ordinary use. They are recorded from his answers, not from a separate session.
 
 ## How the numbers were measured
 
