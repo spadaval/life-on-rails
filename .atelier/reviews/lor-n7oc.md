@@ -1,0 +1,14 @@
+---
+schema: atelier.review
+schema_version: 3
+id: lor-n7oc
+title: approval on branch mail-runner @1275de6a
+branch: mail-runner
+identity: sol-2
+commit: 1275de6a4719bc4398f768c50801dddf22367c38
+created_at: 2026-11-10T05:24:25.060944755Z
+event:
+  event: approval
+---
+
+Verdict: merge. Restores headless mail runs and preserves unacknowledged mail without adding an agent loop to LoR. Sizes: complexity low (two small shell scripts and one timeout), value high (stops unread batches being discarded), risk medium (real mail queue acknowledgements and at-least-once side effects). Correctness/Contract: pass. Fitness: pass. Reviewed whole branch ac613609..1275de6a, AGENTS.md, the Wake contract, both scripts, systemd service/timer, CLI acknowledgement validation, and src/server/mail/wake.ts. Finding lor-me8n is fixed by 79d309b: replaying the earlier successful-conversation/failed-work result through both unchanged scripts with PATH-stubbed claude and lor exits 1 without calling mail done. All 19 mail parser cases passed using a byte-identical temporary mail.sh copy, a stub sibling run-agent.sh and PATH-stubbed lor: absent/empty/whitespace handled lines, unknown and substring IDs, partial/mixed/full selections, commas/backticks, case-insensitive marker, duplicate IDs, several markers (last wins, including empty/unknown last), agent/pending/ack failures and not-due. Twelve integrated mail.sh plus run-agent.sh cases passed with only claude and lor stubbed: handled success, original regression, empty marker, zero/one turn, is_error, process failure, empty/null reply, missing fields, malformed/empty JSON. Stubbed claude checked DEVNULL stdin, assistant cwd, explicit session UUID, matching LOR_THREAD, model and JSON flags. jq selection treats index 0 as true, matches complete tokens, and emits observations in batch order; positional pairing is correct because pendingMail derives messages and observation_ids from the same obs array ordered by t_start. Unquoted done_ids splits only the server-generated UUID list; valid UUIDs contain no whitespace or glob characters. Missing markers safely yield no selection under set -euo pipefail; nonzero runner or jq exits precede acknowledgement. Proof passed: required git diff --check HEAD^ HEAD -- . :!.atelier at pinned head; whole-range git diff --check; bash -n runner/mail.sh runner/run-agent.sh; systemd-analyze --user verify scripts/systemd/assistant-mail.service; systemd-analyze timespan 30min = 1800000000 microseconds. No new findings or open questions. Residual risk: explicit handled is a model assertion, not independent proof of Gmail reads; end-to-end live Gmail/Claude and an actual 30-minute systemd timeout were not run. Failed runs may repeat earlier side effects before their final acknowledgement, already deferred as lor-5fz3 to lor-doyc; no duplicate finding. No live mail queue touched; temporary fixtures removed; no code changed.
