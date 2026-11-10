@@ -64,6 +64,7 @@ Five small things, built together, then lived with for a week. No new screen and
 - The mail runner is restored, and a batch is cleared only after a run that read it. (Queued on 10 November.)
 - The phone sends a heartbeat with its queue age and permission state on every sync. When the phone has been silent for an hour while he is awake, LoR sends one message, and records when data returns.
 - The phone collects with no network and uploads when one returns. Rows the server refuses are kept with the reason.
+- The phone's link to LoR is the likely common cause of two complaints. From 7 to 9 November the Fold's sync job kept running and recording locations for 55 hours while nothing uploaded, which fits Tailscale being off on the phone. Sumeet's report of 10 November is that the LoR and T3 panels take far too long to connect once Tailscale is switched on (lor-sgl4). The app retries on a timer and never on a network change. Whether the phone should reach LoR without a VPN, as he raised on 8 November, is decided after the heartbeat shows how often the link is down.
 
 **2. LoR records its own use.** One observation for each dashboard page opened, middle tap on the wall, agent page or panel action, quick send, and reply to a brief. Left and right presses on the wall do not reach LoR, and recording them would take a firmware change, which is not in this slice. `lor use` prints a week of them. No screen. Every later decision reads this.
 
@@ -87,7 +88,7 @@ This is the riskiest part of the plan. The work laptop is invisible, a place doe
 - The People list drops carrier short codes, places and organisations (`important()` in `src/server/people.ts`).
 - The `me` page stops calling the retired phone current and WhatsApp unavailable.
 
-The real-Fold checks belong in the same week. Sumeet has used the launcher daily since 5 November, so most are answered from his use, and what he reports as broken (the T3 panel, for one) becomes a bug ahead of anything new.
+The real-Fold checks belong in the same week. Sumeet has used the launcher daily since 5 November, so most are answered from his use, and what he reports as broken becomes a bug ahead of anything new. His first answers (10 November): pages, widgets and the weather work; the panels' connect wait (lor-sgl4), which half an unfold lands on (lor-2fkr), the minimap (lor-qsi6), icons held to a flow grid (lor-dx87), and both panels' UIs (lor-hybv) do not.
 
 **At the end of the week,** Sumeet and the agent look at `lor use` and the trial's three numbers, and he says what he noticed, used and ignored.
 
