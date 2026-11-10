@@ -3,5 +3,7 @@ Description=Assistant: unattended mail run (headless Claude Code)
 
 [Service]
 Type=oneshot
+# A hung run must not block the mail after it.
+TimeoutStartSec=30min
 Environment=PATH=%h/.local/opt/node/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=%h/projects/life-on-rails/runner/mail.sh
