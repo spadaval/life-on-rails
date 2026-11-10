@@ -17,7 +17,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "backlog"
 title: "The minimap reworked so that arranging panels is obvious"
-updated_at: "2026-11-10T05:48:59.805682247+00:00"
+updated_at: "2026-11-10T05:59:24.545508708+00:00"
 ---
 
 ## Goal
@@ -32,3 +32,7 @@ Arranging home's panels is intuitive on the Fold. Sumeet (2026-11-10): the minim
 ## Unknowns
 
 - Which parts are wrong: where it sits, how it is opened, the palette, the drags, or the idea of a map at all. Ask him before designing. Smart Launcher's page manager was the reference (lor-f3vn).
+
+## Notes
+
+- 2026-11-10 [human] Sumeet, 2026-11-10, on what is wrong. Smart Launcher's minimap shows the screens themselves laid out in miniature, like a tile map. Ours draws a massive virtual grid with slots, and you build home by dragging text onto the grid: "it feels weird and it looks weird". The words mean nothing to him ("What's a stack, for example"). "Most of my interactions are just tapping random buttons and seeing random bullshit happen." So the rework shows each screen as a miniature of what it really looks like, arranged as they sit, moved by dragging the miniatures, with no schema words on screen.

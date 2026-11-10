@@ -17,7 +17,7 @@ schema: "atelier.issue"
 schema_version: 2
 status: "backlog"
 title: "The LoR and T3 panels get a design pass"
-updated_at: "2026-11-10T05:48:59.990088832+00:00"
+updated_at: "2026-11-10T05:59:24.607709270+00:00"
 ---
 
 ## Goal
@@ -32,3 +32,7 @@ The LoR panel and the T3 panel are pleasant to use on the Fold. Sumeet (2026-11-
 ## Unknowns
 
 - What is bad: layout, density, type, what is shown, or how it behaves. Ask him, with screenshots of both panels on both screens. The connect wait is its own bug.
+
+## Notes
+
+- 2026-11-10 [human] Sumeet, 2026-11-10, on what is wrong. Both panels are very dense, with almost no visual treatment of anything, so they read as walls of text. Unfolded, each renders as two halves instead of using the full screen as one, which doubles the problem. So the pass gives the content hierarchy and visual treatment, lowers the density, and designs the inner screen as one full-screen layout, not two columns of the narrow one.
