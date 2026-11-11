@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "atelier status --hook claude # atelier-managed:SessionStart",
+            "command": "atelier status # atelier-managed:SessionStart",
             "timeout": 30,
             "type": "command"
           }
@@ -15,7 +15,7 @@
       {
         "hooks": [
           {
-            "command": "atelier land --hook claude # atelier-managed:Stop",
+            "command": "atelier check || exit 1 # atelier-managed:Stop",
             "timeout": 30,
             "type": "command"
           }

@@ -1,9 +1,6 @@
-schema = "atelier.project_config"
-schema_version = 1
-project_slug = "lor"
+schema_version = 3
+slug = "lor"
+base_branch = "main"
 
-[paths]
-state_root = ".atelier"
-
-[prune]
-canonical_retention_days = 7
+[[merge_check]]
+run = "git diff --check HEAD^ HEAD -- . ':!.atelier'"
