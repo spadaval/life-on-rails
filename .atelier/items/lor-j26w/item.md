@@ -3,14 +3,16 @@ schema: atelier.item
 schema_version: 3
 id: lor-j26w
 title: Garden life-on-rails, 2026-11-11
-status: draft
+status: ready
 mission: null
 labels:
 - garden
 priority: medium
 blocked_by: []
 implementers: []
-ready: null
+ready:
+  by: sumeet, through mission atelier-295u
+  at: 2026-11-11T18:21:57.850865062Z
 trivial: null
 caused_by: null
 created_at: 2026-11-11T18:21:50.632394754Z
