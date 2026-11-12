@@ -34,9 +34,12 @@ do instead) when pointed elsewhere:
   replaces the `dist/` that `lor-web` serves. `api` and `screen` refuse lor-web's
   ports (3847, 3848, 3849 and whatever the env file sets) and any listener that
   is not `scripts/serve.mjs` on the test database.
-- **Phone:** the `T3_Phone_API35` emulator only. `install` refuses a serial that
-  is not `emulator-N`. Sumeet's phones may be connected over adb; never install
-  to, drive or change them.
+- **Phone:** the `T3_Phone_API35` emulator only, on a device host: the M2
+  MacBook Air (`--host mac`, the default) or, when the Mac is down, the boat VM
+  (`--host boat`). No emulator runs on this machine; `doctor`, `install` and
+  `logs` run adb on the host over ssh. `install` refuses a serial that is not
+  `emulator-N`. Sumeet's phones may be connected over adb; never install to,
+  drive or change them.
 - **App data:** `install` uses `adb install -r` and never `pm clear`. Clearing
   data brings back `Prefs.DEFAULT_SERVER`, the real server.
 - **Dependencies:** the copy's `node_modules` is a symlink to the checkout's
@@ -57,8 +60,8 @@ node $V doctor
 Reports, per surface (`api`, `web`, `launcher`), whether it is ready, and for
 each check that is not, the `fix`: the test database and pending migrations (`migrations_from_other_branches`
 counts ones applied by another branch's checks, which is harmless),
-port 3857, the copy, Chrome, the emulator, the app's `server_url` on it, the
-debug APK and the boat CLI. It also lists lor-web's ports, which nothing here
+port 3857, the copy, Chrome, the device host, the emulator on it, the app's
+`server_url`, the 3857 tunnel to the host, the debug APK and the boat CLI. It also lists lor-web's ports, which nothing here
 touches. Exit 0 only when every surface is ready.
 
 ## Launch
@@ -78,9 +81,22 @@ so: `boat resume bx_fxc6p2bw` (it stops itself 30 minutes after use).
 For the launcher, start or open the emulator with T3 Code's device tools, not a
 shell: load them with ToolSearch
 `select:mcp__t3-code__device_list,mcp__t3-code__device_open,mcp__t3-code__device_screenshot,mcp__t3-code__device_close`,
-then `device_list`, and `device_open` with hostId `local` and the id
+then `device_list`, and `device_open` with hostId `mac` and the id
 `device_list` shows for T3_Phone_API35 (`T3_Phone_API35` while it is off,
 `emulator-5554` once booted). Run `install` once it is booted.
+
+The Mac renders through its GPU and boots the phone AVD in about 10 s. It has
+8 GB, so open one emulator at a time there (`T3_Fold_API35` exists too). The
+emulator reaches the test server at `10.0.2.2:3857`, the Mac's own
+`127.0.0.1:3857`, which the always-on `lor-mac-tunnel` user unit on this machine
+forwards here.
+
+**Fallback, when the Mac is unreachable:** boat. `boat resume bx_fxc6p2bw`,
+start the tunnel and leave it running (`ssh -N -R 3857:127.0.0.1:3857
+lor-android-build`), then `device_open` with hostId `boat`, and pass
+`--host boat` to `doctor`, `install` and `logs` (or set `LOR_VERIFY_HOST=boat`).
+A boat emulator stops with the VM's auto-stop and renders in software, so
+timing checks belong on the Mac.
 
 ## Drive
 

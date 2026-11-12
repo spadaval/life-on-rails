@@ -26,17 +26,19 @@ The Android app's home screen (T3 Launcher, `com.spadaval.lor/.home.HomeActivity
 It lives at `/data/data/com.spadaval.lor/files/layout.json` (with `layout.good.json`, `layout.json.broken` and `launch-stats.json` beside it). On the debug build:
 
 ```
-adb -s <emulator> shell run-as com.spadaval.lor cat files/layout.json
-adb -s <emulator> shell run-as com.spadaval.lor sh -c 'cat > files/layout.json' < layout.json
+ssh mac Android/Sdk/platform-tools/adb -s <emulator> shell run-as com.spadaval.lor cat files/layout.json
+ssh mac Android/Sdk/platform-tools/adb -s <emulator> shell "\"run-as com.spadaval.lor sh -c 'cat > files/layout.json'\"" < layout.json
 ```
+
+adb runs on the device host (`mac`, or `lor-android-build` for boat), never on this machine.
 
 Home rereads it on resume when its modified time changed, so leave home (open another app) and come back after a write. Version 1 files are converted in memory and become version 2 on the phone's next write. Unknown fields are errors. While `"locked": true`, the phone refuses its own edits to `active` or `layouts`; hand and agent edits of the file still go through. A missing file is written from the default layout on the first read.
 
 ## Drive it
 
 1. Build: `node .claude/skills/verify-lor/verify.mjs build`. It runs `android/boat-build.sh` on the boat VM. Never run Gradle on this machine.
-2. Install: `node .claude/skills/verify-lor/verify.mjs install`. It runs `adb install -r` of the debug APK on the `T3_Phone_API35` emulator only and sets `server_url` to `http://10.0.2.2:3857`, before and after the install, without clearing data. The test server must be up for anything that reads LoR.
-3. Interact only through T3 Code's device tools: `device_list`, then `device_open` with hostId `local` and the id it shows for T3_Phone_API35 (`emulator-5554` once booted), then the `agent-device` command it returns to open the app, snapshot, tap, type and take screenshots. Use `device_screenshot` to look. Never raw `adb shell input`, and never the physical phones.
+2. Install: `node .claude/skills/verify-lor/verify.mjs install`. It copies the debug APK to the device host (the Mac; `--host boat` for the fallback) and runs `adb install -r` there, on the `T3_Phone_API35` emulator only, and sets `server_url` to `http://10.0.2.2:3857`, before and after the install, without clearing data. The test server must be up for anything that reads LoR.
+3. Interact only through T3 Code's device tools: `device_list`, then `device_open` with hostId `mac` (`boat` for the fallback) and the id it shows for T3_Phone_API35 (`emulator-5554` once booted), then the `agent-device` command it returns to open the app, snapshot, tap, type and take screenshots. Use `device_screenshot` to look. Never raw `adb shell input`, and never the physical phones.
 4. Logs: `node .claude/skills/verify-lor/verify.mjs logs <out>`.
 
 For anything about width or folding, the missions also used `T3_Fold_API35`. Agent page T3 cards need a paired scratch T3 server (`docs/missions/t3-launcher/plan.md`, "The scratch T3 server"), never the live one.
