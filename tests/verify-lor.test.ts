@@ -1,6 +1,6 @@
 // The verify-lor CLI refuses every target that is not a test one. Each case runs the
-// CLI against a fake env file and a fake adb, so nothing here can reach the real
-// database, lor-web or a phone. Every case passes --dry-run, so even a broken guard
+// CLI against a fake env file and a fake ssh (adb runs on a device host over ssh), so
+// nothing here can reach the real database, lor-web, a device host or a phone. Every case passes --dry-run, so even a broken guard
 // prints a plan instead of acting; only the listener case reaches a server, its own.
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -20,7 +20,7 @@ writeFileSync(envFile, [`DATABASE_URL=${REAL_URL}`, "LOR_PORT=3847", "LOR_SERVE_
 function cli(args: string[], env: Record<string, string> = {}) {
   const r = spawnSync("node", [CLI, ...args], {
     encoding: "utf8",
-    env: { ...process.env, LOR_ENV_FILE: envFile, LOR_VERIFY_ADB: "/bin/false", LOR_VERIFY_COPY: path.join(dir, "copy"), LOR_VERIFY_OUT: path.join(dir, "out"), ...env },
+    env: { ...process.env, LOR_ENV_FILE: envFile, LOR_VERIFY_SSH: "/bin/false", LOR_VERIFY_COPY: path.join(dir, "copy"), LOR_VERIFY_OUT: path.join(dir, "out"), ...env },
   });
   return { code: r.status, out: r.stdout, err: r.stderr };
 }
@@ -83,6 +83,38 @@ describe("verify-lor never touches a phone or the app's data", () => {
     expect(r.out).toContain("server_url=http://10.0.2.2:3857");
     const cmds = JSON.parse(r.out).steps.map((s: { cmd: string }) => s.cmd).join("\n");
     expect(cmds).not.toMatch(/pm clear|install -r -c|uninstall/);
+  });
+  it("install refuses a physical device serial on boat too", () =>
+    refused(cli(["install", "--host", "boat", "--serial", "adb-57211JEBF04781-YipJ96._adb-tls-connect._tcp", "--dry-run"]), /not an emulator/));
+});
+
+describe("verify-lor runs adb on a device host, never here", () => {
+  const cmds = (r: ReturnType<typeof cli>) => JSON.parse(r.out).steps.map((s: { cmd: string }) => s.cmd).join("\n");
+  it("install uses the Mac by default", () => {
+    const r = cli(["install", "--dry-run"]);
+    expect(r.code).toBe(0);
+    expect(cmds(r)).toMatch(/scp \S+ mac:\/tmp\/lor-verify-app-debug\.apk/);
+    expect(cmds(r)).toMatch(/ssh mac \S*adb -s/);
+  });
+  it("install uses boat with --host boat or LOR_VERIFY_HOST=boat", () => {
+    for (const r of [cli(["install", "--host", "boat", "--dry-run"]), cli(["install", "--dry-run"], { LOR_VERIFY_HOST: "boat" })]) {
+      expect(r.code).toBe(0);
+      expect(cmds(r)).toMatch(/ssh lor-android-build \S*adb -s/);
+    }
+  });
+  it("refuses a host that is not mac or boat, this machine included", () => {
+    for (const host of ["local", "buildbot"]) {
+      const r = cli(["install", "--host", host, "--dry-run"]);
+      expect(r.code).toBe(2);
+      expect(r.err).toMatch(/mac or boat; no emulator runs on this machine/);
+    }
+  });
+  it("doctor reports an unreachable host with the fix", () => {
+    const r = cli(["doctor"]);
+    const checks = JSON.parse(r.out).checks as { name: string; ok: boolean; fix?: string }[];
+    const host = checks.find((c) => c.name === "device host")!;
+    expect(host.ok).toBe(false);
+    expect(host.fix).toMatch(/--host boat/);
   });
 });
 

@@ -2,8 +2,9 @@
 // verify-lor: drive Life on Rails on throwaway targets and collect evidence.
 // Every command targets the test database (life_on_rails_test), the throwaway
 // server on 127.0.0.1:3857 built in a copy of the checkout, and the
-// T3_Phone_API35 emulator. Nothing here reaches the real database, lor-web
-// (3847, 3848, 3849) or a physical phone. See SKILL.md next to this file.
+// T3_Phone_API35 emulator on a device host (the Mac, or boat as the fallback),
+// driven over ssh: no emulator runs on this machine. Nothing here reaches the
+// real database, lor-web (3847, 3848, 3849) or a physical phone. See SKILL.md.
 //
 // stdout is JSON; diagnostics go to stderr.
 // Exit codes: 0 ok, 1 failed, 2 usage, 3 refused (the target was not a test one).
@@ -31,10 +32,14 @@ const HELP = `verify-lor <command> [options]      (node .claude/skills/verify-lo
                                install the debug APK on the emulator (adb install -r, data kept) and
                                point the app at http://10.0.2.2:3857
   logs <out-dir>               the app's logcat, the crash buffer and the server log
+
+  doctor, install and logs take --host mac|boat: the device host whose emulator they use, over ssh.
+  mac (the default) is the M2 MacBook Air; boat (lor-android-build) is the fallback.
   evidence <dir>               list the files in an evidence directory with sizes and sha256
 
 Environment (all optional): LOR_ENV_FILE, LOR_VERIFY_DATABASE_URL, LOR_VERIFY_COPY, LOR_VERIFY_OUT,
-LOR_VERIFY_AVD, LOR_VERIFY_ADB.
+LOR_VERIFY_AVD, LOR_VERIFY_HOST (mac|boat), LOR_VERIFY_ADB (adb's path on the host),
+LOR_VERIFY_SSH (the ssh binary).
 Exit codes: 0 ok, 1 failed, 2 usage, 3 refused.
 `;
 
@@ -51,7 +56,15 @@ const COPY = path.resolve(process.env.LOR_VERIFY_COPY ?? `/tmp/lor-ui-${NAME}`);
 const OUT = path.resolve(process.env.LOR_VERIFY_OUT ?? `/tmp/lor-verify/${NAME}`);
 const APK = path.join(OUT, "apk/outputs/apk/debug/app-debug.apk");
 const AVD = process.env.LOR_VERIFY_AVD ?? "T3_Phone_API35";
-const ADB = process.env.LOR_VERIFY_ADB ?? path.join(homedir(), "Android/Sdk/platform-tools/adb");
+// Emulators run on a device host, never here (lor-6txa). Each host is an ssh alias in
+// ~/.ssh/config and a T3 Code device host of the same id; both keep the SDK at ~/Android/Sdk.
+const HOSTS = {
+  mac: { ssh: "mac", tunnel: "lor-mac-tunnel", setup: "the Mac is down: check `tailscale status` for supadava-m-546y, or use --host boat" },
+  boat: { ssh: "lor-android-build", tunnel: null, setup: "boat resume bx_fxc6p2bw, then ssh -N -R 3857:127.0.0.1:3857 lor-android-build (see SKILL.md)" },
+};
+const ADB = process.env.LOR_VERIFY_ADB ?? "Android/Sdk/platform-tools/adb"; // on the host, from its home directory
+const SSH = process.env.LOR_VERIFY_SSH ?? "ssh";
+let HOST = "mac"; // set from --host or LOR_VERIFY_HOST in main()
 const APP = "com.spadaval.lor";
 const SERVER_LOG = "/tmp/lor-ui-server.log"; // written by scripts/ui-server.sh
 const FLOWS = ["tasks", "goals", "people", "notes", "today"];
@@ -228,15 +241,24 @@ function portFlag(flags) {
   return guardPort(flags.port === undefined ? TEST_PORT : Number(flags.port));
 }
 
-// ---------- adb (emulator only) ----------
+// ---------- adb (emulator only, on the device host) ----------
+
+/** Quote one word for the host's shell: ssh joins its arguments into a single command line. */
+function shq(s) {
+  return /^[\w@%+=:,./-]+$/.test(s) ? s : `'${String(s).replace(/'/g, `'\\''`)}'`;
+}
+
+function onHost(cmd, args, opts) {
+  return run(SSH, ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", HOSTS[HOST].ssh, [cmd, ...args].map(shq).join(" ")], { quiet: true, ...opts });
+}
 
 function adb(serial, args, opts) {
-  return run(ADB, ["-s", serial, ...args], { quiet: true, ...opts });
+  return onHost(ADB, ["-s", serial, ...args], opts);
 }
 
 function emulators() {
-  const r = run(ADB, ["devices"], { quiet: true });
-  if (r.status !== 0) return { error: r.stderr.trim() || `cannot run ${ADB}`, emulators: [], physical: 0 };
+  const r = onHost(ADB, ["devices"]);
+  if (r.status !== 0) return { error: r.stderr.trim() || `cannot run ${ADB} on ${HOST}`, emulators: [], physical: 0 };
   const lines = r.stdout.split("\n").slice(1).filter((l) => /\tdevice$/.test(l)).map((l) => l.split("\t")[0]);
   const emus = lines.filter((s) => /^emulator-\d+$/.test(s)).map((serial) => ({ serial, avd: adb(serial, ["emu", "avd", "name"]).stdout.split(/\r?\n/)[0].trim() }));
   return { emulators: emus, physical: lines.length - emus.length };
@@ -247,10 +269,10 @@ function pickEmulator(flags) {
     throw new Refused(`${flags.serial} is not an emulator; physical phones are never installed to or driven. Instead: use the ${AVD} emulator (omit --serial).`);
   }
   const { emulators: emus, error } = emulators();
-  if (error) throw new Failed(`adb: ${error}. Instead: check ${ADB} exists (Android SDK platform-tools).`);
+  if (error) throw new Failed(`adb on ${HOST}: ${error}. Instead: ${HOSTS[HOST].setup}.`);
   const match = emus.find((e) => e.avd === AVD && (flags.serial === undefined || e.serial === flags.serial));
   if (!match) {
-    throw new Failed(`the ${AVD} emulator is not running${emus.length ? ` (running: ${emus.map((e) => `${e.serial}=${e.avd}`).join(", ")})` : ""}. Instead: sg kvm -c start-t3-emulator, or call T3 Code's device_open (hostId local, id ${AVD}).`);
+    throw new Failed(`the ${AVD} emulator is not running on ${HOST}${emus.length ? ` (running: ${emus.map((e) => `${e.serial}=${e.avd}`).join(", ")})` : ""}. Instead: call T3 Code's device_open (hostId ${HOST}, id ${AVD}).`);
   }
   return match.serial;
 }
@@ -275,7 +297,8 @@ function setServerUrl(serial, url) {
   for (let attempt = 1; attempt <= 3; attempt++) {
     adb(serial, ["shell", "am", "force-stop", APP]);
     const xml = withServerUrl(readServerUrl(serial).xml, url);
-    const w = adb(serial, ["exec-in", "run-as", APP, "sh", "-c", "'mkdir -p shared_prefs && cat > shared_prefs/lor.xml'"], { input: xml });
+    // `adb shell` with stdin, not `exec-in`: on the Mac's platform-tools (37) exec-in exits 0 and writes nothing.
+    const w = adb(serial, ["shell", `run-as ${APP} sh -c 'mkdir -p shared_prefs && cat > shared_prefs/lor.xml'`], { input: xml });
     if (w.status !== 0) throw new Failed(`could not write the app's prefs: ${w.stderr.trim()}. Instead: check the APK is a debug build (run-as needs one).`);
     // A home app restarts at once after a stop and may have rewritten the file from memory.
     adb(serial, ["shell", "am", "force-stop", APP]);
@@ -328,8 +351,14 @@ const commands = {
     add("chrome", ["web"], Boolean(chrome), chrome ?? "not found", "install Google Chrome (playwright-core drives the system Chrome)");
 
     const devs = emulators();
+    add("device host", ["launcher"], !devs.error, devs.error ? { host: HOST, error: devs.error } : { host: HOST, ssh: HOSTS[HOST].ssh }, HOSTS[HOST].setup);
     const emu = devs.emulators.find((e) => e.avd === AVD);
-    add("emulator", ["launcher"], Boolean(emu), devs.error ?? { wanted: AVD, running: devs.emulators, physical_devices_connected: devs.physical }, `sg kvm -c start-t3-emulator, or T3 Code's device_open (hostId local, id ${AVD})`);
+    add("emulator", ["launcher"], Boolean(emu), devs.error ?? { host: HOST, wanted: AVD, running: devs.emulators, physical_devices_connected: devs.physical }, `T3 Code's device_open (hostId ${HOST}, id ${AVD})`);
+    // The emulator reaches the test server at 10.0.2.2:3857, the host's own 127.0.0.1:3857,
+    // which an ssh reverse tunnel from this machine holds.
+    const t = devs.error ? null : onHost("sh", ["-c", `lsof -nP -iTCP:${TEST_PORT} -sTCP:LISTEN >/dev/null 2>&1 || ss -ltn 2>/dev/null | grep -q '[.:]${TEST_PORT} '`]);
+    const tunnelFix = HOSTS[HOST].tunnel ? `systemctl --user restart ${HOSTS[HOST].tunnel}` : `ssh -N -R ${TEST_PORT}:127.0.0.1:${TEST_PORT} ${HOSTS[HOST].ssh} (left running)`;
+    add(`tunnel ${TEST_PORT}`, ["launcher"], Boolean(t && t.status === 0), t ? { host: HOST, listening: t.status === 0 } : "device host unreachable", tunnelFix);
     if (emu) {
       const s = readServerUrl(emu.serial);
       const want = `http://10.0.2.2:${TEST_PORT}`;
@@ -487,20 +516,25 @@ const commands = {
       if (flags.serial !== undefined && !/^emulator-\d+$/.test(String(flags.serial))) pickEmulator(flags);
       return plan([
         { cmd: `if installed: am force-stop ${APP}; run-as ${APP}: shared_prefs/lor.xml server_url=${url}`, note: "before the install, so a restart never reaches the real server" },
-        { cmd: `${ADB} -s <${AVD} serial> install -r ${apk}`, note: "-r keeps app data; pm clear would bring back the real server" },
+        { cmd: `scp ${apk} ${HOSTS[HOST].ssh}:/tmp/lor-verify-app-debug.apk`, note: `adb runs on the device host ${HOST}` },
+        { cmd: `ssh ${HOSTS[HOST].ssh} ${ADB} -s <${AVD} serial> install -r /tmp/lor-verify-app-debug.apk`, note: "-r keeps app data; pm clear would bring back the real server" },
         { cmd: `am force-stop ${APP}; run-as ${APP}: shared_prefs/lor.xml server_url=${url}; am force-stop ${APP}` },
       ]);
     }
     const serial = pickEmulator(flags);
     if (!existsSync(apk)) throw new Failed(`no APK at ${apk}. Instead: verify-lor build.`);
+    // adb runs on the device host, so the APK goes there first.
+    const remoteApk = "/tmp/lor-verify-app-debug.apk";
+    const cp = run("scp", ["-q", "-o", "BatchMode=yes", apk, `${HOSTS[HOST].ssh}:${remoteApk}`], { quiet: true });
+    if (cp.status !== 0) throw new Failed(`could not copy the APK to ${HOST}: ${cp.stderr.trim()}. Instead: ${HOSTS[HOST].setup}.`);
     // An installed app restarts during install -r (at once, when it is the default home) and
     // would sync to the real server if server_url were unset, so it is set before as well as after.
     if (readServerUrl(serial).installed) setServerUrl(serial, url);
-    const i = adb(serial, ["install", "-r", apk]);
+    const i = adb(serial, ["install", "-r", remoteApk]);
     if (i.status !== 0 || !/Success/.test(i.stdout)) throw new Failed(`adb install failed: ${(i.stdout + i.stderr).trim()}`);
     const attempts = setServerUrl(serial, url);
     if (!listener(port)) process.stderr.write(`verify-lor: note: nothing listens on :${port} yet; run verify-lor up before using the app.\n`);
-    print({ ok: true, serial, avd: AVD, apk, sha256: sha256(apk), server_url: url, prefs_attempts: attempts });
+    print({ ok: true, host: HOST, serial, avd: AVD, apk, sha256: sha256(apk), server_url: url, prefs_attempts: attempts });
     return 0;
   },
 
@@ -527,7 +561,7 @@ const commands = {
       files.launcher = path.join(out, "launcher-logcat.txt");
       files.crash = path.join(out, "crash-logcat.txt");
     }
-    print({ ok: true, serial, files });
+    print({ ok: true, host: HOST, serial, files });
     return 0;
   },
 
@@ -595,6 +629,8 @@ async function main() {
   }
   const command = commands[name];
   if (!command) throw new Usage(`unknown command ${name}`);
+  HOST = String(flags.host ?? process.env.LOR_VERIFY_HOST ?? "mac");
+  if (!Object.hasOwn(HOSTS, HOST)) throw new Usage(`--host ${HOST}: the device host is mac or boat; no emulator runs on this machine`);
   return await command(rest, flags);
 }
 
