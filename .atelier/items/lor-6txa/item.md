@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-6txa
 title: LoR's emulator checks run on the Mac, with boat as the fallback; buildbot runs none
-status: in_review
+status: approved
 mission: null
 labels: []
 priority: medium
