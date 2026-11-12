@@ -1,0 +1,36 @@
+---
+schema: atelier.item
+schema_version: 3
+id: lor-6txa
+title: LoR's emulator checks run on the Mac, with boat as the fallback; buildbot runs none
+status: draft
+mission: null
+labels: []
+priority: medium
+blocked_by: []
+implementers: []
+ready: null
+trivial: null
+caused_by: null
+created_at: 2026-11-12T00:08:41.350792118Z
+---
+
+## Goal
+
+LoR's emulator checks run on the M2 MacBook Air, T3 Code's device host `mac`, which renders through the M2's GPU, boots the phone AVD in about 10 s and costs nothing. Boat (`lor-android-build`, device host `boat`) is the fallback when the Mac is unreachable. buildbot runs no emulator: one takes 3.6 to 5.8 GB of its 14 GB, and T3 Code starts it inside `t3code.service`, where oomd can't kill it. Sumeet's decision, 2026-11-11.
+
+The Mac's setup is done (outside the repo): the AVDs `T3_Phone_API35` and `T3_Fold_API35` (arm64, `hw.gpu.mode=host`), `ssh mac`, and the always-on `lor-mac-tunnel` user unit on buildbot, which gives the Mac's 127.0.0.1:3857 to buildbot's, so `http://10.0.2.2:3857` reaches the test server.
+
+## Done when
+
+- [ ] `verify.mjs` runs every adb command on the chosen device host over ssh: `mac` by default, `boat` with `--host boat` or `LOR_VERIFY_HOST=boat`, using `~/Android/Sdk/platform-tools/adb` there. `install` copies the APK to the host first. No command runs adb on buildbot.
+- [ ] `install` still refuses any serial that is not `emulator-N`, on either host, and `doctor` reports the host's reachability, its emulator, the app's `server_url` and the 3857 tunnel, with the fix for each.
+- [ ] `tests/verify-lor.test.ts` covers the host choice and the refusal, and passes.
+- [ ] SKILL.md, `references/features/launcher.md` and AGENTS.md say: emulators run on the Mac (`device_open` with hostId `mac`), boat is the fallback (resume, tunnel, hostId `boat`), and none run on buildbot.
+- [ ] On the Mac: `build`, `install`, the app on `T3_Phone_API35` loading data from the test server, and `logs`, with screenshots and the logs recorded as a receipt.
+
+## Scope
+
+In: `.claude/skills/verify-lor/` (verify.mjs, SKILL.md, references), `tests/verify-lor.test.ts`, AGENTS.md.
+
+Out: deleting buildbot's AVDs and SDK, T3 Code's own emulator guidance, the real phones, and `android/boat-emulator-setup.sh`.
