@@ -3,14 +3,16 @@ schema: atelier.item
 schema_version: 3
 id: lor-03c2
 title: boat-build.sh says the boat VM is stopped instead of failing silently
-status: draft
+status: ready
 mission: null
 labels:
 - tools
 priority: medium
 blocked_by: []
 implementers: []
-ready: null
+ready:
+  by: lead of lor-2803, from the design audit
+  at: 2026-11-17T14:42:51.220164465Z
 trivial: null
 caused_by: null
 created_at: 2026-11-17T14:42:10.706640504Z

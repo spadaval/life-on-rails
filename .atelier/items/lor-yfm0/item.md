@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-yfm0
 title: Today's Ask box keeps its Sent notice until the next message is typed
-status: draft
+status: ready
 mission: null
 labels:
 - dashboard
@@ -11,7 +11,9 @@ labels:
 priority: medium
 blocked_by: []
 implementers: []
-ready: null
+ready:
+  by: lead of lor-2803, from the design audit
+  at: 2026-11-17T14:42:51.161795015Z
 trivial: null
 caused_by: null
 created_at: 2026-11-17T14:42:10.655995729Z
