@@ -268,15 +268,19 @@ object LabPanels {
         )
     }
 
-    /** The sheet as the state opens it: the projects of its threads, and the assistant's screenshot when `where.target` is "assist". */
+    /**
+     * The sheet as the state opens it: T3's projects as the fixture lists them (the app's
+     * `shell.projects`), each thread under the project its title names, and the assistant's
+     * screenshot when `where.target` is "assist".
+     */
     fun sheet(f: Fixture): SheetUi {
-        val threads = f.t3.threads
-        val projects = (listOf("assistant") + threads.map { it.project }).distinct().associateBy { "p-$it" }
+        val t3 = f.t3
+        val byTitle = t3.projects.entries.associate { (id, title) -> title to id }
         return SheetUi(
-            link = link(f.t3.status),
-            loaded = f.t3.status == T3Status.LIVE || threads.isNotEmpty(),
-            projects = projects,
-            threads = threads.associate { it.id to "p-${it.project}" },
+            link = link(t3.status),
+            loaded = t3.status == T3Status.LIVE || t3.threads.isNotEmpty() || t3.projects.isNotEmpty(),
+            projects = t3.projects,
+            threads = t3.threads.mapNotNull { th -> byTitle[th.project]?.let { th.id to it } }.toMap(),
             shot = if (f.where.target == "assist") Shot(screenshot(), done = true, appLabel = "Chrome") else null,
             initial = f.where.typed,
         )

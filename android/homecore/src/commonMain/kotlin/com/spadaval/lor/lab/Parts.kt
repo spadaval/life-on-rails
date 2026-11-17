@@ -9,6 +9,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 /*
  * The parts fixtures are made of. The demo parts are the demo set's day (seeds/demo/, DemoDay) at
@@ -225,12 +227,12 @@ object Parts {
     val longT3 = demoT3.copy(
         messages = demoMessages + ("t-approve" to List(40) { i ->
             val user = i % 2 == 0
-            val minute = (i * 2).toString().padStart(2, '0')
             Message(
                 fromUser = user,
                 text = if (user) "Step ${i / 2 + 1}: what does the migration touch next?"
                 else "Step ${i / 2 + 1}: the next table is `event_${i / 2}`. " + "It adds one nullable column and an index, with no backfill, so it runs in well under a second on the test database. ".repeat(1 + i % 3),
-                at = "2026-11-17T19:${minute}:00Z",
+                // Every two minutes from 18:20, the last at 19:38, before the demo's 20:00.
+                at = (Instant.parse("2026-11-17T18:20:00Z") + (i * 2).minutes).toString(),
                 streaming = i == 39,
             )
         }),
