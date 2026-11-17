@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-npa6
 title: 'A design brief: what every concept must cover, and three to five directions to build'
-status: building
+status: in_review
 mission: lor-2803
 labels:
 - design-lab
