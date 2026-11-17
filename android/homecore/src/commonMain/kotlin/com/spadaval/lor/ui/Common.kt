@@ -11,6 +11,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+/*
+ * What the app's tabs (Timer, Sensors, Settings, T3 debug) draw with: a card per section, an
+ * error card, and the times they write. Each tab's drawing is in this package as a function of
+ * plain state and callbacks; the app's screens (TimerScreen.kt and the rest) hold the state and do
+ * the work.
+ */
+
 @Composable
 fun Section(title: String? = null, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Card(modifier = modifier.fillMaxWidth().padding(vertical = 6.dp)) {
@@ -31,8 +38,8 @@ fun ErrorNote(message: String) {
     }
 }
 
-/** "3m ago", "2h ago". */
-fun ago(epochMs: Long, now: Long = System.currentTimeMillis()): String {
+/** "3m ago", "2h ago", for [epochMs] seen at [now]; "never" for 0. */
+fun ago(epochMs: Long, now: Long): String {
     if (epochMs <= 0) return "never"
     val s = ((now - epochMs) / 1000).coerceAtLeast(0)
     return when {

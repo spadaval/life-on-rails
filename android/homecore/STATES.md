@@ -45,6 +45,8 @@ Each is a condition of the whole app; a surface draws the part of it it reads.
 - `stale`: LoR last read two hours ago and timing out since; T3 retrying on what it saw 40 minutes ago.
 - `failed`: LoR unreachable, T3's pairing revoked, the last sync failed, two permissions gone, the layout file broken.
 - `overfull`: Everything at its most: 200 apps, five full pages, twelve cards, nine flags, long names everywhere.
+- `sensors-failed`: Sensors after a failed sync with two permissions missing.
+- `home-settings-tabs`: Home settings with hidden apps and four drawer tabs.
 - `first-run`: A first-run home with the set-up card: not yet the home app, T3 unpaired, LoR not reached at the address.
 - `agent-waiting`: The agent page with one approval, one question, a failed turn and two LoR flags.
 - `agent-t3-stale`: The agent page with T3 disconnected and what it saw 40 minutes ago.
@@ -54,13 +56,29 @@ Each is a condition of the whole app; a surface draws the part of it it reads.
 
 | Surface | States it draws |
 | --- | --- |
+| The kit sheet (`current`, until home moves) | One look for every state that opens nothing (`where.open` `NOTHING`) and points at no panel below; its title names the state and the screen. |
+| The LoR app's tabs (`current`): `where.open` `APP_TAB`, `where.target` `timer`, `sensors`, `settings` or `t3` (Settings' T3 debug view) | Every state, as one-offs over it; the links below. |
+| Home settings (`current`): `where.open` `HOME_SETTINGS` | `home-settings-tabs`, and every state as a one-off; the links below. |
 | The agent page (`current`, `where.cell` at the layout's `t3` panel, `[0, 0]` in the demo's) | Today from LoR's `/device/home`, T3's connection, cards and threads; `where.open` THREAD with `where.target` a thread id opens that thread beside the page on the inner screen. `agent-waiting`, `agent-t3-stale`, `thread-long`, and any state with `"where":{"cell":[0,0]}`. |
 | The LoR panel (`current`, `where.cell` at the `lor` panel, `[3, 0]` in the demo's) | `/device/home`, `/device/tasks`, `/device/people`; on the inner screen the Tasks tab, or People with `where.target` "people". |
 | LoR's blocks (`current`, `where.cell` at a stack holding `today`, `needs-you`, `running` or `t3-queue`) | Those blocks one under another, as the stack draws them (home's other blocks are lor-xdoi's). |
 | The set-up card (`current`, a state with no layout file and `settings.setupDone` false) | The home role (`phone.permissions.home`), T3's pairing, LoR's `/device/home` read (OK reached, loading checking, else failed). `first-run`, `empty`. |
 | The quick-send sheet (`current`, `where.open` QUICK_SEND) | T3's connection and its threads' projects, `where.typed` as the field's start; `where.target` "assist" opens it as the assistant does, with a stand-in screenshot. |
-| The kit sheet (`current`, for every other state until home moves) | One look for every state; its title names the state and the screen. |
 | The gesture test surface (`gestures`) | One look for every state: a pager, a list, a tile with a long-press menu, two panes on the inner screen. Not a launcher; `scripts/lab/run.mjs` is proven on it. |
+
+A screen in each of its states, by link (`android/web-dev.sh`, then `http://127.0.0.1:3860/` and the hash;
+`shots/lab.json` has them all):
+
+- Timer idle: `#current/{"base":"demo","where":{"open":"APP_TAB","target":"timer"}}`; running:
+  `{"base":"demo","timer":{"state":"RUNNING","intent":"Offline maps spec","title":"Tile sources","start":"2026-11-17T19:12:00Z"},"where":{"open":"APP_TAB","target":"timer"}}`;
+  paused: the same with `"state":"PAUSED","pausedAt":"2026-11-17T19:47:00Z"`; unreachable: `"timer":{"state":"UNREACHABLE"}`.
+- Sensors all allowed: `{"base":"demo","where":{"open":"APP_TAB","target":"sensors"}}`; some not allowed, the sync fine:
+  `{"base":"sensors-failed","phone":{"sync":{"uploaded":72,"pending":0,"errors":[]}}}`; a failed sync with errors: `sensors-failed`.
+- Settings saved, testing, failed: `{"base":"demo","settings":{"result":"Saved."},"where":{"open":"APP_TAB","target":"settings"}}`,
+  with `"Checking…"`, or `"Cannot connect: failed to connect to /10.0.2.2 (port 3857) after 10000ms"`.
+- Home settings with hidden apps, four drawer tabs and an icon-pack list: `home-settings-tabs`; its broken-layout banner:
+  `{"base":"failed","where":{"open":"HOME_SETTINGS"}}`; a first run's: `{"base":"empty","where":{"open":"HOME_SETTINGS"}}`.
+- T3 debug paired: `{"base":"demo","where":{"open":"APP_TAB","target":"t3"}}`; not paired: the same over `empty`.
 
 Both screen sizes are the link's `cover` and `inner`, for every state, and either turned on its side
 with `landscape` as the link's fifth part (`#current/demo/inner/dark/landscape`).
@@ -83,7 +101,7 @@ that surface's scripts and anchors.
 
 ## To come, with the item that moves the surface
 
-The ten launcher and app states lor-q165 opens by link, by these names. Each is added to `Fixtures.kt`
+The launcher and app states lor-q165 opens by link, by these names. Each is added to `Fixtures.kt`
 and to the list above by the item that moves its surface into the module, with that surface's own
 ordinary, empty, loading, stale, failed and overfull states where it has them.
 
@@ -91,8 +109,6 @@ ordinary, empty, loading, stale, failed and overfull states where it has them.
 - `drawer-all-scrolled` (lor-xdoi): the drawer's All tab mid-scroll.
 - `search-mixed` (lor-xdoi): search with app, contact and settings results.
 - `app-menu` (lor-xdoi): an app's long-press menu.
-- `sensors-failed` (lor-t8lq): Sensors after a failed sync with two permissions missing.
-- `home-settings-tabs` (lor-t8lq): Home settings with hidden apps and four drawer tabs.
 
 Widgets (decided here, for lor-xdoi to build): a fixture's layout names a widget by its provider,
 and in the lab a widget is to be drawn as a labelled box of its height, not a snapshot image.
