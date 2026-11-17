@@ -70,12 +70,6 @@ object Fixtures {
         layout = Parts.fullLayout, apps = Apps(Load.OK, Parts.manyApps),
     )
 
-    /** A first start's home: no layout file yet, so home shows the essentials, and set-up isn't done. */
-    val firstRun = empty.copy(
-        name = "first-run", about = "A first-run home: the default layout with the set-up card (drawn by lor-rgx4)",
-        settings = Settings(setupDone = false),
-    )
-
     val drawerAllScrolled = demo.copy(
         name = "drawer-all-scrolled", about = "The drawer's All tab, scrolled 600 dp down its letters",
         where = Where(open = Opened.DRAWER, target = "All", scroll = 600),
@@ -109,8 +103,40 @@ object Fixtures {
         where = Where(open = Opened.HOME_SETTINGS),
     )
 
+    // ---- The agent page, the LoR panel, the set-up card (lor-rgx4) ----
+
+    /** The agent page's cell in the demo layout, left of home. */
+    private val agentCell = Where(cell = listOf(0, 0))
+
+    val firstRun = empty.copy(
+        name = "first-run", about = "A first-run home with the set-up card: not yet the home app, T3 unpaired, LoR not reached at the address",
+        settings = Settings(serverUrl = "http://10.0.2.2:3857"),
+        // The reason as the card says it after the address: LorClient.describe's words.
+        lor = Read(Load.FAILED, error = "LoR didn't answer. Is Tailscale on?").let { Lor(it, it, it) },
+        phone = Parts.demoPhone.copy(permissions = mapOf("home" to false)),
+    )
+
+    val agentWaiting = demo.copy(
+        name = "agent-waiting", about = "The agent page with one approval, one question, a failed turn and two LoR flags",
+        lor = Parts.demoLor.copy(home = Parts.ok(Parts.homeWithFlags(2))),
+        t3 = Parts.waitingT3,
+        where = agentCell,
+    )
+
+    val agentT3Stale = demo.copy(
+        name = "agent-t3-stale", about = "The agent page with T3 disconnected and what it saw 40 minutes ago",
+        t3 = Parts.staleT3,
+        where = agentCell,
+    )
+
+    val threadLong = demo.copy(
+        name = "thread-long", about = "The agent page with the approval's thread open beside it and a long transcript (inner screen)",
+        t3 = Parts.longT3,
+        where = Where(cell = listOf(0, 0), open = Opened.THREAD, target = "t-approve"),
+    )
+
     /** The State dropdown, in order; the first is what a link without a state opens. */
-    val all: List<Fixture> = listOf(demo, empty, loading, stale, failed, overfull, homeFull, firstRun, drawerAllScrolled, searchMixed, appMenu, sensorsFailed, homeSettingsTabs)
+    val all: List<Fixture> = listOf(demo, empty, loading, stale, failed, overfull, homeFull, drawerAllScrolled, searchMixed, appMenu, sensorsFailed, homeSettingsTabs, firstRun, agentWaiting, agentT3Stale, threadLong)
 
     fun named(name: String): Fixture? = all.firstOrNull { it.name == name }
 

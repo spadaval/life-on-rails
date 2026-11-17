@@ -239,6 +239,176 @@
       "screen": "Launcher lab · current · app",
       "name": "current · T3 debug · not paired · inner",
       "link": "/#current/{\"base\":\"empty\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"t3\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "first-run: no step done · cover",
+      "link": "/#current/first-run/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "first-run: no step done · inner",
+      "link": "/#current/first-run/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "first-run: home and T3 done, LoR checking · cover",
+      "link": "/#current/{%22base%22:%22first-run%22,%22phone%22:{%22permissions%22:{%22home%22:true}},%22t3%22:{%22status%22:%22LIVE%22},%22lor%22:{%22home%22:{%22load%22:%22LOADING%22}}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "first-run: home and T3 done, LoR checking · inner",
+      "link": "/#current/{%22base%22:%22first-run%22,%22phone%22:{%22permissions%22:{%22home%22:true}},%22t3%22:{%22status%22:%22LIVE%22},%22lor%22:{%22home%22:{%22load%22:%22LOADING%22}}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "first-run: every step done · cover",
+      "link": "/#current/{%22base%22:%22first-run%22,%22phone%22:{%22permissions%22:{%22home%22:true}},%22t3%22:{%22status%22:%22LIVE%22},%22lor%22:{%22home%22:{%22load%22:%22OK%22}}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "first-run: every step done · inner",
+      "link": "/#current/{%22base%22:%22first-run%22,%22phone%22:{%22permissions%22:{%22home%22:true}},%22t3%22:{%22status%22:%22LIVE%22},%22lor%22:{%22home%22:{%22load%22:%22OK%22}}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: T3 unpaired · cover",
+      "link": "/#current/{%22base%22:%22demo%22,%22t3%22:{%22status%22:%22NOT_PAIRED%22,%22threads%22:[]},%22where%22:{%22cell%22:[0,0]}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: T3 unpaired · inner",
+      "link": "/#current/{%22base%22:%22demo%22,%22t3%22:{%22status%22:%22NOT_PAIRED%22,%22threads%22:[]},%22where%22:{%22cell%22:[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: T3 connecting · cover",
+      "link": "/#current/{%22base%22:%22demo%22,%22t3%22:{%22status%22:%22CONNECTING%22,%22threads%22:[]},%22where%22:{%22cell%22:[0,0]}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: T3 connecting · inner",
+      "link": "/#current/{%22base%22:%22demo%22,%22t3%22:{%22status%22:%22CONNECTING%22,%22threads%22:[]},%22where%22:{%22cell%22:[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: T3 disconnected · cover",
+      "link": "/#current/{%22base%22:%22demo%22,%22t3%22:{%22status%22:%22RETRYING%22,%22error%22:%22connection%20reset%22,%22threads%22:[]},%22where%22:{%22cell%22:[0,0]}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: T3 disconnected · inner",
+      "link": "/#current/{%22base%22:%22demo%22,%22t3%22:{%22status%22:%22RETRYING%22,%22error%22:%22connection%20reset%22,%22threads%22:[]},%22where%22:{%22cell%22:[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: T3 stale · cover",
+      "link": "/#current/agent-t3-stale/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: T3 stale · inner",
+      "link": "/#current/agent-t3-stale/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: nothing waiting · cover",
+      "link": "/#current/{%22base%22:%22demo%22,%22t3%22:{%22threads%22:[]},%22lor%22:{%22home%22:{%22reply%22:{%22needs_you%22:[]}}},%22where%22:{%22cell%22:[0,0]}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: nothing waiting · inner",
+      "link": "/#current/{%22base%22:%22demo%22,%22t3%22:{%22threads%22:[]},%22lor%22:{%22home%22:{%22reply%22:{%22needs_you%22:[]}}},%22where%22:{%22cell%22:[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: approval, question, failed turn, two flags · cover",
+      "link": "/#current/agent-waiting/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: approval, question, failed turn, two flags · inner",
+      "link": "/#current/agent-waiting/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: twelve cards · cover",
+      "link": "/#current/{%22base%22:%22overfull%22,%22where%22:{%22cell%22:[0,0]}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: twelve cards · inner",
+      "link": "/#current/{%22base%22:%22overfull%22,%22where%22:{%22cell%22:[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: a running timer · cover",
+      "link": "/#current/{%22base%22:%22demo%22,%22lor%22:{%22home%22:{%22reply%22:{%22day%22:{%22running%22:{%22title%22:%22Offline%20maps%20spec%22,%22start%22:%222026-11-17T19:15:00.000Z%22,%22paused%22:false}}}}},%22where%22:{%22cell%22:[0,0]}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: a running timer · inner",
+      "link": "/#current/{%22base%22:%22demo%22,%22lor%22:{%22home%22:{%22reply%22:{%22day%22:{%22running%22:{%22title%22:%22Offline%20maps%20spec%22,%22start%22:%222026-11-17T19:15:00.000Z%22,%22paused%22:false}}}}},%22where%22:{%22cell%22:[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: a thread with a long transcript · cover",
+      "link": "/#current/thread-long/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "agent page: a thread with a long transcript · inner",
+      "link": "/#current/thread-long/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "LoR panel: Tasks · cover",
+      "link": "/#current/{%22base%22:%22demo%22,%22where%22:{%22cell%22:[3,0]}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "LoR panel: Tasks · inner",
+      "link": "/#current/{%22base%22:%22demo%22,%22where%22:{%22cell%22:[3,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "LoR panel: People · cover",
+      "link": "/#current/{%22base%22:%22demo%22,%22where%22:{%22cell%22:[3,0],%22target%22:%22people%22}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "LoR panel: People · inner",
+      "link": "/#current/{%22base%22:%22demo%22,%22where%22:{%22cell%22:[3,0],%22target%22:%22people%22}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "LoR blocks: today, needs you, running · cover",
+      "link": "/#current/{%22base%22:%22overfull%22,%22where%22:{%22cell%22:[1,0]}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "LoR blocks: today, needs you, running · inner",
+      "link": "/#current/{%22base%22:%22overfull%22,%22where%22:{%22cell%22:[1,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "LoR blocks: with the agent · cover",
+      "link": "/#current/{%22base%22:%22demo%22,%22layout%22:{%22layouts%22:[{%22name%22:%22default%22,%22start%22:{%22narrow%22:[0,0]},%22panels%22:[{%22at%22:[0,0],%22type%22:%22stack%22,%22blocks%22:[{%22type%22:%22t3-queue%22},{%22type%22:%22running%22}]}]}]},%22where%22:{%22cell%22:[0,0]}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "LoR blocks: with the agent · inner",
+      "link": "/#current/{%22base%22:%22demo%22,%22layout%22:{%22layouts%22:[{%22name%22:%22default%22,%22start%22:{%22narrow%22:[0,0]},%22panels%22:[{%22at%22:[0,0],%22type%22:%22stack%22,%22blocks%22:[{%22type%22:%22t3-queue%22},{%22type%22:%22running%22}]}]}]},%22where%22:{%22cell%22:[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "quick send with a screenshot · cover",
+      "link": "/#current/{%22base%22:%22demo%22,%22where%22:{%22open%22:%22QUICK_SEND%22,%22target%22:%22assist%22}}/cover"
+    },
+    {
+      "screen": "Launcher lab · panels",
+      "name": "quick send with a screenshot · inner",
+      "link": "/#current/{%22base%22:%22demo%22,%22where%22:{%22open%22:%22QUICK_SEND%22,%22target%22:%22assist%22}}/inner"
     }
   ]
 }

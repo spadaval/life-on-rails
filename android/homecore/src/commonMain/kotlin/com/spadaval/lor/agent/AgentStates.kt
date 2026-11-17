@@ -1,12 +1,8 @@
 package com.spadaval.lor.agent
 
-import com.spadaval.lor.net.atZone
-import com.spadaval.lor.net.isAfter
-import kotlinx.datetime.TimeZone
-import com.spadaval.lor.net.DeviceHome
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.spadaval.lor.lor.LorHome
+import com.spadaval.lor.ui.LocalClock
+import kotlin.time.Instant
 
 /**
  * What the agent page's Needs you section says besides its cards (launcher polish 3.3). Pure.
@@ -28,19 +24,17 @@ object AgentStates {
         )
     }
 
-    private val Clock = DateTimeFormatter.ofPattern("H:mm")
-
     /**
      * The all-clear's second line: what Today's list above it doesn't say. The event under way and
      * when it ends (the list shows start times only), else how long he is free (the next event is
      * already listed, so it isn't named again), else that nothing else is on today.
      */
-    fun next(events: List<DeviceHome.Event>, now: kotlin.time.Instant, zone: TimeZone): String {
-        val today = now.atZone(zone).toLocalDate()
-        events.firstOrNull { !it.start.isAfter(now) && it.end.isAfter(now) }
-            ?.let { return "In ${it.title} until ${it.end.atZone(zone).format(Clock)}." }
-        events.filter { it.start.isAfter(now) && it.start.atZone(zone).toLocalDate() == today }.minByOrNull { it.start }
-            ?.let { return "Free until ${it.start.atZone(zone).format(Clock)}." }
+    fun next(events: List<LorHome.Event>, now: Instant, zone: String): String {
+        val today = LocalClock.date(now, zone)
+        events.firstOrNull { it.start <= now && it.end > now }
+            ?.let { return "In ${it.title} until ${LocalClock.time(it.end, zone)}." }
+        events.filter { it.start > now && LocalClock.date(it.start, zone) == today }.minByOrNull { it.start }
+            ?.let { return "Free until ${LocalClock.time(it.start, zone)}." }
         return "Nothing else on the calendar today."
     }
 }

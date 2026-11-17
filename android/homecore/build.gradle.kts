@@ -40,6 +40,9 @@ kotlin {
         binaries.executable()
     }
 
+    // kotlin.time.Instant, which the panels' state carries.
+    compilerOptions { optIn.add("kotlin.time.ExperimentalTime") }
+
     sourceSets {
         commonMain.dependencies {
             implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")

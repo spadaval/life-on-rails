@@ -3,9 +3,9 @@ package com.spadaval.lor.agent
 import com.spadaval.lor.t3.PendingRequest
 import com.spadaval.lor.t3.T3Thread
 import com.spadaval.lor.t3.ThreadState
-import org.junit.Assert.assertEquals
-import org.junit.Test
-import java.time.Instant
+import kotlin.test.assertEquals
+import kotlin.test.Test
+import kotlin.time.Instant
 
 class AgentQueueTest {
     private val now = Instant.parse("2026-11-05T21:00:00Z")

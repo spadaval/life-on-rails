@@ -1,6 +1,16 @@
 package com.spadaval.lor.lab
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import com.spadaval.lor.agent.AgentPage
+import com.spadaval.lor.agent.InGrid
+import com.spadaval.lor.home.GridPlace
+import com.spadaval.lor.home.SetupActions
+import com.spadaval.lor.home.cellInsetsPadding
+import com.spadaval.lor.home.listTakes
+import com.spadaval.lor.home.scrollsInGrid
+import com.spadaval.lor.lor.LorBlockKind
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -169,6 +179,46 @@ class LabPlatform(fixture: Fixture, apps: List<HomeApp>, wallpaper: Wallpaper, p
     }
 
     override fun refused(reason: String) = ui.undo.say("Can't: $reason.", failed = false)
+
+    // ---- The panels and blocks lor-rgx4 moved: drawn from the fixture as LabPanels makes them ----
+
+    private var panelUi by mutableStateOf(LabPanels.ui(fixture))
+    private val panelOn = LabPanels.actions(fixture, { panelUi }, { panelUi = it })
+    private val setupDone = fixture.settings.setupDone
+    private val setup = LabPanels.setup(fixture)
+
+    /** As the app's grid hands it to the panels: the cell's insets, and its scrolls arbitrated with the grid's. */
+    private val inGrid = InGrid(
+        insets = Modifier.cellInsetsPadding(),
+        scrolls = { scroll: ScrollState, reversed: Boolean ->
+            if (reversed) Modifier.scrollsInGrid { way -> listTakes(way, scroll.canScrollForward, scroll.canScrollBackward, reversed = true) }
+            else Modifier.scrollsInGrid(scroll)
+        },
+    )
+
+    @Composable
+    override fun AgentPanel() = AgentPage(panelUi, panelOn, inGrid)
+
+    @Composable
+    override fun LorPanel() = com.spadaval.lor.lor.LorPanel(panelUi, panelOn, inGrid)
+
+    @Composable
+    override fun LorBlock(block: StackBlock, grid: GridPlace) {
+        fun goTo(t3: Boolean): (() -> Unit)? = grid.panels.firstOrNull { if (t3) it is Panel.T3 else it is Panel.Lor }?.let { p -> { grid.goTo(p.at, animate = true) } }
+        val (kind, more) = when (block) {
+            StackBlock.Today -> LorBlockKind.TODAY to null
+            StackBlock.NeedsYou -> LorBlockKind.NEEDS_YOU to goTo(t3 = true)
+            StackBlock.Running -> LorBlockKind.RUNNING to goTo(t3 = true)
+            StackBlock.T3Queue -> LorBlockKind.T3_QUEUE to goTo(t3 = false)
+            else -> return
+        }
+        com.spadaval.lor.lor.LorBlock(kind, panelUi, panelOn, more)
+    }
+
+    @Composable
+    override fun SetupCard(modifier: Modifier) {
+        if (!setupDone) com.spadaval.lor.home.SetupCard(setup, SetupActions(pair = LabPanels.pairCalls), modifier)
+    }
 }
 
 /** Home, drawn from [scene]'s fixture. */

@@ -1,7 +1,9 @@
 package com.spadaval.lor.lab
 
+import com.spadaval.lor.agent.common
 import com.spadaval.lor.net.parse
 import com.spadaval.lor.home.LayoutFile
+import com.spadaval.lor.lor.LorReplies
 import com.spadaval.lor.net.DeviceHome
 import com.spadaval.lor.net.DevicePeople
 import com.spadaval.lor.net.DeviceTasks
@@ -39,5 +41,18 @@ class FixtureWireTest {
         assertEquals("2026-11-17T20:00:00Z", home.now.toString())
         assertEquals(3, home.needsYou.size)
         assertEquals(9, DeviceHome.parse(JSONObject(Fixtures.overfull.lor.home.reply.toString())).needsYou.size)
+    }
+
+    /**
+     * The panels draw LoR's replies in common types: the app converts its own parse (`PanelBuild.kt`),
+     * the lab reads the fixture's JSON (`LorReplies`). Both must give the same for every fixture.
+     */
+    @Test
+    fun theAppAndTheLabReadEveryReplyTheSame() {
+        for (f in Fixtures.all) {
+            f.lor.home.reply?.let { assertEquals(f.name, LorReplies.home(it), DeviceHome.parse(JSONObject(it.toString())).common()) }
+            f.lor.tasks.reply?.let { assertEquals(f.name, LorReplies.tasks(it), DeviceTasks.parse(JSONObject(it.toString())).common()) }
+            f.lor.people.reply?.let { assertEquals(f.name, LorReplies.people(it), DevicePeople.parse(JSONObject(it.toString())).common()) }
+        }
     }
 }

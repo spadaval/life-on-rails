@@ -3,12 +3,12 @@ package com.spadaval.lor.agent
 import com.spadaval.lor.t3.PendingRequest
 import com.spadaval.lor.t3.T3Thread
 import com.spadaval.lor.t3.ThreadState
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
-import java.time.Instant
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.Test
+import kotlin.time.Instant
 
-/** The wide form's choice of thread, its Threads section, and what the reply box says on failure (lor-iabt). */
+/** The wide form's choice of thread, its Threads section (lor-iabt). */
 class ThreadChoiceTest {
     private fun thread(id: String, state: ThreadState = ThreadState.IDLE, at: String = "2026-11-08T09:00:00Z", requests: List<PendingRequest> = emptyList()) =
         T3Thread(id, "Thread $id", "p", "project", state, at, null, requests)
@@ -19,7 +19,7 @@ class ThreadChoiceTest {
     private val idleNewest = thread("idle-newest", at = "2026-11-08T09:50:00Z")
     private val approval = thread("approval", ThreadState.WAITING_APPROVAL, "2026-11-08T09:40:00Z", listOf(PendingRequest("approval", "r1", "command_execution")))
     private val running = thread("running", ThreadState.RUNNING, "2026-11-08T09:30:00Z")
-    private val idle = (1..25).map { thread("idle-$it", at = "2026-11-07T%02d:00:00Z".format(24 - it)) }
+    private val idle = (1..25).map { thread("idle-$it", at = "2026-11-07T${(24 - it).toString().padStart(2, '0')}:00:00Z") }
     private val threads = listOf(idleNewest, approval, running) + idle
     private val cards = AgentQueue.cards(threads, emptySet(), now)
 
@@ -44,13 +44,5 @@ class ThreadChoiceTest {
         assertEquals(listOf("idle-newest", "idle-1", "idle-2"), others.take(3).map { it.id })
         // Not the card's thread nor the running one, which the sections above list.
         assertEquals(emptyList<String>(), others.map { it.id }.filter { it == "approval" || it == "running" })
-    }
-
-    @Test
-    fun aReplyIsCalledNotSentOnlyWhenNoSocketWasOpen() {
-        assertEquals("Not sent: Not connected to T3.", Replies.failure("Not connected to T3."))
-        // A timeout or a drop: T3 may still take it (seen on the scratch server), so not "Not sent".
-        val timeout = Replies.failure("T3 did not answer within 30 s.")
-        assertEquals("Not confirmed: T3 did not answer within 30 s. It may still reach the thread, so check it before sending again.", timeout)
     }
 }

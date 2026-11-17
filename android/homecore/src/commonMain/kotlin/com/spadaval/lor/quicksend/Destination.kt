@@ -1,7 +1,5 @@
 package com.spadaval.lor.quicksend
 
-import java.net.URLDecoder
-
 /**
  * Where a quick-send prompt goes (T3 Launcher, Increment 4): the first of the project named in the
  * prompt, the project on screen, or the `assistant` project (the Inbox). A project picked by hand on
@@ -79,8 +77,35 @@ object Destination {
     fun segments(uri: String): List<String> {
         val noTail = uri.substringBefore('#').substringBefore('?')
         val body = if ("://" in noTail) noTail.substringAfter("://") else noTail.substringAfter(':', noTail)
-        return body.split('/').filter { it.isNotEmpty() }.map {
-            runCatching { URLDecoder.decode(it.replace("+", "%2B"), "UTF-8") }.getOrDefault(it)
+        return body.split('/').filter { it.isNotEmpty() }.map { percentDecoded(it) ?: it }
+    }
+
+    /**
+     * [s] with each `%XX` read as a UTF-8 byte, `+` kept as it is (as `URLDecoder` with `+` escaped
+     * first); null when a `%` isn't followed by two hex digits, which `URLDecoder` refuses.
+     */
+    internal fun percentDecoded(s: String): String? {
+        if ('%' !in s) return s
+        val out = StringBuilder()
+        val bytes = ArrayList<Byte>()
+        fun flush() {
+            if (bytes.isNotEmpty()) out.append(bytes.toByteArray().decodeToString()).also { bytes.clear() }
         }
+        var i = 0
+        while (i < s.length) {
+            val c = s[i]
+            if (c == '%') {
+                val hex = s.substring(i + 1, minOf(i + 3, s.length))
+                if (hex.length < 2 || !hex.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }) return null
+                bytes += hex.toInt(16).toByte()
+                i += 3
+            } else {
+                flush()
+                out.append(c)
+                i++
+            }
+        }
+        flush()
+        return out.toString()
     }
 }

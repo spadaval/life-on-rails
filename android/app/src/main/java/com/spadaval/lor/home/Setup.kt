@@ -1,18 +1,6 @@
 package com.spadaval.lor.home
 
-import com.spadaval.lor.ui.*
 import android.net.Uri
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -20,20 +8,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.spadaval.lor.MainActivity
-import com.spadaval.lor.agent.PairActions
-import com.spadaval.lor.agent.Pill
+import com.spadaval.lor.agent.pairCalls
 import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.isHome
 import com.spadaval.lor.net.LorClient
@@ -44,33 +25,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /*
- * Home's set-up card (launcher polish 3.5). Not a wizard: as Kvaesitso shows each missing piece
- * where it is needed (`MissingPermissionBanner`), the card lists the three things a fresh install
- * needs, each checked live, with the one action that does it. It stays until all three hold at
- * once or Skip set-up is tapped, and then never shows again (`Prefs.setupDone`).
+ * Home's set-up card (launcher polish 3.5), the app's half: each step checked live (the home role,
+ * T3's pairing, a read of LoR), and whether the card shows at all (`Prefs.setupDone`). Its drawing
+ * and the order of its steps are homecore's (`SetupView.kt`, lor-rgx4).
  */
 
-/** Where the read of LoR stands. */
-sealed interface LorReach {
-    data object Checking : LorReach
-    data object Reached : LorReach
-    data class Failed(val reason: String) : LorReach
-}
-
-enum class SetupStep { HOME, T3, LOR }
-
-object Setup {
-    /** Paired, whether or not the connection is up just now; a refused session needs pairing again. */
-    fun paired(status: T3Connection.Status): Boolean =
-        status !is T3Connection.Status.NotPaired && status !is T3Connection.Status.Rejected
-
-    /** The steps not done yet, in order; the first one's action is the card's primary one. */
-    fun left(home: Boolean, paired: Boolean, lor: LorReach): List<SetupStep> = listOfNotNull(
-        SetupStep.HOME.takeUnless { home },
-        SetupStep.T3.takeUnless { paired },
-        SetupStep.LOR.takeUnless { lor == LorReach.Reached },
-    )
-}
+/** Paired, whether or not the connection is up just now; a refused session needs pairing again. */
+fun Setup.paired(status: T3Connection.Status): Boolean =
+    status !is T3Connection.Status.NotPaired && status !is T3Connection.Status.Rejected
 
 @Composable
 internal fun SetupCard(modifier: Modifier = Modifier) {
@@ -79,6 +41,7 @@ internal fun SetupCard(modifier: Modifier = Modifier) {
     var shown by remember { mutableStateOf(!prefs.setupDone) }
     if (!shown) return
     val connection = remember { T3Connection.get(context.applicationContext) }
+    val scope = rememberCoroutineScope()
     val status by connection.status.collectAsState()
     var home by remember { mutableStateOf(isHome(context)) }
     var lor by remember { mutableStateOf<LorReach>(LorReach.Checking) }
@@ -121,72 +84,18 @@ internal fun SetupCard(modifier: Modifier = Modifier) {
     // checks (Check again, a resume) keep the card drawn, showing the step's own "Checking".
     if (home && Setup.paired(status) && !checked) return
     val where = Uri.parse(address).authority ?: address
-
-    Column(
-        modifier
-            .fillMaxWidth()
-            .framedPanel(StateFill)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Set up this phone", style = Type.body.copy(color = Txt, fontSize = 15.sp), modifier = Modifier.weight(1f))
-            Pill("Skip set-up") {
+    SetupCard(
+        SetupUi(home, Setup.paired(status), lor, where),
+        SetupActions(
+            skip = {
                 prefs.setupDone = true
                 shown = false
-            }
-        }
-        val primary = left.firstOrNull()
-        Step(if (home) Mark.DONE else Mark.TODO, if (home) "LoR is your home app." else "Home app", if (home) null else "LoR isn't the default home yet.") {
-            if (!home) Pill("Make LoR home", primary = primary == SetupStep.HOME, onClick = ask)
-        }
-        val paired = Setup.paired(status)
-        Step(if (paired) Mark.DONE else Mark.TODO, if (paired) "Paired with T3." else "T3", if (paired) null else "Scan the code in T3's Connections settings, or paste its pairing link.") {
-            if (!paired) PairActions(connection, primary = primary == SetupStep.T3)
-        }
-        when (val l = lor) {
-            LorReach.Checking -> Step(Mark.TODO, "LoR", "Checking $where…")
-            LorReach.Reached -> Step(Mark.DONE, "Reaches LoR at $where.")
-            is LorReach.Failed -> Step(Mark.FAILED, "LoR", "Can't reach $where. ${l.reason}") {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Pill("Check again", primary = primary == SetupStep.LOR) { checks++ }
-                    Pill("Change address") { MainActivity.open(context, MainActivity.SETTINGS) }
-                }
-            }
-        }
-    }
-}
-
-
-private enum class Mark { DONE, TODO, FAILED }
-
-/** One step: its mark, a line, an optional detail, and its actions under them. */
-@Composable
-private fun Step(mark: Mark, title: String, detail: String? = null, actions: @Composable () -> Unit = {}) {
-    Row {
-        StepMark(mark)
-        Column(Modifier.padding(start = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, style = Type.body.copy(color = if (mark == Mark.DONE) Mute else Txt, fontSize = 14.sp))
-            detail?.let { Text(it, style = Type.body.copy(color = Mute, fontSize = 12.sp)) }
-            actions()
-        }
-    }
-}
-
-/** A tick for a step that's done, an open ring for one to do, a coral dot for LoR not answering. */
-@Composable
-private fun StepMark(mark: Mark) {
-    Canvas(Modifier.padding(top = 2.dp).size(16.dp)) {
-        val w = size.width
-        val line = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round)
-        when (mark) {
-            Mark.DONE -> {
-                drawLine(Mute, Offset(0.18f * w, 0.52f * w), Offset(0.42f * w, 0.76f * w), line.width, StrokeCap.Round)
-                drawLine(Mute, Offset(0.42f * w, 0.76f * w), Offset(0.84f * w, 0.26f * w), line.width, StrokeCap.Round)
-            }
-            Mark.TODO -> drawCircle(Dim, radius = 0.4f * w, style = line)
-            // Machinery that failed: the coral dot every failed state uses.
-            Mark.FAILED -> drawCircle(Bad, radius = 3.dp.toPx())
-        }
-    }
+            },
+            makeHome = ask,
+            checkAgain = { checks++ },
+            changeAddress = { MainActivity.open(context, MainActivity.SETTINGS) },
+            pair = remember(connection) { pairCalls(context, connection, scope) },
+        ),
+        modifier,
+    )
 }

@@ -3,9 +3,9 @@ package com.spadaval.lor.agent
 import com.spadaval.lor.t3.PendingRequest
 import com.spadaval.lor.t3.T3Thread
 import com.spadaval.lor.t3.ThreadState
-import java.time.Duration
-import java.time.Instant
-import java.time.OffsetDateTime
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Instant
 
 /** One T3 card in the queue: what the thread waits on Sumeet for, and the request to act on. */
 data class T3Card(val kind: Kind, val thread: T3Thread, val request: PendingRequest?) {
@@ -24,7 +24,7 @@ data class T3Card(val kind: Kind, val thread: T3Thread, val request: PendingRequ
  * queue for good; the T3 app still lists it.
  */
 object AgentQueue {
-    val FAILED_FOR: Duration = Duration.ofHours(24)
+    val FAILED_FOR: Duration = 24.hours
 
     fun cards(threads: List<T3Thread>, answered: Set<String>, now: Instant): List<T3Card> {
         val cards = threads.mapNotNull { t ->
@@ -45,5 +45,5 @@ object AgentQueue {
     fun running(threads: List<T3Thread>): List<T3Thread> = threads.filter { it.state == ThreadState.RUNNING }
 
     private fun recent(t: T3Thread, now: Instant): Boolean =
-        runCatching { OffsetDateTime.parse(t.updatedAt).toInstant() }.getOrNull()?.let { Duration.between(it, now) <= FAILED_FOR } ?: true
+        runCatching { Instant.parse(t.updatedAt) }.getOrNull()?.let { now - it <= FAILED_FOR } ?: true
 }
