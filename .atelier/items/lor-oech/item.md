@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-oech
 title: 'Named states: any launcher or app surface opens from a fixture, in the lab and in the debug app'
-status: ready
+status: building
 mission: lor-2803
 labels:
 - design-lab
@@ -13,7 +13,8 @@ priority: medium
 blocked_by:
 - lor-vbfd
 - lor-zj7x
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Ac1ec7934-b773-472e-bc30-dc89caf2d5f4%3Adelegate-task%3A3caae086-9655-46a3-b6da-8dd6904af7fa
 ready:
   by: lead, on the plan agreed in round 7
   at: 2026-11-17T06:57:12.926382409Z
