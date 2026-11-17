@@ -13,6 +13,12 @@ class NoLabStatesTest {
     }
 
     @Test
+    fun releaseStartsItsServicesAsBefore() {
+        assertFalse(LabStates.ENABLED)
+        assertFalse(LabStates.handsOff(null))
+    }
+
+    @Test
     fun releaseHasNoFixtureActivity() {
         assertThrows(ClassNotFoundException::class.java) { Class.forName("com.spadaval.lor.lab.LabStateActivity") }
     }

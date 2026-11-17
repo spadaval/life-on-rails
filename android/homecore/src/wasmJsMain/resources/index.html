@@ -18,6 +18,12 @@
   .bezel { padding: 14px; background: #000; border: 1px solid #2a2a2e; border-radius: 28px; }
   #phone { position: relative; overflow: hidden; border-radius: 14px; background: #000; }
   #phone canvas { display: block; }
+  #json-box { width: min(760px, calc(100vw - 32px)); background: var(--bar); color: var(--txt); border: 1px solid var(--line); padding: 16px; }
+  #json-box::backdrop { background: rgb(0 0 0 / 60%); }
+  #json-box p { margin: 0 0 8px; color: var(--mute); }
+  #json-text { box-sizing: border-box; width: 100%; height: 60vh; font: 12px ui-monospace, monospace; color: var(--txt); background: #0c0d12; border: 1px solid #3a3634; }
+  .json-bar { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+  .json-bar #json-close { margin-left: auto; }
   /* A JSON file held over the page: it opens as a one-off state when dropped. */
   body.dropping main { outline: 2px dashed var(--or); outline-offset: -8px; }
 </style>
@@ -28,9 +34,18 @@
   <label>State <select id="state"></select></label>
   <button id="fold" type="button">Unfold</button>
   <label>Wallpaper <select id="wallpaper"></select></label>
-  <button id="copy" type="button" title="Copy this state's JSON: edit it, then drop the file on the page or put it in the link">Copy JSON</button>
+  <button id="json" type="button" title="This state's JSON: edit it, then drop the file on the page or put it in the link">JSON</button>
   <span id="problem" hidden></span>
 </header>
+<dialog id="json-box">
+  <p>This state's JSON. Edit it, then drop it on the page as a file, or put it in the link in the state's place.</p>
+  <textarea id="json-text" readonly spellcheck="false"></textarea>
+  <div class="json-bar">
+    <button id="json-copy" type="button" hidden>Copy</button>
+    <span id="json-said"></span>
+    <button id="json-close" type="button">Close</button>
+  </div>
+</dialog>
 <main><div class="bezel"><div id="phone"></div></div></main>
 <script src="homecore.js"></script>
 </body>

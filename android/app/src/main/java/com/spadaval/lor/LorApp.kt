@@ -1,6 +1,10 @@
 package com.spadaval.lor
 
+import android.app.Activity
 import android.app.Application
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import com.spadaval.lor.agent.CardCalls
@@ -71,7 +75,55 @@ class LorApp : Application() {
         super.onCreate()
         // The debug build's fixture screen runs in its own process and reads nothing (lor-oech).
         if (Application.getProcessName().endsWith(LabStates.PROCESS)) return
+        if (!LabStates.ENABLED) return startServices()
+        // Debug: a cold `lab_state` launch starts this process only to hand the fixture to `:lab`,
+        // so the services wait for the first activity, which says whether it is that hand-off.
+        // A process no activity started (a tile, the notification listener, WorkManager) starts
+        // them after a second.
+        val gate = ServiceGate(::startServices)
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityPreCreated(activity: Activity, savedInstanceState: Bundle?) =
+                gate.activity(handsOff = LabStates.handsOff(activity.intent))
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityStarted(activity: Activity) {}
+            override fun onActivityResumed(activity: Activity) {}
+            override fun onActivityPaused(activity: Activity) {}
+            override fun onActivityStopped(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+        })
+        Handler(Looper.getMainLooper()).postDelayed(gate::timeout, ServiceGate.NO_ACTIVITY_MS)
+    }
+
+    /** Sync's schedule and the T3 connection that Live Updates holds for the process. */
+    private fun startServices() {
         SyncWorker.schedule(this)
         LiveUpdates.start(this)
+    }
+}
+
+/**
+ * Starts the app's services once, unless the process came up only to hand a fixture to the
+ * debug build's `:lab` screen (lor-oech): the first activity decides, a fixture hand-off holds
+ * them until a real activity opens, and with no activity at all [timeout] starts them.
+ */
+class ServiceGate(private val start: () -> Unit) {
+    private enum class State { WAITING, HELD, STARTED }
+    private var state = State.WAITING
+
+    fun activity(handsOff: Boolean) {
+        when {
+            state == State.STARTED -> Unit
+            !handsOff -> { state = State.STARTED; start() }
+            else -> state = State.HELD
+        }
+    }
+
+    fun timeout() {
+        if (state == State.WAITING) { state = State.STARTED; start() }
+    }
+
+    companion object {
+        const val NO_ACTIVITY_MS = 1000L
     }
 }

@@ -39,6 +39,8 @@ import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLOptionElement
 import org.w3c.dom.HTMLSelectElement
 import org.w3c.dom.DragEvent
+import org.w3c.dom.HTMLTextAreaElement
+import kotlin.js.Promise
 import org.w3c.files.FileReader
 import org.w3c.files.get
 import kotlinx.serialization.json.Json
@@ -135,13 +137,22 @@ private fun Frame(hash: String, parsed: Parsed, wallpapers: Map<Wallpaper, Image
     }
 }
 
+/** Whether this page may write the clipboard: only in a secure context (https or localhost). */
+private fun clipboardAvailable(): Boolean = js("window.isSecureContext && typeof navigator.clipboard !== 'undefined'")
+
+private fun writeClipboard(text: String): Promise<JsAny?> = js("navigator.clipboard.writeText(text)")
+
+private fun showModal(dialog: HTMLElement): Unit = js("dialog.showModal()")
+
+private fun closeDialog(dialog: HTMLElement): Unit = js("dialog.close()")
+
 /** The toolbar in index.html: filled from the registry, and writing the hash when changed. */
 private class Controls(val go: (LabLink) -> Unit) {
     private val version = el("version") as HTMLSelectElement
     private val state = el("state") as HTMLSelectElement
     private val wallpaper = el("wallpaper") as HTMLSelectElement
     private val fold = el("fold") as HTMLButtonElement
-    private val copy = el("copy") as HTMLButtonElement
+    private val json = el("json") as HTMLButtonElement
     private val problem = el("problem")
     /** The State dropdown's entry for a one-off, shown while the hash holds one. */
     private val oneOffOption = (document.createElement("option") as HTMLOptionElement).apply {
@@ -155,12 +166,7 @@ private class Controls(val go: (LabLink) -> Unit) {
         fill(wallpaper, Wallpaper.entries.map { Triple(it.id, it.label, it.label) })
         version.addEventListener("change", { go(current.copy(version = version.value)) })
         state.addEventListener("change", { if (state.value != ONE_OFF) go(current.copy(state = state.value)) })
-        copy.addEventListener("click", {
-            val text = Fixtures.toJson(Lab.fixture(current.state).first)
-            window.navigator.clipboard.writeText(text)
-            copy.textContent = "Copied"
-            window.setTimeout({ copy.textContent = "Copy JSON"; null }, 1200)
-        })
+        json.addEventListener("click", { showJson(Fixtures.toJson(Lab.fixture(current.state).first)) })
         wallpaper.addEventListener("change", { go(current.copy(wallpaper = Wallpaper.entries.first { it.id == wallpaper.value })) })
         fold.addEventListener("click", {
             go(current.copy(screen = if (current.screen == LabScreen.Cover) LabScreen.Inner else LabScreen.Cover))
@@ -196,6 +202,40 @@ private class Controls(val go: (LabLink) -> Unit) {
         problem.textContent = problemText ?: ""
         problem.hidden = problemText == null
         document.title = "Lab · " + if (oneOff) "${current.version}/one-off" else current.hash
+    }
+
+    private val jsonBox = el("json-box")
+    private val jsonText = el("json-text") as HTMLTextAreaElement
+    private val jsonCopy = el("json-copy") as HTMLButtonElement
+    private val jsonSaid = el("json-said")
+
+    init {
+        el("json-close").addEventListener("click", { closeDialog(jsonBox) })
+        jsonCopy.addEventListener("click", {
+            jsonSaid.textContent = ""
+            MainScope().launch {
+                jsonSaid.textContent = try {
+                    writeClipboard(jsonText.value).await<JsAny?>()
+                    "Copied."
+                } catch (e: Throwable) {
+                    "Not copied: ${(e.message ?: "the browser refused").trimEnd('.')}. Select the text and copy it by hand."
+                }
+            }
+        })
+    }
+
+    /**
+     * The state's JSON in a dialog, selected, to copy by hand: the published lab is plain HTTP on
+     * the tailnet, where the browser has no clipboard API. Where it has one, Copy uses it and says
+     * whether it worked.
+     */
+    private fun showJson(text: String) {
+        jsonText.value = text
+        jsonSaid.textContent = ""
+        jsonCopy.hidden = !clipboardAvailable()
+        showModal(jsonBox)
+        jsonText.focus()
+        jsonText.select()
     }
 
     private companion object {

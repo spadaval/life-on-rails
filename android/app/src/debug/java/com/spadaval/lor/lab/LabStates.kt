@@ -10,11 +10,17 @@ import android.content.Intent
  * [LabStates] that opens nothing, and no [LabStateActivity].
  */
 object LabStates {
+    /** The debug build has the entry. */
+    const val ENABLED = true
+
     const val STATE = "lab_state"
     const val VERSION = "lab_version"
 
     /** The process [LabStateActivity] runs in, where `LorApp` starts no sync and no T3 connection. */
     const val PROCESS = ":lab"
+
+    /** Whether [intent] is a `lab_state` launch, which the starting activity only hands over. */
+    fun handsOff(intent: Intent?): Boolean = intent?.hasExtra(STATE) == true
 
     /**
      * Hands the state an intent names to [LabStateActivity], replacing any fixture already shown;
