@@ -61,9 +61,15 @@ fun Sheets(store: ConceptStore, ui: QueueUi, wide: Boolean) {
     if (sheet != null) shown = sheet
     val close = { focusManager.clearFocus(); ui.sheet = null }
     LaunchedEffect(sheet) { if (sheet == null) focusManager.clearFocus() }
+    // An item cleared while open (approved, Done, Seen) closes its sheet; an open thread stays.
+    val keys = store.items().map { it.key }
+    LaunchedEffect(sheet, keys) {
+        val s = sheet
+        if (s is Sheet.Item && !s.key.startsWith("thread:") && s.key !in keys) ui.sheet = null
+    }
     Box(Modifier.fillMaxSize().padding(bottom = if (ui.keyboard) KeyboardHeight else 0.dp)) {
         when (val s = shown) {
-            is Sheet.Item -> KitSheet(sheet is Sheet.Item && ui.sheetShown(store), close, "sheet:item", detents = listOf(0.7f, 0.94f)) {
+            is Sheet.Item -> KitSheet(sheet is Sheet.Item && !wide, close, "sheet:item", detents = listOf(0.7f, 0.94f)) {
                 Detail(store, ui, s.key, pane = false)
             }
             Sheet.Timer -> KitSheet(sheet == Sheet.Timer, close, "sheet:timer", detents = listOf(if (store.timer != null) 0.42f else 0.5f)) { TimerSheet(store, ui) }

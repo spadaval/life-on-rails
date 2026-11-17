@@ -191,10 +191,13 @@ fun ItemCard(store: ConceptStore, ui: QueueUi, item: Item, lead: Boolean, wide: 
     }
 }
 
-/** Opens an item: in the right pane on the inner screen, in a sheet on the cover. */
-fun open(store: ConceptStore, ui: QueueUi, key: String, wide: Boolean) {
+/**
+ * Opens an item: in the right pane on the inner screen, in a sheet on the cover. Both are recorded,
+ * so a fold either way shows it in the other.
+ */
+fun open(store: ConceptStore, ui: QueueUi, key: String, @Suppress("UNUSED_PARAMETER") wide: Boolean) {
     store.open = key
-    if (!wide) ui.sheet = Sheet.Item(key)
+    ui.sheet = Sheet.Item(key)
 }
 
 @Composable

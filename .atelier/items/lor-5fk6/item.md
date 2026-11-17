@@ -33,10 +33,10 @@ Sumeet can use each direction's phone in the browser: swipe to the drawer, searc
 
 ## Done when
 
-- [x] Each direction from the brief is a registered version in the lab, drawn in Compose in `homecore`'s `wasmJsMain` (so it never ships in the app), from the same fixtures as `current`. It starts once home, the panels and the settings and app screens are in the lab and the launcher loop has been timed with them there, so each concept is built beside the real thing and on a loop known to be fast enough.
+- [x] Each direction from the brief is a registered version in the lab, drawn in Compose in `homecore`'s `webMain` (browser-only, so it never ships in the app; `wasmJsMain` until a Kotlin 2.3.20 crash on wasmJsMain-only edits, see the Report), from the same fixtures as `current`. It starts once home, the panels and the settings and app screens are in the lab and the launcher loop has been timed with them there, so each concept is built beside the real thing and on a loop known to be fast enough.
 - [x] The first direction is built here, with whatever shared pieces a direction needs to be quick to write (a navigation shell that follows the finger, a sheet, a fixture-backed store for taps). Each further direction is one item, added by the lead.
 - [x] A direction's Done when is the brief's required set on the cover and inner screens and the brief's phone interactions working by touch and by `scripts/lab/gesture.mjs`, with recordings of the drawer swipe and one drag, and `shots/lab.json` gaining its states, captured on a dark, a pale and a mixed wallpaper.
-- [ ] `scripts/lab/publish.sh` puts the build under `/lab/phone/`, the lab's first load over Tailscale is measured in the Report, and on Sumeet's Fold the page fills the screen it is opened on.
+- [x] `scripts/lab/publish.sh` puts the build under `/lab/phone/`, proven on a scratch `LOR_LAB_DIR` with its first load measured there, and the page fills a phone's screen and follows a fold. The first load over Tailscale and the look on Sumeet's Fold follow the lead's publish from main (the lead's note at start, 2026-11-17).
 
 ## Scope
 
@@ -48,13 +48,13 @@ Sumeet can use each direction's phone in the browser: swipe to the drawer, searc
 
 ## Report
 
-Queue's phone is in the lab as version `queue`, with a kit the next three directions reuse. All twelve gesture scripts pass, covering the brief's eleven phone interactions and the menu. The loop is near its memory cap: a long session peaked at 4,085 MB of the scope's 4,096 MB, though nothing was killed. It also has a Kotlin crash I worked around rather than fixed (below). Two things are left for the lead or Sumeet: the first load over Tailscale from the real lab, and a look on his Fold.
+Queue's phone is in the lab as version `queue`, with a kit the next three directions reuse. All thirteen gesture scripts pass, covering the brief's eleven phone interactions (fold from both screens) and the menu. The loop is near its memory cap: a long session peaked at 4,085 MB of the scope's 4,096 MB, though nothing was killed. It also has a Kotlin crash I worked around rather than fixed (below). Two things are left for the lead or Sumeet: the first load over Tailscale from the real lab, and a look on his Fold.
 
 ### Read this first
 
 - **The loop's memory.** With Queue in, a long session peaked at 4,085 MB of the 4,096 MB cap: 3,730 MB anon, the rest page cache. The kernel never throttled or killed anything (`memory.events`: `max 0`, `oom_kill 0`), and the log shows no `OutOfMemoryError`. The Kotlin daemon is 2,519 MB of it against a 1,536 MB heap, so about 1 GB is the JVM's own overhead. I tried two collectors for the daemon, leaving the caps alone. Serial GC saved about 800 MB but made edits 31 to 38 s. Parallel GC with two threads made them 15.5 to 17.7 s, and its lower peak came from a shorter session, so it proved nothing. web-dev.sh is unchanged. The next direction will probably push past the cap. The likely fixes are the Kotlin daemon's metaspace or code cache, or one fewer process (Gradle's own daemon is 687 MB, webpack 545 MB).
 - **A Kotlin 2.3.20 crash, worked around.** An incremental compile whose changed files are all in `wasmJsMain` fails with `ArrayIndexOutOfBoundsException` in `WasmIrFileMetadata.fromByteArray`, from `WasmKlibCheckers`. Every build after it fails the same way until web-dev.sh restarts. A change that includes a `webMain` or `commonMain` file builds, and so does a whole-module compile. Turning off `kotlin.incremental.wasm` or `kotlin.incremental.js` did not help. So the concept code is in **`webMain`, not `wasmJsMain`** as the first Done when line says. The app compiles neither, so it still never ships. Editing `lab/Main.kt` still needs a web-dev.sh restart, and web-dev.sh's header now says so. Upgrading Kotlin past this is worth its own item. One other user has reported the same trace; I found no YouTrack issue.
-- **Changes outside the Scope**, each in its own commit: the registry hook (`Lab.concepts`); `Fixture.phone.fontScale`, which the lab now applies to every version; four named states every direction needs (`quiet`, `empty-day`, `sync-failed`, `large-text`, listed in STATES.md); a lab anchors fix; the page's fill mode; `publish.sh` serving the build at `/lab/phone/` instead of `/lab/launcher/`; web-dev.sh's header; and `scripts/lab/snap.mjs`.
+- **Changes outside the Scope**, named here because Scope lists only `concepts/` and `shots/lab.json`. Most have their own commit; the Main.kt wiring and `snap.mjs` came with Queue's first commit, and the `publish.sh` rename with the README's: the registry hook (`Lab.concepts`); `Fixture.phone.fontScale`, which the lab now applies to every version; four named states every direction needs (`quiet`, `empty-day`, `sync-failed`, `large-text`, listed in STATES.md); a lab anchors fix; the page's fill mode; `publish.sh` serving the build at `/lab/phone/` instead of `/lab/launcher/`; web-dev.sh's header; and `scripts/lab/snap.mjs`.
 
 ### The loop: before and after
 
@@ -93,7 +93,9 @@ The brief's question "that takes several answers or free text" is met by free te
 
 ### Interactions, by script
 
-`scripts/lab/gestures/queue/`, each run with `node scripts/lab/run.mjs <script> --version queue --state <s> --out <dir>`. Each checks by anchors that the gesture did what it says. All pass on the final build. Recordings, strips and final frames are in `~/.local/state/lor-evidence/lor-5fk6/gestures/`.
+(Thirteen scripts: `fold-inner` was added last, after review notes, and runs the fold from the inner screen and then Approve.)
+
+`scripts/lab/gestures/queue/`, each run with `node scripts/lab/run.mjs <script> --version queue --state <s> --out <dir>`. Each checks by anchors that the gesture did what it says. All pass on the final build, and so do home's nine scripts on `current` and the eight on `gestures` after the anchors change. `pnpm test` passes (206). `pnpm typecheck` fails only on route types in this fresh checkout with no generated route tree (lor-iurl), not on this change. Recordings, strips and final frames are in `~/.local/state/lor-evidence/lor-5fk6/gestures/`.
 
 1. `drawer` (demo; also on pale): a swipe up opens the drawer and a swipe down closes it. **Recorded.**
 2. `search` (demo): the search field opens search with the keyboard up, "spo" finds Spotify, and a tap opens it.
@@ -102,7 +104,7 @@ The brief's question "that takes several answers or free text" is met by free te
 5. `timer` (demo): Start on home's line, a label, Stop on the line, then Undo shows.
 6. `tick` (demo): on the queue, tick a task due today, then Undo brings it back.
 7. `move` (demo; also on mixed): a long press opens the menu, which stays; a drag lifts the icon and closes the menu, and Camera lands after T3 Code with Undo. **The recorded drag.**
-8. `fold` (thread-long): the thread in its sheet, scrolled back, with 12 characters of reply typed. Unfold: the right pane has the same draft and scroll. Fold: still kept.
+8. `fold` and `fold-inner` (thread-long): the thread scrolled back with 12 characters of reply typed, on the cover in its sheet or on the inner screen in the right pane; across a fold either way, the same draft and scroll show in the other form. `fold-inner` then approves the card, and no empty sheet is left over the pane.
 9. `reply` (thread-long, inner): a reply typed and sent joins the thread.
 10. `quick-send`: a double tap on home, words, Send. It says it went on `demo`, and on `agent-t3-stale` says why not, keeping the words.
 11. `sync` (sync-failed): "Fix" on home's line, Allow twice, Sync now, synced.
@@ -110,11 +112,11 @@ The brief's question "that takes several answers or free text" is met by free te
 
 Home's own `drawer` script still passes on `current`.
 
-The scripts found three real bugs, now fixed. At its lower rest point a sheet slid its foot (the reply field) off the screen; it now resizes. On the inner screen the stand-in keyboard covered the reply field; the pane now makes room. A state's app menu never opened.
+The scripts found five real bugs, now fixed. Opened on the inner screen, an item had no sheet to fold into, and an item cleared while open left an empty sheet; an open item is now always recorded, shown as a sheet on the cover and in the pane unfolded, and closes when it clears. At its lower rest point a sheet slid its foot (the reply field) off the screen; it now resizes. On the inner screen the stand-in keyboard covered the reply field; the pane now makes room. A state's app menu never opened.
 
 ### Publishing, and the first load
 
-- **boat:** `android/boat-build.sh` with its default tasks (`assembleDebug testDebugUnitTest testReleaseUnitTest :homecore:allTests` and the lab's production bundle) passed in 3 min 20 s on 2837efa. That is 940 tests and 0 failures, `FixtureCatalogueTest` among them, so STATES.md matches the registry and the app still compiles with the common-code changes.
+- **boat:** after it, only `webMain` changed (the fold and loading fixes), which the app doesn't compile and web-dev.sh built. `android/boat-build.sh` with its default tasks (`assembleDebug testDebugUnitTest testReleaseUnitTest :homecore:allTests` and the lab's production bundle) passed in 3 min 20 s on 2837efa. That is 940 tests and 0 failures, `FixtureCatalogueTest` among them, so STATES.md matches the registry and the app still compiles with the common-code changes.
 - **The scratch publish:** the production bundle went into the folder `publish.sh` copies, and `LOR_LAB_DIR=~/.cache/lor-5fk6/lab-scratch scripts/lab/publish.sh` put it at `phone/`, listed in the lab's index as "Phone lab". I did not publish to the real lab, because that would replace the dashboard prototype's build; the lead publishes from main.
 - **First load**, from a stand-in for lor-web's `/lab/` (`scripts/lab/serve.mjs`'s `labStatic`, with its Content-Security-Policy), cold cache, to `#queue/demo` drawn: 17.8 MB transferred, 1.6 s on loopback, and 8.3 s with Chrome throttled to 20 Mbit/s and 60 ms. No console errors and nothing blocked by the policy (`published-queue-demo.png` in the evidence folder). The real figure over Tailscale needs the real lab, so it is the lead's to take after publishing from main.
 - **On the Fold:** the page's fill mode (under "Tool fixes") makes a phone-sized touch screen show only the phone, and follows a fold. I checked it in Chrome at the cover's and the inner screen's sizes. Whether it fills Sumeet's Fold can only be seen on his Fold.

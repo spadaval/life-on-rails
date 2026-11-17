@@ -119,6 +119,21 @@ opened from), `folder:<name>` for a folder's tile and `folder-open:<name>` for t
 `drawer-search` and `search-field`, `menu` and `menu:<entry>`, `map:<button>`, and `undo-bar`.
 Cells home keeps composed beside the one on screen keep their tiles' anchors at off-screen bounds.
 
+Queue's scripts are `scripts/lab/gestures/queue/` (`--version queue`): `drawer`, `search`, `approve` and
+`answer` (`--state agent-waiting`), `timer`, `tick`, `move` (the recorded drag), `menu`, `fold` and
+`fold-inner` (`--state thread-long`, from the cover and from the inner screen), `reply` (`thread-long`,
+inner), `quick-send` (`demo` succeeds, `agent-t3-stale` fails) and `sync` (`--state sync-failed`).
+Queue's anchors: `home:` then an icon's label, `home:line`, `home:start`, `home:stop`, `home:sync`,
+`home:search`; `queue:count`, `lead`, `reticle`, `item:<key>`, `more:<key>`, `approve:<key>`,
+`deny:<key>`, `cancel:<key>`, `done:`, `seen:` and `tick:` then the item's key, `option:<label>`;
+`detail`, `thread`, `thread-at:<n>`, `messages:<n>`, `draft:<length>`, `reply-field`; `sheet:<name>`,
+`keyboard`, `toast`, `toast:undo`, `menu`, `menu:<entry>`; `sync:ok` or `sync:failed`, `allow:<sensor>`.
+The concepts' kit and how to add a direction: `src/webMain/kotlin/com/spadaval/lor/concepts/README.md`.
+
+Opened on a phone (a touch screen under 1,000 px), the lab fills the screen: no toolbar or bezel
+until its Lab button is pressed, and the screen follows the viewport's width (the cover under 600 px,
+the inner one from there), so folding the phone flips it. `?fill` forces this, `?framed` turns it off.
+
 ## Widgets
 
 Widgets: a fixture's layout names a widget by its provider, and in the lab a widget is drawn as a

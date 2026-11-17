@@ -56,7 +56,7 @@ fun ToastHost(store: ConceptStore, modifier: Modifier = Modifier) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Row(
                 Modifier.padding(horizontal = 16.dp).widthIn(max = 480.dp).fillMaxWidth()
-                    .shadow(16.dp, shape, clip = false).clip(shape).background(look.glass).border(1.dp, look.glassLine, shape)
+                    .clip(shape).background(look.glass).border(1.dp, look.glassLine, shape)
                     .heightIn(min = 52.dp).padding(start = 18.dp, end = 6.dp).labAnchor("toast"),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

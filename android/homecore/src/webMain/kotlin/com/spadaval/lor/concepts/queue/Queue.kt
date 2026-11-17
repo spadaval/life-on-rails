@@ -88,9 +88,9 @@ class QueueUi(val store: ConceptStore) {
     var wide by mutableStateOf(false)
 
     /** Whether a sheet is up: an item opens in the right pane instead when the screen is wide. */
-    fun sheetShown(store: ConceptStore): Boolean = when (val s = sheet) {
+    fun sheetShown(store: ConceptStore): Boolean = when (sheet) {
         null -> false
-        is Sheet.Item -> !(wide && store.items().any { it.key == s.key })
+        is Sheet.Item -> !wide
         else -> true
     }
 
@@ -167,7 +167,7 @@ fun QueuePhone(scene: LabScene) {
 /** Dark status-bar ink over home's pale tops (the pale and mixed wallpapers); light everywhere else. */
 @Composable
 private fun statusInk(ui: QueueUi, wallpaper: Wallpaper) =
-    if (wallpaper != Wallpaper.Dark && ui.shell.pager.currentPage == QueueUi.HOME && ui.shell.drawer.value < 0.5f && ui.sheet == null) Q.inkDark else Q.text1
+    if (wallpaper != Wallpaper.Dark && ui.shell.pager.currentPage == QueueUi.HOME && ui.shell.drawer.value < 0.5f && !ui.sheetShown(ui.store)) Q.inkDark else Q.text1
 
 /** Opens what the state says is open: the drawer, search, a menu, a sheet, the queue, a thread. */
 private suspend fun QueueUi.openWhere(scene: LabScene) {
@@ -183,7 +183,7 @@ private suspend fun QueueUi.openWhere(scene: LabScene) {
             shell.pager.scrollToPage(QueueUi.QUEUE)
             val key = store.cards.firstOrNull { it.thread.id == w.target }?.key ?: "thread:${w.target}"
             store.open = key
-            if (scene.screen == LabScreen.Cover && !scene.landscape) sheet = Sheet.Item(key)
+            sheet = Sheet.Item(key)
         }
         else -> {}
     }

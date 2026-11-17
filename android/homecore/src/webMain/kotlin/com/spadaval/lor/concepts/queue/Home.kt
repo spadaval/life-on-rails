@@ -90,7 +90,7 @@ fun Home(store: ConceptStore, ui: QueueUi, wide: Boolean) {
         Spacer(Modifier.height(Q.s5))
         OneLine(store, ui, Modifier.widthIn(max = 560.dp))
         Spacer(Modifier.weight(1f))
-        Icons(store, ui, if (wide) 6 else 4, ink)
+        if (store.appsLoading) LoadingIcons(if (wide) 6 else 4) else Icons(store, ui, if (wide) 6 else 4, ink)
         Spacer(Modifier.height(Q.s4))
         SearchPill(Modifier.align(Alignment.CenterHorizontally).widthIn(max = 560.dp), onSearch = {
             ui.focusSearch = true
@@ -147,8 +147,9 @@ fun OneLine(store: ConceptStore, ui: QueueUi, modifier: Modifier = Modifier) {
                 when {
                     store.syncFailed -> BasicText("Phone sync failed · Fix", Modifier.clickable { ui.sheet = Sheet.Settings("sync") }.labAnchor("home:sync"), style = Q.label.copy(color = Q.red))
                     !store.lorLive && store.homeLoad != com.spadaval.lor.lab.Load.LOADING -> BasicText("LoR isn't answering · as of ${store.homeReadAt?.let { LocalClock.time(it, store.zone) } ?: "never"}", style = Q.label.copy(color = Q.red))
+                    store.homeLoad == com.spadaval.lor.lab.Load.LOADING -> BasicText("Reading LoR…", style = Q.label)
                     else -> BasicText(
-                        if (waiting == 0) "Nothing waiting" else "$waiting waiting in the queue ›",
+                        when { waiting > 0 -> "$waiting waiting in the queue ›"; store.knows() -> "Nothing waiting"; else -> "T3 isn't connected · Queue ›" },
                         Modifier.clickable { ui.later(scope) { shell.goTo(QueueUi.QUEUE) } }.labAnchor("home:waiting"),
                         style = Q.label.copy(color = if (waiting > 0 && store.cards.isNotEmpty()) Q.cyan else Q.text2),
                     )
@@ -320,4 +321,21 @@ fun Shade(shell: com.spadaval.lor.concepts.kit.ShellState) {
         }
     }
     com.spadaval.lor.home.BackHandler(shell.shade) { shell.shade = false }
+}
+
+/** While the app list is read: the start page's shape in faint tiles, so that home doesn't jump when the icons arrive. */
+@Composable
+private fun LoadingIcons(columns: Int) {
+    Column(Modifier.fillMaxWidth().labAnchor("home:loading"), verticalArrangement = Arrangement.spacedBy(36.dp)) {
+        repeat(3) {
+            Row(Modifier.fillMaxWidth()) {
+                repeat(columns) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(56.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(17.dp)).background(Color.White.copy(alpha = 0.08f)))
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(0.dp))
+    }
 }

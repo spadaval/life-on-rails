@@ -78,7 +78,6 @@ fun Menu(anchor: Rect, items: List<MenuItem>, onDismiss: () -> Unit, header: (@C
                     transformOrigin = TransformOrigin(((anchor.center.x - x) / size.width.coerceAtLeast(1)).coerceIn(0f, 1f), if (below) 0f else 1f)
                 }
                 .width(248.dp)
-                .shadow(20.dp, shape, clip = false)
                 .clip(shape)
                 .background(look.glass)
                 .border(1.dp, look.glassLine, shape)

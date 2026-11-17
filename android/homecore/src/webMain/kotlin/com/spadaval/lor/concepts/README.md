@@ -47,7 +47,7 @@ direction's colours, so Timeline can use the sheet without looking like Queue.
   fixture at the root, so a fold keeps the page, the sheet, the drafts and the scroll. The lab keys
   a version on its version, its state and Home presses, not on the screen.
 - Name what a script touches with `Modifier.labAnchor("…")`, and write the interaction's script in
-  `scripts/lab/gestures/<direction>/` as you build it. Queue's twelve are the model:
+  `scripts/lab/gestures/<direction>/` as you build it. Queue's thirteen are the model:
   `node scripts/lab/run.mjs scripts/lab/gestures/queue/approve.mjs --version queue --state agent-waiting --out <dir>`.
   Two nodes may carry one name, as a sheet does while a pane takes its place; the name stays while
   either is on screen.
