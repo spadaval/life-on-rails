@@ -7,7 +7,7 @@
 // back through the base first.
 import { type Sql, sql as defaultSql } from "../db/client.js";
 import { uuidv7 } from "../shared/ids.js";
-import { deleteBlock, pauseRunningBlock, startManualBlock } from "./attribution/blocks.js";
+import { deleteBlock, pauseRunningBlock, proposeTime, startManualBlock } from "./attribution/blocks.js";
 import { clockNow, fixedNow, isTestDatabase } from "./clock.js";
 import { env } from "./env.js";
 import { JOBS } from "./jobs/registry.js";
@@ -30,7 +30,30 @@ interface State {
   name: DemoVariant;
   /** The fixed clock it was applied at ("live" on the wall clock): the same name at another fixed time is applied again. */
   at: string;
-  undo: { blocks?: string[]; flags?: { id: string; flagged_at: string; flag_note: string | null }[]; jobRuns?: string[] };
+  undo: { blocks?: string[]; proposals?: Suggestion[]; flags?: { id: string; flagged_at: string; flag_note: string | null }[]; jobRuns?: string[] };
+}
+
+/**
+ * A suggestion someone made on a fill block (the agent's, or the owner's own): fill does not make
+ * it again when it rebuilds the block, so a variant that covers the block puts it back on undo.
+ */
+interface Suggestion {
+  origin: string;
+  t_start: string;
+  t_end: string;
+  intent_id: string;
+  via: "ui" | "agent";
+  source_ref: string | null;
+  reason: string | null;
+}
+
+async function suggestionsFrom(db: Sql, from: Date): Promise<Suggestion[]> {
+  const rows = await db<{ origin: string; t_start: Date; t_end: Date; intent_id: string; via: "ui" | "agent"; source_ref: string | null; reason: string | null }[]>`
+    SELECT b.origin::text AS origin, b.t_start, b.t_end, p.intent_id, p.via, p.source_ref, p.reason
+    FROM proposal p JOIN time_block b ON b.id = p.time_block_id
+    WHERE p.status = 'pending' AND p.via IN ('ui', 'agent') AND p.intent_id IS NOT NULL
+      AND b.origin IN ('calendar', 'auto_activity', 'place') AND b.t_end > ${from}`;
+  return rows.map((r) => ({ ...r, t_start: r.t_start.toISOString(), t_end: r.t_end.toISOString() }));
 }
 
 const isVariant = (s: string): s is DemoVariant => (DEMO_VARIANTS as readonly string[]).includes(s);
@@ -61,6 +84,11 @@ async function undo(db: Sql, state: State): Promise<void> {
     await deleteBlock(db, id);
     await db`DELETE FROM observation WHERE source = 'manual' AND payload->>'block_id' = ${id}`;
   }
+  for (const p of state.undo.proposals ?? []) {
+    const [b] = await db<{ id: string }[]>`
+      SELECT id FROM time_block WHERE origin = ${p.origin}::block_origin AND t_start = ${new Date(p.t_start)} AND t_end = ${new Date(p.t_end)} AND NOT committed`;
+    if (b) await proposeTime(db, b.id, p.intent_id, { via: p.via, sourceRef: p.source_ref }, p.reason);
+  }
   for (const f of state.undo.flags ?? []) {
     await db`UPDATE intent SET flagged_at = ${new Date(f.flagged_at)}, flag_note = ${f.flag_note}, notified_at = ${new Date(f.flagged_at)} WHERE id = ${f.id}`;
   }
@@ -72,9 +100,12 @@ async function apply(db: Sql, name: DemoVariant, now: Date): Promise<State["undo
   if (name === "running" || name === "paused") {
     const [task] = await db<{ id: string }[]>`SELECT id FROM intent WHERE title = ${DEMO_TIMER_TASK} AND status <> 'archived' LIMIT 1`;
     if (!task) throw new Error(`no "${DEMO_TIMER_TASK}": load the demo set first (pnpm demo:test)`);
-    const { id } = await startManualBlock(db, { intentId: task.id }, { via: "ui", sourceRef: "demo" }, new Date(now.getTime() - RUNNING_MIN * 60_000));
+    const start = new Date(now.getTime() - RUNNING_MIN * 60_000);
+    // The running block takes the lane from its start on; the suggestions there go with the fill it replaces.
+    const proposals = await suggestionsFrom(db, start);
+    const { id } = await startManualBlock(db, { intentId: task.id }, { via: "ui", sourceRef: "demo" }, start);
     if (name === "paused") await pauseRunningBlock(db, new Date(now.getTime() - PAUSED_MIN * 60_000));
-    return { blocks: [id] };
+    return { blocks: [id], proposals };
   }
   if (name === "noflags") {
     const flagged = await db<{ id: string; flagged_at: Date; flag_note: string | null }[]>`

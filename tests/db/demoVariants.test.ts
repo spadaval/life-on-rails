@@ -18,11 +18,20 @@ dbDescribe("demo variants", () => {
     const failing = async () => (await jobStatuses(NOW)).filter((j) => j.state === "error").length;
     const blocks = async () => (await sql<{ n: number }[]>`SELECT count(*)::int AS n FROM time_block`)[0]!.n;
     const base = await blocks();
+    // What a timer variant covers and must give back: the agent's suggestion on the YouTube phone block.
+    const suggestion = () => sql<{ title: string; intent: string; reason: string | null }[]>`
+      SELECT b.title, i.title AS intent, p.reason FROM proposal p JOIN time_block b ON b.id = p.time_block_id JOIN intent i ON i.id = b.intent_id
+      WHERE p.status = 'pending' AND p.via = 'agent'`;
+    const before = await suggestion();
+    expect(before).toHaveLength(1);
 
     await withClock(NOW, () => setDemoVariant("running"));
     expect(await open()).toEqual([{ title: DEMO_TIMER_TASK, paused: false }]);
     await withClock(NOW, () => setDemoVariant("paused"));
     expect(await open()).toEqual([{ title: DEMO_TIMER_TASK, paused: true }]);
+    await withClock(NOW, () => setDemoVariant("base"));
+    expect(await suggestion()).toEqual(before);
+    expect(await blocks()).toBe(base);
     await withClock(NOW, () => setDemoVariant("noflags"));
     expect(await open()).toEqual([]);
     expect(await flagged()).toBe(0);
