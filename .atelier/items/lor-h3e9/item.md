@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-h3e9
 title: A root vercel.json turns off Vercel's Git deploys, so a push stops failing a deploy and mailing
-status: in_review
+status: approved
 mission: null
 labels: []
 priority: medium
