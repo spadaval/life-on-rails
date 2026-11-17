@@ -1,0 +1,21 @@
+{
+  "name": "prototype",
+  "about": "The dashboard prototype (prototype/dashboard/), each version on the brief's dashboard screens, on the frozen demo snapshot. Start it with pnpm proto:dev. Links name the version (#/<version>/), the scene (scene=, default afternoon), a still clock (still=1) and no Version control (shell=0). A direction item adds its own block of shots under its version's name.",
+  "base": "http://127.0.0.1:3859",
+  "widths": [1500, 1100, 412],
+  "height": 950,
+  "wait": { "selector": "main", "ms": 150 },
+  "shots": [
+    { "screen": "current", "name": "current: Today in the afternoon, a timer running, two flags", "link": "/#/current/?still=1&shell=0" },
+    { "screen": "current", "name": "current: Today in the morning, with the brief", "link": "/#/current/?scene=morning&still=1&shell=0" },
+    { "screen": "current", "name": "current: Today with nothing wanting you", "link": "/#/current/?scene=quiet&still=1&shell=0" },
+    { "screen": "current", "name": "current: Today, an empty day at 09:00", "link": "/#/current/?scene=empty&still=1&shell=0" },
+    { "screen": "current", "name": "current: Today with a block selected to relabel", "link": "/#/current/?block=13:00&still=1&shell=0" },
+    { "screen": "current", "name": "current: Tasks with a task open", "link": "/#/current/tasks?id=Reply%20to%20the%20App%20Store%20review%20notes&still=1&shell=0" },
+    { "screen": "current", "name": "current: Goals, three goals at no data yet", "link": "/#/current/goals?id=Be%20a%20good%20friend&still=1&shell=0" },
+    { "screen": "current", "name": "current: People", "link": "/#/current/people?still=1&shell=0" },
+    { "screen": "current", "name": "current: a person", "link": "/#/current/people?id=Maya%20Okafor&still=1&shell=0" },
+    { "screen": "current", "name": "current: quick add open", "link": "/#/current/tasks?add=Book%20the%20ferry%20to%20Sintra%20%23Lisbon%20trip%20in%20April%20fri&still=1&shell=0", "capture": "viewport" },
+    { "screen": "current", "name": "current: search with results", "link": "/#/current/search?q=lisbon&still=1&shell=0" }
+  ]
+}
