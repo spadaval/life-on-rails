@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Direction 4: Panes</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Saira+Condensed:wght@500;600&display=swap">
+<link rel="stylesheet" href="frames.css">
+<style>
+:root { --bg: #0a0b10; --txt: #ece8e2; --mute: #aaa39a; --dim: #8e877d; --or: #f08a2c; --cy: #6cc6ec;
+  --p1: rgb(255 255 255 / .03); --p2: rgb(255 255 255 / .055); --p3: rgb(30 31 40 / .78);
+  --sans: "Hanken Grotesk", system-ui, sans-serif; --cond: "Saira Condensed", sans-serif; --icon-r: 32%; }
+#today { background: radial-gradient(900px 600px at 80% 0%, #1b2236 0%, transparent 60%), radial-gradient(700px 600px at 0% 100%, #22160c 0%, transparent 55%), var(--bg); }
+.nav { position: absolute; left: 12px; top: 12px; bottom: 12px; width: 190px; border-radius: 16px; background: var(--p1); padding: 18px 10px; display: flex; flex-direction: column; gap: 2px; }
+.nav b { font: 600 16px/1 var(--cond); letter-spacing: .12em; color: var(--or); padding: 0 10px 16px; }
+.nav span { padding: 9px 10px; border-radius: 9px; font-size: 15px; color: var(--mute); display: flex; justify-content: space-between; }
+.nav span.on { color: var(--txt); background: var(--p2); }
+.nav .tchip { margin-top: auto; padding: 10px; border-radius: 10px; background: rgb(240 138 44 / .12); color: var(--or); font-size: 13px; }
+.lst { position: absolute; left: 214px; top: 12px; bottom: 12px; width: 440px; border-radius: 16px; background: var(--p2); backdrop-filter: blur(18px); padding: 18px 16px; filter: saturate(.9); }
+.lst h2 { font: 600 15px/1 var(--cond); letter-spacing: .12em; margin: 0 6px 14px; display: flex; justify-content: space-between; color: var(--mute); }
+.lst .g { font-size: 12.5px; color: var(--dim); margin: 14px 6px 6px; }
+.li { display: flex; align-items: center; gap: 12px; padding: 0 12px; height: 46px; border-radius: 11px; font-size: 15px; }
+.li .ck { width: 18px; height: 18px; border-radius: 6px; border: 1.5px solid #50505a; }
+.li .m { margin-left: auto; color: var(--dim); font-size: 13px; }
+.li.sel { background: rgb(240 138 44 / .12); box-shadow: inset 0 0 0 1px rgb(240 138 44 / .5); }
+.li .tm { font: 600 18px/1 var(--cond); color: var(--or); margin-left: auto; }
+.det { position: absolute; left: 670px; right: 12px; top: 12px; bottom: 12px; border-radius: 18px; background: var(--p3); backdrop-filter: blur(24px); box-shadow: 0 20px 50px rgb(0 0 0 / .5), 0 2px 6px rgb(0 0 0 / .3); padding: 26px 30px; display: flex; flex-direction: column; gap: 16px; }
+.det .k { font: 600 13px/1 var(--cond); letter-spacing: .12em; color: var(--cy); }
+.det h1 { font: 600 28px/1.2 var(--sans); margin: 0; }
+.det p { margin: 0; color: var(--mute); font-size: 15px; max-width: 60ch; }
+.acts { display: flex; gap: 10px; }
+.btn { padding: 10px 16px; border-radius: 10px; background: rgb(255 255 255 / .07); font-size: 15px; }
+.btn.pri { background: var(--or); color: #1a0d02; font-weight: 600; }
+.dl { display: grid; grid-template-columns: 120px 1fr; gap: 10px 16px; font-size: 15px; }
+.dl span:nth-child(odd) { color: var(--dim); }
+.arc { height: 140px; border-radius: 14px; background: var(--p1); position: relative; overflow: hidden; }
+.arc svg { position: absolute; inset: 0; }
+.more { color: var(--dim); font-size: 14px; border-top: 1px solid rgb(255 255 255 / .06); padding-top: 12px; }
+/* phone */
+.hd2 { position: absolute; top: 60px; left: 22px; z-index: 2; color: #fff; text-shadow: 0 1px 5px rgb(0 0 0 / .5); }
+.hd2 b { font: 500 34px/1.1 var(--sans); display: block; }
+.hd2 span { font-size: 14px; }
+.home-apps { position: absolute; left: 10px; right: 10px; top: 180px; z-index: 2; }
+.home-apps.b2 { top: 360px; }
+.dots { position: absolute; bottom: 70px; left: 0; right: 0; display: flex; justify-content: center; gap: 7px; z-index: 2; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; background: rgb(255 255 255 / .45); } .dots i.on { background: #fff; }
+.fold { position: absolute; left: 14px; right: 14px; bottom: 100px; z-index: 2; padding: 12px 14px; border-radius: 16px; background: rgb(20 21 28 / .6); backdrop-filter: blur(20px); font-size: 13px; color: var(--mute); }
+.plist { position: absolute; inset: 0; background: rgb(10 11 16 / .8); backdrop-filter: blur(26px); padding: 54px 12px 0; }
+.plist h2 { font: 600 15px/1 var(--cond); letter-spacing: .12em; margin: 0 8px 12px; color: var(--mute); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 520px; border-radius: 26px 26px 0 0; background: var(--p3); backdrop-filter: blur(28px); box-shadow: 0 -16px 40px rgb(0 0 0 / .5); padding: 12px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+.sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: rgb(255 255 255 / .3); margin: 0 auto 6px; }
+.sheet h1 { font: 600 22px/1.25 var(--sans); margin: 0; }
+.opts { display: flex; flex-direction: column; gap: 8px; }
+.opts span { padding: 14px 16px; border-radius: 12px; background: rgb(255 255 255 / .06); font-size: 15px; }
+.opts span.on { box-shadow: inset 0 0 0 1.5px var(--or); background: rgb(240 138 44 / .1); }
+.opts small { display: block; color: var(--dim); font-size: 13px; margin-top: 2px; }
+</style></head><body>
+
+<section class="frame" id="today">
+  <div class="nav"><b>LIFE ON RAILS</b><span class="on">Today <small>4</small></span><span>Tasks <small>33</small></span><span>Goals</span><span>People</span><span>Notes</span><span>Search</span>
+    <div class="tchip">● maps spec · 47:12 · Stop</div></div>
+  <div class="lst">
+    <h2>TODAY <span>7H LEFT</span></h2>
+    <div class="li"><span style="color:var(--or)">●</span>Draft the offline maps spec<span class="tm">47:12</span></div>
+    <div class="g">Needs you</div>
+    <div class="li sel"><span style="color:var(--cy)">★</span>Find a physio for the left knee<span class="m">agent</span></div>
+    <div class="li"><span style="color:var(--cy)">★</span>Organise Sam's birthday dinner<span class="m">agent</span></div>
+    <div class="g">Due</div>
+    <div class="li"><span class="ck"></span>Fix the dripping bathroom tap<span class="m">13 Nov</span></div>
+    <div class="li"><span class="ck"></span>Return the library books<span class="m">today</span></div>
+    <div class="li"><span class="ck"></span>Renew the parking permit<span class="m">16 Nov</span></div>
+    <div class="g">Calendar</div>
+    <div class="li"><span style="color:var(--cy)">◆</span>16:30 Dentist<span class="m">in 1h 28m</span></div>
+    <div class="li"><span style="color:var(--cy)">◆</span>18:00 Portuguese with Inês</div>
+  </div>
+  <div class="det">
+    <span class="k">FLAGGED BY THE AGENT · 2H AGO</span>
+    <h1>Find a physio for the left knee</h1>
+    <p>Two physios near the studio take your insurance. Pick one and I'll book the first free slot this week.</p>
+    <div class="acts"><span class="btn pri">Ana Ribeiro, Thu 10:00</span><span class="btn">Marco Lima, Fri 17:30</span><span class="btn">Done</span><span class="btn">Seen</span></div>
+    <div class="dl"><span>For</span><span>Run a half marathon in March</span><span>Due</span><span>Fri 20 Nov</span><span>With</span><span>the agent, in a T3 thread</span></div>
+    <div class="arc"><svg viewBox="0 0 700 140" preserveAspectRatio="none"><path d="M20 130 Q350 -40 680 130" fill="none" stroke="#5a4630" stroke-width="2" stroke-dasharray="6 6"/><path d="M20 130 Q190 20 400 22" fill="none" stroke="#f08a2c" stroke-width="3"/><circle cx="400" cy="22" r="8" fill="none" stroke="#f08a2c" stroke-width="2"/></svg></div>
+    <div class="more">More: history · split into tasks · give to the agent · delete</div>
+  </div>
+</section>
+
+<section class="frame" id="home">
+  <div class="wall"></div><div class="status"><span>15:02</span><span>5G ▮</span></div>
+  <div class="hd2"><b>Tuesday 17</b><span>12° Rain after 17:00 · ◆ 16:30 Dentist</span></div>
+  <div class="home-apps apps">
+    <div class="app"><i class="icon c1"></i><span>Phone</span></div><div class="app"><i class="icon c2"></i><span>Messages</span></div><div class="app"><i class="icon c3"></i><span>Chrome</span></div><div class="app"><i class="icon c4"></i><span>Camera</span></div>
+    <div class="app"><i class="icon c5"></i><span>Gmail</span></div><div class="app"><i class="icon c6"></i><span>Maps</span></div><div class="app"><i class="icon c7"></i><span>Photos</span></div><div class="app"><i class="icon c8"></i><span>T3 Code</span></div>
+  </div>
+  <div class="fold">Unfolded, the panels left of home show a list and the open item side by side: threads beside the thread, tasks beside the task.</div>
+  <div class="dots"><i></i><i></i><i class="on"></i><i></i></div><div class="gesture"></div>
+</section>
+
+<section class="frame" id="agent">
+  <div class="wall"></div>
+  <div class="plist"><h2>AGENT · 4 WAITING</h2>
+    <div class="li"><span style="color:var(--or)">●</span>Approve: migration on test DB<span class="m">4m</span></div>
+    <div class="li sel"><span style="color:var(--cy)">?</span>Tile cache size<span class="m">12m</span></div>
+    <div class="li"><span style="color:var(--cy)">★</span>Sam's birthday dinner</div>
+  </div>
+  <div class="sheet"><div class="grab"></div>
+    <span style="font:600 12px/1 var(--cond);letter-spacing:.12em;color:var(--cy)">QUESTION · FIELD GUIDE · 12 MIN AGO</span>
+    <h1>Which tile cache size should the offline maps use?</h1>
+    <div class="opts"><span class="on">256 MB<small>Fits phones with 4 GB; about 3 cities</small></span><span>512 MB<small>About 7 cities; slower first sync</small></span><span>Something else…</span></div>
+    <div class="acts"><span class="btn pri" style="flex:1;text-align:center">Send answer</span><span class="btn">Open thread</span></div>
+  </div>
+  <div class="gesture"></div>
+</section>
+</body></html>

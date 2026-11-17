@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Direction 2: Timeline</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:wght@400;500;600&family=Saira+Condensed:wght@500;600&display=swap">
+<link rel="stylesheet" href="frames.css">
+<style>
+:root { --bg: #0b0c11; --txt: #ece6dc; --mute: #b1a596; --dim: #958a7a; --line: #23252e; --or: #f08a2c; --cy: #6cc6ec; --fill: #3a3c46;
+  --sans: "Saira", system-ui, sans-serif; --cond: "Saira Condensed", sans-serif; --icon-r: 50%; }
+.rail { position: absolute; left: 0; top: 0; bottom: 0; width: 200px; padding: 28px 20px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--line); }
+.rail b { font: 600 18px/1 var(--cond); letter-spacing: .12em; color: var(--or); margin-bottom: 18px; }
+.rail span { font: 500 15px/1 var(--cond); letter-spacing: .1em; color: var(--mute); padding: 10px 12px; border-radius: 8px; }
+.rail span.on { background: rgb(240 138 44 / .12); color: var(--or); }
+.mid { position: absolute; left: 200px; right: 400px; top: 0; bottom: 0; padding: 26px 40px; }
+.hd { display: flex; align-items: baseline; gap: 16px; }
+.hd b { font: 600 26px/1 var(--cond); letter-spacing: .08em; }
+.hd span { color: var(--mute); }
+.hd .left { margin-left: auto; font: 600 40px/1 var(--cond); }
+.hd .left small { font-size: 16px; color: var(--or); letter-spacing: .1em; margin-left: 6px; }
+.route { position: absolute; left: 150px; top: 90px; bottom: 0; width: 2px; background: var(--or); }
+.route.fut { top: 360px; background: repeating-linear-gradient(180deg, #6b5a46 0 6px, transparent 6px 12px); }
+.hr { position: absolute; left: 40px; font: 500 14px/1 var(--cond); color: var(--dim); letter-spacing: .06em; }
+.blk { position: absolute; left: 170px; right: 40px; border-radius: 10px; padding: 8px 14px; font-size: 14px; display: flex; gap: 10px; align-items: center; }
+.blk.done { background: rgb(240 138 44 / .2); border-left: 3px solid var(--or); }
+.blk.faint { background: rgb(255 255 255 / .04); color: var(--dim); border: 1px dashed #3a3c46; }
+.blk.plan { background: rgb(108 198 236 / .1); border-left: 3px solid var(--cy); color: #cfe9f5; }
+.blk.task { background: transparent; border: 1px solid #353742; }
+.blk.sel { outline: 2px solid var(--or); box-shadow: 0 10px 30px rgb(0 0 0 / .5); }
+.blk .m { color: var(--dim); margin-left: auto; font-size: 13px; }
+.now { position: absolute; left: 30px; right: 30px; top: 352px; height: 2px; background: var(--or); }
+.now b { position: absolute; left: 0; top: -22px; font: 600 15px/1 var(--cond); color: var(--or); letter-spacing: .1em; }
+.ret { position: absolute; left: 140px; top: 342px; width: 22px; height: 22px; border: 2px solid var(--or); border-radius: 50%; background: var(--bg); }
+.run { position: absolute; left: 170px; right: 40px; top: 300px; height: 52px; border-radius: 10px 10px 0 0; border: 2px solid var(--or); border-bottom: 0; padding: 8px 14px; font-size: 15px; display: flex; gap: 12px; align-items: center; background: rgb(240 138 44 / .08); }
+.run .t { font: 600 22px/1 var(--cond); color: var(--or); }
+.run .b { padding: 6px 12px; border-radius: 8px; background: #23252e; font-size: 13px; }
+.side { position: absolute; right: 0; top: 0; bottom: 0; width: 400px; padding: 28px 24px; background: rgb(22 23 30 / .8); backdrop-filter: blur(20px); border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px; }
+.side .k { font: 600 13px/1 var(--cond); letter-spacing: .12em; color: var(--dim); }
+.side h2 { font: 500 22px/1.25 var(--sans); margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 8px 12px; border-radius: 9px; background: #262833; font-size: 14px; }
+.chip.on { background: var(--or); color: #1a0d02; font-weight: 600; }
+.fld { padding: 10px 12px; border-radius: 9px; background: #101117; border: 1px solid #2c2e38; color: var(--dim); font-size: 14px; }
+.ln { display: flex; justify-content: space-between; font-size: 14px; color: var(--mute); padding: 6px 0; border-top: 1px solid var(--line); }
+/* phone */
+.strip { position: absolute; left: 16px; right: 16px; top: 60px; z-index: 2; color: #fff; text-shadow: 0 1px 5px rgb(0 0 0 / .5); }
+.strip .d { font-size: 15px; }
+.strip .bar { position: relative; height: 34px; margin-top: 14px; border-radius: 10px; background: rgb(12 13 18 / .55); backdrop-filter: blur(16px); overflow: hidden; }
+.strip .bar i { position: absolute; top: 0; bottom: 0; }
+.strip .bar .p { left: 0; width: 46%; background: rgb(240 138 44 / .55); }
+.strip .bar .n { left: 46%; width: 3px; background: #fff; }
+.strip .bar .e { left: 60%; width: 6%; background: rgb(108 198 236 / .6); }
+.strip .bar .e2 { left: 72%; width: 5%; background: rgb(108 198 236 / .6); }
+.strip .lbl { display: flex; justify-content: space-between; font: 500 13px/1 var(--cond); margin-top: 6px; letter-spacing: .06em; }
+.strip .big { font: 600 54px/1 var(--cond); margin-top: 18px; }
+.strip .big small { font-size: 18px; color: #ffc68c; letter-spacing: .1em; margin-left: 6px; }
+.strip .nx { font-size: 15px; margin-top: 4px; }
+.strip .tm { display: inline-flex; gap: 10px; align-items: center; margin-top: 14px; padding: 10px 14px; border-radius: 12px; background: rgb(12 13 18 / .6); backdrop-filter: blur(16px); font-size: 14px; }
+.strip .tm b { font: 600 20px/1 var(--cond); color: var(--or); }
+.home-apps { position: absolute; left: 10px; right: 10px; bottom: 90px; z-index: 2; }
+.veil { position: absolute; inset: 0; background: rgb(11 12 17 / .9); backdrop-filter: blur(30px); }
+.proute { position: absolute; left: 62px; top: 60px; bottom: 0; width: 2px; background: var(--or); }
+.proute.f { top: 420px; background: repeating-linear-gradient(180deg, #6b5a46 0 6px, transparent 6px 12px); }
+.ph { position: absolute; left: 14px; font: 500 13px/1 var(--cond); color: var(--dim); }
+.pc { position: absolute; left: 80px; right: 14px; padding: 12px 14px; border-radius: 14px; background: #181a22; font-size: 14px; }
+.pc .k { font: 600 12px/1 var(--cond); letter-spacing: .12em; color: var(--cy); }
+.pc h3 { font: 500 16px/1.3 var(--sans); margin: 6px 0 8px; }
+.pc .acts { display: flex; gap: 8px; }
+.pc .btn { padding: 9px 14px; border-radius: 9px; background: #262833; font-size: 14px; }
+.pc .btn.pri { background: var(--or); color: #1a0d02; font-weight: 600; }
+.pnow { position: absolute; left: 10px; right: 10px; top: 412px; height: 2px; background: var(--or); }
+.pnow b { position: absolute; left: 4px; top: -18px; font: 600 13px/1 var(--cond); color: var(--or); letter-spacing: .1em; }
+</style></head><body>
+
+<section class="frame" id="today">
+  <div class="rail"><b>LIFE ON RAILS</b><span class="on">TODAY</span><span>TASKS</span><span>GOALS</span><span>PEOPLE</span><span>NOTES</span></div>
+  <div class="mid">
+    <div class="hd"><b>TUESDAY 17 NOVEMBER</b><span>‹ ›</span><span class="left">7H<small>LEFT</small></span></div>
+    <div class="route"></div><div class="route fut"></div>
+    <span class="hr" style="top:96px">09:00</span><span class="hr" style="top:166px">11:00</span><span class="hr" style="top:236px">13:00</span><span class="hr" style="top:306px">14:15</span>
+    <span class="hr" style="top:430px">16:00</span><span class="hr" style="top:500px">17:00</span><span class="hr" style="top:600px">18:00</span><span class="hr" style="top:700px">20:00</span>
+    <div class="blk plan" style="top:92px;height:28px">◆ 09:30 Standup · planned</div>
+    <div class="blk done" style="top:126px;height:56px">Ship the Field Guide app · 1h 40m<span class="m">from the timer</span></div>
+    <div class="blk faint sel" style="top:190px;height:40px">Unlabelled · phone, YouTube and Slack · 35m<span class="m">label it ›</span></div>
+    <div class="blk done" style="top:238px;height:52px">◆ Lunch with Priya · Friends</div>
+    <div class="run">● Draft the offline maps spec <span class="t">47:12</span><span class="b" style="margin-left:auto">Switch</span><span class="b">Stop</span></div>
+    <div class="now"><b>NOW 15:00</b></div><div class="ret"></div>
+    <div class="blk task" style="top:380px;height:36px">☐ Fix the dripping bathroom tap<span class="m">fits 15:45, 45 min free</span></div>
+    <div class="blk plan" style="top:440px;height:46px">◆ 16:30 Dentist</div>
+    <div class="blk task" style="top:500px;height:36px">☐ Return the library books<span class="m">due today</span></div>
+    <div class="blk plan" style="top:590px;height:56px">◆ 18:00 Portuguese with Inês</div>
+    <div class="blk task" style="top:690px;height:36px;border-color:#5a4024">★ Organise Sam's birthday dinner<span class="m">flagged · Done · Seen</span></div>
+  </div>
+  <div class="side">
+    <span class="k">SELECTED · 13:10 TO 13:45</span>
+    <h2>35 minutes, unlabelled</h2>
+    <span style="color:var(--mute);font-size:14px">Phone: YouTube 20m, Slack 15m. At home.</span>
+    <span class="k" style="margin-top:8px">LABEL IT</span>
+    <div class="chips"><span class="chip on">Leisure</span><span class="chip">Ship the Field Guide app</span><span class="chip">Life admin</span><span class="chip">Work</span></div>
+    <div class="fld">Something else…</div>
+    <div class="ln"><span>Split at…</span><span>Retime…</span></div>
+    <div class="ln"><span>Undo the last label</span><span>⌘Z</span></div>
+  </div>
+</section>
+
+<section class="frame" id="home">
+  <div class="wall"></div><div class="status"><span>15:02</span><span>5G ▮</span></div>
+  <div class="strip"><span class="d">Tue 17 Nov · 12° Rain after 17:00</span>
+    <div class="bar"><i class="p"></i><i class="e"></i><i class="e2"></i><i class="n"></i></div>
+    <div class="lbl"><span>08:00</span><span>NOW</span><span>22:00</span></div>
+    <div class="big">7H<small>LEFT</small></div>
+    <div class="nx">◆ 16:30 Dentist, in 1h 28m</div>
+    <div class="tm">● Offline maps spec <b>47:12</b> <span>■</span></div></div>
+  <div class="home-apps apps">
+    <div class="app"><i class="icon c1"></i><span>Phone</span></div><div class="app"><i class="icon c2"></i><span>Messages</span></div><div class="app"><i class="icon c3"></i><span>Chrome</span></div><div class="app"><i class="icon c4"></i><span>Camera</span></div>
+    <div class="app"><i class="icon c5"></i><span>Gmail</span></div><div class="app"><i class="icon c6"></i><span>Maps</span></div><div class="app"><i class="icon c7"></i><span>Photos</span></div><div class="app"><i class="icon c8"></i><span>T3 Code</span></div>
+  </div><div class="gesture"></div>
+</section>
+
+<section class="frame" id="agent">
+  <div class="wall"></div><div class="veil"></div>
+  <div class="proute"></div><div class="proute f"></div>
+  <span class="ph" style="top:76px">11:20</span><span class="ph" style="top:196px">14:02</span><span class="ph" style="top:300px">14:58</span><span class="ph" style="top:450px">16:30</span><span class="ph" style="top:540px">later</span>
+  <div class="pc" style="top:62px"><div class="k">LoR · FLAGGED</div><h3>Organise Sam's birthday dinner</h3><div class="acts"><span class="btn">Done</span><span class="btn">Seen</span></div></div>
+  <div class="pc" style="top:182px"><div class="k">QUESTION · FIELD GUIDE</div><h3>Tile cache size, 256 or 512 MB?</h3><div class="acts"><span class="btn">256</span><span class="btn">512</span><span class="btn">Other…</span></div></div>
+  <div class="pc" style="top:296px;outline:1px solid var(--or)"><div class="k" style="color:var(--or)">APPROVAL · ASTROMECH · 4 MIN AGO</div><h3>Run the migration on the test database?</h3><div class="acts"><span class="btn pri">Approve</span><span class="btn">Deny</span></div></div>
+  <div class="pnow"><b>NOW</b></div>
+  <div class="pc" style="top:438px;background:rgb(108 198 236 / .1)"><div class="k">CALENDAR</div><h3 style="margin:6px 0 0">Dentist</h3></div>
+  <div class="pc" style="top:530px;background:transparent;border:1px solid #353742"><h3 style="margin:0">☐ Return the library books</h3></div>
+  <div class="gesture"></div>
+</section>
+</body></html>
