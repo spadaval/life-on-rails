@@ -123,15 +123,27 @@ The before build is `main` at `3be35dc`, built with boat-build.sh's default task
 None failed. The counts reconcile: 34 tests moved from the app to `homecore`, and each module gained one test (`FixtureWireTest`'s comparison of the two readers, and `DestinationTest`'s percent-decoding).
 
 - `:homecore:allTests` alone passes at the item's head, with the wasm test link included (59).
-- `assembleDebug testDebugUnitTest :homecore:allTests` together passes, but it ran up to date after the builds above, so it doesn't show that a cold run fits in memory.
+- `assembleDebug testDebugUnitTest :homecore:allTests` together passes, but it ran up to date after the builds above, so it doesn't show that a cold run fits in memory. I didn't run it cold with `--rerun-tasks` because boat was at load 34 from other threads' builds; that run is left to do.
 - On `main`, before this change, that same combination failed: `compileTestDevelopmentExecutableKotlinWasmJs` ran out of memory ("GC overhead limit exceeded") beside `:app:compileDebugKotlin`. That is outside this item. I recorded the counts from the default tasks instead.
 
 The APK grew from 43,905,223 to 44,675,507 bytes (+770 KB), mostly from kotlinx-datetime and the moved code.
 
 ### Not done
 
-- **Emulator receipts.** The before APK (main `3be35dc`) and the after APK are at `/home/supadava/.cache/lor-rgx4/before.apk` and `after.apk`. The shoot script and layouts are in `/home/supadava/.cache/lor-rgx4/shoot/`. It writes one layout per surface with that cell as the start, cold-starts home and takes a screenshot. The shared test server on :3857 runs the demo set at `LOR_FAKE_NOW=2026-11-17T15:00`. `T3_Phone_API35` was held by agent-device session `t3-8a333b784ac5f6dbef0d8d29` (a recording session, not mine) from 13:23 until this Report. I followed its advice to wait, and I never reused or closed it. Before I saw that it was held, `verify-lor install` put my before APK on that emulator at 13:23, so that thread's check may have run on main's build. Its layout and prefs are backed up in `/home/supadava/.cache/lor-rgx4/emu-backup/`. The Fold AVD wasn't booted, because the Mac runs one emulator at a time. The work left is to run `shoot.sh` with before.apk and then after.apk on both AVDs, compare with the status bar masked, and back up and restore the layout as the script does.
+- **Emulator receipts.** I have no before/after pair yet.
+  - The APKs: before (main `3be35dc`) is `/home/supadava/.cache/lor-rgx4/before.apk`, after (`fae2f95`) is `after.apk`.
+  - The shoot: `/home/supadava/.cache/lor-rgx4/shoot/shoot.sh <ssh host> <serial> <outdir> [wide]` writes one layout per surface with that cell as the start, cold-starts LoR and screenshots it. The surfaces are the agent page, two stacks holding LoR's four blocks, the LoR panel (plus People on the inner screen), the set-up card and the quick-send sheet. It backs up and restores the emulator's layout and prefs.
+  - The comparer: `pngdiff.py a b --skip-top N` diffs two PNGs with the status bar's rows left out. It counts zero pixels on an identical pair and 46,320 on the lab's Tasks/People pair.
+  - The server: the test server on :3857 now runs from this checkout, with `LOR_FAKE_NOW=2026-11-17T15:00` and the demo set. lor-t8lq's server went down at about 13:45.
+  - Why there is no pair yet:
+    - The Mac's `T3_Phone_API35` was held all afternoon by agent-device session `t3-8a333b784ac5f6dbef0d8d29`, which isn't mine. I waited as it advised and never reused or closed it.
+    - Before I saw the hold, at 13:23, `verify-lor install` put main's APK on that emulator, and my first shoot.sh run wrote `layout-agent.json` there and force-stopped LoR. The layout is restored from `/home/supadava/.cache/lor-rgx4/emu-backup/`. A before/after pair another thread shot there from 13:23 until it reinstalled its own build may match falsely; I told lor-xdoi, which is about to shoot there.
+    - On boat's `T3_Phone_API35`, the before set's agent page drew correctly (`evidence/emulator/` from that run was not kept). Then, at load 34 on 8 cores, the remote device daemon dropped calls, and the emulator itself went away mid-run.
+  - Not covered at all: with T3 unpaired on the emulators, no shot draws T3's cards, the choices, the thread column or the reply box. Those are covered only by the lab, from fixtures. The app's wrappers (`agent/PanelBuild.kt`, the five entry points, the sheet's wiring) have compiled, passed the unit tests and drawn on boat's phone, but have had no before/after comparison.
+  - The fix: set-up and quick send need home's restart after a force-stop to read the prefs, and a home press only when home isn't up yet (a press on home at rest opens quick send). shoot.sh does both. It needs a free emulator (the Mac's once lor-xdoi is done, or boat's when it isn't loaded) and about ten minutes per AVD per build.
 - **The web-dev timing.** As the lead asked, I ran neither `android/web-dev.sh` nor any Gradle build here, so the one-line edit timing needs the local loop once lor-xdoi frees it.
+
+- `pnpm test` passes (206) after the `scripts/lab/run.mjs` fix, and `git diff --check` is clean for the branch.
 
 ### Found on the way
 
