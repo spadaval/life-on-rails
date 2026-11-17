@@ -1,8 +1,8 @@
 # Design concepts in the lab
 
 Each direction in `docs/design/lab/brief.md` is one version of the launcher lab, next to `current`
-in the Version dropdown. Queue (`queue/`) is the first. Timeline, Panes and Context (lor-j1fe,
-lor-fdtk, lor-8aqh) come next and reuse the pieces in `kit/`.
+in the Version dropdown. Queue (`queue/`) is the first and Timeline (`timeline/`, lor-j1fe) the
+second. Panes and Context (lor-fdtk, lor-8aqh) come next and reuse the pieces in `kit/`.
 
 The code lives in `webMain`, not `wasmJsMain`. The app never compiles either, so a concept never
 ships. `webMain` is used because Kotlin 2.3.20 crashes on an incremental compile whose changed files

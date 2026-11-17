@@ -769,6 +769,376 @@
       "screen": "Launcher lab · queue",
       "name": "queue · app-menu · inner · mixed",
       "link": "/#queue/app-menu/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · demo · cover",
+      "link": "/#timeline/demo"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · demo · inner",
+      "link": "/#timeline/demo/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · empty · cover",
+      "link": "/#timeline/empty"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · empty · inner",
+      "link": "/#timeline/empty/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · loading · cover",
+      "link": "/#timeline/loading"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · loading · inner",
+      "link": "/#timeline/loading/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · stale · cover",
+      "link": "/#timeline/stale"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · stale · inner",
+      "link": "/#timeline/stale/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · failed · cover",
+      "link": "/#timeline/failed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · failed · inner",
+      "link": "/#timeline/failed/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · overfull · cover",
+      "link": "/#timeline/overfull"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · overfull · inner",
+      "link": "/#timeline/overfull/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · quiet · cover",
+      "link": "/#timeline/quiet"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · quiet · inner",
+      "link": "/#timeline/quiet/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · empty-day · cover",
+      "link": "/#timeline/empty-day"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · empty-day · inner",
+      "link": "/#timeline/empty-day/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · sync-failed · cover",
+      "link": "/#timeline/sync-failed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · sync-failed · inner",
+      "link": "/#timeline/sync-failed/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · large-text · cover",
+      "link": "/#timeline/large-text"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · large-text · inner",
+      "link": "/#timeline/large-text/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · agent-waiting · cover",
+      "link": "/#timeline/agent-waiting"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · agent-waiting · inner",
+      "link": "/#timeline/agent-waiting/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · agent-t3-stale · cover",
+      "link": "/#timeline/agent-t3-stale"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · agent-t3-stale · inner",
+      "link": "/#timeline/agent-t3-stale/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · thread-long · cover",
+      "link": "/#timeline/thread-long"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · thread-long · inner",
+      "link": "/#timeline/thread-long/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · search-mixed · cover",
+      "link": "/#timeline/search-mixed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · search-mixed · inner",
+      "link": "/#timeline/search-mixed/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · app-menu · cover",
+      "link": "/#timeline/app-menu"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · app-menu · inner",
+      "link": "/#timeline/app-menu/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · drawer-all-scrolled · cover",
+      "link": "/#timeline/drawer-all-scrolled"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · drawer-all-scrolled · inner",
+      "link": "/#timeline/drawer-all-scrolled/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · home-settings-tabs · cover",
+      "link": "/#timeline/home-settings-tabs"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · home-settings-tabs · inner",
+      "link": "/#timeline/home-settings-tabs/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · sensors-failed · cover",
+      "link": "/#timeline/sensors-failed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · sensors-failed · inner",
+      "link": "/#timeline/sensors-failed/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · demo · day page · cover",
+      "link": "/#timeline/{\"base\":\"demo\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · demo · day page · inner",
+      "link": "/#timeline/{\"base\":\"demo\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · quiet · day page · cover",
+      "link": "/#timeline/{\"base\":\"quiet\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · quiet · day page · inner",
+      "link": "/#timeline/{\"base\":\"quiet\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · empty-day · day page · cover",
+      "link": "/#timeline/{\"base\":\"empty-day\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · empty-day · day page · inner",
+      "link": "/#timeline/{\"base\":\"empty-day\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · stale · day page · cover",
+      "link": "/#timeline/{\"base\":\"stale\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · stale · day page · inner",
+      "link": "/#timeline/{\"base\":\"stale\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · failed · day page · cover",
+      "link": "/#timeline/{\"base\":\"failed\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · failed · day page · inner",
+      "link": "/#timeline/{\"base\":\"failed\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · overfull · day page · cover",
+      "link": "/#timeline/{\"base\":\"overfull\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · overfull · day page · inner",
+      "link": "/#timeline/{\"base\":\"overfull\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · sync-failed · day page · cover",
+      "link": "/#timeline/{\"base\":\"sync-failed\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · sync-failed · day page · inner",
+      "link": "/#timeline/{\"base\":\"sync-failed\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · large-text · day page · cover",
+      "link": "/#timeline/{\"base\":\"large-text\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · large-text · day page · inner",
+      "link": "/#timeline/{\"base\":\"large-text\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · timer · cover",
+      "link": "/#timeline/{\"base\":\"demo\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · timer running · cover",
+      "link": "/#timeline/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · quick send · cover",
+      "link": "/#timeline/{\"base\":\"demo\",\"where\":{\"open\":\"QUICK_SEND\"}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · settings · cover",
+      "link": "/#timeline/{\"base\":\"sync-failed\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · demo · cover · pale",
+      "link": "/#timeline/demo/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · demo · inner · pale",
+      "link": "/#timeline/demo/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · agent-waiting · cover · pale",
+      "link": "/#timeline/agent-waiting/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · agent-waiting · inner · pale",
+      "link": "/#timeline/agent-waiting/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · search-mixed · cover · pale",
+      "link": "/#timeline/search-mixed/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · search-mixed · inner · pale",
+      "link": "/#timeline/search-mixed/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · app-menu · cover · pale",
+      "link": "/#timeline/app-menu/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · app-menu · inner · pale",
+      "link": "/#timeline/app-menu/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · demo · cover · mixed",
+      "link": "/#timeline/demo/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · demo · inner · mixed",
+      "link": "/#timeline/demo/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · agent-waiting · cover · mixed",
+      "link": "/#timeline/agent-waiting/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · agent-waiting · inner · mixed",
+      "link": "/#timeline/agent-waiting/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · search-mixed · cover · mixed",
+      "link": "/#timeline/search-mixed/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · search-mixed · inner · mixed",
+      "link": "/#timeline/search-mixed/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · app-menu · cover · mixed",
+      "link": "/#timeline/app-menu/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · app-menu · inner · mixed",
+      "link": "/#timeline/app-menu/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · the day with a timer running · cover",
+      "link": "/#timeline/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · timeline",
+      "name": "timeline · the day with a timer running · inner",
+      "link": "/#timeline/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"cell\":[0,0]}}/inner"
     }
   ]
 }
