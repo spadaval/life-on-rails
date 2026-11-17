@@ -274,7 +274,10 @@ private class Controls(val go: (LabLink) -> Unit) {
         if (tag == "INPUT" || tag == "TEXTAREA" || tag == "SELECT") return
         when (e.key) {
             "h", "H" -> homes.intValue++
-            "Escape", "b", "B" -> backNow()
+            // Escape typed into Compose's canvas is already a back there (Compose's own input);
+            // sending one here as well would go back twice.
+            "Escape" -> if (tag == "CANVAS") return else backNow()
+            "b", "B" -> backNow()
             "f", "F" -> toggleFold()
             "r", "R" -> go(current.copy(landscape = !current.landscape))
             "s", "S" -> nextSpeed()

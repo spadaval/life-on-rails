@@ -23,6 +23,7 @@ const ID = 1;
 let page = null;
 let cdp = null;
 let phone = null; // the phone's screen in page pixels: { x, y, width, height }
+const frames = []; // every place the phone in its bezel has been, for the runner's crop
 let finger = null; // where the finger is down, in dp, or null
 let sent = []; // touches sent and not yet handled
 let firstDown = null;
@@ -40,19 +41,26 @@ export async function use(p, session) {
   finger = null;
   firstDown = null;
   marks.length = 0;
+  frames.length = 0;
   await measure();
 }
 
-/** When each gesture started and ended, and the first touch (performance.now() in this process), for the runner. */
+/**
+ * When each gesture started and ended and the first touch (performance.now() in this process), and
+ * every rect the phone in its bezel has filled (a fold or a turn changes it), for the runner.
+ */
 export function timeline() {
-  return { marks: marks.slice(), firstTouch: firstDown };
+  return { marks: marks.slice(), firstTouch: firstDown, bezels: frames.slice() };
 }
 
 async function measure() {
-  phone = await page.evaluate(() => {
-    const r = document.getElementById("phone").getBoundingClientRect();
-    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  const m = await page.evaluate(() => {
+    const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
+    const p = document.getElementById("phone");
+    return { phone: box(p), bezel: box(p.parentElement) };
   });
+  phone = m.phone;
+  frames.push(m.bezel);
 }
 
 /** Every anchor on screen now: { name: [left, top, right, bottom] } in dp. */

@@ -140,12 +140,12 @@ async function play() {
     for (const g of frames) if (g.at <= t) f = g; else break;
     return f;
   };
-  // The recording and the strip show the phone in its bezel; across a fold or a turn, both of its shapes.
+  // The recording and the strip show the phone in its bezel, in every shape it took: a fold or a
+  // turn there and back again passes through a larger one than it starts and ends in.
   const after = await phoneRect();
-  const x0 = Math.floor(Math.min(before.x, after.x)), y0 = Math.floor(Math.min(before.y, after.y));
-  const x1 = Math.ceil(Math.max(before.x + before.width, after.x + after.width)), y1 = Math.ceil(Math.max(before.y + before.height, after.y + after.height));
-  // A frame Chrome sends can come smaller than the viewport now and then (a run with a fold and
-  // two turns did), which ffmpeg's crop fails on, so every frame is brought to the viewport's size first.
+  const seen = [before, after, ...gesture.timeline().bezels];
+  const x0 = Math.floor(Math.min(...seen.map((r) => r.x))), y0 = Math.floor(Math.min(...seen.map((r) => r.y)));
+  const x1 = Math.ceil(Math.max(...seen.map((r) => r.x + r.width))), y1 = Math.ceil(Math.max(...seen.map((r) => r.y + r.height)));
   const crop = `scale=${VIEWPORT.width}:${VIEWPORT.height},crop=${2 * Math.floor((x1 - x0) / 2)}:${2 * Math.floor((y1 - y0) / 2)}:${x0}:${y0}`;
   const videoTimes = [];
   for (let t = begin; t <= end; t += 1000 / VIDEO_FPS) videoTimes.push(t);
