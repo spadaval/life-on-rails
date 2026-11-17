@@ -90,7 +90,10 @@ private fun QueueList(store: ConceptStore, ui: QueueUi, wide: Boolean, modifier:
             Row(Modifier.fillMaxWidth().padding(bottom = Q.s3), verticalAlignment = Alignment.CenterVertically) {
                 BasicText("Queue", style = Q.title.copy(fontWeight = FontWeight.SemiBold))
                 Spacer(Modifier.width(10.dp))
-                BasicText(if (waiting == 0) "clear" else "$waiting for you", Modifier.labAnchor("queue:count"), style = Q.label)
+                BasicText(
+                    when { waiting > 0 -> "$waiting for you"; store.knows() -> "clear"; else -> "can't tell yet" },
+                    Modifier.labAnchor("queue:count"), style = Q.label,
+                )
                 Spacer(Modifier.weight(1f))
                 IconButton(Glyph.Gear, "Settings", { ui.sheet = Sheet.Settings() }, anchor = "queue:settings")
             }
@@ -225,7 +228,7 @@ fun ItemBody(store: ConceptStore, ui: QueueUi, item: Item, lead: Boolean, wide: 
                 is Item.Due -> {
                     Kicker(dueWords(item.task, store), if (item.task.overdue) Q.red else Q.text2)
                     Spacer(Modifier.height(6.dp))
-                    TaskTitle(item.task.title, store.done[item.task.id] == true, maxLines = 3)
+                    TaskTitle(item.task.title, store.done[item.task.id] == true, maxLines = 3, style = titleStyle)
                 }
             }
         }
@@ -404,7 +407,7 @@ private fun androidx.compose.foundation.layout.BoxScope.Reticle(key: String) {
 @Composable
 private fun AgentWork(store: ConceptStore) {
     val running = store.running
-    val queued = store.home?.agentQueue.orEmpty().filter { it.thread == null && it.queuedAt != null }
+    val queued = store.home?.agentQueue.orEmpty().filter { q -> q.thread == null && q.queuedAt != null && running.none { it.title == q.title } }
     if (running.isEmpty() && queued.isEmpty()) return
     Column(Modifier.fillMaxWidth()) {
         SectionLabel("The agent is on", trailing = if (queued.isNotEmpty()) "${queued.size} queued" else null)
@@ -413,7 +416,7 @@ private fun AgentWork(store: ConceptStore) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(Q.cyan))
                 Spacer(Modifier.width(12.dp))
                 BasicText(t.title, Modifier.weight(1f), style = Q.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                BasicText(t.runStartedAt?.let { "for ${spoken(store.now - Instant.parse(it))}" }.orEmpty(), style = Q.label)
+                BasicText(t.runStartedAt?.let { Instant.parse(it) }?.takeIf { it < store.now }?.let { "for ${spoken(store.now - it)}" }.orEmpty(), style = Q.label)
             }
         }
         queued.take(3).forEach { q ->
@@ -443,9 +446,22 @@ private fun LaterToday(store: ConceptStore) {
     }
 }
 
-/** Nothing wants him: said calmly, with what comes next. */
+/** Whether an empty queue means nothing waits: LoR's list was read, and T3's cards are live. */
+fun ConceptStore.knows(): Boolean = home != null && t3Status == com.spadaval.lor.lab.T3Status.LIVE
+
+/** Nothing wants him: said calmly, with what comes next. When LoR or T3 can't be read, it says it can't tell. */
 @Composable
 fun Calm(store: ConceptStore, modifier: Modifier = Modifier) {
+    if (!store.knows()) {
+        Column(modifier.labAnchor("unknown"), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(56.dp).clip(CircleShape).background(Q.wash2), contentAlignment = Alignment.Center) { Icon(Glyph.Sync, Q.text2, size = 24.dp) }
+            Spacer(Modifier.height(Q.s4))
+            BasicText("Nothing to show yet", style = Q.title)
+            Spacer(Modifier.height(4.dp))
+            BasicText(if (store.home == null) "What waits on you shows once LoR answers." else "T3's cards show once it's connected.", style = Q.body.copy(color = Q.text2))
+        }
+        return
+    }
     Column(modifier.labAnchor("calm"), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(56.dp).clip(CircleShape).background(Q.wash2), contentAlignment = Alignment.Center) { Icon(Glyph.Check, Q.text1, size = 26.dp, weight = 2f) }
         Spacer(Modifier.height(Q.s4))

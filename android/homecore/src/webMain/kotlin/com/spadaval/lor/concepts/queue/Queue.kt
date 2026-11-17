@@ -164,10 +164,10 @@ fun QueuePhone(scene: LabScene) {
     }
 }
 
-/** Dark status-bar ink over home on the pale wallpaper; light everywhere else. */
+/** Dark status-bar ink over home's pale tops (the pale and mixed wallpapers); light everywhere else. */
 @Composable
 private fun statusInk(ui: QueueUi, wallpaper: Wallpaper) =
-    if (wallpaper == Wallpaper.Pale && ui.shell.pager.currentPage == QueueUi.HOME && ui.shell.drawer.value < 0.5f && ui.sheet == null) Q.inkDark else Q.text1
+    if (wallpaper != Wallpaper.Dark && ui.shell.pager.currentPage == QueueUi.HOME && ui.shell.drawer.value < 0.5f && ui.sheet == null) Q.inkDark else Q.text1
 
 /** Opens what the state says is open: the drawer, search, a menu, a sheet, the queue, a thread. */
 private suspend fun QueueUi.openWhere(scene: LabScene) {

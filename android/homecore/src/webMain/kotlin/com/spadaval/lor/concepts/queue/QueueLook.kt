@@ -37,7 +37,7 @@ object Q {
     /** Floating surfaces: translucent, over the blurred wallpaper. */
     val float = Color(0xD91E1F27)
     /** The queue page's veil over the blurred wallpaper. */
-    val veil = Color(0xD00D0E12)
+    val veil = Color(0xEB0D0E12)
 
     val text1 = Color(0xFFECEEF2)
     val text2 = Color(0xFFA5A9B3)

@@ -66,7 +66,7 @@ fun Sheets(store: ConceptStore, ui: QueueUi, wide: Boolean) {
             is Sheet.Item -> KitSheet(sheet is Sheet.Item && ui.sheetShown(store), close, "sheet:item", detents = listOf(0.7f, 0.94f)) {
                 Detail(store, ui, s.key, pane = false)
             }
-            Sheet.Timer -> KitSheet(sheet == Sheet.Timer, close, "sheet:timer", detents = listOf(0.52f)) { TimerSheet(store, ui) }
+            Sheet.Timer -> KitSheet(sheet == Sheet.Timer, close, "sheet:timer", detents = listOf(if (store.timer != null) 0.42f else 0.5f)) { TimerSheet(store, ui) }
             Sheet.QuickSend -> KitSheet(sheet == Sheet.QuickSend, { close(); ui.sent = null }, "sheet:quick", detents = listOf(0.5f)) { QuickSend(store, ui) }
             is Sheet.Settings -> KitSheet(sheet is Sheet.Settings, close, "sheet:settings", detents = listOf(0.94f)) { Settings(store, ui, s.section) }
             is Sheet.Folder -> KitSheet(sheet is Sheet.Folder, close, "sheet:folder", detents = listOf(0.5f)) { Folder(store, s.name, close) }

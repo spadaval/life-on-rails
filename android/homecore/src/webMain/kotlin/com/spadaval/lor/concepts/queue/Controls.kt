@@ -185,10 +185,10 @@ fun Modifier.card(lead: Boolean = false, shape: Shape = Q.rLg): Modifier =
 
 /** Text struck through when done, faded. */
 @Composable
-fun TaskTitle(text: String, done: Boolean, modifier: Modifier = Modifier, maxLines: Int = 2) {
+fun TaskTitle(text: String, done: Boolean, modifier: Modifier = Modifier, maxLines: Int = 2, style: androidx.compose.ui.text.TextStyle = Q.row.copy(fontWeight = FontWeight.Normal)) {
     BasicText(
         text, modifier,
-        style = Q.row.copy(fontWeight = FontWeight.Normal, color = if (done) Q.text3 else Q.text1, textDecoration = if (done) TextDecoration.LineThrough else null),
+        style = style.copy( color = if (done) Q.text3 else Q.text1, textDecoration = if (done) TextDecoration.LineThrough else null),
         maxLines = maxLines, overflow = TextOverflow.Ellipsis,
     )
 }

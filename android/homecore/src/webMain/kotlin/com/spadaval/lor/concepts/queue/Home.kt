@@ -60,12 +60,19 @@ import com.spadaval.lor.lab.labAnchor
 import com.spadaval.lor.ui.LocalClock
 import kotlin.math.roundToInt
 
-/** Home's words over the wallpaper: dark on the pale one, light with a soft shadow on the rest. */
+/** Home's words over the wallpaper: dark where it is pale, light with a soft shadow where it is dark. */
 private class Ink(val text: Color, val muted: Color, val shadow: Shadow?)
 
+private val darkInk = Ink(Q.inkDark, Q.inkDark2, null)
+private val lightInk = Ink(Color.White, Color.White.copy(alpha = 0.85f), Shadow(Color.Black.copy(alpha = 0.45f), Offset(0f, 1f), 6f))
+
+/** The ink at the top of home (the glance): the mixed wallpaper is pale sky above dark ground. */
 @Composable
-private fun ink(): Ink = if (LocalWallpaperKind.current == Wallpaper.Pale) Ink(Q.inkDark, Q.inkDark2, null)
-else Ink(Color.White, Color.White.copy(alpha = 0.82f), Shadow(Color.Black.copy(alpha = 0.45f), Offset(0f, 1f), 6f))
+private fun topInk(): Ink = if (LocalWallpaperKind.current != Wallpaper.Dark) darkInk else lightInk
+
+/** The ink at the foot of home (the icons' labels). */
+@Composable
+private fun ink(): Ink = if (LocalWallpaperKind.current == Wallpaper.Pale) darkInk else lightInk
 
 /*
  * Home (the brief: "home stays icons and search, with one line at the top"). The clock, the date,
@@ -79,7 +86,7 @@ fun Home(store: ConceptStore, ui: QueueUi, wide: Boolean) {
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().padding(top = 32.dp).padding(horizontal = if (wide) 40.dp else Q.gutter)) {
         Spacer(Modifier.height(if (wide) 28.dp else 44.dp))
-        Glance(store, ink)
+        Glance(store, topInk())
         Spacer(Modifier.height(Q.s5))
         OneLine(store, ui, Modifier.widthIn(max = 560.dp))
         Spacer(Modifier.weight(1f))
