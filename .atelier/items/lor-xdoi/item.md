@@ -149,3 +149,11 @@ Cold starts, from logcat's `Displayed …/.home.HomeActivity` (boat's emulators 
 - The Mac's `emulator-5554` is held by stale agent-device session `t3-8a333b78`; someone who owns it should close it.
 - /tmp's quota is nearly full of other sessions' leftovers (review copies, a 485 MB scratchpad), which broke `boat-build.sh`'s `mktemp` once. I ran it with `TMPDIR` under ~/.cache.
 - Warm-start timing needs a way agent-device can give it.
+
+### Responses
+
+1-cd0k.1: fixed in 0de3e66 (the tokener drops a leading U+FEFF as Android's does; `JsonTest` parses a full layout with and without it, on both targets)
+1-cd0k.2: fixed in 0de3e66 (run.mjs decodes both sides, keeping a literal %; a one-off `{"base":"demo"}` minimap run and the named `demo` both pass, `evidence/review-1/`)
+1-cd0k.3: fixed in 0de3e66 (one platform per fixture, the ink a flow the wallpaper sets; `gestures/home/wallpaper-keeps.mjs` makes a folder, switches to pale, and the folder stays)
+1-cd0k.4: fixed in 0de3e66 (quick dial's builder takes `HomePlatform.zone`; with Chrome in UTC the demo drawer reads "Tuesday afternoon", `evidence/review-1/utc-drawer`)
+1-cd0k.5: fixed in 0de3e66 (`HomeUi(fixtureRequests = true)` from LabHome on both lab hosts gates the two effects; the phone's HomeUi leaves it false; still not run on a device, as the Report says)
