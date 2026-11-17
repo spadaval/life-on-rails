@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-8mbs
 title: 'The Timeline direction on the dashboard prototype: every required screen, state and interaction'
-status: approved
+status: in_review
 mission: lor-2803
 labels:
 - dashboard
@@ -136,5 +136,4 @@ After one press only the 4 "Name it" blocks ask, and the route reads as a day. T
 
 ### Responses
 
-2-mqfl.1: fixed in 451f0cd
-2-mqfl.5: fixed in 451f0cd
+3-kp9j.3: fixed in 1d257f6
