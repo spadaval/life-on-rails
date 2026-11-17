@@ -32,11 +32,12 @@ A page in the browser runs Compose code from a shared Kotlin module inside a pho
 - [ ] A version is a registered composable tree in common code; `current` is the first, and adding one is a single registration. A state is a named fixture (lor-oech fills the list). Until screens move in, `current` shows a kit sheet: every colour, type step, the chamfered panel, the selection, the press scales and the motion tokens.
 - [ ] `android/web-dev.sh` runs the continuous development build as decision lor-0v68 allows: a `systemd-run --user --scope` capped at `MemoryMax=4G` and `MemorySwapMax=512M`, Gradle `-Xmx1g`, the Kotlin daemon at `-Xmx1536m -Dlor.web=1`, two workers, incremental wasm on, refusing to start beside an emulator here. After a one-line edit to a composable the page shows the change in at most 15 seconds; the measured time and peak memory are in the Report. If it cannot be brought under 15 seconds, the item says what was tried and the lead takes the number to Sumeet.
 - [ ] `android/settings.gradle.kts` lets the wasm build fetch Node.js while keeping `FAIL_ON_PROJECT_REPOS`; `android/boat-build.sh` also builds and returns the wasm distribution.
-- [ ] `scripts/shots.mjs`, which lor-nde9 wrote, gains `--lab`: it captures version by state by screen size into the same gallery as the dashboard's.
+- [ ] `shots/lab.json`, a catalogue for lor-nde9's `scripts/shots.mjs` (which this item does not edit), captures version by state by screen size into the same gallery as the dashboard's.
+- [ ] The lab reads fixtures only: nothing in `homecore`'s browser build calls LoR or T3.
 
 ## Scope
 
-`android/homecore` (new), the three `ui/` files moving, the app's build files, `android/web-dev.sh`, `android/boat-build.sh`, `scripts/shots.mjs`. Not home's drawing (lor-xdoi), not the panels (lor-rgx4), not the settings and app screens (lor-t8lq).
+`android/homecore` (new), the three `ui/` files moving, the app's build files, `android/web-dev.sh`, `android/boat-build.sh`, `shots/lab.json`. Not home's drawing (lor-xdoi), not the panels (lor-rgx4), not the settings and app screens (lor-t8lq).
 
 ## Context
 

@@ -9,7 +9,8 @@ labels:
 - design-lab
 - tool
 priority: medium
-blocked_by: []
+blocked_by:
+- lor-nde9
 implementers: []
 ready: null
 trivial: null
@@ -24,9 +25,9 @@ Sumeet agreed on 2026-11-17 that `/lab/` on LoR's own listener is the place. He 
 ## Done when
 
 - [ ] With `LOR_LAB_DIR` set in the env file, lor-web serves that directory's files read-only under `/lab/` on the owner listener (`:3848`, behind the identity check) and on loopback; unset, `/lab/` is a 404. The directory is served as static files, and a test shows a path cannot escape it.
-- [ ] A page under `/lab/` cannot reach LoR's data, although it is on the dashboard's origin and behind the same identity check. Every `/lab/` response carries a Content-Security-Policy whose `connect-src` allows only `/lab/` on this origin and whose `form-action` is `'none'`, and no prototype or lab code calls LoR: the dashboard prototype and the lab's `current` version read fixture stores only. A browser test loads a page under `/lab/` that tries `fetch('/api/v1/status')`, a server function and a form post, and all three are refused; a second test runs each viewer's interactions and finds no request outside `/lab/`.
-- [ ] `scripts/lab/publish.sh` copies the launcher lab's built bundle, the dashboard prototype's build and the latest galleries into `LOR_LAB_DIR` (default `~/.local/share/lor-lab`), each under its own folder, and writes `/lab/index.html` linking them with the commit and time of each.
-- [ ] The wasm bundle is served with the right content type and is cached by its hashed name; the lab's first load over Tailscale is measured in the Report.
+- [ ] A page under `/lab/` cannot reach LoR's data, although it is on the dashboard's origin and behind the same identity check. Every `/lab/` response carries a Content-Security-Policy whose `connect-src` allows only `/lab/` on this origin and whose `form-action` is `'none'`, and no prototype or lab code calls LoR: the dashboard prototype and the lab read fixture stores only, which lor-5uxk and lor-vbfd each state and lor-q165 checks. A browser test loads a page under `/lab/` that tries `fetch('/api/v1/status')`, a server function and a form post, and all three are refused; The same check, run over each viewer's interactions, is lor-q165's.
+- [ ] `scripts/lab/publish.sh` copies whichever of these exist into `LOR_LAB_DIR` (default `~/.local/share/lor-lab`), each under its own folder: the latest shot galleries, the launcher lab's built bundle, the dashboard prototype's build. It writes `/lab/index.html` linking what is there with the commit and time of each. It is shown here with lor-nde9's gallery; the lab and the prototype are published by their own items when they exist.
+- [ ] A `.wasm` file is served as `application/wasm` and a file with a hashed name is cached, shown by a test with small stand-in files.
 - [ ] `AGENTS.md`'s listener rule and the spec's line on what lor-web serves say `/lab/` exists and what it is.
 - [ ] `pnpm test` and `pnpm typecheck` pass.
 

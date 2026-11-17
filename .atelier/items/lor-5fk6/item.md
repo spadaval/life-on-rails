@@ -14,6 +14,9 @@ blocked_by:
 - lor-293p
 - lor-zwfd
 - lor-oech
+- lor-xdoi
+- lor-rgx4
+- lor-t8lq
 implementers: []
 ready: null
 trivial: null
@@ -27,10 +30,10 @@ Sumeet can use each direction's phone in the browser: swipe to the drawer, searc
 
 ## Done when
 
-- [ ] Each direction from the brief is a registered version in the lab, drawn in Compose in `homecore`'s `wasmJsMain` (so it never ships in the app), from the same fixtures as `current`.
+- [ ] Each direction from the brief is a registered version in the lab, drawn in Compose in `homecore`'s `wasmJsMain` (so it never ships in the app), from the same fixtures as `current`. It starts once home, the panels and the settings and app screens are in the lab and the launcher loop has been timed with them there, so each concept is built beside the real thing and on a loop known to be fast enough.
 - [ ] The first direction is built here, with whatever shared pieces a direction needs to be quick to write (a navigation shell that follows the finger, a sheet, a fixture-backed store for taps). Each further direction is one item, added by the lead.
-- [ ] A direction's Done when is the brief's required set on the cover and inner screens and the brief's phone interactions working by touch and by `scripts/lab/gesture.mjs`, with recordings of the drawer swipe and one drag, and `scripts/shots.mjs --lab` capturing its states on a dark, a pale and a mixed wallpaper.
-- [ ] `scripts/lab/publish.sh` puts the build under `/lab/phone/`, and on Sumeet's Fold the page fills the screen it is opened on.
+- [ ] A direction's Done when is the brief's required set on the cover and inner screens and the brief's phone interactions working by touch and by `scripts/lab/gesture.mjs`, with recordings of the drawer swipe and one drag, and `shots/lab.json` gaining its states, captured on a dark, a pale and a mixed wallpaper.
+- [ ] `scripts/lab/publish.sh` puts the build under `/lab/phone/`, the lab's first load over Tailscale is measured in the Report, and on Sumeet's Fold the page fills the screen it is opened on.
 
 ## Scope
 
