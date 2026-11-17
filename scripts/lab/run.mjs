@@ -94,7 +94,12 @@ async function play() {
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto(`${base}/#${hash}`);
-  await page.waitForFunction((h) => document.body.getAttribute("data-drawn") === h, `#${hash}`, { timeout: 30000 });
+  // A one-off's JSON may be percent-encoded in the link, in the hash the page reports, or both,
+  // so the two are compared decoded; a literal % that isn't an escape is compared as it is.
+  await page.waitForFunction((h) => {
+    const plain = (t) => { try { return decodeURIComponent(t); } catch { return t; } };
+    return plain(document.body.getAttribute("data-drawn") ?? "") === plain(h);
+  }, `#${hash}`, { timeout: 30000 });
   const problem = await page.evaluate(() => (document.getElementById("problem").hidden ? null : document.getElementById("problem").textContent));
   if (problem) throw new Error(`the lab says: ${problem}`);
   const cdp = await context.newCDPSession(page);

@@ -23,7 +23,7 @@ class DeviceListsTest {
     fun readsTheAgentsQueueAndAFlagsGoogle() {
         val home = DeviceHome.parse(json("home-queue.json"))
         assertEquals(listOf("Renew the passport", "Find a plumber", "Draft the lease email"), home.agentQueue.map { it.title })
-        assertEquals(Instant.parse("2026-10-14T10:00:00Z"), home.agentQueue[0].queuedAt)
+        assertEquals(kotlin.time.Instant.parse("2026-10-14T10:00:00Z"), home.agentQueue[0].queuedAt)
         assertNull(home.agentQueue[0].thread)
         assertNull(home.agentQueue[2].queuedAt)
         assertEquals("thread-42", home.agentQueue[2].thread)

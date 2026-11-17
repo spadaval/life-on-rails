@@ -22,7 +22,7 @@ enum class Wallpaper(val id: String, val label: String) {
 }
 
 /** What a version is asked to draw: the state's fixture, on one screen, upright or turned on its side. */
-class LabScene(val fixture: Fixture, val screen: LabScreen, val landscape: Boolean = false) {
+class LabScene(val fixture: Fixture, val screen: LabScreen, val landscape: Boolean = false, val wallpaper: Wallpaper = Wallpaper.Dark) {
     val widthDp: Int get() = if (landscape) screen.heightDp else screen.widthDp
     val heightDp: Int get() = if (landscape) screen.widthDp else screen.heightDp
 }
@@ -33,13 +33,13 @@ class Version(val name: String, val about: String, val draw: @Composable (LabSce
 object Lab {
     /**
      * Every version, `current` first. A concept is one more line here. `current` draws the app's
-     * tabs and Home settings when the state opens one (`where.open`, [AppScreen]), and the agent
-     * page, the LoR panel, LoR's blocks, the set-up card or the quick-send sheet when the state
-     * points at one ([PanelScreen]); until home moves into this module (lor-xdoi), it draws the kit
-     * sheet for the rest.
+     * tabs and Home settings when the state opens one (`where.open`, [AppScreen]), the quick-send
+     * sheet when it is open ([PanelScreen]), and home for the rest (lor-xdoi): its grid with the
+     * agent page, the LoR panel, LoR's blocks and the set-up card in their cells, on `where.cell`.
      */
     val versions: List<Version> = listOf(
-        Version("current", "The app as it is: its tabs, Home settings, the agent page, the LoR panel and quick send where the state points, the kit sheet of its look for the rest") { if (!AppScreen(it) && !PanelScreen(it)) KitSheet(it) },
+        Version("current", "The app as it is: home, and its tabs, Home settings, the agent page, the LoR panel and quick send where the state points") { if (!AppScreen(it) && !(it.fixture.where.open == Opened.QUICK_SEND && PanelScreen(it))) LabHome(it) },
+        Version("kit", "The kit sheet of the look: every part, for every state") { KitSheet(it) },
         Version("gestures", "Not a launcher: the surface scripts/lab/run.mjs is proven on (a pager, a list, a tile with a menu, two panes)") { GestureSurface(it) },
     )
 

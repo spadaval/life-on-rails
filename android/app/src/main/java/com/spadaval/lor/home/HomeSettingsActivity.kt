@@ -164,7 +164,7 @@ private fun HomeSettingsScreen(
             contacts = contacts.tap,
             homeApp = { open(Intent(Settings.ACTION_HOME_SETTINGS)) },
             lorApp = { open(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
-            icon = { h -> installed[h.key]?.let { AppIcon(it, 40.dp) } },
+            icon = { h -> installed[h.key]?.let { LauncherIcon(it, 40.dp) } },
         ),
     )
 }

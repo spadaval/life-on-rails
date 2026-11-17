@@ -138,13 +138,16 @@ private val Scheme = darkColorScheme(
     surfaceContainerHigh = Raised, surfaceContainerHighest = Raised,
 )
 
-private val Types = Typography(
+// Lazy, so a test that reads only a colour of this file reads no font (the browser's are loaded by the lab).
+private val Types by lazy {
+    Typography(
     displayLarge = Type.display, displayMedium = Type.display.copy(fontSize = 45.sp, lineHeight = 45.sp), displaySmall = Type.display.copy(fontSize = 36.sp, lineHeight = 36.sp),
     headlineLarge = Type.headline.copy(fontSize = 28.sp), headlineMedium = Type.headline.copy(fontSize = 25.sp), headlineSmall = Type.headline,
     titleLarge = Type.headline.copy(fontSize = 19.sp), titleMedium = Type.title.copy(color = Color.Unspecified, fontSize = 16.sp), titleSmall = Type.title.copy(color = Color.Unspecified),
     bodyLarge = Type.body.copy(color = Color.Unspecified), bodyMedium = Type.body.copy(color = Color.Unspecified, fontSize = 14.sp), bodySmall = Type.bodySmall.copy(color = Color.Unspecified),
     labelLarge = Type.button.copy(color = Color.Unspecified), labelMedium = Type.label.copy(color = Color.Unspecified), labelSmall = Type.label.copy(color = Color.Unspecified, fontSize = 12.sp),
 ).let { t -> t.copy(headlineSmall = t.headlineSmall.copy(color = Color.Unspecified), headlineMedium = t.headlineMedium.copy(color = Color.Unspecified), headlineLarge = t.headlineLarge.copy(color = Color.Unspecified), titleLarge = t.titleLarge.copy(color = Color.Unspecified), displayLarge = t.displayLarge.copy(color = Color.Unspecified), displayMedium = t.displayMedium.copy(color = Color.Unspecified), displaySmall = t.displaySmall.copy(color = Color.Unspecified)) }
+}
 
 /** The app's one theme: DESIGN.md's dark scheme, square shapes and Saira, whatever the system's light or dark. */
 @Composable

@@ -1,5 +1,7 @@
 package com.spadaval.lor.lor
 
+import com.spadaval.lor.net.parse
+import kotlin.time.toKotlinInstant
 import com.spadaval.lor.net.DeviceHome
 import com.spadaval.lor.net.DevicePeople
 import com.spadaval.lor.net.DeviceState
@@ -55,7 +57,7 @@ class LorWritesTest {
     fun aTaskGivenToTheAgentJoinsAfterTheQueued() {
         val q = LorWrites.Held.home(home, mapOf(boxes.id to held(TaskAction.QUEUE, boxes.title)))
         assertEquals(listOf("Renew the passport", "Find a plumber", "Order boxes", "Draft the lease email"), q.agentQueue.map { it.title })
-        assertEquals(now, q.agentQueue[2].queuedAt)
+        assertEquals(now.toKotlinInstant(), q.agentQueue[2].queuedAt)
         assertNull(q.agentQueue[2].thread)
         // Taken back, and done: out of the queue.
         val back = LorWrites.Held.home(home, mapOf(passport.id to held(TaskAction.UNQUEUE, passport.title), lease.id to held(TaskAction.DONE, lease.title)))
@@ -199,7 +201,7 @@ class LorWritesTest {
         runCurrent()
         assertFalse(LorWrites.TIMER in w.busy)
         // The reply shows while the read after it is under way.
-        assertEquals(DeviceHome.Running("Write", now, paused = true), w.home(r.home)!!.day.running)
+        assertEquals(DeviceHome.Running("Write", now.toKotlinInstant(), paused = true), w.home(r.home)!!.day.running)
         advanceTimeBy(5_001)
         // That read has ended: home is the server's word (this fixture has no timer).
         assertNull(w.home(r.home)!!.day.running)

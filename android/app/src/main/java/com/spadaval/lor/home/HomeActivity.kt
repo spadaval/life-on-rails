@@ -9,7 +9,8 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.util.Log
 import android.content.pm.LauncherApps
-import android.content.pm.ShortcutInfo
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.net.Uri
 import android.graphics.Color
 import android.os.Bundle
@@ -34,6 +35,24 @@ import com.spadaval.lor.lab.LabStates
 import com.spadaval.lor.collect.Launches
 import com.spadaval.lor.quicksend.QuickSend
 import com.spadaval.lor.ui.LorTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntRect
+import com.spadaval.lor.agent.AgentPage
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.datetime.TimeZone
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import kotlin.time.toJavaInstant
+import kotlin.time.toKotlinInstant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -273,10 +292,96 @@ class HomeActivity : ComponentActivity() {
     /** Search rows' shortcut icons (launcher polish 5.2). */
     private val shortcutIcons = android.util.LruCache<String, ImageBitmap>(100)
 
-    private val actions = object : HomeActions {
+    /** Home's platform on the phone (lor-xdoi): what homecore draws with and what its presses do here. */
+    private val actions = object : HomePlatform {
+        @Composable
+        override fun AppIcon(app: HomeApp, size: Dp, modifier: Modifier) = LauncherIcon(app, size, modifier)
+
+        @Composable
+        override fun AgentPanel() = AgentPage()
+
+        @Composable
+        override fun LorPanel() = com.spadaval.lor.lor.LorPanel()
+
+        @Composable
+        override fun SetupCard(modifier: Modifier) = com.spadaval.lor.home.SetupCard(modifier)
+
+        @Composable
+        override fun LorBlock(block: StackBlock, grid: GridPlace) = com.spadaval.lor.lor.LorBlock(block, grid)
+
+        override fun widget(id: Int, provider: String): WidgetFacts? =
+            store.widgets.info(id, provider)?.let { LauncherWidgetFacts(it, it.loadLabel(packageManager) ?: provider) }
+
+        override fun appLabel(provider: String): String = appLabel(this@HomeActivity, provider)
+
+        override suspend fun widgetProviders(previewWidthPx: Int, previewHeightPx: Int, density: Float): List<PickerApp> =
+            withContext(Dispatchers.IO) { providers(this@HomeActivity, density) }
+
+        @Composable
+        override fun WidgetView(block: StackBlock.Widget, facts: WidgetFacts, widthDp: Float, onLongPress: (() -> Unit)?, press: WidgetPress, modifier: Modifier) =
+            LauncherWidgetView(store.widgets, block, facts, widthDp, onLongPress, press, modifier)
+
+        @Composable
+        override fun rememberMinute(): kotlin.time.Instant = rememberAndroidMinute().toKotlinInstant()
+
+        @Composable
+        override fun rememberNextAlarm(): kotlin.time.Instant? = rememberAndroidNextAlarm()?.toKotlinInstant()
+
+        override val zone: TimeZone get() = TimeZone.currentSystemDefault()
+
+        override fun dateWords(now: kotlin.time.Instant): String = DateTimeFormatter.ofPattern("EEEE d MMMM").format(now.toJavaInstant().atZone(ZoneId.systemDefault()))
+
+        override val fahrenheit: Boolean by lazy { usesFahrenheit() }
+
+        private val reads get() = (application as LorApp).reads
+
+        override val lor: State<LorRead> = derivedStateOf {
+            val r = reads
+            LorRead(r.home, r.current, r.error != null, r.homeRead.at?.toKotlinInstant())
+        }
+
+        override suspend fun holdLor() = reads.hold()
+
+        override val opens: StateFlow<AppOpens> get() = store.opens
+
+        override fun readUsage() = store.readUsage()
+
+        override val dots: StateFlow<Set<String>> get() = Dots.withDots
+
+        override val wallpaperInk: StateFlow<Ink> get() = store.ink.ink
+
+        override val lorBar: UndoMessage? get() = (application as LorApp).writes.bar
+
+        @Composable
+        override fun rememberBlur(): Boolean = rememberCrossWindowBlur()
+
+        @Composable
+        override fun BlurBehind(on: Boolean, shown: () -> Float) = WindowBlurBehind(on, LocalView.current, shown)
+
+        @Composable
+        override fun SystemBars(darkIcons: Boolean) {
+            val view = LocalView.current
+            var barsDark by remember { mutableStateOf<Boolean?>(null) }
+            SideEffect {
+                if (barsDark == darkIcons) return@SideEffect
+                val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+                androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = darkIcons
+                    isAppearanceLightNavigationBars = darkIcons
+                }
+                barsDark = darkIcons
+            }
+        }
+
+        override fun copy(label: String, text: String) {
+            getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(label, text))
+        }
+
+        override fun now(): Long = System.currentTimeMillis()
+
         override fun open(app: HomeApp, at: At, icon: IconSpot?) {
             try {
-                val from = icon?.bounds()
+                val from = icon?.bounds()?.toRect()
                 launcherApps.startMainActivity(app.info.componentName, app.user, from?.let(::onScreen), launchOptions(from))
                 record(app, at, shortcut = null)
             } catch (e: RuntimeException) {
@@ -305,7 +410,7 @@ class HomeActivity : ComponentActivity() {
                         } catch (e: RuntimeException) {
                             null
                         }
-                        MenuShortcut(s, icon)
+                        MenuShortcut(LauncherShortcut(s), icon)
                     }
             } catch (e: RuntimeException) {
                 // A locked profile (IllegalStateException) or no longer the default home (SecurityException).
@@ -313,7 +418,8 @@ class HomeActivity : ComponentActivity() {
             }
         }
 
-        override suspend fun shortcutIcon(shortcut: ShortcutInfo): ImageBitmap? {
+        override suspend fun shortcutIcon(found: AppShortcut): ImageBitmap? {
+            val shortcut = found.android
             val key = "${shortcut.`package`}/${shortcut.id}#${shortcut.userHandle}"
             shortcutIcons.get(key)?.let { return it }
             return withContext(Dispatchers.IO) {
@@ -327,9 +433,10 @@ class HomeActivity : ComponentActivity() {
             }
         }
 
-        override fun openShortcut(app: HomeApp, shortcut: ShortcutInfo, at: At, icon: IconSpot?) {
+        override fun openShortcut(app: HomeApp, found: AppShortcut, at: At, icon: IconSpot?) {
+            val shortcut = found.android
             try {
-                val from = icon?.bounds()
+                val from = icon?.bounds()?.toRect()
                 launcherApps.startShortcut(shortcut, from?.let(::onScreen), launchOptions(from))
                 record(app, at, shortcut.id)
             } catch (e: RuntimeException) {
@@ -407,7 +514,8 @@ class HomeActivity : ComponentActivity() {
 
         override fun quickSend() = QuickSend.open(this@HomeActivity, QuickSend.From.HOME)
 
-        override fun addWidget(at: Cell, provider: android.appwidget.AppWidgetProviderInfo) {
+        override fun addWidget(at: Cell, picked: WidgetProvider) {
+            val provider = (picked as LauncherWidgetProvider).info
             val widgets = store.widgets
             // One at a time: a flow cut off without a result leaves its id to the next start's sweep.
             adding?.let { cancelWidget(it, "another widget was picked") }
@@ -526,6 +634,9 @@ class HomeActivity : ComponentActivity() {
             ),
         )
     }
+
+    /** [IntRect] as Android's [android.graphics.Rect]. */
+    private fun IntRect.toRect() = android.graphics.Rect(left, top, right, bottom)
 
     /** The process's home store (launcher polish P1). */
     private val store: HomeStore get() = (application as LorApp).home

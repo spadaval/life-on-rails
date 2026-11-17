@@ -19,6 +19,12 @@ import androidx.compose.ui.platform.LocalDensity
  */
 
 object LabAnchors {
+    /**
+     * Set by the lab page before anything draws. Off, [labAnchor] adds nothing to a modifier, so the
+     * screens the app draws from this module (home, since lor-xdoi) carry no anchors on the phone.
+     */
+    var on = false
+
     private val rects = mutableStateMapOf<String, Rect>()
 
     /** Every anchor on screen now: its name and its visible bounds in dp from the screen's top left. */
@@ -34,7 +40,7 @@ object LabAnchors {
 }
 
 /** Names this element for gesture scripts: its visible bounds are [LabAnchors.all]`[name]` while it is on screen. */
-fun Modifier.labAnchor(name: String): Modifier = this then AnchorElement(name)
+fun Modifier.labAnchor(name: String): Modifier = if (LabAnchors.on) this then AnchorElement(name) else this
 
 private data class AnchorElement(val name: String) : ModifierNodeElement<AnchorNode>() {
     override fun create() = AnchorNode(name)

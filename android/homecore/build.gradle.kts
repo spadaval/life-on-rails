@@ -19,8 +19,7 @@ kotlin {
         minSdk = 31
         // The Saira fonts in androidMain/res/font, read as com.spadaval.lor.homecore.R.font.
         androidResources { enable = true }
-        // commonTest runs here, on the JVM (boat: :homecore:testAndroidHostTest). Under Node the
-        // browser's tests can't start: Compose's Skia (skiko.mjs) fails to load there.
+        // commonTest runs here, on the JVM (boat: :homecore:testAndroidHostTest), and under Node below.
         withHostTest {}
     }
 
@@ -30,6 +29,13 @@ kotlin {
         browser {
             commonWebpackConfig { outputFileName = "homecore.js" }
             testTask { enabled = false }
+        }
+        // The common tests also run under Node (wasmJsNodeTest), so boat needs no headless Chrome. The
+        // hook hands Skia's browser-only loader its wasm, which it cannot read under Node otherwise.
+        nodejs {
+            testTask {
+                nodeJsArgs += listOf("--import", file("node/skiko-under-node.mjs").toURI().toString())
+            }
         }
         binaries.executable()
     }
@@ -48,16 +54,21 @@ kotlin {
             implementation("org.jetbrains.androidx.navigationevent:navigationevent-compose:1.1.0")
             // api: the app's debug fixture entry reads a fixture's JSON parts too.
             api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
-            // Local days and clock times for the panels' rows (lor-rgx4); already in the wasm build
-            // through Compose. Named zones come from the platform (LocalClock.kt), not from a zone
-            // database: the browser build would need @js-joda/timezone for that.
-            api("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+            // Local dates and times for the header and LoR's replies (DeviceHome's zone).
+            api("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
+        }
+        androidMain.dependencies {
+            // The phone's own back handlers (Platform.android.kt), as the app used before the split.
+            implementation("androidx.activity:activity-compose:1.13.0")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
         wasmJsMain.dependencies {
             implementation("org.jetbrains.kotlinx:kotlinx-browser:0.5.0")
+            // Time zones other than UTC for kotlinx-datetime in the browser and under Node (TimeZones.kt).
+            // 2.23.0: the last whose peer range takes the @js-joda/core 3.2.0 kotlinx-datetime 0.8.0 uses.
+            implementation(npm("@js-joda/timezone", "2.23.0"))
         }
     }
 }

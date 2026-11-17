@@ -207,19 +207,20 @@ private fun java.time.LocalDate.common(): LocalDate = LocalDate(year, monthValue
 private fun <T, C> LorReads.Kept<T>.common(convert: (T) -> C): Kept<C> =
     Kept(value?.let(convert), error, current, at?.common())
 
+/** DeviceHome is in common types already (lor-xdoi); its zone goes by name. */
 internal fun DeviceHome.common(): LorHome = LorHome(
-    now = now.common(),
+    now = now,
     zone = zone.id,
     one = one?.let { LorHome.One(it.kicker, it.text, it.why) },
     needsYou = needsYou.map { LorHome.Need(it.id, it.title, it.note, it.google) },
     day = LorHome.Day(
-        wakeStart = day.wakeStart.common(),
-        wakeEnd = day.wakeEnd.common(),
+        wakeStart = day.wakeStart,
+        wakeEnd = day.wakeEnd,
         remainingFraction = day.remainingFraction,
-        running = day.running?.let { LorHome.Running(it.title, it.start.common(), it.paused) },
-        events = day.events.map { LorHome.Event(it.title, it.start.common(), it.end.common()) },
+        running = day.running?.let { LorHome.Running(it.title, it.start, it.paused) },
+        events = day.events.map { LorHome.Event(it.title, it.start, it.end) },
     ),
-    agentQueue = agentQueue.map { LorHome.AgentTask(it.id, it.title, it.queuedAt?.common(), it.thread) },
+    agentQueue = agentQueue.map { LorHome.AgentTask(it.id, it.title, it.queuedAt, it.thread) },
 )
 
 internal fun DeviceTasks.common(): LorTasks = LorTasks(

@@ -1,7 +1,5 @@
 package com.spadaval.lor.net
 
-import com.spadaval.lor.net.DeviceHome.Companion.str
-import com.spadaval.lor.net.DeviceHome.Companion.time
 import org.json.JSONObject
 import java.time.Instant
 

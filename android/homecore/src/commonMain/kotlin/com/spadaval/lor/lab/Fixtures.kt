@@ -62,6 +62,33 @@ object Fixtures {
         search = Parts.demoSearch.copy(searches = List(20) { "search $it" }),
     )
 
+    // ---- Home's own states (lor-xdoi), by the names lor-q165 links to ----
+
+    /** Home's start stack full: every page of 24, folders on each, over the pale wallpaper's dark ink. */
+    val homeFull = demo.copy(
+        name = "home-full", about = "A full home: five pages of 24 with folders, on the cover screen over a pale wallpaper (#current/home-full/cover/pale)",
+        layout = Parts.fullLayout, apps = Apps(Load.OK, Parts.manyApps),
+    )
+
+    val drawerAllScrolled = demo.copy(
+        name = "drawer-all-scrolled", about = "The drawer's All tab, scrolled 600 dp down its letters",
+        where = Where(open = Opened.DRAWER, target = "All", scroll = 600),
+    )
+
+    val searchMixed = demo.copy(
+        name = "search-mixed", about = "Search with an app, contacts and a settings page among the results",
+        search = Parts.demoSearch.copy(
+            settingsPages = Parts.demoSearch.settingsPages + SettingsPage("Storage", "Space and free up"),
+            contacts = Parts.demoSearch.contacts + Contact("Stella Park", listOf("+1 917 555 0142")),
+        ),
+        where = Where(open = Opened.SEARCH, typed = Parts.MIXED_QUERY),
+    )
+
+    val appMenu = demo.copy(
+        name = "app-menu", about = "WhatsApp's long-press menu on home",
+        where = Where(open = Opened.APP_MENU, target = Parts.demoApps.first { it.label == "WhatsApp" }.ref),
+    )
+
     /** The Sensors tab on the demo day after `failed`'s sync: two errors, two permissions missing, WhatsApp off. */
     val sensorsFailed = demo.copy(
         name = "sensors-failed", about = "Sensors after a failed sync with two permissions missing",
@@ -109,7 +136,7 @@ object Fixtures {
     )
 
     /** The State dropdown, in order; the first is what a link without a state opens. */
-    val all: List<Fixture> = listOf(demo, empty, loading, stale, failed, overfull, sensorsFailed, homeSettingsTabs, firstRun, agentWaiting, agentT3Stale, threadLong)
+    val all: List<Fixture> = listOf(demo, empty, loading, stale, failed, overfull, homeFull, drawerAllScrolled, searchMixed, appMenu, sensorsFailed, homeSettingsTabs, firstRun, agentWaiting, agentT3Stale, threadLong)
 
     fun named(name: String): Fixture? = all.firstOrNull { it.name == name }
 

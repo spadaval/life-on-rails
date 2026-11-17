@@ -89,6 +89,7 @@ private fun image(bytes: ByteArray): ImageBitmap = Image.makeFromEncoded(bytes).
 private fun el(id: String): HTMLElement = document.getElementById(id) as HTMLElement? ?: error("index.html has no #$id")
 
 fun main() {
+    LabAnchors.on = true
     MainScope().launch {
         val saira = bundled("fonts/saira.ttf")
         WebFonts.saira = FontFamily(listOf(400, 500, 600).map { w -> Font("saira-$w", saira, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w))) })
@@ -150,7 +151,7 @@ private fun Frame(hash: String, parsed: Parsed, wallpapers: Map<Wallpaper, Image
         // Keyed on what the scene is, not where it is drawn: a fold, a turn or a new wallpaper keeps
         // the surface's place, as the phone does. Home starts it again.
         key(link.version, link.state, homes.intValue) {
-            Lab.version(link.version)!!.draw(LabScene(fixture, link.screen, link.landscape))
+            Lab.version(link.version)!!.draw(LabScene(fixture, link.screen, link.landscape, link.wallpaper))
         }
     }
     val dispatcher = LocalNavigationEventDispatcherOwner.current?.navigationEventDispatcher

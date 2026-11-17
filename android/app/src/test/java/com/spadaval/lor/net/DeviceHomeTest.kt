@@ -6,8 +6,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.Instant
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
+import kotlin.time.Instant
 
 /**
  * `lor/home.ndjson`: three `GET /device/home` replies from the LoR test server, seeded with two
@@ -19,14 +19,14 @@ class DeviceHomeTest {
     @Test
     fun readsTheDayNeedsAndTheOneThing() {
         val home = replies[0]
-        assertEquals(ZoneId.of("America/New_York"), home.zone)
+        assertEquals(TimeZone.of("America/New_York"), home.zone)
         assertEquals(Instant.parse("2026-11-05T13:00:00Z"), home.day.wakeStart)
         assertEquals(Instant.parse("2026-11-06T03:00:00Z"), home.day.wakeEnd)
         assertEquals(listOf("Reply to the landlord about the lease", "Shortlist ceremony venues"), home.needsYou.map { it.title })
         assertEquals("He needs an answer by Friday.", home.needsYou[0].note)
         assertEquals(listOf("Dentist", "Dinner with Priya"), home.day.events.map { it.title })
         assertEquals("Dentist", home.one!!.text)
-        assertFalse(home.one.isTimer)
+        assertFalse(home.one!!.isTimer)
         assertNull(home.day.running)
         assertTrue(home.day.remainingFraction in 0.0..1.0)
     }

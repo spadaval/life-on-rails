@@ -291,6 +291,9 @@ object Parts {
 
     // ---- Search and quick dial ----
 
+    /** What search-mixed has typed: an app, contacts and a settings page all match it. */
+    const val MIXED_QUERY = "st"
+
     val demoSearch = SearchSources(
         contacts = listOf("Maya Okafor", "Daniel Reyes", "Priya Raman", "Lena Fischer", "Sam Whitfield", "Inês Carvalho", "Marcus Bell", "Grandpa Joe")
             .mapIndexed { i, n -> Contact(n, listOf("+1 917 555 01${(10 + i)}")) },

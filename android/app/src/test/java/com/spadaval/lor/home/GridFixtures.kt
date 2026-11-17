@@ -3,7 +3,7 @@ package com.spadaval.lor.home
 /*
  * The default grid's places, for tests written against version 1's pages (lor-euec): page 0 is
  * home's `apps` block, the second block of the stack at [1, 0]; page n after it is the `apps`
- * block of the stack at [1 + n, 0].
+ * block of the stack at [1 + n, 0]. The app's file tests keep this copy of homecore's.
  */
 
 val HOME_APPS = BlockAt(Cell(1, 0), 1)

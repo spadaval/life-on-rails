@@ -31,89 +31,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.text.Collator
-import java.time.ZoneId
-
-/** One launchable activity, its label read once (`getLabel` loads it from the package each call). */
-class HomeApp(val label: String, val info: LauncherActivityInfo) {
-    val packageName: String get() = info.componentName.packageName
-    val user: UserHandle get() = info.user
-    val key = "${info.componentName.flattenToString()}#${info.user}"
-    val mainProfile: Boolean get() = user == Process.myUserHandle()
-    /** As refs name it: any profile but the main one is the work profile (a phone has at most one, lor-72c3). */
-    val id = AppId(packageName, info.componentName.className, work = !mainProfile)
-    /**
-     * When the package was first installed, read once (each read asks the package manager). It
-     * is the main profile's: `LauncherActivityInfo.getFirstInstallTime` ignores the profile.
-     */
-    val firstInstalled: Long = info.firstInstallTime
-
-    /** The label prepared for search once (launcher polish 5.1), on the first search that needs it. */
-    val searchName: Prepared by lazy { Match.prepare(label) }
-}
-
-/** A shortcut search can find (launcher polish 5.2): [conversation] for a messaging app's chat. */
-class ShortcutHit(val info: ShortcutInfo, val conversation: Boolean) {
-    val label: String get() = (info.shortLabel ?: info.longLabel)?.toString() ?: info.id
-}
-
-/** A contact search can find (launcher polish 5.6): its [numbers] as stored, the first shown. */
-class SearchContact(val id: Long, val lookupKey: String, val name: String, val numbers: List<String>)
-
-/**
- * What search finds besides apps, prepared off the main thread and held in memory (launcher
- * polish 5.1): no keystroke asks Android for anything.
- */
-data class SearchSources(
-    val targets: SearchTargets = SearchTargets(null, null),
-    val shortcuts: List<Found<Any>> = emptyList(),
-    val settings: List<Found<Any>> = emptyList(),
-    val contacts: List<Found<Any>> = emptyList(),
-)
-
-/** What home shows from the layout file: the parsed file, or why it can't be used. */
-sealed interface LayoutState {
-    data object Loading : LayoutState
-    data class Ready(val file: LayoutFile) : LayoutState
-    /**
-     * The file can't be used; home shows [lastGood], the last file that parsed, if there is one
-     * (launcher polish 3.1). [left] names the old dock apps it has no room for (lor-bdus): shown
-     * without them, it is not offered as a restore.
-     */
-    data class Broken(val message: String, val lastGood: LayoutFile?, val left: List<AppRef> = emptyList()) : LayoutState
-}
-
-/** The layout home draws: the file, or while it is broken, the last good one. */
-val LayoutState.shown: LayoutFile?
-    get() = when (this) {
-        is LayoutState.Ready -> file
-        is LayoutState.Broken -> lastGood
-        LayoutState.Loading -> null
-    }
-
-/** How the app list's last load went: not done yet, done, or back with no apps (tried again on resume). */
-enum class AppsLoad { LOADING, LOADED, EMPTY }
-
-/** What home's grid shows (launcher polish 3.2). */
-enum class HomeBody {
-    /** The date header alone: nothing to shape a skeleton with yet. */
-    NOTHING,
-    /** A still slot where each of the file's items will be. */
-    SKELETON,
-    /** The app list came back empty. */
-    APPS_DIDNT_LOAD,
-    /** The layout places nothing on home. */
-    EMPTY,
-    GRID,
-}
-
-/** What home's grid shows, from the app list's load, the layout home draws, and how many home items it placed. */
-fun homeBody(apps: AppsLoad, layout: LayoutFile?, placed: Int): HomeBody = when {
-    apps == AppsLoad.LOADING -> if (layout == null) HomeBody.NOTHING else HomeBody.SKELETON
-    apps == AppsLoad.EMPTY -> HomeBody.APPS_DIDNT_LOAD
-    layout == null -> HomeBody.NOTHING
-    placed == 0 -> HomeBody.EMPTY
-    else -> HomeBody.GRID
-}
 
 /**
  * The app list and the layout file for the whole process (launcher polish, P1): created once by
@@ -232,7 +149,7 @@ class HomeStore(private val context: Context) {
             writeAtomically(statsFile, _stats.value.toJson())
             if (!app.mainProfile) {
                 // Rebased first for a clock set since the last read, so the open lands on the right basis.
-                _opens.value = _opens.value.corrected(at, SystemClock.elapsedRealtime(), bootCount()).opened(opensKey(app.id), at, ZoneId.systemDefault())
+                _opens.value = _opens.value.corrected(at, SystemClock.elapsedRealtime(), bootCount()).opened(opensKey(app.id), at, kotlinx.datetime.TimeZone.currentSystemDefault())
                 writeAtomically(opensFile, _opens.value.toJson())
             }
         }
@@ -257,7 +174,7 @@ class HomeStore(private val context: Context) {
             it.getNextEvent(e)
             if (e.eventType == UsageEvents.Event.ACTIVITY_RESUMED && e.packageName != null) events += Resumed(e.packageName, e.timeStamp)
         }
-        val next = old.withUsage(events, ignoredForOpens(), now, clock, boot, ZoneId.systemDefault())
+        val next = old.withUsage(events, ignoredForOpens(), now, clock, boot, kotlinx.datetime.TimeZone.currentSystemDefault())
         _opens.value = next
         writeAtomically(opensFile, next.toJson())
         Log.i(TAG, "quick dial read ${events.size} app resumes since ${if (old.cursor > 0) "the last read" else "a week ago"} in ${System.currentTimeMillis() - now} ms (${next.counts.size} apps counted)")
@@ -387,12 +304,12 @@ class HomeStore(private val context: Context) {
                 emptyList()
             }
         }.filter { it.isEnabled }.map { info ->
-            val hit = ShortcutHit(info, isConversation(info.categories, info.isCached))
+            val hit = ShortcutHit(LauncherShortcut(info), isConversation(info.categories, info.isCached))
             val names = listOfNotNull(info.shortLabel, info.longLabel).map { Match.prepare(it.toString()) }
             Found<Any>(Kind.SHORTCUTS, "s:${info.`package`}/${info.id}#${info.userHandle}", names, hit)
         }
         val kept = if (pkg == null) emptyList() else _search.value.shortcuts.filterNot {
-            val i = (it.value as ShortcutHit).info
+            val i = (it.value as ShortcutHit).info.android
             i.`package` == pkg && (user == null || i.userHandle == user)
         }
         _search.value = _search.value.copy(shortcuts = kept + fresh)
@@ -520,7 +437,7 @@ class HomeStore(private val context: Context) {
     }
 
     private fun activities(pkg: String?, user: UserHandle): List<HomeApp> =
-        launcherApps.getActivityList(pkg, user).map { HomeApp(it.label.toString(), it) }
+        launcherApps.getActivityList(pkg, user).map { LauncherApp(it.label.toString(), it) }
 
     private fun broken(message: String): LayoutState.Broken {
         val good = store.readLastGood()
@@ -577,7 +494,7 @@ class HomeStore(private val context: Context) {
 
     companion object {
         private const val TAG = "LorHome"
-        const val SEARCH_TAG = "LorSearch"
+        const val SEARCH_TAG = com.spadaval.lor.home.SEARCH_TAG
         /** How far back quick dial's first read of usage events looks; Android keeps less. */
         private const val USAGE_FIRST_MS = 7L * 24 * 60 * 60 * 1000
     }
