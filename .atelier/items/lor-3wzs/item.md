@@ -128,10 +128,12 @@ Back and Close followed the history rules above, and the scripted checks pass. B
 
 - **Checks.** `tsc -p prototype/dashboard/tsconfig.json` passes, `vitest run` passes 206 of 206, and `vite build` builds.
 - **Tooling outside the repository.** The interaction, quick-look, repeat-check and lab-check scripts are in `~/.cache/lor-3wzs/` (`interact.mjs`, `look.mjs`, `repeat.mjs`, `labcheck.mjs`). The dev server ran on :3863 as asked.
-- **Links name things by id** (tasks, goals, people; notes by slug), so a renamed task keeps its pane and two tasks with one title open separately. A title still works in a hand-written link, which is what the shots use, since ids change each time the snapshot is remade.
+- **Links name things by id** (tasks, goals, people; notes by slug), so a renamed task keeps its pane and two tasks with one title open separately. A title still works in a hand-written link, which is what the shots use, since ids change each time the snapshot is remade; once it opens, the link is rewritten to the id in place.
 - **Rough where it does not show.** The crowded flags are invented in the view. People's "due a first hello" stands for "never in touch, with a cadence set".
 
 ### Responses
 
 - 1-b4nm.1: fixed in 8a4a052
 - 1-b4nm.2: fixed in 8a4a052
+- 2-xrss.1: fixed in b195a7e
+- 2-xrss.3: fixed in b195a7e
