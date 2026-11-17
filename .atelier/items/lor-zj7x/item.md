@@ -44,7 +44,7 @@ One command loads a made-up but full life into the test database, so every scree
 
 ## Report
 
-Three commits: the clock (9d9820d), the demo set and its loader (2712d01), the variants (5594e3a).
+Commits: the clock (9d9820d), the demo set and its loader (2712d01), the variants (5594e3a), then two fixes after a self-review: `<Ago>` reads the time at each render again on the real clock and `createIntent` stamps once, and variant switches queue in the process rather than each holding a pooled connection on an advisory lock.
 
 **The clock** (`src/server/clock.ts`). `clockNow()` is the owner's now everywhere it means the present: every `now = new Date()` default and request-entry `new Date()` in the server, and the SQL `now()` that a screen compares against or shows (task done `t`, `flagged_at`, `queued_at`, `archived_at`, page versions, `created_at`/`updated_at` on new intents and pages, people's last meeting, the 7-day context window, reset visibility). The gate `fixedClock()` returns a time only when the database name is exactly `life_on_rails_test`. Then it reads `LOR_FAKE_NOW` for the server, and `at=` from the request URL, or from the Referer for a page's server-function calls. The server entry (`src/server.ts`) runs each request inside that clock with AsyncLocalStorage. The shell hands the fixed time to the page, and `useNow` (`src/components/clock.tsx`) replaces `useNow` in `index.tsx`, `useTick` and the sidebar stamp in `__root.tsx`, and `ago()` in Tasks and `<Ago>`. With a fixed time these stop ticking. The root route keeps `at=` and `data=` across links (`retainSearchParams`). A time is `09:00` (on the server clock's day), a local `2026-11-17T09:00`, or an instant with an offset. An owner's edit is never folded into a head version dated after now (`amendable` in `pages.ts`), which a clock set earlier than a head's real stamp would otherwise allow.
 
@@ -54,7 +54,7 @@ These stay on the real clock on purpose: durations and timeouts (`scheduler`, `r
 
 Contents: 7 goals with 7 projects, 7 habits and a metric (4 goals have hours this week, 3 have none). 42 tasks: 39 own plus 3 synced from Google, covering open, waiting (3), later (4), done today (4), with the agent (6, 3 queued), flagged with a note (3), past due (5) and undated. 20 people with cadences (7 overdue) and birthdays in 3, 12, 18 and 26 days, 2 organisations, 3 short codes and a WhatsApp group. 32 pages with links between them: two pinned besides `me`, two day write-ups, a short brief today and a long one on this week's Monday, and `topics/lisbon-trip` with five versions by owner, agent, owner, agent, owner. Today has calendar events, timer, phone and place blocks, and the agent's proposal on a phone block. Maya and Daniel have texts, WhatsApp and mail both ways. `seeds/demo/README.md` maps links, rows and variants to screen states.
 
-**Variants** (`src/server/demo.ts`): `data=base|running|paused|noflags|failing` on any GET, on the test database only. The current variant is undone first; the `demo_variant` row in `sync_cursor` holds the name, the clock it was applied at, and the undo. An advisory lock serialises a page and its calls.
+**Variants** (`src/server/demo.ts`): `data=base|running|paused|noflags|failing` on any GET, on the test database only. The current variant is undone first; the `demo_variant` row in `sync_cursor` holds the name, the clock it was applied at, and the undo. Switches queue one at a time in the process. Five concurrent `data=` page loads were served without a hang.
 
 **Checked**
 - `pnpm test` 181 passed, including `tests/clock/clock.test.ts`: `LOR_FAKE_NOW` and `at=` are ignored on the real database and on `_dev`, `_test2` and an unparsable URL. `tests/verify-lor.test.ts` adds `demo --dry-run` refusing the real database and `_dev`.
@@ -68,5 +68,6 @@ Contents: 7 goals with 7 projects, 7 habits and a metric (4 goals have hours thi
 - Weather is a live Google call for the demo's invented Home coordinates, through the env file's `GOOGLE_MAPS_KEY`, with no test-only weather code. The reading therefore changes from day to day. The db test injects a fixed `WeatherCache`.
 - `?at=` on the real database is shown by the gate's unit tests. I did not run a server on the real database to try it.
 - "From the same data" means Today at 09:00 draws the rest of the day's timer and phone blocks ahead of now, as noted in the README.
+- Not checked: whether `src/server.ts` is also the entry under `vite dev`. lor-nde9's `:3858` dev server needs it for `at=` and `data=`, so check that first there.
 - The test database is shared. `pnpm test:db` empties it, so run `pnpm demo:test` again after it.
 
