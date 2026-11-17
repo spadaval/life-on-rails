@@ -134,6 +134,39 @@ Drive the behaviour your change is about, including the motion or state change
 a reviewer would watch (a drag, a swipe, a picked-up item), not just the end
 screen.
 
+## Designing
+
+Two tools for changing how the dashboard looks. They are for designing quickly,
+**not evidence for a review**: a reviewer still wants what `screen` and `api`
+collect above.
+
+```
+pnpm demo:test               # the demo set in the test database first
+scripts/ui-dev.sh            # pnpm ui:dev: Vite with hot reload on 127.0.0.1:3858
+node scripts/shots.mjs       # pnpm shots: every screen and state, at 1500, 1100 and 412 px
+```
+
+- **`scripts/ui-dev.sh`** serves the working tree on the test database at
+  `:3858`, with no jobs, channel or wall listener. A saved route or
+  `src/styles.css` shows in the open page in about a tenth of a second. It
+  refuses lor-web's ports, a port already taken, and any database but
+  `life_on_rails_test` (exit 3). `:3857` (`up`) and `:3858` share that database.
+- **`node scripts/shots.mjs`** opens each link in `shots/dashboard.json` and
+  captures it; nothing is clicked, so the same link opened by hand draws the
+  same state. `--list` prints names and links, `--only <text>` picks shots by
+  name or screen, `--base http://127.0.0.1:3857` uses the built test server,
+  `--catalogue <file>` another catalogue (the lab's and the prototype's are
+  their own files, with a base and a `wait` for a canvas). It writes
+  `~/.local/state/lor-shots/<catalogue>/` (or `--out`): one PNG per shot and
+  width, the run before in `previous/`, and `index.html`, a gallery by screen
+  with a Before button (key `b`). A full run takes about 25 s. It refuses
+  lor-web's ports except for links under `/lab/`.
+- Links name their state: `at=` and `data=` (above), and on the dashboard
+  `block=14:30` (Today, the block covering that time), `id=` a task, goal or
+  person by title or name, `pick=1,2,3` (Tasks rows by position, id or title),
+  `edit=1` (Goals), `history=1` (Notes), and on any page `add=<text>` (quick add
+  open with it typed; write `#` as `%23`) and `scroll=<px>`.
+
 ## Evidence
 
 Write evidence under `/tmp/lor-verify/<checkout>/` (or anywhere outside the
