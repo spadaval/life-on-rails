@@ -27,15 +27,29 @@ object LabAnchors {
 
     private val rects = mutableStateMapOf<String, Rect>()
 
+    /**
+     * Every node carrying each name, with its bounds, last placed last. Two nodes can carry one name
+     * for a while (a sheet leaving while a pane arrives with the same content); the name shows the
+     * last placed, and when that one goes, the one that stays.
+     */
+    private val owners = mutableMapOf<String, LinkedHashMap<Any, Rect>>()
+
     /** Every anchor on screen now: its name and its visible bounds in dp from the screen's top left. */
     val all: Map<String, Rect> get() = rects
 
-    internal fun put(name: String, rect: Rect) {
+    internal fun put(name: String, rect: Rect, owner: Any) {
+        val held = owners.getOrPut(name) { LinkedHashMap() }
+        held.remove(owner)
+        held[owner] = rect
         if (rects[name] != rect) rects[name] = rect
     }
 
-    internal fun remove(name: String) {
-        rects.remove(name)
+    /** Takes [owner]'s [name] off; the name stays on screen while another node carries it. */
+    internal fun remove(name: String, owner: Any) {
+        val held = owners[name] ?: return
+        held.remove(owner)
+        val left = held.values.lastOrNull()
+        if (left == null) { owners.remove(name); rects.remove(name) } else if (rects[name] != left) rects[name] = left
     }
 }
 
@@ -46,7 +60,7 @@ private data class AnchorElement(val name: String) : ModifierNodeElement<AnchorN
     override fun create() = AnchorNode(name)
     override fun update(node: AnchorNode) {
         if (node.name != name) {
-            LabAnchors.remove(node.name)
+            LabAnchors.remove(node.name, node)
             node.name = name
         }
     }
@@ -56,8 +70,8 @@ private class AnchorNode(var name: String) : Modifier.Node(), GlobalPositionAwar
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
         val d = currentValueOf(LocalDensity).density
         val b = coordinates.boundsInRoot()
-        LabAnchors.put(name, Rect(b.left / d, b.top / d, b.right / d, b.bottom / d))
+        LabAnchors.put(name, Rect(b.left / d, b.top / d, b.right / d, b.bottom / d), this)
     }
 
-    override fun onDetach() = LabAnchors.remove(name)
+    override fun onDetach() = LabAnchors.remove(name, this)
 }
