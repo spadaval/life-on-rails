@@ -108,3 +108,8 @@ The measuring runs one video or frame list per process, loads one frame at a tim
 **Found along the way, not fixed here:**
 
 - The verify skill (`.claude/skills/verify-lor/SKILL.md`, "Evidence") still tells authors to run `atelier evidence record`, which this Atelier does not have. lor-3hnk's report noted this too.
+
+### Responses
+
+1-vr61.1: fixed in 005b523
+1-vr61.2: fixed in 005b523
