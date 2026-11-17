@@ -1,19 +1,20 @@
 #!/bin/bash
 # Build the LoR Android app on the boat VM lor-android-build (set up by boat-setup.sh).
 # Usage: android/boat-build.sh <checkout-root> <out-dir> [gradle tasks...]
-# Default tasks: assembleDebug testDebugUnitTest, homecore's tests (testAndroidHostTest) and the
-# launcher lab's bundle (task arguments and the checkout's name must not contain quotes or spaces;
-# tasks must produce a debug APK, unit-test results or the lab, not a release).
+# Default tasks: assembleDebug testDebugUnitTest, testReleaseUnitTest (the release build's own
+# tests: it has no fixture entry), homecore's tests (testAndroidHostTest) and the launcher lab's
+# bundle (task arguments and the checkout's name must not contain quotes or spaces; tasks must
+# produce a debug APK, unit-test results or the lab, not a release).
 # Syncs the checkout's android/ to the VM, builds there under a lock, and on success copies
 # outputs/apk/debug/app-debug.apk, the unit-test reports (homecore's under homecore/) and the lab's
 # development bundle (lab/, served as files) into <out-dir>. Fails, without
 # resuming it, if the VM is stopped (`boat resume bx_fxc6p2bw`; it stops itself 30 min after use).
 # It sets the VM's remaining lifetime to 30 min, which cuts any longer one set by hand.
 set -euo pipefail
-[ $# -ge 2 ] || { sed -n 3,11p "$0"; exit 2; }
+[ $# -ge 2 ] || { sed -n 3,12p "$0"; exit 2; }
 B=${LOR_BOAT_VM:-bx_fxc6p2bw}
 ROOT=$(cd "$1" && pwd); OUT=$2; shift 2
-TASKS=${*:-assembleDebug testDebugUnitTest :homecore:testAndroidHostTest :homecore:wasmJsBrowserDevelopmentExecutableDistribution}
+TASKS=${*:-assembleDebug testDebugUnitTest testReleaseUnitTest :homecore:testAndroidHostTest :homecore:wasmJsBrowserDevelopmentExecutableDistribution}
 # A build directory per checkout path on the VM; transfer files and logs per run.
 NAME=$(basename "$ROOT")-$(echo "$ROOT" | sha1sum | cut -c1-8)
 RUN=$NAME-$$-$RANDOM
