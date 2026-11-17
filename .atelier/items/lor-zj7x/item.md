@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-zj7x
 title: A demo dataset fills every dashboard screen and the phone's panels on the test server
-status: changes_requested
+status: in_review
 mission: lor-2803
 labels:
 - design-lab
@@ -50,11 +50,11 @@ Commits: the clock (9d9820d), the demo set and its loader (2712d01), the variant
 
 These stay on the real clock on purpose: durations and timeouts (`scheduler`, `registry`, the channel's poll), ids (`uuidv7`), logs, Google token expiry, the WhatsApp import's state file, and the sync jobs (`calendarSync`, `tasksSync`, `contactsSync`, `money/sync`, `mailCheck`, `mail/wake`). The test server runs no jobs, and the loader passes those syncs an explicit `now`. `fill.ts` keeps SQL `now()` for `updated_at` and for expiring a superseded proposal: neither is read by a screen.
 
-**The demo set** (`seeds/demo/demo.json`, `seeds/demo/pages/*.md`, `scripts/demo.ts`). `node .claude/skills/verify-lor/verify.mjs demo` (`pnpm demo:test`) refuses any database but `life_on_rails_test` with the same `guardDb()`. `loadDemo()` refuses again before its first query (`refuseUnlessTest`), since `env.ts` defaults `DATABASE_URL` to the real database. It then truncates, runs `ensureSeed`, and writes every row through the write paths, each inside `withClock(<when it happened>)`. Calendar, Google Tasks and mail go through `syncCalendars`, `syncTasks` and `mailCheck` with fake ports. The phone's apps, location fixes, texts, calls and WhatsApp go through `ingest()`, so phone and place blocks come from fill. Two things are inserted directly because nothing but their source writes them: a group's members (only a WhatsApp backup) and each job's last ok run. The ok runs are dated 23:55 on the demo day, so `/status` reads healthy at any `at=` that day. The seed pages `agent`, `me`, `messaging-rules` and `inbox` are overwritten with demo text, so no screenshot shows the owner's own seed pages. Loading takes about 1.4 s, 1.9 s through the CLI.
+**The demo set** (`seeds/demo/demo.json`, `seeds/demo/pages/*.md`, `scripts/demo.ts`). `node .claude/skills/verify-lor/verify.mjs demo` (`pnpm demo:test`) refuses any database but `life_on_rails_test` with the same `guardDb()`. `loadDemo()` refuses again before its first query (`refuseUnlessTest`), since `env.ts` defaults `DATABASE_URL` to the real database. It then truncates, runs `ensureSeed`, and writes every row through the write paths, each inside `withClock(<when it happened>)`. Calendar, Google Tasks and mail go through `syncCalendars`, `syncTasks` and `mailCheck` with fake ports. The phone's apps, location fixes, texts, calls and WhatsApp go through `ingest()`, so phone and place blocks come from fill. Two things are inserted directly because nothing but their source writes them: a group's members (only a WhatsApp backup) and each job's last ok run. The ok runs are dated 23:55 on the demo day, so `/status` reads healthy at any `at=` that day. The system pages `agent`, `me`, `messaging-rules` and `inbox` are created from demo text before `ensureSeed`, which then leaves them alone, so the owner's seed text is in no version; the loader refuses if any `seed` version remains. Loading takes about 1.4 s, 1.9 s through the CLI.
 
 Contents: 7 goals with 7 projects, 7 habits and a metric (4 goals have hours this week, 3 have none). 42 tasks: 39 own plus 3 synced from Google, covering open, waiting (3), later (4), done today (4), with the agent (6, 3 queued), flagged with a note (3), past due (5) and undated. 20 people with cadences (7 overdue) and birthdays in 3, 12, 18 and 26 days, 2 organisations, 3 short codes and a WhatsApp group. 32 pages with links between them: two pinned besides `me`, two day write-ups, a short brief today and a long one on this week's Monday, and `topics/lisbon-trip` with five versions by owner, agent, owner, agent, owner. Today has calendar events, timer, phone and place blocks, and the agent's proposal on a phone block. Maya and Daniel have texts, WhatsApp and mail both ways. `seeds/demo/README.md` maps links, rows and variants to screen states.
 
-**Variants** (`src/server/demo.ts`): `data=base|running|paused|noflags|failing` on any GET, on the test database only. The current variant is undone first; the `demo_variant` row in `sync_cursor` holds the name, the clock it was applied at, and the undo. Switches queue one at a time in the process. Five concurrent `data=` page loads were served without a hang.
+**Variants** (`src/server/demo.ts`): `data=base|running|paused|noflags|failing` on any GET, on the test database only. The current variant is undone first; the `demo_variant` row in `sync_cursor` holds the name, the clock it was applied at, and the undo. A timer variant keeps the agent's and owner's suggestions on the fill blocks it covers and proposes them again on undo (fill makes only the rules' again). Switches queue one at a time in the process. Five concurrent `data=` page loads were served without a hang.
 
 **Checked**
 - `pnpm test` 181 passed, including `tests/clock/clock.test.ts`: `LOR_FAKE_NOW` and `at=` are ignored on the real database and on `_dev`, `_test2` and an unparsable URL. `tests/verify-lor.test.ts` adds `demo --dry-run` refusing the real database and `_dev`.
@@ -68,6 +68,14 @@ Contents: 7 goals with 7 projects, 7 habits and a metric (4 goals have hours thi
 - Weather is a live Google call for the demo's invented Home coordinates, through the env file's `GOOGLE_MAPS_KEY`, with no test-only weather code. The reading therefore changes from day to day. The db test injects a fixed `WeatherCache`.
 - `?at=` on the real database is shown by the gate's unit tests. I did not run a server on the real database to try it.
 - "From the same data" means Today at 09:00 draws the rest of the day's timer and phone blocks ahead of now, as noted in the README.
-- Not checked: whether `src/server.ts` is also the entry under `vite dev`. lor-nde9's `:3858` dev server needs it for `at=` and `data=`, so check that first there.
+- Under `vite dev` the same entry runs: the round-1 reviewer got `/device/state?at=09:00` on a dev server at `:3858` answering 09:00.
 - The test database is shared. `pnpm test:db` empties it, so run `pnpm demo:test` again after it.
+
+Round 1 fixes: the sidebar clock is drawn in `LOR_TZ` on both renders (the shell carries the zone), and a local `at=` keeps its seconds (finding 4, deferred, fixed anyway as a two-line change). After them, `pnpm test` 181, `pnpm test:db` 144 and typecheck pass. `screen clock` passes with `LOR_TZ=America/Los_Angeles` on this New York host (`/tmp/lor-verify/t3-26edc796-f41a31748128767c/clock-la/`), and the sidebar reads 00:05, 09:00, 15:00 and 21:30 for those `at=` times. Over HTTP, `running` then `base` took the agent's pending proposals from 1 to 0 to 1.
+
+### Responses
+
+1-34ax.1: fixed in 7a25fd1
+1-34ax.2: fixed in cf7cc55
+1-34ax.3: fixed in 0ce6f49
 
