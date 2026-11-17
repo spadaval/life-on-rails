@@ -15,6 +15,13 @@ blocked_by:
 - lor-xdoi
 - lor-rgx4
 - lor-t8lq
+- lor-vx69
+- lor-8mbs
+- lor-3wzs
+- lor-vujy
+- lor-j1fe
+- lor-fdtk
+- lor-8aqh
 implementers: []
 ready:
   by: lead, on the plan agreed in round 7
