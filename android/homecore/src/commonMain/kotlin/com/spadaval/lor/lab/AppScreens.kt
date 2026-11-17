@@ -243,7 +243,7 @@ private fun LabHomeSettings(scene: LabScene) {
                 HomeSettingsUi(
                     file = read.file,
                     broken = read.broken,
-                    wide = scene.screen.widthDp >= HomeLook.WIDE_DP,
+                    wide = scene.widthDp >= HomeLook.WIDE_DP,
                     packs = f.settings.iconPacks.map { IconPackUi(packOf(it), it) },
                     dots = f.phone.permissions["notifications"] ?: true,
                     contacts = ContactsUi(on = f.phone.permissions["contacts"] ?: true),
