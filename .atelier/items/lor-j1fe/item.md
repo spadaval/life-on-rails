@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-j1fe
 title: 'The Timeline direction on the phone in the lab: every required screen, state and interaction'
-status: ready
+status: building
 mission: lor-2803
 labels:
 - launcher
@@ -11,7 +11,8 @@ labels:
 priority: medium
 blocked_by:
 - lor-5fk6
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A6d389a64-570b-463c-8fd4-a12609b788b5%3Adelegate-task%3Aa0cb5bac-d9df-477d-afee-5f6bd1dc133a
 ready:
   by: lead of lor-2803, after the brief (lor-npa6)
   at: 2026-11-17T15:10:01.446560707Z
