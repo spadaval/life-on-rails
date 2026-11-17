@@ -10,8 +10,7 @@ labels:
 - feature
 priority: medium
 blocked_by:
-- lor-3hnk
-- lor-dkut
+- lor-vbfd
 - lor-sghw
 implementers: []
 ready: null
@@ -42,6 +41,7 @@ Home's drawing, its parser and its edits live in one Kotlin Multiplatform module
 
 ## Context
 
+- 2026-11-17, mission lor-2803 (the design lab): the module `android/homecore`, its wasm build, `android/web-dev.sh`, and the move of `ui/Look.kt`, `ui/Palette.kt` and `ui/Press.kt` are done first by lor-vbfd, so this item moves home's drawing into a module that exists and skips those Done when lines' set-up. It no longer waits on the phone's sync (lor-dkut); the sync now follows it and edits the moved files. Sumeet asked on 2026-11-17 for the split to come forward so the launcher can be designed in the browser. Each file this item moves gets its lab fixtures in the shape lor-oech gives.
 - The spike (lor-llmf, its Report) shows the way: its branch `spike/kmp-browser` (`cb91b53`, never merged; worktree `/home/supadava/projects/lor-kmp-spike`) is a reference, not a base. It moved `Drawer.kt`, `Follow.kt`, `Grid.kt`, `GridEdit.kt`, `HomeEdit.kt`, `HomeLook.kt`, `Inner.kt`, `Motion.kt`, `ui/Look.kt` and `ui/Palette.kt` whole, `GridHost.kt` without `gridFinger` (kept in the app's `GridFinger.kt`) and `Layout.kt` without its file store (kept in the app's `LayoutStore.kt`). It didn't move `Drag.kt`, `Minimap.kt` (added by Panels after the spike's base `71ce2c6`), the header, the dots, the drawer cell or `HomeScreen.kt`'s drawing, which it copied into `SpikeHome.kt`.
 - Separating `HomeScreen.kt`'s drawing from its touch, menus and Android services is this item's real work (1,798 lines on 2026-11-08). `Minimap.kt` ties to Android through `Log`, `androidx.activity`'s `BackHandler`, `rememberWidgets()` (the app's `LorApp`), `LocalContext`'s `PackageManager` for a widget provider's label, and `HomeContext`.
 - Waits for Kotlin 2.3.20 (lor-3hnk), Animated text (lor-sghw, which edits `ui/Look.kt` and `HomeScreen.kt`) and the phone's sync (lor-dkut), whose changes to `HomeStore` and `Layout.kt` go in first. Panels has landed, so no other branch is open on `home/`.

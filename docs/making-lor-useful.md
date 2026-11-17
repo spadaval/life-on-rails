@@ -117,6 +117,8 @@ Nothing below is scheduled. Each has the result that would start it.
 
 ## What pauses
 
+**2026-11-17: no longer holds for design work.** After the audit of the dashboard and launcher, Sumeet said pacing "keeps it in a bad state longer" and asked for the whole thing to be fixed. Mission lor-2803 (the design lab) and the rebuild that follows it go ahead beside the slice, and the shared Kotlin module (lor-xdoi) comes forward as the launcher's design tool. The rest of this section is kept as the record of 10 November.
+
 Until the slice has been lived with:
 
 - New launcher capabilities. Fixes found by using it continue.
