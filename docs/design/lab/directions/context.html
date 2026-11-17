@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Direction: Context</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600&family=Saira+Condensed:wght@500;600&display=swap">
+<link rel="stylesheet" href="frames.css">
+<style>
+:root { --bg: #0c0d12; --txt: #ede8e0; --mute: #aca396; --dim: #918879; --line: #24262f; --or: #f08a2c; --cy: #6cc6ec;
+  --sans: "Atkinson Hyperlegible Next", system-ui, sans-serif; --cond: "Saira Condensed", sans-serif; --icon-r: 30%; }
+.top { height: 58px; display: flex; align-items: center; gap: 10px; padding: 0 32px; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--mute); }
+.top b { font: 600 17px/1 var(--cond); letter-spacing: .12em; color: var(--or); margin-right: 18px; }
+.top .tab { padding: 8px 12px; border-radius: 10px; }
+.top .tab.on { background: #1a1b23; color: var(--txt); }
+.top .srch { margin-left: auto; width: 300px; padding: 9px 14px; border-radius: 10px; background: #15161d; color: var(--dim); }
+.scene { position: absolute; left: 32px; top: 82px; width: 900px; bottom: 32px; border-radius: 22px; background: #14151c; box-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 20px 50px rgb(0 0 0 / .4); padding: 26px 30px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto 1fr; gap: 18px 26px; }
+.scene .hd { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 18px; }
+.scene .hd h1 { font: 600 30px/1.2 var(--sans); margin: 4px 0 6px; }
+.scene .hd p { margin: 0; color: var(--mute); font-size: 15px; }
+.scene .hd .tm { margin-left: auto; text-align: right; }
+.scene .hd .tm b { font: 600 34px/1 var(--cond); color: var(--or); display: block; }
+.kk { font-size: 13px; color: var(--dim); }
+.box { border-radius: 14px; background: #191a22; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.box h3 { margin: 0 0 4px; font: 600 14px/1 var(--sans); color: var(--mute); }
+.r { display: flex; align-items: center; gap: 10px; font-size: 15px; padding: 5px 0; }
+.r .ck { width: 18px; height: 18px; border-radius: 6px; border: 1.5px solid #50505a; }
+.r .m { margin-left: auto; color: var(--dim); font-size: 13px; }
+.btn { padding: 9px 14px; border-radius: 10px; background: #262731; font-size: 14px; }
+.btn.pri { background: var(--or); color: #1a0d02; font-weight: 600; }
+.next { position: absolute; left: 956px; right: 32px; top: 82px; height: 300px; border-radius: 20px; background: rgb(108 198 236 / .07); border: 1px solid rgb(108 198 236 / .25); padding: 20px 22px; display: flex; flex-direction: column; gap: 8px; }
+.next h2 { font: 600 20px/1.25 var(--sans); margin: 0; }
+.later { position: absolute; left: 956px; right: 32px; top: 400px; bottom: 32px; border-radius: 20px; background: #111218; padding: 18px 22px; display: flex; flex-direction: column; gap: 4px; }
+.later h3 { margin: 0 0 8px; font: 600 14px/1 var(--sans); color: var(--mute); }
+.chip { font-size: 13px; color: var(--mute); padding: 4px 9px; border-radius: 8px; background: #1d1e27; }
+/* phone */
+.glance { position: absolute; top: 60px; left: 22px; right: 22px; z-index: 2; color: #fff; text-shadow: 0 1px 5px rgb(0 0 0 / .5); }
+.glance b { font: 600 52px/1 var(--cond); display: block; }
+.glance span { font-size: 15px; }
+.sc { position: absolute; left: 12px; right: 12px; top: 176px; z-index: 2; padding: 16px; border-radius: 22px; background: rgb(18 19 26 / .7); backdrop-filter: blur(24px); }
+.sc .kk { color: var(--mute); }
+.sc h2 { font: 600 19px/1.25 var(--sans); margin: 6px 0 10px; }
+.sc .r { font-size: 14px; }
+.home-apps { position: absolute; left: 10px; right: 10px; bottom: 150px; z-index: 2; }
+.sfield { position: absolute; left: 14px; right: 14px; bottom: 78px; height: 50px; z-index: 2; border-radius: 16px; background: rgb(22 23 30 / .75); backdrop-filter: blur(20px); display: flex; align-items: center; padding: 0 18px; color: var(--mute); font-size: 15px; }
+.veil { position: absolute; inset: 0; background: rgb(12 13 18 / .88); backdrop-filter: blur(30px); padding: 54px 14px 0; display: flex; flex-direction: column; gap: 12px; }
+.ph { font: 600 13px/1 var(--sans); color: var(--dim); padding: 0 4px; }
+.card { padding: 14px 16px; border-radius: 18px; background: #191a22; }
+.card .k { font-size: 12px; color: var(--cy); }
+.card h3 { font: 600 17px/1.3 var(--sans); margin: 6px 0 8px; }
+.card .acts { display: flex; gap: 8px; }
+.card .acts .btn { padding: 12px 16px; font-size: 15px; }
+</style></head><body>
+
+<section class="frame" id="today">
+  <div class="top"><b>LoR</b><span class="tab on">Now</span><span class="tab">Ship the Field Guide app</span><span class="tab">Home and admin</span><span class="tab">People</span><span class="tab">All tasks</span><span class="tab">Notes</span><span class="srch">Search, add or ask · /</span></div>
+  <div class="scene">
+    <div class="hd"><div><span class="kk">You're on · Ship the Field Guide app</span><h1>Draft the offline maps spec</h1><p>The design review is at 14:00 tomorrow. Lena is waiting on the icon sizes.</p></div>
+      <div class="tm"><b>47:12</b><span class="btn">Switch</span> <span class="btn">Stop</span></div></div>
+    <div class="box"><h3>Tasks in this project · 6 open</h3>
+      <div class="r"><span class="ck"></span>Send Lena the icon sizes<span class="m">today</span></div>
+      <div class="r"><span class="ck"></span>Fix the crash on rotate in the map view<span class="m">15 Nov</span></div>
+      <div class="r"><span class="ck"></span>Benchmark tile cache sizes<span class="m" style="color:var(--cy)">with the agent</span></div>
+      <div class="r" style="color:var(--dim)">+ Add to this project</div></div>
+    <div class="box"><h3>The page · offline-maps-spec</h3><span style="font-size:14px;color:var(--mute)">Draft v4, last changed 40 min ago. Open questions: cache size, what syncs on cellular.</span><span class="kk">Open the page ›</span>
+      <h3 style="margin-top:10px">People</h3><div class="r">Lena · design · waiting on you</div></div>
+    <div class="box" style="grid-column:1/-1"><h3>Time on this, this week · 18.7 of 15h</h3>
+      <svg viewBox="0 0 800 46" style="width:100%;height:46px"><g fill="#f08a2c"><rect x="0" y="16" width="96" height="16" rx="4"/><rect x="114" y="10" width="96" height="22" rx="4"/><rect x="228" y="4" width="96" height="28" rx="4"/><rect x="342" y="12" width="96" height="20" rx="4" opacity=".6"/></g><g fill="#2a2c36"><rect x="456" y="26" width="96" height="6" rx="3"/><rect x="570" y="26" width="96" height="6" rx="3"/><rect x="684" y="26" width="96" height="6" rx="3"/></g></svg>
+      <span class="kk">Mon to Thu. 35 min unlabelled at 13:10 may be this: <span style="color:var(--txt)">yes</span> · <span style="color:var(--txt)">no</span></span></div>
+  </div>
+  <div class="next"><span class="kk" style="color:var(--cy)">Next · 16:30, in 1h 28m</span><h2>Dentist, then 45 free minutes</h2>
+    <span style="color:var(--mute);font-size:14px">Fits before Portuguese at 18:00:</span>
+    <div class="r"><span class="ck"></span>Fix the dripping bathroom tap<span class="m">30 min</span></div>
+    <div class="r"><span class="ck"></span>Return the library books<span class="m">on the way</span></div></div>
+  <div class="later"><h3>Waiting on you elsewhere</h3>
+    <div class="r"><span style="color:var(--cy)">★</span>Organise Sam's birthday dinner<span class="chip">Friends</span></div>
+    <div class="r"><span style="color:var(--cy)">★</span>Find a physio for the left knee<span class="chip">Half marathon</span></div>
+    <div class="r"><span class="ck"></span>Renew the parking permit<span class="chip">Home and admin</span></div>
+    <span class="kk" style="margin-top:auto">Each opens in its own context.</span></div>
+</section>
+
+<section class="frame" id="home">
+  <div class="wall"></div><div class="status"><span>15:02</span><span>5G ▮</span></div>
+  <div class="glance"><b>15:02</b><span>Tue 17 · 12° rain after 17:00</span></div>
+  <div class="sc"><span class="kk">On · Ship the Field Guide app · 47:12</span><h2>Draft the offline maps spec</h2>
+    <div class="r"><span class="ck"></span>Send Lena the icon sizes</div>
+    <div class="r" style="color:var(--cy)">◆ Next: Dentist 16:30, then 45 min free</div></div>
+  <div class="home-apps apps">
+    <div class="app"><i class="icon c1"></i><span>Phone</span></div><div class="app"><i class="icon c2"></i><span>Messages</span></div><div class="app"><i class="icon c3"></i><span>Chrome</span></div><div class="app"><i class="icon c4"></i><span>Camera</span></div>
+    <div class="app"><i class="icon c5"></i><span>Gmail</span></div><div class="app"><i class="icon c6"></i><span>Maps</span></div><div class="app"><i class="icon c7"></i><span>Photos</span></div><div class="app"><i class="icon c8"></i><span>T3 Code</span></div>
+  </div>
+  <div class="sfield">Search apps, people, or ask</div><div class="gesture"></div>
+</section>
+
+<section class="frame" id="agent">
+  <div class="wall"></div>
+  <div class="veil">
+    <span class="ph">Waiting on you · 2</span>
+    <div class="card" style="outline:1px solid rgb(240 138 44 / .5)"><div class="k">Approval · astromech</div><h3>Run the migration on the test database?</h3><div class="acts"><span class="btn pri">Approve</span><span class="btn">Deny</span></div></div>
+    <div class="card"><div class="k">Question · Field Guide, this project</div><h3>Tile cache size, 256 or 512 MB?</h3><div class="acts"><span class="btn">256 MB</span><span class="btn">512 MB</span><span class="btn">Other…</span></div></div>
+    <span class="ph" style="margin-top:6px">Field Guide, now</span>
+    <div class="card" style="background:#15161d"><div class="r"><span class="ck"></span>Send Lena the icon sizes</div><div class="r" style="color:var(--mute)">Agent: benchmarking tile cache · 12 min</div><div class="r" style="color:var(--mute)">● Timer 47:12 <span class="btn" style="margin-left:auto">Stop</span></div></div>
+    <span class="ph" style="margin-top:6px">Other contexts</span>
+    <div class="card" style="background:#15161d"><div class="r"><span style="color:var(--cy)">★</span>Sam's birthday dinner<span class="m">Friends</span></div><div class="r"><span class="ck"></span>Fix the dripping tap<span class="m">Home</span></div></div>
+  </div><div class="gesture"></div>
+</section>
+</body></html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Direction: Command</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="frames.css">
+<style>
+:root { --bg: #0e0f13; --txt: #e9e7e3; --mute: #a3a09a; --dim: #8b8882; --line: #212329; --or: #f08a2c; --cy: #6cc6ec;
+  --sans: "Geist", system-ui, sans-serif; --mono: "Geist Mono", monospace; --icon-r: 24%; }
+.rail { position: absolute; left: 0; top: 0; bottom: 0; width: 56px; border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 18px; padding-top: 18px; color: var(--dim); font-size: 18px; }
+.rail .on { color: var(--or); }
+.bar { position: absolute; left: 56px; right: 0; top: 0; height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--mute); }
+.bar .crumb { color: var(--txt); font-weight: 600; font-size: 14px; }
+.bar .kb { margin-left: auto; padding: 6px 10px; border-radius: 6px; background: #17181d; color: var(--dim); width: 360px; }
+.bar .tm { padding: 5px 10px; border-radius: 6px; background: rgb(240 138 44 / .12); color: var(--or); font-family: var(--mono); }
+.list { position: absolute; left: 56px; right: 0; top: 52px; bottom: 0; padding: 8px 0; }
+.grp { font: 500 12px/1 var(--sans); color: var(--dim); padding: 14px 24px 6px; }
+.r { height: 32px; display: flex; align-items: center; gap: 12px; padding: 0 24px; font-size: 13.5px; }
+.r.f { background: #191a20; box-shadow: inset 2px 0 0 var(--or); }
+.r .ck { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid #4a4b52; }
+.r .m { margin-left: auto; color: var(--dim); font-size: 12.5px; font-family: var(--mono); }
+.r .g { color: var(--mute); font-size: 12.5px; padding: 1px 7px; border-radius: 5px; background: #1b1c22; }
+.r .ag { color: var(--cy); font-size: 12.5px; }
+.dim { position: absolute; inset: 0; background: rgb(5 6 8 / .55); }
+.pal { position: absolute; left: 50%; top: 120px; width: 680px; margin-left: -312px; border-radius: 14px; background: rgb(24 25 31 / .86); backdrop-filter: blur(24px); box-shadow: 0 24px 60px rgb(0 0 0 / .6), 0 2px 6px rgb(0 0 0 / .4); border: 1px solid #2c2e36; overflow: hidden; }
+.pal .in { padding: 18px 20px; font-size: 18px; border-bottom: 1px solid #2c2e36; }
+.pal .in .cur { display: inline-block; width: 2px; height: 20px; background: var(--or); vertical-align: -3px; }
+.parse { display: flex; gap: 8px; align-items: center; padding: 12px 20px; font-size: 13px; color: var(--mute); border-bottom: 1px solid #2c2e36; }
+.pc { padding: 4px 9px; border-radius: 6px; background: #24252c; color: var(--txt); font-size: 13px; }
+.pc.a { background: var(--or); color: #1a0d02; font-weight: 600; }
+.pc.g { color: var(--or); background: rgb(240 138 44 / .12); }
+.pc.d { color: var(--cy); background: rgb(108 198 236 / .12); }
+.opt { display: flex; align-items: center; gap: 12px; padding: 10px 20px; font-size: 14px; }
+.opt.on { background: rgb(240 138 44 / .1); }
+.opt .k { margin-left: auto; color: var(--dim); font-family: var(--mono); font-size: 12px; }
+.opt .h { color: var(--dim); font-size: 12px; width: 70px; }
+/* phone */
+.hclock { position: absolute; top: 64px; left: 22px; z-index: 2; color: #fff; text-shadow: 0 1px 5px rgb(0 0 0 / .5); }
+.hclock b { font: 500 56px/1 var(--sans); letter-spacing: -.02em; display: block; }
+.hclock span { font-size: 14px; }
+.sugg { position: absolute; left: 12px; right: 12px; bottom: 150px; z-index: 2; border-radius: 18px; background: rgb(20 21 27 / .72); backdrop-filter: blur(24px); padding: 6px 0; }
+.sugg .h { font-size: 12px; color: var(--dim); padding: 8px 16px 4px; }
+.sg { display: flex; align-items: center; gap: 12px; padding: 10px 16px; font-size: 15px; min-height: 48px; }
+.sg .b { margin-left: auto; padding: 7px 12px; border-radius: 9px; background: #2a2b33; font-size: 14px; }
+.sg .b.pri { background: var(--or); color: #1a0d02; font-weight: 600; }
+.sg .i { width: 28px; height: 28px; border-radius: 8px; }
+.field { position: absolute; left: 12px; right: 12px; bottom: 82px; z-index: 2; height: 54px; border-radius: 16px; background: rgb(26 27 33 / .85); backdrop-filter: blur(24px); display: flex; align-items: center; padding: 0 18px; font-size: 16px; color: var(--mute); box-shadow: 0 10px 30px rgb(0 0 0 / .4); border: 1px solid #34353d; }
+.field .t { margin-left: auto; font-family: var(--mono); color: var(--or); font-size: 14px; }
+.dockapps { position: absolute; left: 10px; right: 10px; top: 210px; z-index: 2; }
+.veil { position: absolute; inset: 0; background: rgb(14 15 19 / .93); backdrop-filter: blur(30px); padding: 52px 0 0; }
+.ph { display: flex; justify-content: space-between; padding: 6px 16px 10px; font-size: 13px; color: var(--dim); }
+.ph b { color: var(--txt); font-size: 20px; font-weight: 600; }
+.pr { display: flex; align-items: center; gap: 10px; padding: 0 16px; min-height: 56px; border-top: 1px solid var(--line); font-size: 15px; }
+.pr .s { color: var(--dim); font-size: 12.5px; display: block; }
+.pr .b { margin-left: auto; padding: 8px 12px; border-radius: 9px; background: #24252c; font-size: 14px; }
+.pr .b.pri { background: var(--or); color: #1a0d02; font-weight: 600; }
+.pr .tag { font-size: 12px; color: var(--cy); width: 64px; }
+</style></head><body>
+
+<section class="frame" id="today">
+  <div class="rail"><span class="on">◎</span><span>☑</span><span>✦</span><span>☺</span><span>¶</span></div>
+  <div class="bar"><span class="crumb">Today</span><span>Tue 17 Nov · 7h left · next 16:30 Dentist</span><span class="kb">Type a command or search… ⌘K</span><span class="tm">● maps spec 47:12</span></div>
+  <div class="list">
+    <div class="grp">Needs you · 2</div>
+    <div class="r f"><span class="ag">agent</span>Organise Sam's birthday dinner<span class="m">D done · S seen</span></div>
+    <div class="r"><span class="ag">agent</span>Find a physio for the left knee<span class="m">2 options</span></div>
+    <div class="grp">Due · 5</div>
+    <div class="r"><span class="ck"></span>Fix the dripping bathroom tap<span class="g">Keep the house running</span><span class="m">13 Nov</span></div>
+    <div class="r"><span class="ck"></span>Move the emergency fund to the high-yield account<span class="g">Finances</span><span class="m">14 Nov</span></div>
+    <div class="r"><span class="ck"></span>Fix the crash on rotate in the map view<span class="g">Field Guide</span><span class="m">15 Nov</span></div>
+    <div class="r"><span class="ck"></span>Renew the parking permit<span class="m">16 Nov</span></div>
+    <div class="r"><span class="ck"></span>Return the library books<span class="m">today</span></div>
+    <div class="grp">Time today · 4h 10m tracked · 35m unlabelled</div>
+    <div class="r"><span class="m" style="margin:0;width:90px">09:30–11:10</span>Ship the Field Guide app<span class="m">1h 40m</span></div>
+    <div class="r"><span class="m" style="margin:0;width:90px">13:10–13:45</span><span style="color:var(--dim)">Unlabelled · YouTube, Slack</span><span class="m">L label</span></div>
+    <div class="r"><span class="m" style="margin:0;width:90px">14:13–now</span>Draft the offline maps spec<span class="m">running</span></div>
+  </div>
+  <div class="dim"></div>
+  <div class="pal">
+    <div class="in">book dentist fri #body<span class="cur"></span></div>
+    <div class="parse">Will do: <span class="pc a">Add task</span><span class="pc">Book the dentist</span><span class="pc d">Fri 20 Nov</span><span class="pc g">Body that works</span><span style="margin-left:auto">↵</span></div>
+    <div class="opt on"><span class="h">Do</span>Add task “Book the dentist”, due Friday, for Body that works<span class="k">↵</span></div>
+    <div class="opt"><span class="h">Task</span>Book a dentist appointment (done 3 Oct)<span class="k">⌘↵ open</span></div>
+    <div class="opt"><span class="h">Person</span>Dr Ana Ribeiro, dentist<span class="k">open</span></div>
+    <div class="opt"><span class="h">Timer</span>Start “Book the dentist”<span class="k">⇥ start</span></div>
+  </div>
+</section>
+
+<section class="frame" id="home">
+  <div class="wall"></div><div class="status"><span>15:02</span><span>5G ▮</span></div>
+  <div class="hclock"><b>15:02</b><span>Tue 17 Nov · 12° · 16:30 Dentist</span></div>
+  <div class="dockapps apps">
+    <div class="app"><i class="icon c1"></i><span>Phone</span></div><div class="app"><i class="icon c2"></i><span>Messages</span></div><div class="app"><i class="icon c3"></i><span>Chrome</span></div><div class="app"><i class="icon c4"></i><span>Camera</span></div>
+  </div>
+  <div class="sugg"><div class="h">For now</div>
+    <div class="sg"><i class="i" style="background:#3a2a1a"></i>Approve: migration on test DB<span class="b pri">Approve</span></div>
+    <div class="sg"><i class="i" style="background:#202a33"></i>Stop the maps spec timer<span class="b">Stop</span></div>
+    <div class="sg"><i class="icon c6" style="width:28px;height:28px;margin:0"></i>Maps<span class="b">Open</span></div></div>
+  <div class="field">Search, or do…<span class="t">47:12</span></div>
+  <div class="gesture"></div>
+</section>
+
+<section class="frame" id="agent">
+  <div class="wall"></div>
+  <div class="veil">
+    <div class="ph"><b>Agent</b><span>2 waiting · 3 running</span></div>
+    <div class="pr"><span class="tag">approve</span><span>Run the migration on the test DB?<span class="s">astromech · 4 min</span></span><span class="b pri">Approve</span><span class="b">Deny</span></div>
+    <div class="pr"><span class="tag">question</span><span>Tile cache size?<span class="s">Field Guide · 256 or 512 MB</span></span><span class="b">Answer</span></div>
+    <div class="pr"><span class="tag" style="color:var(--or)">flagged</span><span>Sam's birthday dinner<span class="s">table for eight not booked</span></span><span class="b">Done</span></div>
+    <div class="pr"><span class="tag">running</span><span>Benchmark tile cache sizes<span class="s">Field Guide · 12 min</span></span></div>
+    <div class="pr"><span class="tag">running</span><span>Back up the laptop<span class="s">assistant · 3 min</span></span></div>
+    <div class="pr"><span class="tag" style="color:var(--mute)">task</span><span>☐ Fix the dripping bathroom tap</span></div>
+    <div class="pr"><span class="tag" style="color:var(--mute)">task</span><span>☐ Return the library books</span></div>
+  </div>
+  <div class="field" style="bottom:40px">Ask or do…  “@field-guide …”</div>
+  <div class="gesture"></div>
+</section>
+</body></html>
