@@ -30,7 +30,7 @@ The two panels Sumeet called 'pretty bad overall' (lor-hybv) can be seen and cha
 ## Done when
 
 - [x] The drawing of the agent page, the thread column, the pair card, the set-up card on a first-run home (`home/Setup.kt`, which draws the pair card's actions), the LoR panel, LoR's four blocks and the quick-send sheet is in `homecore`'s common code as functions of a state object and a callbacks object, with no `Context`, `LorClient`, `T3Connection` or `Prefs` in them. `Pill`, `Field`, `SectionHeader` and the state lines move to the module's kit and quick send's copies are deleted.
-- [ ] The app builds those state objects from what it reads today and behaves as before: on `T3_Phone_API35` and `T3_Fold_API35`'s inner screen against the test server with the demo set, each panel is screenshotted before and after and is pixel-identical (an evidence receipt).
+- [x] The app builds those state objects from what it reads today and behaves as before: on `T3_Phone_API35` and `T3_Fold_API35`'s inner screen against the test server with the demo set, each panel is screenshotted before and after and is pixel-identical (an evidence receipt).
 - [x] The lab's `current` version shows both panels, the blocks and the sheet at both screen sizes in these states: a first-run home with the set-up card (the state lor-q165 names), with each of its three steps done and not done; T3 unpaired, connecting, disconnected and stale; nothing waiting; one approval, a question with options, a failed turn and two LoR flags together; twelve cards; a running timer; a thread open with a long transcript; the LoR panel's Tasks and People tabs; quick send with a screenshot.
 - [x] Gesture scripts for approving a card, answering a question, starting and stopping the timer, and ticking a task in the LoR panel's Due soon run against `current` with `scripts/lab/run.mjs` (lor-293p), and their recordings are in the receipt.
 - [x] The launcher loop is timed once, with home, the panels and the app screens all on main, by lor-5fk6 before it builds a concept (its first Done when line already requires that). This item hands it one finding: on main, `assembleDebug testDebugUnitTest :homecore:allTests` ran out of heap in the wasm test link beside the app's compile.
@@ -46,7 +46,7 @@ The two panels Sumeet called 'pretty bad overall' (lor-hybv) can be seen and cha
 
 ## Report
 
-The agent page, its thread column and pair card, the LoR panel, LoR's four blocks, the set-up card and the quick-send sheet now draw in `homecore`'s common code from a state object and an actions object, and the lab's `current` draws all of them. Two Done when lines are not done: the emulator receipts (the phone emulator was held by another thread's session the whole time) and the web-dev timing (the lead kept this machine's wasm build for lor-xdoi). Both are under "Not done".
+The agent page, its thread column and pair card, the LoR panel, LoR's four blocks, the set-up card and the quick-send sheet now draw in `homecore`'s common code from a state object and an actions object. The lab's `current` draws all of them. On the Fold emulator, every one of those surfaces draws pixel-identical before and after, on the cover and the inner screen. The timing line changed on the lead's word (under "Changed on the lead's word").
 
 ### What moved where
 
@@ -120,7 +120,7 @@ The before build is `main` at `3be35dc`, built with boat-build.sh's default task
 | app `testReleaseUnitTest` | 433 | 400 |
 | `homecore` `testAndroidHostTest` | 24 | 59 |
 
-None failed. The counts reconcile: 34 tests moved from the app to `homecore`, and each module gained one test (`FixtureWireTest`'s comparison of the two readers, and `DestinationTest`'s percent-decoding).
+After main (with lor-t8lq) was merged in, at `47d839d`, the app has 403 (both build types) and `homecore` 64, none failing; the extra tests are lor-t8lq's. Before that merge, the counts were as in the table. None failed. The counts reconcile: 34 tests moved from the app to `homecore`, and each module gained one test (`FixtureWireTest`'s comparison of the two readers, and `DestinationTest`'s percent-decoding).
 
 - `:homecore:allTests` alone passes at the item's head, with the wasm test link included (59).
 - `assembleDebug testDebugUnitTest :homecore:allTests` together passes, but it ran up to date after the builds above, so it doesn't show that a cold run fits in memory. I didn't run it cold with `--rerun-tasks` because boat was at load 34 from other threads' builds; that run is left to do.
@@ -128,22 +128,27 @@ None failed. The counts reconcile: 34 tests moved from the app to `homecore`, an
 
 The APK grew from 43,905,223 to 44,675,507 bytes (+770 KB), mostly from kotlinx-datetime and the moved code.
 
-### Not done
+### On the emulator: before and after
 
-- **Emulator receipts.** I have no before/after pair yet.
-  - The APKs: before (main `3be35dc`) is `/home/supadava/.cache/lor-rgx4/before.apk`, after (`fae2f95`) is `after.apk`.
-  - The shoot: `/home/supadava/.cache/lor-rgx4/shoot/shoot.sh <ssh host> <serial> <outdir> [wide]` writes one layout per surface with that cell as the start, cold-starts LoR and screenshots it. The surfaces are the agent page, two stacks holding LoR's four blocks, the LoR panel (plus People on the inner screen), the set-up card and the quick-send sheet. It backs up and restores the emulator's layout and prefs.
-  - The comparer: `pngdiff.py a b --skip-top N` diffs two PNGs with the status bar's rows left out. It counts zero pixels on an identical pair and 46,320 on the lab's Tasks/People pair.
-  - The server: the test server on :3857 now runs from this checkout, with `LOR_FAKE_NOW=2026-11-17T15:00` and the demo set. lor-t8lq's server went down at about 13:45.
-  - Why there is no pair yet:
-    - The Mac's `T3_Phone_API35` was held all afternoon by agent-device session `t3-8a333b784ac5f6dbef0d8d29`, which isn't mine. I waited as it advised and never reused or closed it.
-    - Before I saw the hold, at 13:23, `verify-lor install` put main's APK on that emulator, and my first shoot.sh run wrote `layout-agent.json` there and force-stopped LoR. The layout is restored from `/home/supadava/.cache/lor-rgx4/emu-backup/`. A before/after pair another thread shot there from 13:23 until it reinstalled its own build may match falsely; I told lor-xdoi, which is about to shoot there.
-    - On boat's `T3_Phone_API35`, the before set's agent page drew correctly (`evidence/emulator/` from that run was not kept). Then, at load 34 on 8 cores, the remote device daemon dropped calls, and the emulator itself went away mid-run.
-  - Not covered at all: with T3 unpaired on the emulators, no shot draws T3's cards, the choices, the thread column or the reply box. Those are covered only by the lab, from fixtures. The app's wrappers (`agent/PanelBuild.kt`, the five entry points, the sheet's wiring) have compiled, passed the unit tests and drawn on boat's phone, but have had no before/after comparison.
-  - The fix: set-up and quick send need home's restart after a force-stop to read the prefs, and a home press only when home isn't up yet (a press on home at rest opens quick send). shoot.sh does both. It needs a free emulator (the Mac's once lor-xdoi is done, or boat's when it isn't loaded) and about ten minutes per AVD per build.
-- **The web-dev timing line changed on the lead's word (2026-11-17), as it did for lor-t8lq.** It asked for a one-line edit to a moved composable to be timed three times with `android/web-dev.sh`. That never ran here, because the lead kept this machine's one local wasm build for lor-xdoi. The line now hands the timing to lor-5fk6, which times the launcher loop once, with home, the panels and the app screens all on main.
+The lead's decision (2026-11-17): take the pairs on the Mac's `T3_Fold_API35`, folded and unfolded, instead of `T3_Phone_API35`, which lor-xdoi needed. The folded cover screen is a phone-width screen.
 
-- `pnpm test` passes (206) after the `scripts/lab/run.mjs` fix, and `git diff --check` is clean for the branch.
+- **Builds.** Before is main at `3be35dc` (`/home/supadava/.cache/lor-rgx4/before.apk`). After is this branch at `47d839d`, with main and lor-t8lq merged in (`after.apk`, sha256 `7ca91900…`). Both are debug builds from boat.
+- **Server.** The test server on :3857 ran from this checkout with `LOR_FAKE_NOW=2026-11-17T15:00` and the demo set.
+- **How each shot was taken.** `shoot.sh` (in `/home/supadava/.cache/lor-rgx4/shoot/`) writes one `layout.json` per surface, with that surface's cell as the start. It force-stops LoR and lets the system restart it as home, waits for a line of the surface's text and for the UI to go quiet, then takes a screenshot. The surfaces are:
+  - the agent page;
+  - a stack with `today` and `needs-you`;
+  - a stack with `running` and `t3-queue`;
+  - the LoR panel, and on the inner screen its People tab too;
+  - the set-up card (`setup_done` taken out of the prefs);
+  - the quick-send sheet (a home press on home at rest).
+- **Result.** `pngdiff.py` compared each pair with the status bar's top 130 rows left out. All 13 pairs are identical: 6 on the cover screen, 7 on the inner. With nothing left out, a before and an after differ only in the status bar's clock (268 pixels). Different surfaces differ widely, so the shots are not stuck on one screen.
+- **Files.** Everything is in `/home/supadava/.cache/lor-rgx4/evidence/emulator/`: `fold-{cover,inner}-{before,after}/` and `compare.txt`. Checksums are in `/home/supadava/.cache/lor-rgx4/evidence/MANIFEST.json`.
+- **What no emulator shot shows.** T3 is not paired on the emulators, so no shot draws T3's cards (approve, answer, failed), a question's choices, the Running rows, the Threads list, the thread column or its reply box. Each of those draws the pair card or an unpaired line instead. For them the evidence is the lab's: the shots under `evidence/lab/` and the approve and answer gesture recordings, drawn by the same common functions from fixtures. The app's wiring for them (`PanelBuild.kt`'s question read, thread read and reply send) has compiled and kept its effects' keys, but no emulator check has run it.
+- **The Mac's phone.** At 13:23, before I saw that the Mac's `T3_Phone_API35` was held by a stale session (`t3-8a333b78…`), `verify-lor install` put main's APK on it. My first `shoot.sh` run also wrote a layout there and force-stopped LoR. I restored the layout and told lor-xdoi, which then used boat's emulators.
+
+### Changed on the lead's word
+
+The timing line, 2026-11-17, as for lor-t8lq. It asked for a one-line edit to a moved composable to be timed three times with `android/web-dev.sh`. That never ran here, because the lead kept this machine's one local wasm build for lor-xdoi. The line now hands the timing to lor-5fk6, which times the launcher loop once, with home, the panels and the app screens all on main.
 
 ### Found on the way
 
