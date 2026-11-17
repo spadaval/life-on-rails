@@ -2,19 +2,21 @@
 # Build the LoR Android app on the boat VM lor-android-build (set up by boat-setup.sh).
 # Usage: android/boat-build.sh <checkout-root> <out-dir> [gradle tasks...]
 # Default tasks: assembleDebug testDebugUnitTest, testReleaseUnitTest (the release build's own
-# tests: it has no fixture entry), homecore's tests (testAndroidHostTest) and the launcher lab's
-# bundle (task arguments and the checkout's name must not contain quotes or spaces; tasks must
-# produce a debug APK, unit-test results or the lab, not a release).
+# tests: it has no fixture entry), homecore's tests on both its targets (:homecore:allTests: Android
+# host tests, and the wasm tests under Node) and the launcher lab's production bundle (task
+# arguments and the checkout's name must not contain quotes or spaces; tasks must produce a debug
+# APK, unit-test results or the lab, not a release).
 # Syncs the checkout's android/ to the VM, builds there under a lock, and on success copies
-# outputs/apk/debug/app-debug.apk, the unit-test reports (homecore's under homecore/) and the lab's
-# development bundle (lab/, served as files) into <out-dir>. Fails, without
+# outputs/apk/debug/app-debug.apk, the unit-test reports (homecore's results under homecore/) and the
+# lab (lab/, served as files: the production bundle when the run built it, else the development
+# one) into <out-dir>. Fails, without
 # resuming it, if the VM is stopped (`boat resume bx_fxc6p2bw`; it stops itself 30 min after use).
 # It sets the VM's remaining lifetime to 30 min, which cuts any longer one set by hand.
 set -euo pipefail
-[ $# -ge 2 ] || { sed -n 3,12p "$0"; exit 2; }
+[ $# -ge 2 ] || { sed -n 3,14p "$0"; exit 2; }
 B=${LOR_BOAT_VM:-bx_fxc6p2bw}
 ROOT=$(cd "$1" && pwd); OUT=$2; shift 2
-TASKS=${*:-assembleDebug testDebugUnitTest testReleaseUnitTest :homecore:testAndroidHostTest :homecore:wasmJsBrowserDevelopmentExecutableDistribution}
+TASKS=${*:-assembleDebug testDebugUnitTest testReleaseUnitTest :homecore:allTests :homecore:wasmJsBrowserDistribution}
 # A build directory per checkout path on the VM; transfer files and logs per run.
 NAME=$(basename "$ROOT")-$(echo "$ROOT" | sha1sum | cut -c1-8)
 RUN=$NAME-$$-$RANDOM
@@ -39,12 +41,13 @@ boat scp "$TGZ" "$B:/home/user/src-$RUN.tgz" >/dev/null
 INNER="source ~/lor-env.sh; D=~/w/$NAME/android; mkdir -p \$D;
   find \$D -mindepth 1 -maxdepth 1 ! -name .gradle ! -name .kotlin ! -name build ! -name app ! -name homecore -exec rm -rf {} +;
   for m in app homecore; do [ -d \$D/\$m ] && find \$D/\$m -mindepth 1 -maxdepth 1 ! -name build -exec rm -rf {} +; done;
-  rm -rf \$D/app/build/outputs/apk \$D/app/build/reports/tests \$D/app/build/test-results \$D/homecore/build/test-results \$D/homecore/build/dist;
+  rm -rf \$D/app/build/outputs/apk \$D/app/build/reports/tests \$D/app/build/test-results \$D/homecore/build/test-results \$D/homecore/build/reports/tests \$D/homecore/build/dist;
   { tar xzf ~/src-$RUN.tgz -C ~/w/$NAME && rm ~/src-$RUN.tgz && cd \$D && echo sdk.dir=\$ANDROID_HOME > local.properties &&
   ./gradlew --console=plain $TASKS; } > ~/build-$RUN.log 2>&1;
   rc=\$?; mkdir -p ~/stage-$RUN/homecore; cd \$D/app/build 2>/dev/null && cp -r --parents \$(ls -d outputs/apk/debug/app-debug.apk reports/tests test-results 2>/dev/null) ~/stage-$RUN/ 2>/dev/null;
   [ -d \$D/homecore/build/test-results ] && cp -r \$D/homecore/build/test-results ~/stage-$RUN/homecore/;
-  [ -d \$D/homecore/build/dist/wasmJs/developmentExecutable ] && cp -r \$D/homecore/build/dist/wasmJs/developmentExecutable ~/stage-$RUN/lab;
+  if [ -d \$D/homecore/build/dist/wasmJs/productionExecutable ]; then cp -r \$D/homecore/build/dist/wasmJs/productionExecutable ~/stage-$RUN/lab;
+  elif [ -d \$D/homecore/build/dist/wasmJs/developmentExecutable ]; then cp -r \$D/homecore/build/dist/wasmJs/developmentExecutable ~/stage-$RUN/lab; fi;
   rmdir ~/stage-$RUN/homecore 2>/dev/null; [ -n \"\$(ls -A ~/stage-$RUN)\" ] && tar czf ~/out-$RUN.tgz -C ~/stage-$RUN .; rm -rf ~/stage-$RUN; exit \$rc"
 PID=$(boat exec "$B" --detach --json -- "flock /tmp/lor-build.lock bash -c '$INNER'" | python3 -c 'import json,sys; print(json.load(sys.stdin)["processId"])')
 fails=0; EXIT=

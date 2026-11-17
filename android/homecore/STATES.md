@@ -45,6 +45,11 @@ Each is a condition of the whole app; a surface draws the part of it it reads.
 - `stale`: LoR last read two hours ago and timing out since; T3 retrying on what it saw 40 minutes ago.
 - `failed`: LoR unreachable, T3's pairing revoked, the last sync failed, two permissions gone, the layout file broken.
 - `overfull`: Everything at its most: 200 apps, five full pages, twelve cards, nine flags, long names everywhere.
+- `home-full`: A full home: five pages of 24 with folders, on the cover screen over a pale wallpaper (#current/home-full/cover/pale).
+- `first-run`: A first-run home: the default layout with the set-up card (drawn by lor-rgx4).
+- `drawer-all-scrolled`: The drawer's All tab, scrolled 600 dp down its letters.
+- `search-mixed`: Search with an app, contacts and a settings page among the results.
+- `app-menu`: WhatsApp's long-press menu on home.
 - `sensors-failed`: Sensors after a failed sync with two permissions missing.
 - `home-settings-tabs`: Home settings with hidden apps and four drawer tabs.
 
@@ -52,7 +57,8 @@ Each is a condition of the whole app; a surface draws the part of it it reads.
 
 | Surface | States it draws |
 | --- | --- |
-| The kit sheet (`current`, until home moves) | One look for every state that opens nothing (`where.open` `NOTHING`); its title names the state and the screen. |
+| Home (`current`, lor-xdoi): the phone's HomeScreen from this module, the grid, stacks, header, dots, folders, the drawer and search, menus and the minimap; placeholder icons, widgets as labelled boxes of their height, and the agent page, the LoR panel, LoR's blocks and the set-up card as notes until lor-rgx4 | Every state that opens no app tab or Home settings: `where.cell`, and `where.open` `DRAWER` (`target` a tab's name, `scroll` in dp), `SEARCH` (`typed`), `FOLDER` (`target` its name), `APP_MENU` (`target` an app ref; on search with `typed`) and `MINIMAP`. Its own: `home-full`, `first-run`, `drawer-all-scrolled`, `search-mixed`, `app-menu`. Edits change the lab's copy of the layout, with Undo; a press that would leave home says in home's bar what the phone would do. |
+| The kit sheet (`kit`) | One look for every state; its title names the state and the screen. |
 | The LoR app's tabs (`current`): `where.open` `APP_TAB`, `where.target` `timer`, `sensors`, `settings` or `t3` (Settings' T3 debug view) | Every state, as one-offs over it; the links below. |
 | Home settings (`current`): `where.open` `HOME_SETTINGS` | `home-settings-tabs`, and every state as a one-off; the links below. |
 | The gesture test surface (`gestures`) | One look for every state: a pager, a list, a tile with a long-press menu, two panes on the inner screen. Not a launcher; `scripts/lab/run.mjs` is proven on it. |
@@ -88,7 +94,18 @@ writes `recording.webm`, `strip.png` (the screen every 50 ms from the first touc
 `final.png` and `run.json`. The helpers are in `scripts/lab/gesture.mjs`; a script names places
 in dp or by an anchor a surface sets with `Modifier.labAnchor("name")`. `scripts/lab/gestures/`
 has one script per helper, for `gestures`. Each item that moves a surface into the module writes
-that surface's scripts and anchors.
+that surface's scripts and anchors. Anchors exist only on the lab page (`LabAnchors.on`); the app's
+screens carry none. `type()` types into the field that has focus, and `expect()` fails a run whose
+anchors don't show what a gesture should have done.
+
+Home's scripts are `scripts/lab/gestures/home/` (`--version current --state demo`): `drawer` (open
+and close by swipe), `pages` (left and right), `app-menu`, `folder` (one icon dropped on another),
+`drift` (a long press that drifts into a drag), `search` (type and open), `back-folder` (predictive
+back out of a folder) and `minimap` (Panels, and Remove refused on the start). Home's anchors:
+`home:`, `folder:`, `drawer:` and `search:` then an app's label for its tile (by where it was
+opened from), `folder:<name>` for a folder's tile and `folder-open:<name>` for the open folder,
+`drawer-search` and `search-field`, `menu` and `menu:<entry>`, `map:<button>`, and `undo-bar`.
+Cells home keeps composed beside the one on screen keep their tiles' anchors at off-screen bounds.
 
 ## To come, with the item that moves the surface
 
@@ -96,15 +113,10 @@ The launcher and app states lor-q165 opens by link, by these names. Each is adde
 and to the list above by the item that moves its surface into the module, with that surface's own
 ordinary, empty, loading, stale, failed and overfull states where it has them.
 
-- `home-full` (lor-xdoi): a full home on the cover screen over a pale wallpaper (`#current/home-full/cover/pale`).
-- `first-run` (lor-rgx4): a first-run home with the set-up card.
-- `drawer-all-scrolled` (lor-xdoi): the drawer's All tab mid-scroll.
-- `search-mixed` (lor-xdoi): search with app, contact and settings results.
-- `app-menu` (lor-xdoi): an app's long-press menu.
+- `first-run` (lor-rgx4): the set-up card on it; the state itself is in (lor-xdoi), with the card a note until then.
 - `agent-waiting` (lor-rgx4): the agent page with one approval, one question and two LoR flags.
 - `agent-t3-stale` (lor-rgx4): the agent page with T3 disconnected and stale.
 - `thread-long` (lor-rgx4): a thread open on the inner screen with a long transcript.
 
-Widgets (decided here, for lor-xdoi to build): a fixture's layout names a widget by its provider,
-and in the lab a widget is to be drawn as a labelled box of its height, not a snapshot image.
-Nothing draws widgets in the module yet.
+Widgets: a fixture's layout names a widget by its provider, and in the lab a widget is drawn as a
+labelled box of its height, not a snapshot image (`PlaceholderPlatform.WidgetView`).
