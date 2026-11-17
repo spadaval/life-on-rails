@@ -6,13 +6,17 @@ import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-r
 import { z } from "zod";
 import { type GraphNode, IntentEditor, numOrNull, parentChoices } from "../components/IntentEditor.js";
 import { shortDate } from "../components/format.js";
+import { byRef } from "../components/links.js";
 import { Empty, Meter, Notice, PageHead, Panel, Star } from "../components/ui.js";
 import { getGraphFn, habitFn, saveIntentFn } from "../server/functions/graph.js";
 import { GlobalActions } from "./__root.js";
 
 const Search = z.object({
-  id: z.string().optional(),
+  /** A goal, project or habit by id or title. */
+  id: z.coerce.string().optional(),
   done: z.boolean().optional(),
+  /** Opens the selected one's editor, by link. */
+  edit: z.coerce.boolean().optional(),
 });
 
 export const Route = createFileRoute("/goals")({
@@ -55,7 +59,7 @@ function Goals() {
   const goals = top.filter((n) => n.type === "goal").sort((a, b) => (b.weekly_hour_target ?? 0) - (a.weekly_hour_target ?? 0) || a.title.localeCompare(b.title));
   const loose = top.filter((n) => n.type !== "goal");
   const openTasks = useOpenTasks(live);
-  const selected = live.find((n) => n.id === search.id) ?? null;
+  const selected = byRef(live, search.id, (n) => n.title);
   const count = (t: IntentType) => live.filter((n) => n.type === t && isOpen(n)).length;
 
   return (
@@ -85,13 +89,13 @@ function Goals() {
             </Panel>
           ) : null}
           {goals.map((g) => (
-            <GoalCard key={g.id} goal={g} kids={shown.filter((k) => k.parents.some((p) => p.id === g.id))} shown={shown} openTasks={openTasks} selected={selected?.id ?? null} onSelect={(id) => set({ id })} act={act} />
+            <GoalCard key={g.id} goal={g} kids={shown.filter((k) => k.parents.some((p) => p.id === g.id))} shown={shown} openTasks={openTasks} selected={selected?.id ?? null} onSelect={(id) => set({ id, edit: undefined })} act={act} />
           ))}
           {loose.length > 0 ? (
             <Panel title="Not under a goal">
               <ul className="-mx-2">
                 {loose.map((n) => (
-                  <Row key={n.id} n={n} shown={shown} depth={0} openTasks={openTasks} selected={selected?.id ?? null} onSelect={(id) => set({ id })} act={act} />
+                  <Row key={n.id} n={n} shown={shown} depth={0} openTasks={openTasks} selected={selected?.id ?? null} onSelect={(id) => set({ id, edit: undefined })} act={act} />
                 ))}
               </ul>
             </Panel>
@@ -99,7 +103,7 @@ function Goals() {
         </div>
         <aside className="xl:sticky xl:top-4">
           {selected ? (
-            <Details key={selected.id + selected.updated_at} node={selected} nodes={live} entities={entities} openTasks={openTasks} act={act} onSelect={(id) => set({ id })} onClose={() => set({ id: undefined })} />
+            <Details key={selected.id + selected.updated_at} node={selected} edit={!!search.edit} nodes={live} entities={entities} openTasks={openTasks} act={act} onSelect={(id) => set({ id, edit: undefined })} onClose={() => set({ id: undefined, edit: undefined })} />
           ) : (
             <Panel title="Nothing selected">
               <Empty>Pick a goal, project or habit to see it and change it.</Empty>
@@ -204,10 +208,10 @@ function Row({ n, shown, depth, openTasks, selected, onSelect, act }: {
   );
 }
 
-function Details({ node: n, nodes, entities, openTasks, act, onSelect, onClose }: {
-  node: GraphNode; nodes: GraphNode[]; entities: { id: string; name: string }[]; openTasks: Map<string, number>; act: Act; onSelect: (id: string) => void; onClose: () => void;
+function Details({ node: n, edit, nodes, entities, openTasks, act, onSelect, onClose }: {
+  node: GraphNode; edit: boolean; nodes: GraphNode[]; entities: { id: string; name: string }[]; openTasks: Map<string, number>; act: Act; onSelect: (id: string) => void; onClose: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(edit);
   const kids = nodes.filter((k) => k.type !== "task" && k.parents.some((p) => p.id === n.id) && isOpen(k));
   const facts: [string, ReactNode][] = [
     ["Kind", TYPE_NAME[n.type]],

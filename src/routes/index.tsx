@@ -4,6 +4,7 @@ import { z } from "zod";
 import { DayArc } from "../components/DayArc.js";
 import { useNow } from "../components/clock.js";
 import { duration, pct, shortDate } from "../components/format.js";
+import { localTimeOnDay } from "../shared/localTime.js";
 import { TaskCheck } from "../components/IntentEditor.js";
 import { IntentPicker, type PickIntent } from "../components/IntentPicker.js";
 import { Markdown } from "../components/Markdown.js";
@@ -15,7 +16,9 @@ import {
 import { GlobalActions } from "./__root.js";
 
 export const Route = createFileRoute("/")({
-  validateSearch: (search) => z.object({ date: z.string().optional(), obs: z.string().uuid().optional() }).parse(search),
+  // `block=` selects a block by link: its id, or a local time like 14:30 that it covers.
+  validateSearch: (search) =>
+    z.object({ date: z.string().optional(), obs: z.string().uuid().optional(), block: z.coerce.string().optional() }).parse(search),
   loaderDeps: ({ search }) => ({ date: search.date, obs: search.obs }),
   loader: ({ deps }) => getTodayFn({ data: { date: deps.date, obs: deps.obs } }),
   component: Today,
@@ -37,7 +40,9 @@ function Today() {
   const search = Route.useSearch();
   const router = useRouter();
   const now = useNow(20_000, t.now);
-  const [selected, setSelected] = useState<string | null>(null);
+  const linked = useMemo(() => linkedBlock(t, search.block), [t, search.block]);
+  const [selected, setSelected] = useState<string | null>(linked);
+  useEffect(() => setSelected(linked), [linked]);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -249,6 +254,16 @@ function TimerCard({ data, now, busy, act, onRelabel }: { data: Data; now: numbe
       ) : null}
     </div>
   );
+}
+
+/** The block a link names: by id, or the actual block covering a local HH:MM on the day shown. */
+function linkedBlock(t: Data["today"], ref: string | undefined): string | null {
+  if (!ref) return null;
+  const blocks = t.running ? [...t.actual, t.running] : t.actual;
+  if (!/^\d{2}:\d{2}$/.test(ref)) return blocks.find((b) => b.id === ref)?.id ?? null;
+  const at = localTimeOnDay(t.timezone, t.date, ref).getTime();
+  const covers = (b: Block) => new Date(b.t_start).getTime() <= at && (b.t_end ? new Date(b.t_end).getTime() : Infinity) > at;
+  return t.actual.find(covers)?.id ?? null;
 }
 
 function Lanes({ t, now, selected, onSelect, hm, clock }: {

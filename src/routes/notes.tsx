@@ -17,6 +17,8 @@ const Search = z.object({
   slug: z.string().optional(),
   version: z.coerce.number().int().optional(),
   view: z.enum(["graph"]).optional(),
+  /** Opens the page's history at its head, by link (an older version opens it anyway). */
+  history: z.coerce.boolean().optional(),
 });
 
 export const Route = createFileRoute("/notes")({
@@ -165,6 +167,7 @@ function LinkList({ title, pages, graph = false }: { title: string; pages: { slu
 }
 
 function PagesView({ data, act, onFollow }: { data: Data; act: Act; onFollow: (slug: string, label: string | null) => void }) {
+  const history = !!Route.useSearch().history;
   const current = data.page?.view.slug ?? null;
   const [filter, setFilter] = useState("");
   const f = filter.trim().toLowerCase();
@@ -225,6 +228,7 @@ function PagesView({ data, act, onFollow }: { data: Data; act: Act; onFollow: (s
           key={`${data.page.view.slug}@${data.page.view.version === data.page.view.head_version ? "head" : data.page.view.version}`}
           page={data.page}
           pages={data.pages}
+          history={history}
           act={act}
           onFollow={onFollow}
         />
@@ -295,10 +299,10 @@ function NewPage({ onCreate, onCancel }: { onCreate: (input: { slug: string; tit
   );
 }
 
-function PageView({ page, pages, act, onFollow }: { page: NonNullable<Data["page"]>; pages: Page[]; act: Act; onFollow: (slug: string, label: string | null) => void }) {
+function PageView({ page, pages, history: historyLinked, act, onFollow }: { page: NonNullable<Data["page"]>; pages: Page[]; history: boolean; act: Act; onFollow: (slug: string, label: string | null) => void }) {
   const { view, history, diff, backlinks, missing } = page;
   const navigate = useNavigate({ from: "/notes" });
-  const [showHistory, setShowHistory] = useState(view.version !== view.head_version);
+  const [showHistory, setShowHistory] = useState(historyLinked || view.version !== view.head_version);
   const isHead = view.version === view.head_version;
   const linksOut = (pages.find((p) => p.slug === view.slug)?.links ?? []).map((l) => pages.find((p) => p.slug === l)!).filter(Boolean);
 
