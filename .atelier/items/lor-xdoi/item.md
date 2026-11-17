@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-xdoi
 title: 'One home, two platforms: home''s drawing in a shared Kotlin module'
-status: ready
+status: building
 mission: lor-ncpw
 labels:
 - launcher
@@ -14,7 +14,8 @@ blocked_by:
 - lor-sghw
 - lor-oech
 - lor-293p
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A275230a9-0f8b-446e-b3b1-4303d9895adf%3Adelegate-task%3A3b7267e0-f255-442a-a8a6-e216202dcdb4
 ready:
   by: lead, on the plan agreed in round 7
   at: 2026-11-17T06:57:12.926382409Z
