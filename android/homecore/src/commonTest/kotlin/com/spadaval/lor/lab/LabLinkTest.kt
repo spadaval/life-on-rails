@@ -35,14 +35,24 @@ class LabLinkTest {
         assertEquals("current/home-full/inner", LabLink("current", "home-full", LabScreen.Inner).hash)
         assertEquals("current/home-full/cover/pale", LabLink("current", "home-full", wallpaper = Wallpaper.Pale).hash)
         assertEquals("current/home-full/inner/mixed", LabLink("current", "home-full", LabScreen.Inner, Wallpaper.Mixed).hash)
+        assertEquals("current/home-full/cover/dark/landscape", LabLink("current", "home-full", landscape = true).hash)
     }
 
     @Test
     fun everyLinkReadsBackAsItself() {
-        for (v in versions) for (s in states) for (sc in LabScreen.entries) for (w in Wallpaper.entries) {
-            val link = LabLink(v, s, sc, w)
+        for (v in versions) for (s in states) for (sc in LabScreen.entries) for (w in Wallpaper.entries) for (l in listOf(false, true)) {
+            val link = LabLink(v, s, sc, w, l)
             assertEquals(Parsed(link, null), parse("#" + link.hash))
         }
+    }
+
+    @Test
+    fun landscapeSwapsTheScreensSides() {
+        val scene = LabScene(Lab.states.first(), LabScreen.Cover, landscape = true)
+        assertEquals(LabScreen.Cover.heightDp to LabScreen.Cover.widthDp, scene.widthDp to scene.heightDp)
+        assertEquals(LabLink("current", "home-full", LabScreen.Inner, Wallpaper.Dark, landscape = false), parse("#current/home-full/inner/dark/portrait").link)
+        assertEquals("No orientation \"sideways\"", parse("#current/home-full/inner/dark/sideways").problem)
+        assertEquals("Too many parts: x", parse("#current/home-full/inner/dark/landscape/x").problem)
     }
 
     @Test

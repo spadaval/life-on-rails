@@ -1,0 +1,116 @@
+/* Panes' tokens. Every value the styles use comes from here.
+   Type: one sans (Hanken Grotesk, vendored in fonts/ under the OFL) at five steps, each with
+   one job; Saira Condensed caps only for pane titles.
+   Colour: panes are layers of the ground's colour at rising lightness. Amber marks the selected
+   row, the open item's edge and the running timer; cyan marks the agent; one red for errors and
+   LoR not answering. Everything else is three warm greys.
+   Depth: the most layered of the four. Ground (the rail lies on it), pane (the list, frosted),
+   raised row (hover and selection), sheet (the open item, frosted and lifted), and floating
+   layers over everything (the field's choices, pickers, the toast). Every pane over another
+   blurs what is behind it; a pane covered by another blurs slightly itself. */
+@import "@fontsource/saira-condensed/latin-500.css";
+@import "@fontsource/saira-condensed/latin-600.css";
+
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/hanken-grotesk-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/hanken-grotesk-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/hanken-grotesk-latin-600-normal.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: dark;
+
+  /* type: 12 labels, meta and pane titles; 14 secondary text and controls; 15 body and row
+     titles; 18 section heads inside an open item and the readout; 28 the open item's title */
+  --sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --cond: "Saira Condensed", "Hanken Grotesk", ui-sans-serif, sans-serif;
+  --t-meta: 12px;
+  --t-small: 14px;
+  --t-body: 15px;
+  --t-head: 18px;
+  --t-title: 28px;
+
+  /* space: medium. 16px pane padding, 12px between groups, 44px rows (56px at phone width) */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --row: 44px;
+  --row-touch: 56px;
+  --rail: 216px;
+  --list: 440px;
+  --gap: 12px;
+
+  /* the ground, and the layers over it, each a step lighter */
+  --ground: #0a0b10;
+  --ground-glow-1: rgb(40 54 92 / 0.55);
+  --ground-glow-2: rgb(92 52 18 / 0.32);
+  --pane: rgb(255 255 255 / 0.035);
+  --pane-rest: rgb(255 255 255 / 0.018);
+  --sheet: rgb(30 31 41 / 0.74);
+  --sheet-solid: rgb(27 28 37 / 0.97);
+  --float: rgb(34 35 46 / 0.86);
+  --raise: rgb(255 255 255 / 0.05);
+  --raise-2: rgb(255 255 255 / 0.085);
+  --well: rgb(0 0 0 / 0.22);
+  --line: rgb(255 255 255 / 0.06);
+  --line-2: rgb(255 255 255 / 0.11);
+  --line-3: rgb(255 255 255 / 0.2);
+
+  /* the three greys, warm */
+  --text-1: #ece8e2;
+  --text-2: #aaa39a;
+  --text-3: #8a8379;
+
+  /* jobs */
+  --amber: #f08a2c;
+  --amber-ink: #1a0d02;
+  --amber-edge: rgb(240 138 44 / 0.55);
+  --amber-soft: rgb(240 138 44 / 0.12);
+  --cyan: #6cc6ec;
+  --cyan-soft: rgb(108 198 236 / 0.1);
+  --cyan-edge: rgb(108 198 236 / 0.35);
+  --red: #ef7a5f;
+  --red-soft: rgb(239 122 95 / 0.1);
+  --red-edge: rgb(239 122 95 / 0.36);
+  --focus: #9cc7ff;
+
+  /* corners */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+  --r-pill: 999px;
+
+  /* depth */
+  --shadow-row: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-sheet: 0 2px 6px rgb(0 0 0 / 0.3), 0 24px 56px -12px rgb(0 0 0 / 0.6);
+  --shadow-float: 0 2px 8px rgb(0 0 0 / 0.35), 0 32px 64px -16px rgb(0 0 0 / 0.75);
+  --blur-pane: blur(18px) saturate(1.2);
+  --blur-sheet: blur(26px) saturate(1.35);
+  --blur-behind: blur(1.6px);
+
+  /* motion: 150 to 250 ms, and only to say what changed */
+  --fast: 150ms;
+  --mid: 220ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}

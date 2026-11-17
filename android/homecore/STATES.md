@@ -51,8 +51,26 @@ Each is a condition of the whole app; a surface draws the part of it it reads.
 | Surface | States it draws |
 | --- | --- |
 | The kit sheet (`current`, until home moves) | One look for every state; its title names the state and the screen. |
+| The gesture test surface (`gestures`) | One look for every state: a pager, a list, a tile with a long-press menu, two panes on the inner screen. Not a launcher; `scripts/lab/run.mjs` is proven on it. |
 
-Both screen sizes are the link's `cover` and `inner`, for every state.
+Both screen sizes are the link's `cover` and `inner`, for every state, and either turned on its side
+with `landscape` as the link's fifth part (`#current/demo/inner/dark/landscape`).
+
+## Gestures
+
+The lab takes the mouse as a finger (a drag is a swipe, a held press a long press, the wheel
+scrolls) and touch as itself. Its toolbar has Home (the state drawn afresh), Back (Compose's back
+handlers, through the navigation-event dispatcher), Fold and Unfold, Rotate, and the animation speed
+(1, a quarter, none); the keys are H, Escape or B, F, R and S. Fold, Rotate and a new wallpaper keep
+the surface's place; Home and a new state or version start it again.
+
+A script plays gestures with a recording to look at:
+`node scripts/lab/run.mjs scripts/lab/gestures/drag.mjs --version gestures --state demo --out /tmp/drag`
+writes `recording.webm`, `strip.png` (the screen every 50 ms from the first touch until it settles),
+`final.png` and `run.json`. The helpers are in `scripts/lab/gesture.mjs`; a script names places
+in dp or by an anchor a surface sets with `Modifier.labAnchor("name")`. `scripts/lab/gestures/`
+has one script per helper, for `gestures`. Each item that moves a surface into the module writes
+that surface's scripts and anchors.
 
 ## To come, with the item that moves the surface
 
