@@ -1,7 +1,10 @@
 // The design tools' refusals (lor-nde9): scripts/ui-dev.sh and scripts/shots.mjs never
 // point at lor-web or the real database. Every case here refuses before anything starts.
-import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { createServer } from "node:net";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error a plain .mjs script, no types
 import { groupsOf, refuseRealData, slug } from "../scripts/shots.mjs";
@@ -34,13 +37,42 @@ describe("shots.mjs", () => {
 });
 
 describe("ui-dev.sh", () => {
-  const run = (env: Record<string, string>) => spawnSync("scripts/ui-dev.sh", { env: { ...process.env, ...env }, encoding: "utf8" });
+  // --dry-run stops after the guards, so a guard that regresses never starts Vite on a real database.
+  const run = (env: Record<string, string>) =>
+    spawnSync("scripts/ui-dev.sh", ["--dry-run"], { env: { ...process.env, LOR_UI_DEV_PORT: "3899", ...env }, encoding: "utf8", timeout: 10_000 });
+
+  it("passes the test database on a free port", () => {
+    const r = run({});
+    expect([r.status, r.stdout]).toEqual([0, expect.stringContaining("life_on_rails_test")]);
+  });
+
+  it("refuses the ports the env file gives lor-web", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ui-dev-"));
+    writeFileSync(path.join(dir, "env"), "# a comment\nLOR_PORT=4555\n");
+    const r = run({ LOR_ENV_FILE: path.join(dir, "env"), LOR_UI_DEV_PORT: "4555" });
+    expect([r.status, r.stderr]).toEqual([3, expect.stringContaining("lor-web")]);
+  });
 
   it("refuses lor-web's ports", () => {
     for (const port of ["3847", "3848", "3849"]) {
       const r = run({ LOR_UI_DEV_PORT: port });
       expect([r.status, r.stderr]).toEqual([3, expect.stringContaining("lor-web")]);
     }
+  });
+
+  it("refuses a port already taken", async () => {
+    const server = createServer().listen(0, "127.0.0.1");
+    await new Promise((ok) => server.once("listening", ok));
+    const port = String((server.address() as { port: number }).port);
+    // Async, so this process's listener can still accept while the script looks.
+    const r = await new Promise<{ status: number | null; stderr: string }>((ok) => {
+      const child = spawn("scripts/ui-dev.sh", ["--dry-run"], { env: { ...process.env, LOR_UI_DEV_PORT: port } });
+      let stderr = "";
+      child.stderr.on("data", (d) => (stderr += d));
+      child.on("close", (status) => ok({ status, stderr }));
+    });
+    server.close();
+    expect([r.status, r.stderr]).toEqual([3, expect.stringContaining("already listens")]);
   });
 
   it("refuses any database but the test database", () => {

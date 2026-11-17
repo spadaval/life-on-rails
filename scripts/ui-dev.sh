@@ -3,6 +3,7 @@
 # dashboard: save a route or src/styles.css and the open page shows it.
 #   scripts/ui-dev.sh            # 127.0.0.1:3858, in the foreground (Ctrl-C stops it)
 #   LOR_FAKE_NOW=2026-11-17T15:00 scripts/ui-dev.sh
+#   scripts/ui-dev.sh --dry-run  # run the guards, print what would start, start nothing (tests/shots.test.ts)
 # Load the demo set first (pnpm demo:test); links take at= and data= (seeds/demo/README.md).
 #
 # Like scripts/ui-server.sh it runs no jobs, no WhatsApp channel and no wall listener:
@@ -10,6 +11,13 @@
 # owner or TRMNL listener exists outside scripts/serve.mjs. A design tool, not a check.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+DRY=""
+case "${1:-}" in
+  --dry-run) DRY=1 ;;
+  "") ;;
+  *) echo "ui-dev: unknown argument $1 (only --dry-run)" >&2; exit 2 ;;
+esac
 
 TEST_DB=life_on_rails_test
 DB_URL="${LOR_UI_DEV_DATABASE_URL:-postgres:///${TEST_DB}?host=/var/run/postgresql}"
@@ -38,6 +46,8 @@ done
 if ss -Hltn "sport = :$PORT" | grep -q .; then
   refuse "something already listens on 127.0.0.1:$PORT: $(ss -Hltnp "sport = :$PORT" | head -1)"
 fi
+
+if [[ -n "$DRY" ]]; then echo "ui-dev: would start vite dev on 127.0.0.1:$PORT with $DB_URL"; exit 0; fi
 
 [[ -e node_modules ]] || { echo "ui-dev: no node_modules here: pnpm install, or in a worktree ln -s ~/projects/life-on-rails/node_modules node_modules" >&2; exit 1; }
 

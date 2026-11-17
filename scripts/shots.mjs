@@ -168,6 +168,10 @@ async function main() {
     await pool(group.flatMap((shot) => widths.map((width) => ({ shot, width }))), PARALLEL, take);
   }
   await browser.close();
+  // A variant stays applied in the shared test database: leave it on the base, so a link without data= reads the base.
+  if (shots.some((s) => !["", "base"].includes(new URL(s.link, base).searchParams.get("data") ?? ""))) {
+    await fetch(`${base}/health?data=base`).catch(() => problems.push({ shot: "(back to data=base)", width: 0, errors: ["could not reach the server"] }));
+  }
 
   writeFileSync(path.join(out, "index.html"), gallery({ cat, base, all, widths, out }));
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
