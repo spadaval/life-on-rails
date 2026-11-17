@@ -104,3 +104,19 @@ The prototype runs: `pnpm proto:dev` serves it at `http://127.0.0.1:3859`, and `
 - Direction items need only `src/data` and `src/shell`. If one needs a new action or scene, it belongs in `src/data`, which every direction shares.
 - `pnpm proto:dev` works in this worktree. pnpm warns that its pre-run install failed because of the `node_modules` symlink, then runs the script anyway.
 
+
+**Round 1** (7379aef). All four findings held, and each was reproduced before fixing. The checks are the reviewer's own scripts from `/tmp/lor-review-5uxk.MVlsKq/`, rerun against a fresh build, published to a scratch lab and served through `labStatic` with its CSP.
+- **Ids on plain http.** Ids now come from `crypto.getRandomValues`, which is available on a plain-http origin. On `http://review.invalid:3861` (`isSecureContext` false, `crypto.randomUUID` undefined), adding a task shows "Added …" and Start timer starts it. There were no page errors and no requests outside `/lab/dashboard/`.
+- **Stale version loads.** The shell records which version was last picked. A version whose import or stylesheets finish later links nothing and removes nothing. With current's import held while switching to Template and then released, the page stays Template: background `rgb(251, 250, 247)`, `data-version` template, and only template's sheet linked.
+- **People's lists.** They are now worked out from the people as edited (`peopleIn` in `src/data/derive.ts`, mirroring `listPeople`'s filters and order). The snapshot's frozen membership is no longer read. A cadence on someone never in touch counts as overdue by the cadence, as the real reader has it.
+  - Grandpa Joe set to No cadence leaves Due a hello at once and is in neither list after switching away and back.
+  - Ben Okoro (never in touch) set to Every week appears in Due a hello as "7 days past the cadence".
+- **Remember checkbox.** `current` no longer draws "Label … this way from now on", and a relabel sends no remember flags.
+- **My own checks.** My interaction script passes all 11 checks in dev, and the 9 that apply to the built copy pass behind the lab handler. Its undo step had used a bare `import("/src/data/store.ts")`. After a hot update Vite serves the store as `store.ts?t=…`, so that import made a second, empty store. The script now imports the URL the page actually loaded. This was a fault in the test harness, not the app.
+
+### Responses
+
+- 1-0t9a.1: fixed in 7379aef
+- 1-0t9a.2: fixed in 7379aef
+- 1-0t9a.3: fixed in 7379aef
+- 1-0t9a.4: fixed in 7379aef
