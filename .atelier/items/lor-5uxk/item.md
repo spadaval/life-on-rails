@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-5uxk
 title: 'The dashboard prototype: Today, Tasks, Goals and People per direction, switched by a dropdown'
-status: changes_requested
+status: in_review
 mission: lor-2803
 labels:
 - design-lab
