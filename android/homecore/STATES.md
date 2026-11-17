@@ -71,5 +71,6 @@ ordinary, empty, loading, stale, failed and overfull states where it has them.
 - `sensors-failed` (lor-t8lq): Sensors after a failed sync with two permissions missing.
 - `home-settings-tabs` (lor-t8lq): Home settings with hidden apps and four drawer tabs.
 
-Widgets: a fixture's layout names a widget by its provider, and the lab draws a labelled box of
-the widget's height in its place, not a snapshot image (lor-oech's open question, answered there).
+Widgets (decided here, for lor-xdoi to build): a fixture's layout names a widget by its provider,
+and in the lab a widget is to be drawn as a labelled box of its height, not a snapshot image.
+Nothing draws widgets in the module yet.
