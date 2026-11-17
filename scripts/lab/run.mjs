@@ -92,7 +92,8 @@ async function play() {
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto(`${base}/#${hash}`);
-  await page.waitForFunction((h) => document.body.getAttribute("data-drawn") === h, `#${hash}`, { timeout: 30000 });
+  // The browser percent-encodes a one-off's JSON in the hash, so the two are compared decoded.
+  await page.waitForFunction((h) => decodeURIComponent(document.body.getAttribute("data-drawn") ?? "") === h, `#${hash}`, { timeout: 30000 });
   const problem = await page.evaluate(() => (document.getElementById("problem").hidden ? null : document.getElementById("problem").textContent));
   if (problem) throw new Error(`the lab says: ${problem}`);
   const cdp = await context.newCDPSession(page);
