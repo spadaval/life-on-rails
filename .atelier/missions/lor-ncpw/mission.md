@@ -3,12 +3,13 @@ schema: atelier.mission
 schema_version: 3
 id: lor-ncpw
 title: Edit home from LoR's web, drawn as the phone draws it
-status: open
+status: ready
 labels:
 - launcher
 lead: null
-planners:
-- b91a140f-5930-4d4f-9af7-6681cc69ea05
+ready:
+  by: conversion
+  at: 2026-11-08T17:57:12.134104993Z
 created_at: 2026-11-08T03:36:23.147268461Z
 ---
 

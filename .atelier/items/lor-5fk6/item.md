@@ -37,7 +37,7 @@ Sumeet can use each direction's phone in the browser: swipe to the drawer, searc
 
 ## Scope
 
-`android/homecore/src/wasmJsMain/.../concepts/`. The app's own screens are not changed.
+`android/homecore/src/wasmJsMain/.../concepts/` and `shots/lab.json`. The app's own screens are not changed.
 
 ## Context
 
