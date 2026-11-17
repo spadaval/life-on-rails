@@ -12,6 +12,7 @@ priority: medium
 blocked_by: []
 implementers:
 - thread:delegated-task:command%3Amcp%3A336528d8-568a-46be-80e7-fa243e638044%3Adelegate-task%3A43848bbc-dbe3-4d7a-a236-b2a58c5c0171
+- thread:delegated-task:command%3Amcp%3A336528d8-568a-46be-80e7-fa243e638044%3Adelegate-task%3A1af09095-d82d-457d-b850-94578b07cb64
 ready:
   by: conversion
   at: 2026-11-08T06:02:35.052190583Z
