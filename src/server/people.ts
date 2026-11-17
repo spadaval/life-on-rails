@@ -7,6 +7,7 @@ import type { Tx } from "../db/client.js";
 import { type Ymd, addDays, localDaysBetween, localYmd, parseYmd } from "../shared/localTime.js";
 import { env } from "./env.js";
 import type { EntityRow } from "./memory/entities.js";
+import { clockNow } from "./clock.js";
 
 export type Channel = "mail_in" | "mail_out" | "meeting" | "phone";
 
@@ -44,7 +45,7 @@ export async function lastContacts(db: Tx, entityIds: string[] | null = null): P
       UNION ALL
       SELECT k, 'meeting', max(g.t_end) FROM google_event g, unnest(g.attendees) a,
              unnest(ARRAY['email:' || lower(a), 'domain:' || split_part(lower(a), '@', 2)]) k
-      WHERE g.t_end <= now() AND g.status <> 'cancelled' AND coalesce(g.self_response, '') <> 'declined'
+      WHERE g.t_end <= ${clockNow()} AND g.status <> 'cancelled' AND coalesce(g.self_response, '') <> 'declined'
       GROUP BY 1
     ),
     matched AS (SELECT i.entity_id, t.ch, t.t FROM touches t JOIN ids i ON i.key = t.key)
@@ -122,7 +123,7 @@ function important(p: Person): boolean {
 }
 
 export async function listPeople(db: Tx, query: PeopleQuery = {}): Promise<{ people: Person[]; total: number; shown: number }> {
-  const now = query.now ?? new Date();
+  const now = query.now ?? clockNow();
   const tz = env.LOR_TZ;
   const today = localYmd(tz, now);
   const window = query.birthdayWindow ?? 7;

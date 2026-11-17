@@ -12,6 +12,7 @@ import { Refused } from "../errors.js";
 import { errorMessage, log } from "../log.js";
 import { recordObservation, stableId } from "../observations.js";
 import { type ChannelPort, type InboundMessage, type Outbound, whatsappChannel } from "./client.js";
+import { clockNow } from "../clock.js";
 
 const OFFSET = "channel_offset";
 const RECIPIENT = "channel_recipient";
@@ -128,7 +129,7 @@ export async function receive(db: Sql, port: ChannelPort, handoff: Handoff, m: I
 
 /** He asks from the dashboard. The reply comes to WhatsApp, like any other. */
 export async function askFromDashboard(db: Sql, handoff: Handoff, text: string, about?: string | null): Promise<{ id: string }> {
-  const at = new Date();
+  const at = clockNow();
   await handoff(wrapInbound({ at: stamp(at), via: "the dashboard", text, about, sent: await sentSinceHisLast(db) }));
   return recordObservation(db, {
     tStart: at,
@@ -187,7 +188,7 @@ export function sendMessage(db: Sql, port: ChannelPort, input: SendInput): Promi
     for (const text of splitMessage(input.text)) messages.push({ type: "text", text });
     const wamids: string[] = [];
     for (const m of messages) wamids.push(await port.send(to, m));
-    const now = new Date();
+    const now = clockNow();
     const { id } = await recordObservation(db, {
       tStart: now,
       tEnd: now,

@@ -27,6 +27,7 @@ import { BadInput, NotFound } from "./errors.js";
 import { recordObservation } from "./observations.js";
 import { BACKUP_FILE, noteUploader } from "./whatsapp/import.js";
 import { type Place, type Weather, type WeatherCache, weatherCache } from "./weather.js";
+import { clockNow } from "./clock.js";
 
 /** Sources a device may send. Calendar, mail, and the agent's log have their own writers. */
 const DEVICE_SOURCES = new Set(["android", "linux_activity", "windows_activity"]);
@@ -94,7 +95,7 @@ export async function ingest(body: unknown): Promise<IngestResult> {
   if (evidenceFrom <= evidenceTo) {
     // New evidence can change a block that starts a little outside it (a stay is padded before its first fix; a
     // late fix can split a stay). Re-sync as far either side as the fill reads evidence.
-    const { from, to } = fillWindow(new Date(), new Date(evidenceFrom - LOOKBACK_MS), new Date(evidenceTo + LOOKBACK_MS));
+    const { from, to } = fillWindow(clockNow(), new Date(evidenceFrom - LOOKBACK_MS), new Date(evidenceTo + LOOKBACK_MS));
     await sql.begin(async (tx) => {
       await lockBlocks(tx);
       await syncFill(tx, from, to);
@@ -131,7 +132,7 @@ export async function deviceState(login: string, device: string | null): Promise
   const r = running[0];
   return {
     login,
-    now: new Date().toISOString(),
+    now: clockNow().toISOString(),
     timezone: env.LOR_TZ,
     running: r
       ? { id: r.id, intent: r.intent, title: r.title, t_start: r.t_start.toISOString(), paused: r.paused_at !== null, paused_at: r.paused_at?.toISOString() ?? null }
@@ -192,7 +193,7 @@ async function lastPlace(): Promise<Place | null> {
 const weather = weatherCache({ key: () => env.GOOGLE_MAPS_KEY, fetch: (...a) => globalThis.fetch(...a), now: Date.now, log: console.log });
 
 /** What the launcher's agent page shows from LoR, in one read. */
-export async function deviceHome(now = new Date(), weatherNow: WeatherCache = weather): Promise<DeviceHome> {
+export async function deviceHome(now = clockNow(), weatherNow: WeatherCache = weather): Promise<DeviceHome> {
   const date = localYmd(env.LOR_TZ, now);
   const [today, needs, pin, brief, queue, conditions] = await Promise.all([
     getToday(sql, date, now), needsOwner(sql), getPin(sql), briefLine(sql, date), agentQueue(), weatherNow.read(lastPlace),
@@ -236,7 +237,7 @@ export interface DeviceTasks {
 }
 
 /** The phone's Tasks: the open tasks and those done today, from the same functions as the web's Today. */
-export async function deviceTasks(now = new Date()): Promise<DeviceTasks> {
+export async function deviceTasks(now = clockNow()): Promise<DeviceTasks> {
   const today = localYmd(env.LOR_TZ, now);
   const { nodes } = await getGraph(sql, now);
   const all = openTasks(nodes);
@@ -269,7 +270,7 @@ export interface DevicePeople {
 }
 
 /** The phone's People: who to be in touch with, by the web's People filters. No addresses or numbers. */
-export async function devicePeople(now = new Date()): Promise<DevicePeople> {
+export async function devicePeople(now = clockNow()): Promise<DevicePeople> {
   const [overdue, birthdays] = await Promise.all([
     listPeople(sql, { filter: "overdue", limit: PEOPLE, now }),
     listPeople(sql, { filter: "birthdays", birthdayWindow: BIRTHDAY_WINDOW, limit: PEOPLE, now }),

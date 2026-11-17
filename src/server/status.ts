@@ -4,6 +4,7 @@ import type { JsonObject } from "../shared/json.js";
 import { type GoogleAuthState, authState } from "./google/auth.js";
 import { JOBS, mailConfigured, staleAfterMs } from "./jobs/registry.js";
 import { type MailStatus, mailStatus } from "./mail/check.js";
+import { clockNow } from "./clock.js";
 
 export interface JobStatus {
   name: string;
@@ -32,7 +33,7 @@ export interface Status {
 }
 
 /** Each job's state from its runs. Cheap: two small queries over job_run. */
-export async function jobStatuses(now = new Date()): Promise<JobStatus[]> {
+export async function jobStatuses(now = clockNow()): Promise<JobStatus[]> {
   const last = await sql<{ name: string; status: string; started_at: Date; error: string | null; stats: JsonObject }[]>`
     SELECT DISTINCT ON (name) name, status, started_at, error, stats
     FROM job_run ORDER BY name, started_at DESC`;
@@ -59,7 +60,7 @@ export async function jobStatuses(now = new Date()): Promise<JobStatus[]> {
 }
 
 export async function getStatus(): Promise<Status> {
-  const now = new Date();
+  const now = clockNow();
   try {
     const jobs = await jobStatuses(now);
     const sources = await sql<{ source: string; last: Date; n: number }[]>`

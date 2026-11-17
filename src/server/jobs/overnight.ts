@@ -8,6 +8,7 @@ import { env } from "../env.js";
 import { wakeSnoozed } from "../intents.js";
 import { recomputeScores } from "../scoring/recompute.js";
 import { uuidv7 } from "../../shared/ids.js";
+import { clockNow } from "../clock.js";
 
 /** Two blocks with the same label this close together were one stretch of work. */
 const MERGE_GAP_MS = 120_000;
@@ -21,7 +22,7 @@ export interface OvernightStats {
   [key: string]: unknown;
 }
 
-export async function overnightClose(db: Sql, now = new Date()): Promise<OvernightStats> {
+export async function overnightClose(db: Sql, now = clockNow()): Promise<OvernightStats> {
   const date = addDays(localYmd(env.LOR_TZ, now), -1);
   const { start, end } = localDayBounds(env.LOR_TZ, date);
   let merged = 0;
@@ -45,7 +46,7 @@ export async function overnightClose(db: Sql, now = new Date()): Promise<Overnig
       }
       await tx`UPDATE time_block_observation SET block_id = ${keep.id} WHERE block_id = ${b.id}`;
       await tx`DELETE FROM time_block WHERE id = ${b.id}`;
-      await tx`UPDATE time_block SET t_end = ${b.t_end}, origin = 'merged', updated_at = now() WHERE id = ${keep.id}`;
+      await tx`UPDATE time_block SET t_end = ${b.t_end}, origin = 'merged', updated_at = ${clockNow()} WHERE id = ${keep.id}`;
       keep.t_end = b.t_end;
       merged++;
     }

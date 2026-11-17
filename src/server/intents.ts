@@ -7,6 +7,7 @@ import { type Ymd, localTimeOnDay, localYmd } from "../shared/localTime.js";
 import { env } from "./env.js";
 import { BadInput, NotFound, Refused } from "./errors.js";
 import { scheduleRecompute } from "./scoring/recompute.js";
+import { clockNow } from "./clock.js";
 
 export const INTENT_TYPES = ["goal", "project", "habit", "task", "metric"] as const;
 export type IntentType = (typeof INTENT_TYPES)[number];
@@ -140,18 +141,19 @@ export async function createIntent(db: Sql, input: IntentInput, who: Provenance)
   const id = uuidv7();
   const waiting = Boolean(input.waitingOnEntityId);
   const status = input.status ?? (waiting ? "waiting" : "active");
+  const at = clockNow();
   await db.begin(async (tx) => {
     await tx`
       INSERT INTO intent (id, type, title, description, status, weight, weekly_hour_target, frequency,
         frequency_horizon, completion_weight, goal_mix, metric_kind, metric_min, metric_max, estimate_hours,
-        due_at, waiting_on_entity_id, waiting_since, assignee, thread_ref, via, source_ref)
+        due_at, waiting_on_entity_id, waiting_since, assignee, thread_ref, via, source_ref, created_at, updated_at)
       VALUES (${id}, ${input.type}, ${input.title.trim()}, ${input.description ?? null}, ${status},
         ${input.weight ?? 1}, ${input.weeklyHourTarget ?? null}, ${input.frequency ?? null},
         ${input.frequencyHorizon ?? "day"}, ${input.completionWeight ?? 0.7}, ${input.goalMix ?? 0.7},
         ${input.metricKind ?? (input.type === "metric" ? "five_point" : null)}, ${input.metricMin ?? null},
         ${input.metricMax ?? null}, ${input.estimateHours ?? null}, ${input.dueAt ?? null},
-        ${input.waitingOnEntityId ?? null}, ${status === "waiting" ? new Date() : null},
-        ${input.assignee ?? "owner"}, ${input.threadRef ?? null}, ${who.via}, ${who.sourceRef ?? null})`;
+        ${input.waitingOnEntityId ?? null}, ${status === "waiting" ? at : null},
+        ${input.assignee ?? "owner"}, ${input.threadRef ?? null}, ${who.via}, ${who.sourceRef ?? null}, ${at}, ${at})`;
     if (input.parentId) await linkInTx(tx, { fromId: id, toId: input.parentId, kind: "measures" }, who);
   });
   scheduleRecompute();
@@ -187,11 +189,11 @@ export async function updateIntent(db: Sql, id: string, patch: IntentPatch): Pro
       due_at = ${has("dueAt") ? (patch.dueAt ?? null) : current.due_at ? new Date(current.due_at) : null},
       snoozed_until = ${status !== "later" ? null : has("snoozedUntil") ? (patch.snoozedUntil ?? null) : current.snoozed_until ? new Date(current.snoozed_until) : null},
       waiting_on_entity_id = ${waitingOn},
-      waiting_since = ${status === "waiting" ? (becameWaiting ? new Date() : current.waiting_since ? new Date(current.waiting_since) : new Date()) : null},
+      waiting_since = ${status === "waiting" ? (becameWaiting ? clockNow() : current.waiting_since ? new Date(current.waiting_since) : clockNow()) : null},
       assignee = ${patch.assignee ?? current.assignee},
       thread_ref = ${has("threadRef") ? (patch.threadRef ?? null) : current.thread_ref},
-      archived_at = ${status === "archived" ? new Date() : null},
-      updated_at = now()
+      archived_at = ${status === "archived" ? clockNow() : null},
+      updated_at = ${clockNow()}
     WHERE id = ${id}`;
   scheduleRecompute();
   return getIntent(db, id);
@@ -200,7 +202,7 @@ export async function updateIntent(db: Sql, id: string, patch: IntentPatch): Pro
 export async function archiveIntent(db: Sql, id: string): Promise<void> {
   const current = await getIntent(db, id);
   if (current.system) throw new Refused("system-intent", `${current.title} is a system intent and cannot be archived`);
-  await db`UPDATE intent SET status = 'archived', archived_at = now(), updated_at = now() WHERE id = ${id}`;
+  await db`UPDATE intent SET status = 'archived', archived_at = ${clockNow()}, updated_at = ${clockNow()} WHERE id = ${id}`;
   scheduleRecompute();
 }
 
@@ -268,7 +270,7 @@ export async function assignTask(db: Sql, id: string, assignee: "owner" | "agent
   const current = await getIntent(db, id);
   if (current.type !== "task") throw new BadInput("only a task can be assigned");
   await db`UPDATE intent SET assignee = ${assignee}, thread_ref = ${assignee === "agent" ? (threadRef ?? current.thread_ref) : null},
-    queued_at = NULL, updated_at = now() WHERE id = ${id}`;
+    queued_at = NULL, updated_at = ${clockNow()} WHERE id = ${id}`;
   return getIntent(db, id);
 }
 
@@ -277,7 +279,7 @@ export async function queueTask(db: Sql, id: string): Promise<IntentView> {
   const current = await getIntent(db, id);
   if (current.type !== "task") throw new BadInput("only a task can be queued");
   if (current.status !== "active" && current.status !== "waiting") throw new BadInput(`this task is ${current.status}`);
-  await db`UPDATE intent SET assignee = 'agent', queued_at = now(), updated_at = now() WHERE id = ${id}`;
+  await db`UPDATE intent SET assignee = 'agent', queued_at = ${clockNow()}, updated_at = ${clockNow()} WHERE id = ${id}`;
   return getIntent(db, id);
 }
 
@@ -290,7 +292,7 @@ export async function nextQueuedTask(db: Sql): Promise<{ id: string; title: stri
 
 /** A worker thread took it. */
 export async function claimTask(db: Sql, id: string, threadRef: string): Promise<IntentView> {
-  await db`UPDATE intent SET queued_at = NULL, thread_ref = ${threadRef}, updated_at = now() WHERE id = ${id}`;
+  await db`UPDATE intent SET queued_at = NULL, thread_ref = ${threadRef}, updated_at = ${clockNow()} WHERE id = ${id}`;
   return getIntent(db, id);
 }
 
@@ -306,11 +308,11 @@ export async function completeTask(db: Sql, id: string, opts: { memo?: string | 
     const existing = await tx`SELECT id FROM commitment WHERE kind = 'task_done' AND intent_id = ${id}`;
     if (existing.length === 0) {
       await tx`INSERT INTO commitment (id, kind, intent_id, t, memo, via, source_ref)
-        VALUES (${uuidv7()}, 'task_done', ${id}, now(), ${opts.memo ?? null}, ${opts.via}, ${opts.sourceRef ?? null})`;
+        VALUES (${uuidv7()}, 'task_done', ${id}, ${clockNow()}, ${opts.memo ?? null}, ${opts.via}, ${opts.sourceRef ?? null})`;
     } else if (opts.memo) {
       await tx`UPDATE commitment SET memo = ${opts.memo} WHERE id = ${existing[0]!.id}`;
     }
-    await tx`UPDATE intent SET status = 'done', flagged_at = NULL, flag_note = NULL, updated_at = now() WHERE id = ${id}`;
+    await tx`UPDATE intent SET status = 'done', flagged_at = NULL, flag_note = NULL, updated_at = ${clockNow()} WHERE id = ${id}`;
   });
   scheduleRecompute();
   return getIntent(db, id);
@@ -321,7 +323,7 @@ export async function reopenTask(db: Sql, id: string): Promise<IntentView> {
   if (current.google_task_id) throw new Refused("google-task", "this task lives in Google Tasks: reopen it there");
   await db.begin(async (tx) => {
     await tx`DELETE FROM commitment WHERE kind = 'task_done' AND intent_id = ${id}`;
-    await tx`UPDATE intent SET status = 'active', updated_at = now() WHERE id = ${id}`;
+    await tx`UPDATE intent SET status = 'active', updated_at = ${clockNow()} WHERE id = ${id}`;
   });
   scheduleRecompute();
   return getIntent(db, id);
@@ -339,14 +341,14 @@ export async function flagTask(db: Sql, id: string, note: string): Promise<Inten
   if (current.type !== "task") throw new BadInput("only a task can be flagged");
   if (current.status !== "active" && current.status !== "waiting") throw new BadInput(`this task is ${current.status}`);
   if (!note.trim()) throw new BadInput("say why it needs Sumeet");
-  await db`UPDATE intent SET flagged_at = now(), flag_note = ${note.trim()}, notified_at = NULL, assignee = 'owner',
-    updated_at = now() WHERE id = ${id}`;
+  await db`UPDATE intent SET flagged_at = ${clockNow()}, flag_note = ${note.trim()}, notified_at = NULL, assignee = 'owner',
+    updated_at = ${clockNow()} WHERE id = ${id}`;
   return getIntent(db, id);
 }
 
 /** The owner has seen it. The task stays. */
 export async function unflagTask(db: Sql, id: string): Promise<void> {
-  await db`UPDATE intent SET flagged_at = NULL, flag_note = NULL, updated_at = now() WHERE id = ${id}`;
+  await db`UPDATE intent SET flagged_at = NULL, flag_note = NULL, updated_at = ${clockNow()} WHERE id = ${id}`;
 }
 
 export async function needsOwner(tx: Tx): Promise<IntentView[]> {
@@ -366,7 +368,7 @@ export async function taskOutcome(tx: Tx, id: string): Promise<{ memo: string | 
 // ---- habits and metrics: the owner's evidence ----
 
 /** The instant a dated entry is filed at: now for today, local noon for another day. */
-function entryTime(date: Ymd | undefined, now = new Date()): Date {
+function entryTime(date: Ymd | undefined, now = clockNow()): Date {
   if (!date || date === localYmd(env.LOR_TZ, now)) return now;
   return localTimeOnDay(env.LOR_TZ, date, "12:00");
 }
@@ -423,11 +425,11 @@ export async function undoCommitment(db: Sql, commitmentId: string): Promise<voi
     const c = rows[0];
     if (!c) throw new NotFound(`no commitment ${commitmentId}`);
     if (c.time_block_id) {
-      await tx`UPDATE time_block SET committed = false, commitment_id = NULL, updated_at = now() WHERE id = ${c.time_block_id}`;
+      await tx`UPDATE time_block SET committed = false, commitment_id = NULL, updated_at = ${clockNow()} WHERE id = ${c.time_block_id}`;
     }
     await tx`DELETE FROM commitment WHERE id = ${commitmentId}`;
     if (c.kind === "task_done") {
-      await tx`UPDATE intent SET status = 'active', updated_at = now() WHERE id = ${c.intent_id} AND status = 'done'`;
+      await tx`UPDATE intent SET status = 'active', updated_at = ${clockNow()} WHERE id = ${c.intent_id} AND status = 'done'`;
     }
   });
   scheduleRecompute();
@@ -443,9 +445,9 @@ export async function undoCommitment(db: Sql, commitmentId: string): Promise<voi
 export async function resetVisibility(db: Sql, opts: { until?: Date | null; alsoTaskIds?: string[] } = {}): Promise<{ moved: number }> {
   const also = opts.alsoTaskIds ?? [];
   const rows = await db`
-    UPDATE intent SET status = 'later', snoozed_until = ${opts.until ?? null}, updated_at = now()
+    UPDATE intent SET status = 'later', snoozed_until = ${opts.until ?? null}, updated_at = ${clockNow()}
     WHERE NOT system AND status = 'active'
-      AND ((type IN ('task', 'project') AND due_at IS NOT NULL AND due_at < now())
+      AND ((type IN ('task', 'project') AND due_at IS NOT NULL AND due_at < ${clockNow()})
         OR (type = 'task' AND id = ANY(${also}::uuid[])))
     RETURNING id`;
   return { moved: rows.length };
@@ -454,7 +456,7 @@ export async function resetVisibility(db: Sql, opts: { until?: Date | null; also
 /** Bring snoozed intents back when their date arrives. */
 export async function wakeSnoozed(db: Tx): Promise<number> {
   const rows = await db`
-    UPDATE intent SET status = 'active', snoozed_until = NULL, updated_at = now()
-    WHERE status = 'later' AND snoozed_until IS NOT NULL AND snoozed_until <= now() RETURNING id`;
+    UPDATE intent SET status = 'active', snoozed_until = NULL, updated_at = ${clockNow()}
+    WHERE status = 'later' AND snoozed_until IS NOT NULL AND snoozed_until <= ${clockNow()} RETURNING id`;
   return rows.length;
 }

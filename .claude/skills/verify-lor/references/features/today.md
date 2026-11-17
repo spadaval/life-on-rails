@@ -34,6 +34,7 @@ The owner's day at a glance: the waking day remaining, the running timer, planne
 ## Proves it works
 
 - On this branch the today flow fails at its first step (see Gotchas): expect `FLOW FAILED: ...` and `today-FAILED.png`, not the five screenshots.
+- `screen clock <out-dir>` checks the test server's fixed clock (`?at=`, `src/server/clock.ts`): Today at `?at=09:00` keeps its remaining time, next event and sidebar clock past one 20-second tick, a link keeps `at=`, and `?at=00:05` draws the whole waking day ahead. It changes no rows; load the demo set first (`pnpm demo:test`) so the page has events.
 - Checks that match the code: after "Start timer" the timer card shows "Stop"; after "Stop", the block appears in the Actual lane as a suggestion (a pending proposal for its intent, or "Uncategorized" when it had none). Picking an intent in the block panel moves the block to that intent (check `time_block.intent_id`), and the remember checkbox on a calendar block adds an `attribution_rule` row. Focus time draws dashed in Planned and makes no Actual block.
 
 ## Gotchas

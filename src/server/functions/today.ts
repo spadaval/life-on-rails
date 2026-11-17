@@ -14,6 +14,7 @@ import { needsOwner } from "../intents.js";
 import { resolveDate } from "../memory/day.js";
 import { dayTimeline } from "../memory/timeline.js";
 import { getToday } from "../today.js";
+import { clockNow } from "../clock.js";
 
 const ui = { via: "ui" as const };
 const Hm = z.string().regex(/^\d{2}:\d{2}$/);
@@ -32,7 +33,7 @@ function onDay(date: Ymd, hm: string): Date {
 export const getTodayFn = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ date: z.string().optional(), obs: z.string().uuid().optional() }).parse(d ?? {}))
   .handler(async ({ data }) => {
-    const now = new Date();
+    const now = clockNow();
     // A link to one record opens the day it happened on.
     const at = data.obs && !data.date ? (await sql<{ t_start: Date }[]>`SELECT t_start FROM observation WHERE id = ${data.obs}`)[0]?.t_start : undefined;
     const date = at ? localYmd(env.LOR_TZ, at) : resolveDate(data.date, now);

@@ -1,12 +1,13 @@
 // `lor log`: something the agent did or noticed, kept as an observation.
 import type { Tx } from "../../db/client.js";
 import { recordObservation } from "../observations.js";
+import { clockNow } from "../clock.js";
 
 export async function agentLog(
   db: Tx,
   input: { text: string; intentId?: string | null; thread: string },
 ): Promise<{ id: string }> {
-  const now = new Date();
+  const now = clockNow();
   const { id } = await recordObservation(db, {
     tStart: now,
     tEnd: now,

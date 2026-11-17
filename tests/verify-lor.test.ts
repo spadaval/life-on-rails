@@ -37,6 +37,9 @@ describe("verify-lor refuses the real database", () => {
   it("seed refuses any database other than life_on_rails_test", () =>
     refused(cli(["seed", "admin", "--dry-run"], { LOR_VERIFY_DATABASE_URL: "postgres:///life_on_rails_dev?host=/var/run/postgresql" }), /not the test database/));
   it("api refuses the env file's DATABASE_URL", () => refused(cli(["api", "GET", "/status", "--dry-run"], { LOR_VERIFY_DATABASE_URL: REAL_URL }), /real database/));
+  it("demo refuses the env file's DATABASE_URL", () => refused(cli(["demo", "--dry-run"], { LOR_VERIFY_DATABASE_URL: REAL_URL }), /real database/));
+  it("demo refuses any database other than life_on_rails_test", () =>
+    refused(cli(["demo", "--dry-run"], { LOR_VERIFY_DATABASE_URL: "postgres:///life_on_rails_dev?host=/var/run/postgresql" }), /not the test database/));
   it("up refuses the env file's DATABASE_URL", () => refused(cli(["up", "--dry-run"], { LOR_VERIFY_DATABASE_URL: REAL_URL }), /real database/));
   it("seed refuses a dbname parameter that overrides the path", () =>
     refused(cli(["seed", "admin", "--dry-run"], { LOR_VERIFY_DATABASE_URL: "postgres:///life_on_rails_test?host=/var/run/postgresql&dbname=other" }), /can name another database/));

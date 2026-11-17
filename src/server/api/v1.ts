@@ -41,6 +41,7 @@ import { getToday, renderToday } from "../today.js";
 import { wallOne } from "../trmnl/device.js";
 import { clearPin, getPin, setPin } from "../trmnl/pin.js";
 import { localTimeOnDay, localYmd } from "../../shared/localTime.js";
+import { clockNow } from "../clock.js";
 
 export interface ApiRequest {
   query: URLSearchParams;
@@ -93,12 +94,12 @@ const slugOf = (params: string[]) => decodeURIComponent(params[0] ?? "");
 /** "18:00" is that time today, here; anything else must be an RFC 3339 time. */
 function untilTime(value: string | null | undefined): Date | null {
   if (!value) return null;
-  if (/^\d{1,2}:\d{2}$/.test(value)) return localTimeOnDay(env.LOR_TZ, localYmd(env.LOR_TZ, new Date()), value.padStart(5, "0"));
+  if (/^\d{1,2}:\d{2}$/.test(value)) return localTimeOnDay(env.LOR_TZ, localYmd(env.LOR_TZ, clockNow()), value.padStart(5, "0"));
   return parseTime(value, "--until");
 }
 
 route("GET", /^\/wall$/, async () => {
-  const now = new Date();
+  const now = clockNow();
   return { one: await wallOne(now), pin: await getPin(sql) };
 });
 route("POST", /^\/wall\/pin$/, async ({ body }) => {

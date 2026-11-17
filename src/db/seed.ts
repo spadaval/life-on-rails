@@ -9,7 +9,7 @@ import { uuidv7 } from "../shared/ids.js";
 // the agent edit them like any other, and the seed never overwrites them.
 // Bodies are read from src/db/pages/ at the repo root (the service's working
 // directory; scripts/serve.mjs sets LOR_ROOT).
-const SEED_PAGES = [
+export const SEED_PAGES = [
   { slug: "agent", title: "The agent", file: "agent.md", inDigest: true },
   { slug: "me", title: "Sumeet", file: "me.md", inDigest: true },
   { slug: "messaging-rules", title: "When to message Sumeet", file: "messaging-rules.md", inDigest: true },

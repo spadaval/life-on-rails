@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "google:auth": "tsx scripts/google-auth.ts",
-    "db:seed": "tsx scripts/seed-graph.ts"
+    "db:seed": "tsx scripts/seed-graph.ts",
+    "demo:test": "node .claude/skills/verify-lor/verify.mjs demo"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

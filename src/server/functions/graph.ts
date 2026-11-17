@@ -11,6 +11,7 @@ import {
 } from "../intents.js";
 import { entityNames } from "../memory/entities.js";
 import { explainScore, recomputeScores } from "../scoring/recompute.js";
+import { clockNow } from "../clock.js";
 
 const ui = { via: "ui" as const };
 const Id = z.object({ id: z.string().uuid() });
@@ -19,7 +20,7 @@ const num = z.number().nullable().optional();
 export const getGraphFn = createServerFn({ method: "GET" }).handler(async () => {
   await recomputeScores(sql);
   const [graph, entities] = await Promise.all([getGraph(sql), entityNames(sql)]);
-  return { nodes: graph.nodes, entities: entities.map((e) => ({ id: e.id, name: e.name })), today: localYmd(env.LOR_TZ, new Date()) };
+  return { nodes: graph.nodes, entities: entities.map((e) => ({ id: e.id, name: e.name })), today: localYmd(env.LOR_TZ, clockNow()) };
 });
 
 /** What quick add needs from any screen: today, what a task can count toward, and who it can wait on. */
@@ -31,7 +32,7 @@ export const getQuickAddFn = createServerFn({ method: "GET" }).handler(async () 
     entityNames(sql),
   ]);
   return {
-    today: localYmd(env.LOR_TZ, new Date()),
+    today: localYmd(env.LOR_TZ, clockNow()),
     parents: parents.map((p) => ({ ...p })),
     people: entities.map((e) => ({ id: e.id, name: e.name })),
   };

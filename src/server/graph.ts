@@ -7,6 +7,7 @@ import { env } from "./env.js";
 import { NotFound } from "./errors.js";
 import { type IntentView, type LinkView, getIntent, listIntents, listLinks, taskOutcome } from "./intents.js";
 import { latestScores } from "./scoring/recompute.js";
+import { clockNow } from "./clock.js";
 
 export interface GraphNode extends IntentView {
   score: number | null;
@@ -29,7 +30,7 @@ export interface Graph {
   links: LinkView[];
 }
 
-export async function getGraph(db: Tx, now = new Date()): Promise<Graph> {
+export async function getGraph(db: Tx, now = clockNow()): Promise<Graph> {
   const [intents, links, scores] = await Promise.all([listIntents(db), listLinks(db), latestScores(db)]);
   const byId = new Map(intents.map((i) => [i.id, i]));
   const scoreBy = new Map(scores.map((s) => [s.intent_id, s]));
@@ -173,7 +174,7 @@ export async function getIntentDetail(db: Tx, id: string): Promise<IntentDetail>
 export async function taskContextMarkdown(db: Tx, id: string): Promise<string> {
   const d = await getIntentDetail(db, id);
   if (d.intent.type !== "task") throw new NotFound(`${id} is a ${d.intent.type}, not a task`);
-  const now = new Date();
+  const now = clockNow();
   const out: string[] = [`# Context for one task: ${localYmd(env.LOR_TZ, now)} (${env.LOR_TZ})`, ""];
   const agent = await db<{ body: string }[]>`SELECT body FROM page WHERE slug = 'agent'`;
   if (agent[0]) out.push("## Page: agent", "", agent[0].body.trim(), "");

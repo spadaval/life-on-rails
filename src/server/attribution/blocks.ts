@@ -13,6 +13,7 @@ import { recordObservation } from "../observations.js";
 import { scheduleRecompute } from "../scoring/recompute.js";
 import { placeOf } from "./activity.js";
 import { loadPlaces, loadRules, lockBlocks, syncFill } from "./fill.js";
+import { clockNow } from "../clock.js";
 
 export interface Who {
   via: "ui" | "agent" | "rule" | "job";
@@ -68,7 +69,7 @@ async function openBlock(tx: Tx): Promise<BlockRow | null> {
 }
 
 async function pendingProposal(tx: Tx, blockId: string, intentId: string, confidence: number, who: Who, source: string, reason?: string | null): Promise<string> {
-  await tx`UPDATE proposal SET status = 'expired', resolved_at = now() WHERE time_block_id = ${blockId} AND status = 'pending'`;
+  await tx`UPDATE proposal SET status = 'expired', resolved_at = ${clockNow()} WHERE time_block_id = ${blockId} AND status = 'pending'`;
   const id = uuidv7();
   await tx`INSERT INTO proposal (id, confidence, time_block_id, intent_id, payload, reason, via, source_ref)
     VALUES (${id}, ${confidence}, ${blockId}, ${intentId}, ${tx.json({ source })}, ${reason ?? null}, ${who.via}, ${who.sourceRef ?? null})`;
@@ -85,7 +86,7 @@ async function closeOpen(tx: Tx, at: Date, who: Who): Promise<BlockRow | null> {
     await tx`DELETE FROM time_block WHERE id = ${open.id}`;
     return null;
   }
-  await tx`UPDATE time_block SET t_end = ${end}, paused_at = NULL, updated_at = now() WHERE id = ${open.id}`;
+  await tx`UPDATE time_block SET t_end = ${end}, paused_at = NULL, updated_at = ${clockNow()} WHERE id = ${open.id}`;
   const intentId = open.intent_id ?? (await systemIntentId(tx, "Uncategorized"));
   if (!open.committed) await pendingProposal(tx, open.id, intentId, 1, who, "manual");
   return { ...open, t_end: end, paused_at: null };
@@ -103,7 +104,7 @@ export interface StartInput {
   title?: string | null;
 }
 
-export async function startManualBlock(db: Sql, input: StartInput, who: Who, now = new Date()): Promise<{ id: string }> {
+export async function startManualBlock(db: Sql, input: StartInput, who: Who, now = clockNow()): Promise<{ id: string }> {
   const id = uuidv7();
   await db.begin(async (tx) => {
     await lockBlocks(tx);
@@ -118,7 +119,7 @@ export async function startManualBlock(db: Sql, input: StartInput, who: Who, now
   return { id };
 }
 
-export async function stopRunningBlock(db: Sql, who: Who, now = new Date()): Promise<{ id: string | null }> {
+export async function stopRunningBlock(db: Sql, who: Who, now = clockNow()): Promise<{ id: string | null }> {
   let closed: BlockRow | null = null;
   await db.begin(async (tx) => {
     await lockBlocks(tx);
@@ -128,9 +129,9 @@ export async function stopRunningBlock(db: Sql, who: Who, now = new Date()): Pro
   return { id: (closed as BlockRow | null)?.id ?? null };
 }
 
-export async function pauseRunningBlock(db: Sql, now = new Date()): Promise<{ id: string | null }> {
+export async function pauseRunningBlock(db: Sql, now = clockNow()): Promise<{ id: string | null }> {
   const rows = await db<{ id: string }[]>`
-    UPDATE time_block SET paused_at = ${now}, updated_at = now() WHERE t_end IS NULL AND paused_at IS NULL RETURNING id`;
+    UPDATE time_block SET paused_at = ${now}, updated_at = ${clockNow()} WHERE t_end IS NULL AND paused_at IS NULL RETURNING id`;
   return { id: rows[0]?.id ?? null };
 }
 
@@ -139,7 +140,7 @@ export async function pauseRunningBlock(db: Sql, now = new Date()): Promise<{ id
  * now with the same label, so a block's interval never contains a pause and
  * hours can always be computed from intervals.
  */
-export async function resumeRunningBlock(db: Sql, who: Who, now = new Date()): Promise<{ id: string | null }> {
+export async function resumeRunningBlock(db: Sql, who: Who, now = clockNow()): Promise<{ id: string | null }> {
   let id: string | null = null;
   await db.begin(async (tx) => {
     await lockBlocks(tx);
@@ -162,20 +163,20 @@ async function commitBlock(tx: Tx, block: BlockRow, intentId: string, proposalId
   let end = block.t_end;
   if (!end) {
     end = block.paused_at ?? now;
-    await tx`UPDATE time_block SET t_end = ${end}, paused_at = NULL, updated_at = now() WHERE id = ${block.id}`;
+    await tx`UPDATE time_block SET t_end = ${end}, paused_at = NULL, updated_at = ${clockNow()} WHERE id = ${block.id}`;
   }
   if (proposalId) {
-    await tx`UPDATE proposal SET status = 'accepted', resolved_at = now() WHERE id = ${proposalId}`;
+    await tx`UPDATE proposal SET status = 'accepted', resolved_at = ${clockNow()} WHERE id = ${proposalId}`;
   }
   // Any other suggestion for this block is now moot.
-  await tx`UPDATE proposal SET status = 'rejected', resolved_at = now()
+  await tx`UPDATE proposal SET status = 'rejected', resolved_at = ${clockNow()}
     WHERE time_block_id = ${block.id} AND status = 'pending' AND id IS DISTINCT FROM ${proposalId}`;
   await tx`DELETE FROM commitment WHERE kind = 'time_spent' AND time_block_id = ${block.id}`;
   const cid = uuidv7();
   await tx`INSERT INTO commitment (id, kind, intent_id, t, t_end, value, proposal_id, time_block_id, via, source_ref)
     VALUES (${cid}, 'time_spent', ${intentId}, ${block.t_start}, ${end}, ${hoursBetween(block.t_start, end)},
       ${proposalId}, ${block.id}, ${who.via}, ${who.sourceRef ?? null})`;
-  await tx`UPDATE time_block SET intent_id = ${intentId}, committed = true, commitment_id = ${cid}, updated_at = now()
+  await tx`UPDATE time_block SET intent_id = ${intentId}, committed = true, commitment_id = ${cid}, updated_at = ${clockNow()}
     WHERE id = ${block.id}`;
 }
 
@@ -186,7 +187,7 @@ export interface RecategorizeOptions {
   remember?: boolean;
 }
 
-export async function recategorizeBlock(db: Sql, blockId: string, intentId: string, who: Who, opts: RecategorizeOptions = {}, now = new Date()): Promise<void> {
+export async function recategorizeBlock(db: Sql, blockId: string, intentId: string, who: Who, opts: RecategorizeOptions = {}, now = clockNow()): Promise<void> {
   await db.begin(async (tx) => {
     await lockBlocks(tx);
     const block = await getBlock(tx, blockId);
@@ -233,13 +234,13 @@ async function placeForBlock(tx: Tx, blockId: string): Promise<string | null> {
 }
 
 /** Remove a block's commitment: it goes back to being a suggestion. */
-export async function uncommitBlock(db: Sql, blockId: string, now = new Date()): Promise<void> {
+export async function uncommitBlock(db: Sql, blockId: string, now = clockNow()): Promise<void> {
   await db.begin(async (tx) => {
     await lockBlocks(tx);
     const block = await getBlock(tx, blockId);
     if (!block.committed) return;
     await tx`DELETE FROM commitment WHERE kind = 'time_spent' AND time_block_id = ${blockId}`;
-    await tx`UPDATE time_block SET committed = false, commitment_id = NULL, updated_at = now() WHERE id = ${blockId}`;
+    await tx`UPDATE time_block SET committed = false, commitment_id = NULL, updated_at = ${clockNow()} WHERE id = ${blockId}`;
     if (block.intent_id) await pendingProposal(tx, blockId, block.intent_id, 0.7, { via: "ui" }, "undo");
     await resync(tx, now, block.t_start, block.t_end);
   });
@@ -256,7 +257,7 @@ export async function proposeTime(db: Sql, blockId: string, intentId: string, wh
     const intent = await tx`SELECT 1 FROM intent WHERE id = ${intentId} AND status <> 'archived'`;
     if (intent.length === 0) throw new NotFound(`no intent ${intentId}`);
     id = await pendingProposal(tx, blockId, intentId, 0.8, who, who.via, reason);
-    await tx`UPDATE time_block SET intent_id = ${intentId}, updated_at = now() WHERE id = ${blockId}`;
+    await tx`UPDATE time_block SET intent_id = ${intentId}, updated_at = ${clockNow()} WHERE id = ${blockId}`;
   });
   return { id };
 }
@@ -270,7 +271,7 @@ async function refuseOverlap(tx: Tx, blockId: string, start: Date, end: Date): P
   if (clash[0]) throw new Refused("overlaps", "that would overlap another block", { block_id: clash[0].id });
 }
 
-export async function editBlock(db: Sql, blockId: string, patch: { tStart?: Date; tEnd?: Date; title?: string | null }, now = new Date()): Promise<void> {
+export async function editBlock(db: Sql, blockId: string, patch: { tStart?: Date; tEnd?: Date; title?: string | null }, now = clockNow()): Promise<void> {
   await db.begin(async (tx) => {
     await lockBlocks(tx);
     const block = await getBlock(tx, blockId);
@@ -283,7 +284,7 @@ export async function editBlock(db: Sql, blockId: string, patch: { tStart?: Date
     if (end && end.getTime() > now.getTime()) throw new BadInput("a block cannot end in the future");
     await refuseOverlap(tx, blockId, start, end ?? new Date(8.64e15));
     await tx`UPDATE time_block SET t_start = ${start}, t_end = ${end},
-        title = ${patch.title !== undefined ? patch.title : block.title}, updated_at = now() WHERE id = ${blockId}`;
+        title = ${patch.title !== undefined ? patch.title : block.title}, updated_at = ${clockNow()} WHERE id = ${blockId}`;
     if (block.commitment_id && end) {
       await tx`UPDATE commitment SET t = ${start}, t_end = ${end}, value = ${hoursBetween(start, end)} WHERE id = ${block.commitment_id}`;
     }
@@ -292,7 +293,7 @@ export async function editBlock(db: Sql, blockId: string, patch: { tStart?: Date
   scheduleRecompute();
 }
 
-export async function deleteBlock(db: Sql, blockId: string, now = new Date()): Promise<void> {
+export async function deleteBlock(db: Sql, blockId: string, now = clockNow()): Promise<void> {
   await db.begin(async (tx) => {
     await lockBlocks(tx);
     const block = await getBlock(tx, blockId);
@@ -305,7 +306,7 @@ export async function deleteBlock(db: Sql, blockId: string, now = new Date()): P
 }
 
 /** Split a closed block at `at`: the left part keeps the id, the right part is new. */
-export async function splitBlock(db: Sql, blockId: string, at: Date, now = new Date()): Promise<{ rightId: string }> {
+export async function splitBlock(db: Sql, blockId: string, at: Date, now = clockNow()): Promise<{ rightId: string }> {
   const rightId = uuidv7();
   await db.begin(async (tx) => {
     await lockBlocks(tx);
@@ -314,7 +315,7 @@ export async function splitBlock(db: Sql, blockId: string, at: Date, now = new D
     if (!(at.getTime() > b.t_start.getTime() && at.getTime() < b.t_end.getTime())) {
       throw new BadInput("the split point must be inside the block");
     }
-    await tx`UPDATE time_block SET t_end = ${at}, updated_at = now() WHERE id = ${blockId}`;
+    await tx`UPDATE time_block SET t_end = ${at}, updated_at = ${clockNow()} WHERE id = ${blockId}`;
     await tx`INSERT INTO time_block (id, t_start, t_end, origin, intent_id, calendar_id, calendar_event_id, title)
       VALUES (${rightId}, ${at}, ${b.t_end}, ${b.origin}, ${b.intent_id}, ${b.calendar_id}, ${b.calendar_event_id}, ${b.title})`;
     await tx`UPDATE time_block_observation SET block_id = ${rightId}
@@ -356,7 +357,7 @@ export interface ConfirmInput {
   all?: boolean;
 }
 
-export async function confirmDay(db: Sql, input: ConfirmInput, who: Who, now = new Date()): Promise<{ accepted: number; rejected: number }> {
+export async function confirmDay(db: Sql, input: ConfirmInput, who: Who, now = clockNow()): Promise<{ accepted: number; rejected: number }> {
   const { start, end } = localDayBounds(env.LOR_TZ, input.date);
   let accepted = 0;
   let rejected = 0;
@@ -364,7 +365,7 @@ export async function confirmDay(db: Sql, input: ConfirmInput, who: Who, now = n
     await lockBlocks(tx);
     const reject = input.reject ?? [];
     if (reject.length > 0) {
-      const r = await tx`UPDATE proposal SET status = 'rejected', resolved_at = now()
+      const r = await tx`UPDATE proposal SET status = 'rejected', resolved_at = ${clockNow()}
         WHERE id = ANY(${reject}::uuid[]) AND status = 'pending' RETURNING id`;
       rejected = r.length;
     }
@@ -396,7 +397,7 @@ export async function confirmDay(db: Sql, input: ConfirmInput, who: Who, now = n
  * After a poll: commit ended calendar blocks whose label came from a rule the
  * owner marked auto-apply. A rule the owner set up is the owner's confirmation.
  */
-export async function applyAutoRules(tx: Tx, from: Date, to: Date, now = new Date()): Promise<number> {
+export async function applyAutoRules(tx: Tx, from: Date, to: Date, now = clockNow()): Promise<number> {
   const rules = (await loadRules(tx)).filter((r) => r.autoApply);
   if (rules.length === 0) return 0;
   const ruleIds = rules.map((r) => r.id);

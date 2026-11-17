@@ -4,6 +4,7 @@ import type { Sql } from "../../db/client.js";
 import { addDays, isYmd, localYmd } from "../../shared/localTime.js";
 import { BadInput } from "../errors.js";
 import { env } from "../env.js";
+import { clockNow } from "../clock.js";
 
 /**
  * Not spending: money moving between the owner's own accounts (transfers,
@@ -45,7 +46,7 @@ export async function listAccounts(sql: Sql) {
 }
 
 function range(query: URLSearchParams): { from: string; to: string } {
-  const today = localYmd(env.LOR_TZ, new Date());
+  const today = localYmd(env.LOR_TZ, clockNow());
   const from = query.get("from") ?? `${today.slice(0, 8)}01`;
   const to = query.get("to") ?? today;
   for (const [k, v] of [["from", from], ["to", to]] as const) if (!isYmd(v)) throw new BadInput(`--${k} must be YYYY-MM-DD`);
@@ -53,7 +54,7 @@ function range(query: URLSearchParams): { from: string; to: string } {
 }
 
 export async function listTxns(sql: Sql, query: URLSearchParams) {
-  const today = localYmd(env.LOR_TZ, new Date());
+  const today = localYmd(env.LOR_TZ, clockNow());
   const from = query.get("from") ?? addDays(today, -30);
   const to = query.get("to") ?? today;
   for (const [k, v] of [["from", from], ["to", to]] as const) if (!isYmd(v)) throw new BadInput(`--${k} must be YYYY-MM-DD`);
