@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-293p
 title: 'Gestures by script in the lab: swipe, fling, long press, drag and fold, with a recording'
-status: in_review
+status: changes_requested
 mission: lor-2803
 labels:
 - design-lab
