@@ -164,7 +164,11 @@ fun keyOfRef(ref: String): String {
 fun HomeUi.applyWhere(where: Where, file: LayoutFile?) {
     where.cell?.let { (c, r) -> grid.goTo(Cell(c, r), animate = false) }
     when (where.open) {
-        Opened.DRAWER -> openDrawer(animate = false)
+        Opened.DRAWER -> {
+            openDrawer(animate = false)
+            file?.drawer?.tabs?.indexOfFirst { it.name == where.target }?.takeIf { it >= 0 }?.let { tab = it }
+            scrollRequest = where.scroll
+        }
         Opened.SEARCH -> {
             openDrawer(animate = false)
             searchOpen = true

@@ -13,6 +13,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -337,6 +338,15 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
         val found = rememberLazyGridState()
         // A new tab starts at its top; new results at their best, by the field.
         LaunchedEffect(current) { browse.scrollToItem(0) }
+        // A named state's scroll (only the lab asks, lor-xdoi), once the tab is on screen.
+        val scrollDensity = LocalDensity.current.density
+        LaunchedEffect(ui.scrollRequest, current) {
+            val dp = ui.scrollRequest
+            if (dp > 0) {
+                ui.scrollRequest = 0
+                browse.scrollBy(dp * scrollDensity)
+            }
+        }
         LaunchedEffect(results) { found.scrollToItem(0) }
         val grid = if (searching) found else browse
         // Read by the grid's finger at each swipe, so it asks the list on screen.

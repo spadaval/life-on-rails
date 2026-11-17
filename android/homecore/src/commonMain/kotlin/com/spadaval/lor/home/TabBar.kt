@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.lab.labAnchor
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -120,6 +121,7 @@ internal fun SearchButton(open: () -> Unit) {
             .background(Float)
             .border(1.dp, Edge)
             .semantics { contentDescription = "Search" }
+            .labAnchor("drawer-search")
             .clickable(role = Role.Button, onClick = open),
         contentAlignment = Alignment.Center,
     ) {
@@ -158,7 +160,7 @@ internal fun SearchField(
             BasicTextField(
                 value,
                 change,
-                Modifier.fillMaxWidth().focusRequester(focus).onFocusChanged { focused(it.isFocused) },
+                Modifier.fillMaxWidth().labAnchor("search-field").focusRequester(focus).onFocusChanged { focused(it.isFocused) },
                 textStyle = Type.body.copy(color = Txt),
                 singleLine = true,
                 cursorBrush = SolidColor(Txt),

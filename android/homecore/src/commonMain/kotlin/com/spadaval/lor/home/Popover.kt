@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.lab.labAnchor
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -247,6 +248,7 @@ fun PopoverLayer(host: PopoverHost) {
                             transformOrigin = TransformOrigin(p.tipX / p.width, if (p.below) -a / h else 1f + a / h)
                         }
                         .shadow(8.dp, Chamfer, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
+                        .labAnchor("menu")
                         .drawBehind { placed?.let { drawPopoverFrame(it) } }
                         .verticalScroll(scroll)
                         .padding(vertical = 4.dp),
@@ -314,7 +316,7 @@ private fun DrawScope.drawPopoverFrame(p: PopoverPlacement) {
 @Composable
 fun PopoverItem(text: String, icon: ImageBitmap? = null, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick).padding(horizontal = 16.dp, vertical = 11.dp),
+        Modifier.fillMaxWidth().labAnchor("menu:$text").clickable(role = Role.Button, onClick = onClick).padding(horizontal = 16.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {

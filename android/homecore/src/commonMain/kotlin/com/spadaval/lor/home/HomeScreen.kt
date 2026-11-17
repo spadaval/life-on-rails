@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.lab.labAnchor
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -268,6 +269,8 @@ class HomeUi {
      * clears this. Only the lab sets it, to open a named state with the menu up (lor-xdoi).
      */
     var menuRequest by mutableStateOf<String?>(null)
+    /** How far to scroll the drawer's tab, in dp, once it shows; only the lab sets it, for a named state (lor-xdoi). */
+    var scrollRequest by mutableIntStateOf(0)
     /** The stack whose home menu chose Add widget: the picker sheet is open for it (lor-r0f9). */
     var widgetPicker by mutableStateOf<Cell?>(null)
     /** The widget (by its id) whose resize frame is up; the grid leaves the finger to it (lor-r0f9). */
@@ -1109,15 +1112,15 @@ private val DotsGap = 8.dp
 internal fun MenuTile(app: HomeApp, at: At, home: HomeContext, width: Dp = 76.dp, dot: Boolean = false, spot: From.At? = null, label: Boolean = true, icon: IconSpot = remember { IconSpot() }, beforeOpen: () -> Unit = {}) {
     WithAppMenu(app, at, home, spot, icon) { menu ->
         // In edit mode a tap opens nothing (launcher polish 4.3).
-        AppTile(app, width, menu, dot, label, icon) { if (!home.drag.editing) { beforeOpen(); home.actions.open(app, at, icon) } }
+        AppTile(app, width, menu, dot, label, icon, anchor = "${at.from.wire}:${app.label}") { if (!home.drag.editing) { beforeOpen(); home.actions.open(app, at, icon) } }
     }
 }
 
 @Composable
-internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)? = null, dot: Boolean = false, label: Boolean = true, icon: IconSpot? = null, onClick: () -> Unit) {
+internal fun AppTile(app: HomeApp, width: Dp = 76.dp, onLongClick: (() -> Unit)? = null, dot: Boolean = false, label: Boolean = true, icon: IconSpot? = null, anchor: String? = null, onClick: () -> Unit) {
     Column(
         // The cell's width, at most [width]: a tile never overflows a narrow column (launcher polish 6.4).
-        Modifier.fillMaxWidth().widthIn(max = width)
+        Modifier.fillMaxWidth().widthIn(max = width).then(if (anchor != null) Modifier.labAnchor(anchor) else Modifier)
             // Without a label the tile keeps its name for TalkBack.
             .then(if (label) Modifier else Modifier.semantics { contentDescription = app.label })
             // The pressed state (lor-gnk0) is this click node's indication, so the tile stays one node.
@@ -1151,7 +1154,7 @@ private fun FolderTile(folder: ResolvedFolder, home: HomeContext, onClick: (Rect
     if (menu) FolderMenu(folder, home, spot, rename = { home.ui.folderRename = true; onClick(icon[0]) }) { menu = false }
     val label = LocalHomeLook.current.labels
     Column(
-        Modifier.fillMaxWidth().widthIn(max = 76.dp)
+        Modifier.fillMaxWidth().widthIn(max = 76.dp).labAnchor("folder:${folder.folder.name}")
             .then(if (label) Modifier else Modifier.semantics { contentDescription = folder.folder.name })
             .combinedClickable(interactionSource = null, indication = PressScale.Tile, onLongClickLabel = if (home.locked) null else "Menu", onLongClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)

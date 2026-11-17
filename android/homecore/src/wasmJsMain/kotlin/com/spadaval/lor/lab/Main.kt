@@ -89,6 +89,7 @@ private fun image(bytes: ByteArray): ImageBitmap = Image.makeFromEncoded(bytes).
 private fun el(id: String): HTMLElement = document.getElementById(id) as HTMLElement? ?: error("index.html has no #$id")
 
 fun main() {
+    LabAnchors.on = true
     MainScope().launch {
         val saira = bundled("fonts/saira.ttf")
         WebFonts.saira = FontFamily(listOf(400, 500, 600).map { w -> Font("saira-$w", saira, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w))) })
