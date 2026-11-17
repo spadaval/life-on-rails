@@ -92,7 +92,7 @@ The panels draw common `LorHome`, `LorTasks` and `LorPeople` (`lor/LorData.kt`).
 
 ### Evidence
 
-All evidence is under `/home/supadava/.cache/lor-rgx4/evidence/`. `MANIFEST.json` lists every file with its sha256. Everything was built on boat at the commit that carries this Report and served with a static server on :3871.
+All evidence is under `/home/supadava/.cache/lor-rgx4/evidence/`. `MANIFEST.json` lists every file with its sha256. Everything was built on boat at `fae2f95` (this branch with main merged; the Report commit after it changes only this file) and served with a static server on :3871.
 
 - `lab/`: 34 shots. Each state is drawn on the cover and the inner screen:
   - `first-run` with no step done, with two steps done, and with all three done;
