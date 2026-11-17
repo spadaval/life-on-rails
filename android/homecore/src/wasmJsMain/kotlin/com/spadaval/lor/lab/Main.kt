@@ -6,7 +6,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +49,14 @@ import org.w3c.files.get
 import kotlinx.serialization.json.Json
 import androidx.compose.runtime.remember
 import org.w3c.fetch.Response
+import org.w3c.dom.events.KeyboardEvent
+import androidx.navigationevent.DirectNavigationEventInput
+import androidx.navigationevent.NavigationEvent
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.add
 
 /*
  * The lab page (index.html beside it). The URL hash is the only state: the controls write it and
@@ -53,7 +64,18 @@ import org.w3c.fetch.Response
  * the bundle (the fonts, the wallpapers) and the fixtures in common code; it fetches nothing else.
  *
  * When a hash has been drawn, the body's `data-drawn` attribute holds it, for shots.mjs to wait on.
+ * The body's `data-anchors` holds every [labAnchor] on screen as JSON, `{"name": [left, top,
+ * right, bottom]}` in dp from the screen's top left, for scripts/lab/gesture.mjs.
+ *
+ * What is not a link: Home (draws the state afresh), Back (sent to Compose's back handlers), and
+ * the speed switch (index.html's clock). Each is a button and a key; Fold and Rotate change the link.
  */
+
+/** Home presses: the scene is keyed on them, so Home draws the state afresh. */
+private val homes = mutableIntStateOf(0)
+
+/** Where the lab's Back reaches Compose: added to the page's navigation-event dispatcher by [Frame]. */
+private val backInput = DirectNavigationEventInput()
 
 private suspend fun bundled(path: String): ByteArray {
     val res = window.fetch(path).await<Response>()
@@ -82,14 +104,16 @@ fun main() {
             val parsed = parseHash(hash)
             controls.show(parsed)
             val phone = el("phone")
-            phone.style.width = "${parsed.link.screen.widthDp}px"
-            phone.style.height = "${parsed.link.screen.heightDp}px"
+            val scene = LabScene(Fixtures.all.first(), parsed.link.screen, parsed.link.landscape)
+            phone.style.width = "${scene.widthDp}px"
+            phone.style.height = "${scene.heightDp}px"
             // ComposeViewport sizes its canvas on the window's resize, not its container's.
             window.dispatchEvent(Event("resize"))
         }
         show()
         window.addEventListener("hashchange", { hash = window.location.hash; show() })
         dropOneOffs(controls)
+        predictiveBack()
         ComposeViewport(el("phone")) { Frame(hash, parseHash(hash), wallpapers) }
     }
 }
@@ -123,8 +147,23 @@ private fun Frame(hash: String, parsed: Parsed, wallpapers: Map<Wallpaper, Image
     val fixture = remember(link.state) { Lab.fixture(link.state).first }
     Box(Modifier.fillMaxSize()) {
         Image(wallpapers.getValue(link.wallpaper), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        key(link) {
-            Lab.version(link.version)!!.draw(LabScene(fixture, link.screen))
+        // Keyed on what the scene is, not where it is drawn: a fold, a turn or a new wallpaper keeps
+        // the surface's place, as the phone does. Home starts it again.
+        key(link.version, link.state, homes.intValue) {
+            Lab.version(link.version)!!.draw(LabScene(fixture, link.screen, link.landscape))
+        }
+    }
+    val dispatcher = LocalNavigationEventDispatcherOwner.current?.navigationEventDispatcher
+    DisposableEffect(dispatcher) {
+        dispatcher?.addInput(backInput)
+        onDispose { dispatcher?.removeInput(backInput) }
+    }
+    LaunchedEffect(Unit) {
+        snapshotFlow { LabAnchors.all.toMap() }.collect { anchors ->
+            val json = buildJsonObject {
+                for ((name, r) in anchors) putJsonArray(name) { add(r.left); add(r.top); add(r.right); add(r.bottom) }
+            }
+            document.body?.setAttribute("data-anchors", json.toString())
         }
     }
     // Keyed on the hash as written, not the link: two hashes can name one link, and the marker
@@ -135,6 +174,35 @@ private fun Frame(hash: String, parsed: Parsed, wallpapers: Map<Wallpaper, Image
         withFrameNanos {}
         document.body?.setAttribute("data-drawn", hash)
     }
+}
+
+/** Sets the speed of index.html's animation clock: 1, 0.25, or 0 for none. */
+private fun setSpeed(speed: Double): Unit = js("window.labSetSpeed(speed)")
+
+private fun detailOf(e: Event): String = js("String(e.detail)")
+
+/** A back with no gesture to it, as a phone's button sends it. */
+private fun backNow() {
+    backInput.backStarted(NavigationEvent())
+    backInput.backCompleted()
+}
+
+/**
+ * A predictive back, step by step, from scripts/lab/gesture.mjs: a `lab-back` event on the document
+ * whose detail is `start <x> <y> <edge>`, `progress <p> <x> <y> <edge>`, `cancel` or `complete`,
+ * with x and y in dp and edge `left` or `right`.
+ */
+private fun predictiveBack() {
+    document.addEventListener("lab-back", { e ->
+        val w = detailOf(e).split(" ")
+        fun edge(i: Int) = if (w.getOrNull(i) == "right") NavigationEvent.EDGE_RIGHT else NavigationEvent.EDGE_LEFT
+        when (w[0]) {
+            "start" -> backInput.backStarted(NavigationEvent(touchX = w[1].toFloat(), touchY = w[2].toFloat(), progress = 0f, swipeEdge = edge(3)))
+            "progress" -> backInput.backProgressed(NavigationEvent(touchX = w[2].toFloat(), touchY = w[3].toFloat(), progress = w[1].toFloat(), swipeEdge = edge(4)))
+            "cancel" -> backInput.backCancelled()
+            "complete" -> backInput.backCompleted()
+        }
+    })
 }
 
 /** Whether this page may write the clipboard: only in a secure context (https or localhost). */
@@ -152,6 +220,9 @@ private class Controls(val go: (LabLink) -> Unit) {
     private val state = el("state") as HTMLSelectElement
     private val wallpaper = el("wallpaper") as HTMLSelectElement
     private val fold = el("fold") as HTMLButtonElement
+    private val rotate = el("rotate") as HTMLButtonElement
+    private val speed = el("speed") as HTMLButtonElement
+    private var speedAt = 0
     private val json = el("json") as HTMLButtonElement
     private val problem = el("problem")
     /** The State dropdown's entry for a one-off, shown while the hash holds one. */
@@ -168,9 +239,45 @@ private class Controls(val go: (LabLink) -> Unit) {
         state.addEventListener("change", { if (state.value != ONE_OFF) go(current.copy(state = state.value)) })
         json.addEventListener("click", { showJson(Fixtures.toJson(Lab.fixture(current.state).first)) })
         wallpaper.addEventListener("change", { go(current.copy(wallpaper = Wallpaper.entries.first { it.id == wallpaper.value })) })
-        fold.addEventListener("click", {
-            go(current.copy(screen = if (current.screen == LabScreen.Cover) LabScreen.Inner else LabScreen.Cover))
-        })
+        fold.addEventListener("click", { toggleFold() })
+        rotate.addEventListener("click", { go(current.copy(landscape = !current.landscape)) })
+        el("home").addEventListener("click", { homes.intValue++ })
+        el("back").addEventListener("click", { backNow() })
+        speed.addEventListener("click", { nextSpeed() })
+        document.addEventListener("keydown", { e -> key(e as KeyboardEvent) })
+        showSpeed()
+    }
+
+    private fun toggleFold() = go(current.copy(screen = if (current.screen == LabScreen.Cover) LabScreen.Inner else LabScreen.Cover))
+
+    private fun nextSpeed() {
+        speedAt = (speedAt + 1) % SPEEDS.size
+        setSpeed(SPEEDS[speedAt].first)
+        showSpeed()
+    }
+
+    private fun showSpeed() {
+        speed.textContent = SPEEDS[speedAt].second
+        speed.setAttribute("data-speed", SPEEDS[speedAt].first.toString())
+    }
+
+    /**
+     * The toolbar's keys, the letters its buttons are titled with: H Home, Escape or B Back, F Fold
+     * and Unfold, R Rotate, S the speed. Not while typing in a field or with a modifier held.
+     */
+    private fun key(e: KeyboardEvent) {
+        if (e.ctrlKey || e.metaKey || e.altKey) return
+        val tag = (e.target as? HTMLElement)?.tagName
+        if (tag == "INPUT" || tag == "TEXTAREA" || tag == "SELECT") return
+        when (e.key) {
+            "h", "H" -> homes.intValue++
+            "Escape", "b", "B" -> backNow()
+            "f", "F" -> toggleFold()
+            "r", "R" -> go(current.copy(landscape = !current.landscape))
+            "s", "S" -> nextSpeed()
+            else -> return
+        }
+        e.preventDefault()
     }
 
     private fun fill(select: HTMLSelectElement, options: List<Triple<String, String, String>>) {
@@ -198,7 +305,8 @@ private class Controls(val go: (LabLink) -> Unit) {
         val problemText = listOfNotNull(parsed.problem, Lab.fixture(current.state).second).joinToString("; ").ifEmpty { null }
         wallpaper.value = current.wallpaper.id
         fold.textContent = if (current.screen == LabScreen.Cover) "Unfold" else "Fold"
-        fold.title = current.screen.label
+        fold.title = "${current.screen.label} (F)"
+        rotate.textContent = if (current.landscape) "Upright" else "Rotate"
         problem.textContent = problemText ?: ""
         problem.hidden = problemText == null
         document.title = "Lab · " + if (oneOff) "${current.version}/one-off" else current.hash
@@ -240,5 +348,7 @@ private class Controls(val go: (LabLink) -> Unit) {
 
     private companion object {
         const val ONE_OFF = "(one-off)"
+        /** The speed switch's steps: animations at full speed, at a quarter, and none (each ends at once). */
+        val SPEEDS = listOf(1.0 to "Speed 1×", 0.25 to "Speed ¼×", 0.0 to "No motion")
     }
 }
