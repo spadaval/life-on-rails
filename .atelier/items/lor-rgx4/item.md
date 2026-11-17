@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-rgx4
 title: The agent page and the LoR panel draw from plain state in the shared module
-status: changes_requested
+status: in_review
 mission: lor-2803
 labels:
 - design-lab
@@ -158,3 +158,7 @@ The timing line, 2026-11-17, as for lor-t8lq. It asked for a one-line edit to a 
   - `scripts/shots.mjs` times out on the first link of a lab run while the wasm loads cold; a retry draws it.
   - The `:homecore:allTests` out-of-memory failure on main, above.
 
+### Responses
+
+1-fxnt.1: fixed in 8352a44: the sheet draws the fixture's `T3.projects`, each thread under the project its title names; LabPanelsTest covers an empty list and a project with no thread.
+1-fxnt.2: fixed in 8352a44: the long transcript's times step two minutes from 18:20 as instants, so each parses.
