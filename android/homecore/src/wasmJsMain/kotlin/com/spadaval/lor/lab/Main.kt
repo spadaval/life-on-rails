@@ -6,6 +6,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
@@ -90,6 +93,7 @@ private fun el(id: String): HTMLElement = document.getElementById(id) as HTMLEle
 
 fun main() {
     LabAnchors.on = true
+    Lab.concepts = labConcepts()
     MainScope().launch {
         val saira = bundled("fonts/saira.ttf")
         WebFonts.saira = FontFamily(listOf(400, 500, 600).map { w -> Font("saira-$w", saira, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w))) })
@@ -148,10 +152,19 @@ private fun Frame(hash: String, parsed: Parsed, wallpapers: Map<Wallpaper, Image
     val fixture = remember(link.state) { Lab.fixture(link.state).first }
     Box(Modifier.fillMaxSize()) {
         Image(wallpapers.getValue(link.wallpaper), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        // Keyed on what the scene is, not where it is drawn: a fold, a turn or a new wallpaper keeps
-        // the surface's place, as the phone does. Home starts it again.
-        key(link.version, link.state, homes.intValue) {
-            Lab.version(link.version)!!.draw(LabScene(fixture, link.screen, link.landscape, link.wallpaper))
+        // The fixture's font size (Android's setting, `phone.fontScale`) for every version, and the
+        // wallpaper for a concept to blur behind what floats.
+        val density = LocalDensity.current
+        CompositionLocalProvider(
+            LocalDensity provides Density(density.density, density.fontScale * fixture.phone.fontScale),
+            LocalWallpaper provides wallpapers.getValue(link.wallpaper),
+            LocalWallpaperKind provides link.wallpaper,
+        ) {
+            // Keyed on what the scene is, not where it is drawn: a fold, a turn or a new wallpaper keeps
+            // the surface's place, as the phone does. Home starts it again.
+            key(link.version, link.state, homes.intValue) {
+                Lab.version(link.version)!!.draw(LabScene(fixture, link.screen, link.landscape, link.wallpaper))
+            }
         }
     }
     val dispatcher = LocalNavigationEventDispatcherOwner.current?.navigationEventDispatcher
