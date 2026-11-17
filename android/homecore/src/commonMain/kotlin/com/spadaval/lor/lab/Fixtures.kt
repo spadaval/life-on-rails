@@ -69,7 +69,8 @@ object Fixtures {
     val firstRun = empty.copy(
         name = "first-run", about = "A first-run home with the set-up card: not yet the home app, T3 unpaired, LoR not reached at the address",
         settings = Settings(serverUrl = "http://10.0.2.2:3857"),
-        lor = Parts.failedLor,
+        // The reason as the card says it after the address: LorClient.describe's words.
+        lor = Read(Load.FAILED, error = "LoR didn't answer. Is Tailscale on?").let { Lor(it, it, it) },
         phone = Parts.demoPhone.copy(permissions = mapOf("home" to false)),
     )
 
