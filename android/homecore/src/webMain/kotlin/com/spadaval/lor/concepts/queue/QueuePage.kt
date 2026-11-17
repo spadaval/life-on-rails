@@ -72,7 +72,8 @@ fun QueuePage(store: ConceptStore, ui: QueueUi, wide: Boolean) {
             Box(Modifier.width(1.dp).fillMaxHeight().background(Q.line))
             val items = store.items()
             val key = store.open?.takeIf { k -> items.any { it.key == k } || k.startsWith("thread:") } ?: items.firstOrNull()?.key
-            Box(Modifier.weight(1f).fillMaxHeight().background(Q.ground.copy(alpha = 0.35f))) {
+            // The pane makes room for the keyboard, as the phone resizes a window for it.
+            Box(Modifier.weight(1f).fillMaxHeight().background(Q.ground.copy(alpha = 0.35f)).padding(bottom = if (ui.keyboard) com.spadaval.lor.concepts.kit.KeyboardHeight else 0.dp)) {
                 if (key != null) Detail(store, ui, key, pane = true) else Calm(store, Modifier.align(Alignment.Center))
             }
         }

@@ -124,7 +124,7 @@ fun OneLine(store: ConceptStore, ui: QueueUi, modifier: Modifier = Modifier) {
     val waiting = store.waiting()
     val shape = Q.rLg
     Row(
-        modifier.fillMaxWidth().shadow(12.dp, shape, clip = false).clip(shape).background(Q.float).border(1.dp, Q.line2, shape)
+        modifier.fillMaxWidth().clip(shape).background(Q.float).border(1.dp, Q.line2, shape)
             .heightIn(min = 64.dp).padding(start = 6.dp, end = 8.dp).labAnchor("home:line"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -263,7 +263,7 @@ private fun Rect.iconRect() = Rect(center.x - height * 0.33f, top, center.x + he
 private fun SearchPill(modifier: Modifier, onSearch: () -> Unit, onAll: () -> Unit) {
     val shape = Q.rPill
     Row(
-        modifier.fillMaxWidth().height(52.dp).shadow(10.dp, shape, clip = false).clip(shape).background(Q.float).border(1.dp, Q.line2, shape),
+        modifier.fillMaxWidth().height(52.dp).clip(shape).background(Q.float).border(1.dp, Q.line2, shape),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(Modifier.weight(1f).fillMaxSize().clickable { onSearch() }.padding(start = 18.dp).labAnchor("home:search"), verticalAlignment = Alignment.CenterVertically) {

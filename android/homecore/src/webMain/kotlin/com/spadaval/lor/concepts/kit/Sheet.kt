@@ -112,8 +112,10 @@ fun Sheet(
         val shape = RoundedCornerShape(topStart = look.radius, topEnd = look.radius)
         Column(
             Modifier.align(Alignment.BottomCenter).widthIn(max = maxWidth).fillMaxWidth()
-                .height(maxHeight * detents.last())
-                .graphicsLayer { translationY = (detents.last() - shown.value) * height }
+                // Between its rest points the sheet grows and shrinks, so its foot (a reply field, a
+                // Send button) stays on screen; below the lowest it slides away whole.
+                .height(maxHeight * maxOf(shown.value, detents.first()))
+                .graphicsLayer { translationY = (detents.first() - shown.value).coerceAtLeast(0f) * height }
                 .shadow(24.dp, shape, clip = false)
                 .clip(shape)
                 .background(look.glass)

@@ -118,7 +118,9 @@ fun Detail(store: ConceptStore, ui: QueueUi, key: String, pane: Boolean) {
             Hairline()
             // Newest at the foot, by the reply field, as a chat reads; the position is the store's, so a fold keeps it.
             LazyColumn(
-                Modifier.weight(1f).fillMaxWidth().labAnchor("thread"), state = store.list("thread:${thread.id}"), reverseLayout = true,
+                // Anchors for scripts: the thread, and where it is scrolled to (a fold keeps both).
+                Modifier.weight(1f).fillMaxWidth().labAnchor("thread").labAnchor("messages:${messages.size}").labAnchor("thread-at:${store.list("thread:${thread.id}").firstVisibleItemIndex}"),
+                state = store.list("thread:${thread.id}"), reverseLayout = true,
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
             ) {
                 if (messages.isEmpty()) item(key = "none") { BasicText(if (store.t3Live) "No messages yet." else "T3 is away; the thread shows once it's back.", style = Q.label) }
@@ -127,7 +129,7 @@ fun Detail(store: ConceptStore, ui: QueueUi, key: String, pane: Boolean) {
             }
             val field = ui.field("reply:${thread.id}")
             Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom) {
-                Box(Modifier.weight(1f)) { Field(ui, field, if (store.t3Live) "Reply to the agent" else "T3 is away; replies wait", anchor = "reply-field", lines = 4) }
+                Box(Modifier.weight(1f).labAnchor("draft:${field.text.length}")) { Field(ui, field, if (store.t3Live) "Reply to the agent" else "T3 is away; replies wait", anchor = "reply-field", lines = 4) }
                 Spacer(Modifier.padding(start = 6.dp))
                 IconButton(Glyph.Send, "Send", {
                     if (field.text.isNotBlank() && store.t3Live) {

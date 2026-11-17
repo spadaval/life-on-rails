@@ -223,7 +223,7 @@ private fun Settings(store: ConceptStore, ui: QueueUi, section: String?) {
 private fun SyncRows(store: ConceptStore) {
     val sync = store.sync
     val failed = store.syncFailed
-    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp).labAnchor("sync"), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp).labAnchor(if (failed) "sync:failed" else "sync:ok"), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(10.dp).clip(CircleShape).background(if (failed) Q.red else Color(0xFF5BBF7A)))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
