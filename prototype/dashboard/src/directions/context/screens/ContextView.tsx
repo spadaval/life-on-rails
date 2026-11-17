@@ -299,7 +299,7 @@ function TimerHead({ ctx, lead, runHere }: { ctx: Ctx; lead: Node | null; runHer
     return (
       <div className="cx-timer" data-live>
         <span className="cx-timer-on">
-          <span className="cx-live-dot" aria-hidden="true" /> {r.paused_at ? "Paused" : "On"} {runningLabel(r)} since {hm(r.t_start)}
+          <span className="cx-live-dot" aria-hidden="true" /> {r.paused_at ? "Paused" : r.intent_id ? `On ${runningLabel(r)}` : "Running, no label"} since {hm(r.t_start)}
         </span>
         <span className="cx-num cx-timer-clock" aria-label={`Elapsed ${clock(elapsed)}`}>{clock(elapsed)}</span>
         <div className="cx-timer-actions">
@@ -351,7 +351,7 @@ function UnnamedBody() {
   return (
     <section className="cx-unnamed">
       <p className="cx-unnamed-say">
-        It belongs to no context yet, so it counts toward nothing. Name it now, or keep going: when it stops, it waits under “Time nobody named”.
+        It belongs to no context yet, so it counts toward nothing. Name it now, or keep going: when it stops, it waits beside this under “Time in no context”.
       </p>
       <Picker
         disabled={off}
