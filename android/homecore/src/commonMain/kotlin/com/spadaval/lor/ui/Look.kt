@@ -13,27 +13,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextMotion
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.spadaval.lor.R
 
 /*
  * The look (launcher polish 6.1): DESIGN.md ("Elite: Mostly Harmless") as Compose colours, type
  * and Material theme, so every screen of the app draws from one place. The colours' values are
  * in [Palette]; their jobs are DESIGN.md's.
  *
- * Fonts (OFL-1.1, licence in assets/fonts/OFL.txt), from github.com/google/fonts:
- * - res/font/saira.ttf: ofl/saira/Saira[wdth,wght].ttf, the one file upstream has, drawn at 400,
+ * Fonts (OFL-1.1, licence in the app's assets/fonts/OFL.txt), from github.com/google/fonts, in
+ * this module's androidMain/res/font:
+ * - saira.ttf: ofl/saira/Saira[wdth,wght].ttf, the one file upstream has, drawn at 400,
  *   500 and 600 by its weight axis;
- * - res/font/saira_condensed_medium.ttf and saira_condensed_semibold.ttf:
+ * - saira_condensed_medium.ttf and saira_condensed_semibold.ttf:
  *   ofl/sairacondensed/SairaCondensed-Medium.ttf and -SemiBold.ttf.
  */
 
@@ -97,15 +94,13 @@ object Motion {
 fun Modifier.selection(shape: Shape = RectangleShape): Modifier =
     background(Or.copy(alpha = 0.08f), shape).border(1.dp, Or.copy(alpha = 0.55f), shape)
 
-@OptIn(ExperimentalTextApi::class)
-private fun saira(weight: Int) = Font(R.font.saira, FontWeight(weight), variationSettings = FontVariation.Settings(FontVariation.weight(weight)))
-
-@OptIn(ExperimentalTextApi::class)
-val Saira = FontFamily(saira(400), saira(500), saira(600))
-val SairaCondensed = FontFamily(
-    Font(R.font.saira_condensed_medium, FontWeight.Medium),
-    Font(R.font.saira_condensed_semibold, FontWeight.SemiBold),
-)
+/**
+ * Saira at 400, 500 and 600 by its weight axis, and Saira Condensed Medium and SemiBold. Each
+ * platform builds them from the same files: Android from this module's res/font, the lab from
+ * those files copied into its bundle and loaded before anything draws.
+ */
+expect val Saira: FontFamily
+expect val SairaCondensed: FontFamily
 
 private const val TNUM = "tnum"
 

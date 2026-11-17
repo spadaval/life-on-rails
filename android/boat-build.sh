@@ -1,22 +1,24 @@
 #!/bin/bash
 # Build the LoR Android app on the boat VM lor-android-build (set up by boat-setup.sh).
 # Usage: android/boat-build.sh <checkout-root> <out-dir> [gradle tasks...]
-# Default tasks: assembleDebug testDebugUnitTest (task arguments and the checkout's name must not
-# contain quotes or spaces; tasks must produce a debug APK or unit-test results, not a release).
+# Default tasks: assembleDebug testDebugUnitTest, homecore's tests (testAndroidHostTest) and the
+# launcher lab's bundle (task arguments and the checkout's name must not contain quotes or spaces;
+# tasks must produce a debug APK, unit-test results or the lab, not a release).
 # Syncs the checkout's android/ to the VM, builds there under a lock, and on success copies
-# outputs/apk/debug/app-debug.apk and the unit-test reports into <out-dir>. Fails, without
+# outputs/apk/debug/app-debug.apk, the unit-test reports (homecore's under homecore/) and the lab's
+# development bundle (lab/, served as files) into <out-dir>. Fails, without
 # resuming it, if the VM is stopped (`boat resume bx_fxc6p2bw`; it stops itself 30 min after use).
 # It sets the VM's remaining lifetime to 30 min, which cuts any longer one set by hand.
 set -euo pipefail
-[ $# -ge 2 ] || { sed -n 3,8p "$0"; exit 2; }
+[ $# -ge 2 ] || { sed -n 3,11p "$0"; exit 2; }
 B=${LOR_BOAT_VM:-bx_fxc6p2bw}
 ROOT=$(cd "$1" && pwd); OUT=$2; shift 2
-TASKS=${*:-assembleDebug testDebugUnitTest}
+TASKS=${*:-assembleDebug testDebugUnitTest :homecore:testAndroidHostTest :homecore:wasmJsBrowserDevelopmentExecutableDistribution}
 # A build directory per checkout path on the VM; transfer files and logs per run.
 NAME=$(basename "$ROOT")-$(echo "$ROOT" | sha1sum | cut -c1-8)
 RUN=$NAME-$$-$RANDOM
 mkdir -p "$OUT"
-rm -rf "$OUT/outputs" "$OUT/reports" "$OUT/test-results" "$OUT/build.log"
+rm -rf "$OUT/outputs" "$OUT/reports" "$OUT/test-results" "$OUT/homecore" "$OUT/lab" "$OUT/build.log"
 TGZ=$(mktemp --suffix=.tgz)
 PID=
 # On any exit: kill the remote job if it may still run, and remove this run's files on the VM.
@@ -24,7 +26,7 @@ cleanup() {
   rm -f "$TGZ"
   [ -n "$PID" ] || return 0
   [ "${DONE:-}" = 1 ] || boat exec "$B" --kill "$PID" >/dev/null 2>&1 || true
-  boat exec "$B" -- "rm -f ~/src-$RUN.tgz ~/build-$RUN.log ~/out-$RUN.tgz" >/dev/null 2>&1 || true
+  boat exec "$B" -- "rm -rf ~/src-$RUN.tgz ~/build-$RUN.log ~/out-$RUN.tgz ~/stage-$RUN" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 (cd "$ROOT" && git ls-files -co --exclude-standard android | grep -v '^android/local.properties$' \
@@ -34,12 +36,15 @@ boat scp "$TGZ" "$B:/home/user/src-$RUN.tgz" >/dev/null
 # Everything that touches this checkout's files on the VM runs under the lock. Old sources are
 # replaced (Gradle's caches and build dirs kept), and old outputs are deleted before the build.
 INNER="source ~/lor-env.sh; D=~/w/$NAME/android; mkdir -p \$D;
-  find \$D -mindepth 1 -maxdepth 1 ! -name .gradle ! -name app -exec rm -rf {} +;
-  [ -d \$D/app ] && find \$D/app -mindepth 1 -maxdepth 1 ! -name build -exec rm -rf {} +;
-  rm -rf \$D/app/build/outputs/apk \$D/app/build/reports/tests \$D/app/build/test-results;
+  find \$D -mindepth 1 -maxdepth 1 ! -name .gradle ! -name .kotlin ! -name build ! -name app ! -name homecore -exec rm -rf {} +;
+  for m in app homecore; do [ -d \$D/\$m ] && find \$D/\$m -mindepth 1 -maxdepth 1 ! -name build -exec rm -rf {} +; done;
+  rm -rf \$D/app/build/outputs/apk \$D/app/build/reports/tests \$D/app/build/test-results \$D/homecore/build/test-results \$D/homecore/build/dist;
   { tar xzf ~/src-$RUN.tgz -C ~/w/$NAME && rm ~/src-$RUN.tgz && cd \$D && echo sdk.dir=\$ANDROID_HOME > local.properties &&
   ./gradlew --console=plain $TASKS; } > ~/build-$RUN.log 2>&1;
-  rc=\$?; cd \$D/app/build 2>/dev/null && tar czf ~/out-$RUN.tgz \$(ls -d outputs/apk/debug/app-debug.apk reports/tests test-results 2>/dev/null) 2>/dev/null; exit \$rc"
+  rc=\$?; mkdir -p ~/stage-$RUN/homecore; cd \$D/app/build 2>/dev/null && cp -r --parents \$(ls -d outputs/apk/debug/app-debug.apk reports/tests test-results 2>/dev/null) ~/stage-$RUN/ 2>/dev/null;
+  [ -d \$D/homecore/build/test-results ] && cp -r \$D/homecore/build/test-results ~/stage-$RUN/homecore/;
+  [ -d \$D/homecore/build/dist/wasmJs/developmentExecutable ] && cp -r \$D/homecore/build/dist/wasmJs/developmentExecutable ~/stage-$RUN/lab;
+  rmdir ~/stage-$RUN/homecore 2>/dev/null; [ -n \"\$(ls -A ~/stage-$RUN)\" ] && tar czf ~/out-$RUN.tgz -C ~/stage-$RUN .; rm -rf ~/stage-$RUN; exit \$rc"
 PID=$(boat exec "$B" --detach --json -- "flock /tmp/lor-build.lock bash -c '$INNER'" | python3 -c 'import json,sys; print(json.load(sys.stdin)["processId"])')
 fails=0; EXIT=
 for i in $(seq 1 240); do
@@ -66,5 +71,5 @@ if [ "$EXIT" != 0 ]; then
 fi
 grep -E 'BUILD SUCCESSFUL' "$OUT/build.log" || tail -1 "$OUT/build.log"
 boat scp "$B:/home/user/out-$RUN.tgz" "$OUT/out.tgz" >/dev/null 2>&1 \
-  || { echo "boat-build: the build produced no APK or test results to fetch" >&2; exit 1; }
+  || { echo "boat-build: the build produced no APK, test results or lab to fetch" >&2; exit 1; }
 tar xzf "$OUT/out.tgz" -C "$OUT" && rm "$OUT/out.tgz"

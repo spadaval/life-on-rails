@@ -54,7 +54,7 @@ object Palette {
         fun mix(shift: Int): Long {
             val t = (top shr shift) and 0xFF
             val b = (bottom shr shift) and 0xFF
-            return Math.round(t * alpha + b * (1 - alpha)) and 0xFF
+            return kotlin.math.floor(t * alpha + b * (1 - alpha) + 0.5).toLong() and 0xFF
         }
         return (0xFFL shl 24) or (mix(16) shl 16) or (mix(8) shl 8) or mix(0)
     }
