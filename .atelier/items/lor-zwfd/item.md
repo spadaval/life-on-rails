@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-zwfd
 title: The lab is served at /lab on LoR's owner listener, so the viewers open on the PC and the phone
-status: ready
+status: building
 mission: lor-2803
 labels:
 - design-lab
@@ -11,7 +11,8 @@ labels:
 priority: medium
 blocked_by:
 - lor-nde9
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A336528d8-568a-46be-80e7-fa243e638044%3Adelegate-task%3A4d68b643-f52b-4848-a13e-86377a0c862a
 ready:
   by: lead, on the plan agreed in round 7
   at: 2026-11-17T06:57:12.926382409Z
