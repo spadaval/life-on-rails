@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-oech
 title: 'Named states: any launcher or app surface opens from a fixture, in the lab and in the debug app'
-status: in_review
+status: changes_requested
 mission: lor-2803
 labels:
 - design-lab
