@@ -1,5 +1,8 @@
 package com.spadaval.lor.agent
 
+import com.spadaval.lor.net.atZone
+import kotlinx.datetime.toJavaZoneId
+import kotlin.time.toJavaInstant
 import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
 import androidx.compose.foundation.Canvas
@@ -118,7 +121,7 @@ fun AgentPage() {
         val leftWidth = minOf(LEFT_MAX, maxWidth / 2)
         // The thread the wide form's right column shows (lor-iabt): the one chosen, else the first
         // T3 card's, else the most recently updated.
-        val cards = AgentQueue.cards(shell.threads, model.answered, model.lor?.now ?: Instant.now())
+        val cards = AgentQueue.cards(shell.threads, model.answered, model.lor?.now?.toJavaInstant() ?: Instant.now())
         val shown = if (wide) ThreadChoice.shown(shell.threads, cards) else null
         val choose: ((T3Thread) -> Unit)? = if (wide) ({ ThreadChoice.chosen = it.id }) else null
         // The column ends at the keyboard (lor-sqfe: home's window doesn't pan), so a focused field,
@@ -228,7 +231,7 @@ internal fun NeedsYou(
     val status by model.connection.status.collectAsState()
     val shell by model.connection.shell.collectAsState()
     val live = status == T3Connection.Status.Live
-    val now = model.lor?.now ?: Instant.now()
+    val now = model.lor?.now?.toJavaInstant() ?: Instant.now()
     val cards = AgentQueue.cards(shell.threads, model.answered, now)
     val needs = model.lor?.needsYou.orEmpty()
     val lorSource = when {
@@ -344,8 +347,8 @@ private val Day = DateTimeFormatter.ofPattern("EEE d MMM")
 internal fun Today(model: AgentModel) {
     val lor = model.lor
     val error = model.lorError
-    val zone = lor?.zone ?: ZoneId.systemDefault()
-    SectionHeader("Today", (lor?.now ?: Instant.now()).atZone(zone).format(Day))
+    val zone = lor?.zone?.toJavaZoneId() ?: ZoneId.systemDefault()
+    SectionHeader("Today", (lor?.now?.toJavaInstant() ?: Instant.now()).atZone(zone).format(Day))
     if (lor == null) {
         if (error == null) Text("Reading LoR…", style = Small, modifier = Modifier.padding(horizontal = 18.dp))
         else Unreachable(error, model)
@@ -480,7 +483,7 @@ private fun TodayBody(lor: DeviceHome, zone: ZoneId) {
 private fun DayArc(lor: DeviceHome) {
     val zone = lor.zone
     val done = (1 - lor.day.remainingFraction).toFloat().coerceIn(0f, 1f)
-    val left = Duration.between(lor.now, lor.day.wakeEnd).coerceAtLeast(Duration.ZERO)
+    val left = Duration.between(lor.now.toJavaInstant(), lor.day.wakeEnd.toJavaInstant()).coerceAtLeast(Duration.ZERO)
     val minutes = left.toMinutes()
     val leftText = if (minutes >= 60) "${minutes / 60} h ${minutes % 60} m left" else "$minutes m left"
     Canvas(Modifier.fillMaxWidth().padding(horizontal = 18.dp).height(30.dp).semantics { contentDescription = "Day $leftText" }) {

@@ -5,8 +5,8 @@ import com.spadaval.lor.agent.AgentStates.Source
 import com.spadaval.lor.net.DeviceHome
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.time.Instant
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
+import kotlin.time.Instant
 
 /** The agent page's all-clear and what it says it can't see (launcher polish 3.3). */
 class AgentStatesTest {
@@ -33,7 +33,7 @@ class AgentStatesTest {
         assertEquals(emptyList<Note>(), AgentStates.notes(Source.SEEN, Source.READING, 0, 0))
     }
 
-    private val zone = ZoneId.of("America/New_York")
+    private val zone = TimeZone.of("America/New_York")
     private fun at(s: String) = Instant.parse(s)
     private val now = at("2026-11-06T15:00:00Z") // 10:00 in New York
     private val dentist = DeviceHome.Event("Dentist", at("2026-11-06T14:30:00Z"), at("2026-11-06T15:30:00Z"))

@@ -194,7 +194,7 @@ val LocalPackIndex = staticCompositionLocalOf<PackIndex?> { null }
 val LocalIconDrawSize = staticCompositionLocalOf { HomeLook.ICON_SIZES.last.dp }
 
 @Composable
-fun AppIcon(app: HomeApp, size: Dp, modifier: Modifier = Modifier) {
+fun LauncherIcon(app: HomeApp, size: Dp, modifier: Modifier = Modifier) {
     val icons = LocalIcons.current
     val style = LocalIconStyle.current
     val pack = LocalPackIndex.current

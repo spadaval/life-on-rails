@@ -31,7 +31,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.text.Collator
-import java.time.ZoneId
 
 /**
  * The app list and the layout file for the whole process (launcher polish, P1): created once by
@@ -150,7 +149,7 @@ class HomeStore(private val context: Context) {
             writeAtomically(statsFile, _stats.value.toJson())
             if (!app.mainProfile) {
                 // Rebased first for a clock set since the last read, so the open lands on the right basis.
-                _opens.value = _opens.value.corrected(at, SystemClock.elapsedRealtime(), bootCount()).opened(opensKey(app.id), at, ZoneId.systemDefault())
+                _opens.value = _opens.value.corrected(at, SystemClock.elapsedRealtime(), bootCount()).opened(opensKey(app.id), at, kotlinx.datetime.TimeZone.currentSystemDefault())
                 writeAtomically(opensFile, _opens.value.toJson())
             }
         }
@@ -175,7 +174,7 @@ class HomeStore(private val context: Context) {
             it.getNextEvent(e)
             if (e.eventType == UsageEvents.Event.ACTIVITY_RESUMED && e.packageName != null) events += Resumed(e.packageName, e.timeStamp)
         }
-        val next = old.withUsage(events, ignoredForOpens(), now, clock, boot, ZoneId.systemDefault())
+        val next = old.withUsage(events, ignoredForOpens(), now, clock, boot, kotlinx.datetime.TimeZone.currentSystemDefault())
         _opens.value = next
         writeAtomically(opensFile, next.toJson())
         Log.i(TAG, "quick dial read ${events.size} app resumes since ${if (old.cursor > 0) "the last read" else "a week ago"} in ${System.currentTimeMillis() - now} ms (${next.counts.size} apps counted)")
@@ -305,12 +304,12 @@ class HomeStore(private val context: Context) {
                 emptyList()
             }
         }.filter { it.isEnabled }.map { info ->
-            val hit = ShortcutHit(info, isConversation(info.categories, info.isCached))
+            val hit = ShortcutHit(LauncherShortcut(info), isConversation(info.categories, info.isCached))
             val names = listOfNotNull(info.shortLabel, info.longLabel).map { Match.prepare(it.toString()) }
             Found<Any>(Kind.SHORTCUTS, "s:${info.`package`}/${info.id}#${info.userHandle}", names, hit)
         }
         val kept = if (pkg == null) emptyList() else _search.value.shortcuts.filterNot {
-            val i = (it.value as ShortcutHit).info
+            val i = (it.value as ShortcutHit).info.android
             i.`package` == pkg && (user == null || i.userHandle == user)
         }
         _search.value = _search.value.copy(shortcuts = kept + fresh)

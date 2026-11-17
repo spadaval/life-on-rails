@@ -47,7 +47,7 @@ class Elsewhere(val kind: Kind, val text: String) {
 data class SearchTargets(val web: String?, val store: String?)
 
 /** The rows for [query]: each of web and store only when an app takes it, then the agent. */
-internal fun elsewhere(targets: SearchTargets, query: String): List<Elsewhere> {
+fun elsewhere(targets: SearchTargets, query: String): List<Elsewhere> {
     val q = query.trim()
     return listOfNotNull(
         targets.web?.let { Elsewhere(Elsewhere.Kind.WEB, "Search the web for \"$q\"") },

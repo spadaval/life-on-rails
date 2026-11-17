@@ -1,5 +1,6 @@
 package com.spadaval.lor.lab
 
+import com.spadaval.lor.net.parse
 import com.spadaval.lor.home.LayoutFile
 import com.spadaval.lor.net.DeviceHome
 import com.spadaval.lor.net.DevicePeople

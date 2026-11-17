@@ -163,7 +163,7 @@ internal fun BoxScope.Dot() {
 }
 
 /** The icon size the look asks for. */
-internal val iconSize: Dp @Composable get() = LocalHomeLook.current.iconSize.dp
+val iconSize: Dp @Composable get() = LocalHomeLook.current.iconSize.dp
 
 /** An app's or folder's label in the ink of what it stands on (launcher polish 6.3: the wallpaper's on home). */
 internal val labelStyle: TextStyle
@@ -190,11 +190,11 @@ class HomeUi {
      * Opens the drawer: the one a swipe up reaches, else a swipe down (decision lor-y7qi), else
      * any drawer in the grid.
      */
-    fun openDrawer() {
+    fun openDrawer(animate: Boolean = true) {
         if (drawer) return
         val move = listOf(Way.DOWN, Way.UP).mapNotNull(grid::nextMove).firstOrNull { grid.panel(it.to) is Panel.Drawer }
-        if (move != null) grid.goTo(move.to, true, move.way, move.focus)
-        else grid.panels.firstOrNull { it is Panel.Drawer }?.let { grid.goTo(it.at, true) }
+        if (move != null) grid.goTo(move.to, animate, move.way, move.focus)
+        else grid.panels.firstOrNull { it is Panel.Drawer }?.let { grid.goTo(it.at, animate) }
     }
 
     /** Leaves the drawer for the cell it was opened from while that is there, else `start`. */
@@ -263,6 +263,11 @@ class HomeUi {
      * the tile it was opened from; at most one (launcher polish 7.3, Increment 1's R5).
      */
     var menu by mutableStateOf<Any?>(null)
+    /**
+     * An app's menu to open, by [HomeApp.key]: the first tile of that app on screen opens it and
+     * clears this. Only the lab sets it, to open a named state with the menu up (lor-xdoi).
+     */
+    var menuRequest by mutableStateOf<String?>(null)
     /** The stack whose home menu chose Add widget: the picker sheet is open for it (lor-r0f9). */
     var widgetPicker by mutableStateOf<Cell?>(null)
     /** The widget (by its id) whose resize frame is up; the grid leaves the finger to it (lor-r0f9). */
@@ -868,7 +873,7 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
  * with: its `apps` block, at the top of it, else its first block, under it. So a start stack
  * without apps, as an old dock-only one converts to (lor-bdus), still shows them.
  */
-internal fun notesBlock(stack: Panel.Stack): Int = stack.blocks.indexOfFirst { it is StackBlock.Apps }.coerceAtLeast(0)
+fun notesBlock(stack: Panel.Stack): Int = stack.blocks.indexOfFirst { it is StackBlock.Apps }.coerceAtLeast(0)
 
 /** Marks the child of a [FillColumn] that takes the space the others leave. */
 internal object Fill

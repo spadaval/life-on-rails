@@ -1,5 +1,6 @@
 package com.spadaval.lor.lor
 
+import kotlin.time.toKotlinInstant
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -128,7 +129,7 @@ class LorWrites(
         scope.launch {
             try {
                 val reply = sendTimer(action, intentId)
-                timer = HeldTimer(reply.running?.let { DeviceHome.Running(it.name, it.start, it.paused) }, reads.begun)
+                timer = HeldTimer(reply.running?.let { DeviceHome.Running(it.name, it.start.toKotlinInstant(), it.paused) }, reads.begun)
                 log("timer $action: ok")
                 reads.refresh()
             } catch (e: CancellationException) {
@@ -184,7 +185,7 @@ class LorWrites(
                 val needs = h.needsYou.filterNot { n -> held[n.id]?.let { it.done == true || it.flagged == false } == true }
                 val kept = h.agentQueue.filterNot { t -> held[t.id]?.let { it.done == true || it.agent == false } == true }
                 val joined = held.filter { (id, x) -> x.agent == true && x.done != true && kept.none { it.id == id } }
-                    .map { (id, x) -> DeviceHome.AgentTask(id, x.title, x.queuedAt, x.thread) }
+                    .map { (id, x) -> DeviceHome.AgentTask(id, x.title, x.queuedAt?.toKotlinInstant(), x.thread) }
                 val at = kept.indexOfFirst { it.queuedAt == null }.let { if (it < 0) kept.size else it }
                 val queue = kept.take(at) + joined.filter { it.queuedAt != null } + kept.drop(at) + joined.filter { it.queuedAt == null }
                 return h.copy(needsYou = needs, agentQueue = queue)

@@ -95,7 +95,7 @@ internal fun TabBar(tabs: List<DrawerTab>, current: Int, tabWidth: Dp, choose: (
 
 /** A tab's icon, or its name's first letter when the file names an icon the phone doesn't draw. */
 @Composable
-internal fun TabGlyph(tab: DrawerTab, color: Color) {
+fun TabGlyph(tab: DrawerTab, color: Color) {
     val icon = TabIcon.of(tab.icon)
     if (icon == null) {
         Text(tabLetter(tab.name), style = Type.title.copy(color = color, fontSize = 17.sp, fontWeight = FontWeight.SemiBold))
@@ -106,7 +106,7 @@ internal fun TabGlyph(tab: DrawerTab, color: Color) {
 
 /** One of [TabIcon]'s icons, 21 dp. */
 @Composable
-internal fun IconGlyph(icon: TabIcon, color: Color) {
+fun IconGlyph(icon: TabIcon, color: Color) {
     Canvas(Modifier.size(21.dp)) { drawTabIcon(icon, color) }
 }
 

@@ -22,7 +22,7 @@ enum class Wallpaper(val id: String, val label: String) {
 }
 
 /** What a version is asked to draw: the state's fixture, on one screen, upright or turned on its side. */
-class LabScene(val fixture: Fixture, val screen: LabScreen, val landscape: Boolean = false) {
+class LabScene(val fixture: Fixture, val screen: LabScreen, val landscape: Boolean = false, val wallpaper: Wallpaper = Wallpaper.Dark) {
     val widthDp: Int get() = if (landscape) screen.heightDp else screen.widthDp
     val heightDp: Int get() = if (landscape) screen.widthDp else screen.heightDp
 }
@@ -36,7 +36,8 @@ object Lab {
      * this module (lor-xdoi, lor-rgx4, lor-t8lq), `current` draws the kit sheet.
      */
     val versions: List<Version> = listOf(
-        Version("current", "The app as it is: for now the kit sheet of its look") { KitSheet(it) },
+        Version("current", "The app as it is: home, from the module the phone builds from") { LabHome(it) },
+        Version("kit", "The kit sheet of the look: every part, for every state") { KitSheet(it) },
         Version("gestures", "Not a launcher: the surface scripts/lab/run.mjs is proven on (a pager, a list, a tile with a menu, two panes)") { GestureSurface(it) },
     )
 

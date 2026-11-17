@@ -7,7 +7,7 @@ import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.time.Instant
+import kotlin.time.Instant
 
 /**
  * A version 1 file is read as the default grid, and the phone's next write is version 2

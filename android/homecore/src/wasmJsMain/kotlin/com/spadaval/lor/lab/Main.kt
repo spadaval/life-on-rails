@@ -150,7 +150,7 @@ private fun Frame(hash: String, parsed: Parsed, wallpapers: Map<Wallpaper, Image
         // Keyed on what the scene is, not where it is drawn: a fold, a turn or a new wallpaper keeps
         // the surface's place, as the phone does. Home starts it again.
         key(link.version, link.state, homes.intValue) {
-            Lab.version(link.version)!!.draw(LabScene(fixture, link.screen, link.landscape))
+            Lab.version(link.version)!!.draw(LabScene(fixture, link.screen, link.landscape, link.wallpaper))
         }
     }
     val dispatcher = LocalNavigationEventDispatcherOwner.current?.navigationEventDispatcher

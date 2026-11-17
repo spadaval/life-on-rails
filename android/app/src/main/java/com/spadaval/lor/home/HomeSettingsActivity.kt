@@ -197,7 +197,7 @@ private fun HomeSettings(
                     Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (h.app != null) AppIcon(h.app, 40.dp) else Spacer(Modifier.size(40.dp))
+                    if (h.app != null) LauncherIcon(h.app, 40.dp) else Spacer(Modifier.size(40.dp))
                     Spacer(Modifier.width(16.dp))
                     Text(h.label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = { edit("${h.label} is back in the drawer.") { it.unhide(h.ref.packageName, h.ref.work) } }) { Text("Unhide") }

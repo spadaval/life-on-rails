@@ -1,5 +1,8 @@
 package com.spadaval.lor.agent
 
+import com.spadaval.lor.net.atZone
+import com.spadaval.lor.net.isAfter
+import kotlinx.datetime.TimeZone
 import com.spadaval.lor.net.DeviceHome
 import java.time.Instant
 import java.time.ZoneId
@@ -32,7 +35,7 @@ object AgentStates {
      * when it ends (the list shows start times only), else how long he is free (the next event is
      * already listed, so it isn't named again), else that nothing else is on today.
      */
-    fun next(events: List<DeviceHome.Event>, now: Instant, zone: ZoneId): String {
+    fun next(events: List<DeviceHome.Event>, now: kotlin.time.Instant, zone: TimeZone): String {
         val today = now.atZone(zone).toLocalDate()
         events.firstOrNull { !it.start.isAfter(now) && it.end.isAfter(now) }
             ?.let { return "In ${it.title} until ${it.end.atZone(zone).format(Clock)}." }

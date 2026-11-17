@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 
 
 /** The banner's line for [state]. */
-internal fun brokenLine(state: LayoutState.Broken): String = when {
+fun brokenLine(state: LayoutState.Broken): String = when {
     state.lastGood == null -> "layout.json has an error. Tap to put it right."
     state.left.isEmpty() -> "layout.json has an error. Showing the last good layout."
     else -> "layout.json has an error. Showing the last good layout without ${state.left.size} old dock ${if (state.left.size == 1) "app" else "apps"}."
@@ -45,7 +45,7 @@ internal fun brokenLine(state: LayoutState.Broken): String = when {
  * Why a last good file shown without [left] (old dock apps home has no room for, lor-bdus) can't
  * be put back as it is, and what to do.
  */
-internal fun leftOutLine(left: List<AppRef>): String =
+fun leftOutLine(left: List<AppRef>): String =
     "Home has no room for ${left.joinToString { "\"$it\"" }} from the old dock, so the last good layout is shown without " +
         "${if (left.size == 1) "it" else "them"} and nothing is written. Make room on home in layout.json, or take " +
         "${if (left.size == 1) "it" else "them"} out of its \"dock\"."
@@ -56,7 +56,7 @@ internal fun leftOutLine(left: List<AppRef>): String =
  * [appsLoaded] says whether the default layout can be made, for a file with no last good layout.
  */
 @Composable
-internal fun BrokenBanner(state: LayoutState.Broken, appsLoaded: Boolean, style: TextStyle, modifier: Modifier = Modifier, restore: () -> Unit) {
+fun BrokenBanner(state: LayoutState.Broken, appsLoaded: Boolean, style: TextStyle, modifier: Modifier = Modifier, restore: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Row(
         modifier.clickable(onClickLabel = "Show the error") { open = true }.heightIn(min = 48.dp).padding(vertical = 8.dp),

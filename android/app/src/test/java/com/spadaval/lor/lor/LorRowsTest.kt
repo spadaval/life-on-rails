@@ -101,7 +101,7 @@ class LorRowsTest {
 
     @Test
     fun theAgentsQueueSaysWhereEachTaskIs() {
-        assertEquals("queued for the next run", LorRows.agentLine(DeviceHome.AgentTask("a", "a", Instant.EPOCH, null)))
+        assertEquals("queued for the next run", LorRows.agentLine(DeviceHome.AgentTask("a", "a", kotlin.time.Instant.fromEpochMilliseconds(0), null)))
         assertEquals("in a T3 thread", LorRows.agentLine(DeviceHome.AgentTask("a", "a", null, "thread-42")))
         assertEquals("given to the agent", LorRows.agentLine(DeviceHome.AgentTask("a", "a", null, null)))
     }

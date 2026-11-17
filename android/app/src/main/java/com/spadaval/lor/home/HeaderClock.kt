@@ -36,13 +36,13 @@ internal fun usesFahrenheit(): Boolean =
  * takes no ticks. Starting again reads the time at once.
  */
 @Composable
-internal fun rememberMinute(): Instant = rememberWhileStarted(
+internal fun rememberAndroidMinute(): Instant = rememberWhileStarted(
     listOf(Intent.ACTION_TIME_TICK, Intent.ACTION_DATE_CHANGED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED),
 ) { Instant.now() }
 
 /** When the next alarm rings, read again when it changes, while home is started; null with none. */
 @Composable
-internal fun rememberNextAlarm(): Instant? {
+internal fun rememberAndroidNextAlarm(): Instant? {
     val context = LocalContext.current
     return rememberWhileStarted(listOf(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED)) {
         context.getSystemService(AlarmManager::class.java)?.nextAlarmClock?.triggerTime?.let(Instant::ofEpochMilli)

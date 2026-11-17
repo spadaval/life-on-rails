@@ -194,6 +194,12 @@ fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At? = null, 
     // Picking the app up closes its menu (launcher polish 4.3).
     val held = home.drag.held
     LaunchedEffect(held) { if (held != null) open = false }
+    LaunchedEffect(home.ui.menuRequest) {
+        if (home.ui.menuRequest == app.key) {
+            home.ui.menuRequest = null
+            open = true
+        }
+    }
     Box {
         content {
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
