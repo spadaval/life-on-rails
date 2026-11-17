@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-293p
 title: 'Gestures by script in the lab: swipe, fling, long press, drag and fold, with a recording'
-status: changes_requested
+status: in_review
 mission: lor-2803
 labels:
 - design-lab
@@ -121,3 +121,8 @@ A gesture script now plays real touches on the launcher lab and returns a record
 - **Kotlin's wasm crash** happened once (`ArrayIndexOutOfBoundsException` after an edit to Main.kt), and restarting `web-dev.sh` cleared it. It was also restarted once for the new dependency.
 - **Evidence** is in `/tmp/lor-verify/lor-293p/`: each script's `recording.webm`, `strip.png`, `final.png` and `run.json`, plus `readouts.png` (the eight readouts), `speeds/`, `drag-variance/`, `keys.png` and `shots/` (the three new lab shots). The landscape shot is clipped by the bezel's last pixel at the gallery's 1000 px width; the screen is whole.
 - **Not done here:** scripts for real surfaces (lor-xdoi, lor-rgx4). Anchors on real surfaces are theirs to add.
+
+### Responses
+
+- 1-z9wz.1: fixed in 0fcfc78: Escape from Compose's canvas is left to Compose; the reviewer's escape-focus.mjs now ends "row 3 · menu shut · back 1", and Escape with focus on the body also gives back 1 (`/tmp/lor-verify/lor-293p/round2/escape-focus`, `escape-body`).
+- 1-z9wz.2: fixed in 0fcfc78: run.mjs crops to every bezel rect gesture.mjs measured; the reviewer's round-trip.mjs strip now shows the whole inner screen between the two cover frames (`/tmp/lor-verify/lor-293p/round2/round-trip`), and the eight scripts still end on their readouts in 3.1 to 4.6 s (`round2/readouts.png`).
