@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-rgx4
 title: The agent page and the LoR panel draw from plain state in the shared module
-status: in_review
+status: changes_requested
 mission: lor-2803
 labels:
 - design-lab
