@@ -3,6 +3,7 @@ package com.spadaval.lor.lab
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -157,6 +158,43 @@ object Parts {
         Read(Load.STALE, obj(DemoDay.people), "timeout", "2026-11-17T18:00:00.000Z"),
     )
     val failedLor = Read(Load.FAILED, error = "Can't reach 10.0.2.2:3857 (connection refused)").let { Lor(it, it, it) }
+
+    /**
+     * The demo's `/device/tasks` with nothing due: every task due today or before has its date
+     * taken off and nothing is flagged, so no list shows a task as wanting Sumeet.
+     */
+    fun tasksNothingDue(today: String = "2026-11-17"): JsonObject {
+        val tasks = obj(DemoDay.tasks)
+        fun clear(t: JsonElement): JsonElement {
+            val o = t.jsonObject
+            val due = (o["due"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+            var out = o.with("flagged", JsonPrimitive(false)).with("overdue", JsonPrimitive(false))
+            if (due != null && due <= today) out = out.with("due", JsonNull)
+            return out
+        }
+        return tasks.with("tasks", JsonArray(tasks.getValue("tasks").jsonArray.map(::clear)))
+    }
+
+    /** The demo's `/device/home` with nothing flagged; [now], when given, moves its clock (the events stay). */
+    fun homeNothingFlagged(now: String? = null): JsonObject {
+        var home = obj(DemoDay.home).with("needs_you", JsonArray(emptyList()))
+        if (now != null) home = home.with("now", JsonPrimitive(now))
+        return home
+    }
+
+    /** The demo's threads with nothing waiting on Sumeet: the approval's turn has gone on, nothing failed. */
+    val quietT3 = T3(
+        T3Status.LIVE, seenAt = "2026-11-17T20:00:00.000Z",
+        threads = listOf(
+            Thread("t-approve", "Run the migration on the test database", state = ThreadState.IDLE, updatedAt = "2026-11-17T19:55:00Z"),
+        ) + listOf(
+            Thread("t-tiles", "Benchmark tile cache sizes", project = "field-guide", state = ThreadState.RUNNING, updatedAt = "2026-11-17T19:58:00Z", runStartedAt = "2026-11-17T19:31:00Z"),
+            Thread("t-spec", "Offline maps spec, first draft", project = "field-guide", updatedAt = "2026-11-17T18:20:00Z"),
+            Thread("t-brief", "Morning brief", project = "assistant", updatedAt = "2026-11-17T12:05:00Z"),
+        ),
+        server = "http://10.0.2.2:16021",
+        projects = mapOf("p-lor" to "life-on-rails", "p-field" to "field-guide", "p-assistant" to "assistant"),
+    )
 
     /** The demo's `/device/home` with [n] flagged tasks in Needs you, long notes included. */
     fun homeWithFlags(n: Int): JsonObject {

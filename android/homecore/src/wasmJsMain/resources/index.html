@@ -29,9 +29,27 @@
   .finger { position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; background: rgb(255 255 255 / 35%); border: 1px solid rgb(255 255 255 / 70%); pointer-events: none; z-index: 2; }
   /* A JSON file held over the page: it opens as a one-off state when dropped. */
   body.dropping main { outline: 2px dashed var(--or); outline-offset: -8px; }
+  /* Fill: opened on a phone, the page is the phone. No bezel, no toolbar until Lab is pressed, and
+     the screen follows the viewport (Main.kt: cover under 600 px wide, inner from there), so folding
+     the real phone flips it. ?fill forces it, ?framed turns it off. */
+  #bar-toggle { display: none; }
+  body.fill main { padding: 0; }
+  body.fill .bezel { padding: 0; border: 0; border-radius: 0; }
+  body.fill #phone { border-radius: 0; width: 100vw !important; height: 100vh !important; height: 100dvh !important; }
+  body.fill header { display: none; position: fixed; left: 0; right: 0; }
+  body.fill.bar header { display: flex; }
+  body.fill #bar-toggle { display: block; position: fixed; z-index: 3; top: 4px; left: 50%; transform: translateX(-50%); opacity: 0.6; border-radius: 999px; padding: 2px 10px; font-size: 12px; }
 </style>
 </head>
 <body>
+<script>
+  (() => {
+    const q = new URLSearchParams(location.search);
+    const phone = matchMedia("(pointer: coarse)").matches && Math.min(innerWidth, innerHeight) < 1000;
+    if (q.has("fill") || (phone && !q.has("framed"))) document.body.classList.add("fill");
+  })();
+</script>
+<button id="bar-toggle" type="button" onclick="document.body.classList.toggle('bar')">Lab</button>
 <header>
   <label>Version <select id="version"></select></label>
   <label>State <select id="state"></select></label>

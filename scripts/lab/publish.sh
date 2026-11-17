@@ -18,7 +18,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SOURCES=(
   "$HOME/.local/state/lor-shots|shots|Screenshot galleries"
   "prototype/dashboard/dist|dashboard|Dashboard prototype"
-  "android/homecore/build/dist/wasmJs/developmentExecutable|launcher|Launcher lab"
+  "android/homecore/build/dist/wasmJs/developmentExecutable|phone|Phone lab: the launcher and app, current and each design concept"
 )
 
 MARK=".lor-lab"

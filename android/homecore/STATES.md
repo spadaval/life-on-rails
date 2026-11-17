@@ -26,7 +26,7 @@ The layout as `layout.json` holds it; the app list (placeholder icons unless one
 icon); LoR's `/device/home`, `/device/tasks` and `/device/people` replies as the server sends them,
 each loading, read, stale or failed; T3's connection, threads (cards come from their requests),
 questions and transcripts; the timer; sensors, the last sync, notification dots and permissions;
-settings; what search, the drawer and quick dial read (contacts, shortcuts and conversations,
+settings (and Android's font size, `phone.fontScale`, which the lab draws every version at); what search, the drawer and quick dial read (contacts, shortcuts and conversations,
 settings pages, launch counts, recent searches, quick dial's ranking); and where the screen is: the
 cell, what is open and what it points at, the scroll, the typed text, the held item.
 
@@ -55,6 +55,10 @@ Each is a condition of the whole app; a surface draws the part of it it reads.
 - `agent-waiting`: The agent page with one approval, one question, a failed turn and two LoR flags.
 - `agent-t3-stale`: The agent page with T3 disconnected and what it saw 40 minutes ago.
 - `thread-long`: The agent page with the approval's thread open beside it and a long transcript (inner screen).
+- `quiet`: Nothing wants you: no flags, no T3 cards, no tasks due, at 15:00 on the demo day.
+- `empty-day`: An empty day at 09:00: nothing recorded or synced yet, nothing flagged, the day's events ahead.
+- `sync-failed`: The demo day with the phone's last sync failed, as home and the agent page see it.
+- `large-text`: The demo day with Android's font size at 1.3.
 
 ## Surfaces in the module
 
@@ -114,6 +118,21 @@ back out of a folder) and `minimap` (Panels, and Remove refused on the start). H
 opened from), `folder:<name>` for a folder's tile and `folder-open:<name>` for the open folder,
 `drawer-search` and `search-field`, `menu` and `menu:<entry>`, `map:<button>`, and `undo-bar`.
 Cells home keeps composed beside the one on screen keep their tiles' anchors at off-screen bounds.
+
+Queue's scripts are `scripts/lab/gestures/queue/` (`--version queue`): `drawer`, `search`, `approve` and
+`answer` (`--state agent-waiting`), `timer`, `tick`, `move` (the recorded drag), `menu`, `fold` and
+`fold-inner` (`--state thread-long`, from the cover and from the inner screen), `reply` (`thread-long`,
+inner), `quick-send` (`demo` succeeds, `agent-t3-stale` fails) and `sync` (`--state sync-failed`).
+Queue's anchors: `home:` then an icon's label, `home:line`, `home:start`, `home:stop`, `home:sync`,
+`home:search`; `queue:count`, `lead`, `reticle`, `item:<key>`, `more:<key>`, `approve:<key>`,
+`deny:<key>`, `cancel:<key>`, `done:`, `seen:` and `tick:` then the item's key, `option:<label>`;
+`detail`, `thread`, `thread-at:<n>`, `messages:<n>`, `draft:<length>`, `reply-field`; `sheet:<name>`,
+`keyboard`, `toast`, `toast:undo`, `menu`, `menu:<entry>`; `sync:ok` or `sync:failed`, `allow:<sensor>`.
+The concepts' kit and how to add a direction: `src/webMain/kotlin/com/spadaval/lor/concepts/README.md`.
+
+Opened on a phone (a touch screen under 1,000 px), the lab fills the screen: no toolbar or bezel
+until its Lab button is pressed, and the screen follows the viewport's width (the cover under 600 px,
+the inner one from there), so folding the phone flips it. `?fill` forces this, `?framed` turns it off.
 
 ## Widgets
 

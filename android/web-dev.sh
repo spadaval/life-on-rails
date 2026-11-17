@@ -9,9 +9,16 @@
 # and it from outliving the scope), two workers, incremental wasm, one at a time, and never beside
 # an emulator. ~/.gradle/init.d/no-local-builds.gradle refuses the build outside such a scope.
 # It removes homecore's own compiled code and development link before starting (not the link's
-# cache of its libraries), so the continuous build compiles and links once itself: an edit that
-# meets that Gradle process cold takes 15 to 18 s, warm 3 to 10 s. A compile in another process
-# does not warm it.
+# cache of its libraries), so the continuous build compiles and links once itself. With home, the
+# panels, the app screens and the first concept in the module (lor-5fk6, 2026-11-17): a first build
+# of 32 to 68 s, then an edit takes about 21 s cold and 13 to 16 s warm, and a long session peaks at
+# about 4,080 MB of the scope's 4 GB (3,730 MB of it anon, never killed). A compile in another
+# process does not warm it.
+# Known crash (Kotlin 2.3.20): an incremental compile whose changed files are all in wasmJsMain
+# fails with ArrayIndexOutOfBoundsException in WasmIrFileMetadata.fromByteArray, and every build
+# after it fails the same way until this script restarts. Changes that include a file from webMain
+# or commonMain build. So the design concepts live in webMain; after editing lab/Main.kt or another
+# wasmJsMain file, restart this script.
 # On exit (Ctrl-C) the scope is stopped, Kotlin daemon included, and its peak memory printed.
 # --dry-run runs the refusals and prints the command without starting it.
 set -euo pipefail

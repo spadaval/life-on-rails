@@ -216,6 +216,8 @@ data class Phone(
     val dots: Map<String, Int> = emptyMap(),
     /** The home role, usage access, notification access, contacts: Android permissions LoR's home asks for, by name, and whether each is granted. */
     val permissions: Map<String, Boolean> = emptyMap(),
+    /** Android's font size setting: 1.0 is the default, 1.3 the brief's larger text. The lab draws every version at it. */
+    val fontScale: Float = 1f,
 ) {
     companion object {
         /** `Sensor`'s keys, in the app's order. */
