@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-vx69
 title: 'The Queue direction on the dashboard prototype: every required screen, state and interaction'
-status: in_review
+status: changes_requested
 mission: lor-2803
 labels:
 - dashboard
