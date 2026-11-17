@@ -172,4 +172,3 @@ private fun DrawScope.drawSearch(color: Color) {
     drawCircle(color, 6.5f * u, Offset(10.5f * u, 10.5f * u), style = Stroke(2f * u))
     drawLine(color, Offset(15.5f * u, 15.5f * u), Offset(21f * u, 21f * u), 2f * u)
 }
-
