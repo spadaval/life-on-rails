@@ -8,6 +8,10 @@
 # its own Kotlin daemon at -Xmx1536m (-Dlor.web=1 keeps any other build from sharing that daemon,
 # and it from outliving the scope), two workers, incremental wasm, one at a time, and never beside
 # an emulator. ~/.gradle/init.d/no-local-builds.gradle refuses the build outside such a scope.
+# It removes homecore's own compiled code and development link before starting (not the link's
+# cache of its libraries), so the continuous build compiles and links once itself: an edit that
+# meets that Gradle process cold takes 15 to 18 s, warm 3 to 10 s. A compile in another process
+# does not warm it.
 # On exit (Ctrl-C) the scope is stopped, Kotlin daemon included, and its peak memory printed.
 # --dry-run runs the refusals and prints the command without starting it.
 set -euo pipefail
@@ -37,6 +41,8 @@ CMD=(systemd-run --user --scope --quiet --slice=agents.slice --unit="$UNIT"
   "${GRADLE[@]}" --continuous :homecore:wasmJsBrowserDevelopmentRun)
 
 if [ "${1:-}" = --dry-run ]; then printf '%q ' "${CMD[@]}"; echo; exit 0; fi
+
+rm -rf homecore/build/classes/kotlin/wasmJs/main homecore/build/compileSync/wasmJs/main/developmentExecutable
 
 stop() {
   local cg peak
