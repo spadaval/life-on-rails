@@ -44,4 +44,3 @@ internal fun contactIntent(c: SearchContact, way: ContactWay): Intent = when (wa
     ContactWay.CALL -> Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", c.numbers.first(), null))
     ContactWay.MESSAGE -> Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", c.numbers.first(), null))
 }
-

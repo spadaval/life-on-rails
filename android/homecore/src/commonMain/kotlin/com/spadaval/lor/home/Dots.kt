@@ -80,4 +80,3 @@ class DotBook {
     @JvmSynchronized
     fun remove(key: String): Boolean = connected && notes.remove(key) != null
 }
-

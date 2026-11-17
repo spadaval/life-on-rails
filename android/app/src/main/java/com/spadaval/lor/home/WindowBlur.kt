@@ -38,4 +38,3 @@ internal fun WindowBlurBehind(on: Boolean, view: android.view.View, shown: () ->
         }
     }
 }
-

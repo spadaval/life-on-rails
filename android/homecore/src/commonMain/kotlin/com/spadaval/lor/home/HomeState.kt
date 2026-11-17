@@ -119,4 +119,3 @@ fun homeBody(apps: AppsLoad, layout: LayoutFile?, placed: Int): HomeBody = when 
     placed == 0 -> HomeBody.EMPTY
     else -> HomeBody.GRID
 }
-
