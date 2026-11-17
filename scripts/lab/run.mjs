@@ -67,7 +67,9 @@ const t0 = performance.now();
 const script = await import(pathToFileURL(path.resolve(opts.script)).href);
 if (typeof script.default !== "function") fail(`${opts.script} has no default export to play`);
 const link = { screen: "cover", wallpaper: "dark", landscape: false, ...(script.link ?? {}), ...opts.link };
-const hash = [opts.version, opts.state, link.screen, link.wallpaper, ...(link.landscape ? ["landscape"] : [])].join("/");
+// A one-off state (JSON) as the lab writes it in the hash, so data-drawn matches (LabLink.hash's encodeOneOff).
+const oneOff = (s) => (s.startsWith("{") ? s.replace(/%/g, "%25").replace(/#/g, "%23").replace(/ /g, "%20").replace(/"/g, "%22") : s);
+const hash = [opts.version, oneOff(opts.state), link.screen, link.wallpaper, ...(link.landscape ? ["landscape"] : [])].join("/");
 const base = opts.base ?? "http://127.0.0.1:3860";
 const out = path.resolve(opts.out);
 mkdirSync(out, { recursive: true });
