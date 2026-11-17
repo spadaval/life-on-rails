@@ -7,7 +7,7 @@ import { askAgent, setPerson, useNow, useStore } from "../../../data/store.js";
 import type { Person } from "../../../data/types.js";
 import type { Route } from "../../../shell/nav.js";
 import { taskDetail } from "../details.js";
-import { act, ago, closeHere, findNode, firstName, hm, initials, modeOf, openHere, phref, STALE } from "../lib.js";
+import { act, ago, closeHere, findNode, useCanonical, firstName, hm, initials, modeOf, openHere, phref, STALE } from "../lib.js";
 import { type Detail, ListHead, More, Panes } from "../panes.js";
 import { Button, cx, Group, Icon, Prose } from "../ui.js";
 
@@ -40,6 +40,7 @@ export function People({ route }: { route: Route }) {
   const filter = p.filter ?? (target && !peopleIn(s, "important").some((x) => x.id === target.id) ? "all" : "important");
   const people = peopleIn(s, filter, q);
   const task = target ? findNode(s.nodes, p.task, (n) => n.type === "task") : undefined;
+  useCanonical(p, [["id", target?.id], ["task", task?.id]]);
 
   const detail: Detail | null = target
     ? {

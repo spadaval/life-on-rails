@@ -107,6 +107,19 @@ export function closeHere(openKeys: string[], opts: { sub?: boolean } = {}) {
   backThen(st.panes, strip);
 }
 
+/**
+ * A link may name an item by title (hand-written links and the shots do). Once it resolves, the
+ * link is rewritten to the item's id in place, so a rename or a second item with the same title
+ * cannot take the open pane away. `pairs` are [parameter, resolved id].
+ */
+export function useCanonical(params: Record<string, string>, pairs: [string, string | undefined][]) {
+  useEffect(() => {
+    const patch: Params = {};
+    for (const [k, id] of pairs) if (id && params[k] !== undefined && params[k] !== id) patch[k] = id;
+    if (Object.keys(patch).length) setHere(patch);
+  });
+}
+
 /** Change parameters in place (a filter, the sheet's height), without a new history entry. */
 export function setHere(patch: Params) {
   const cur = parse(location.hash);

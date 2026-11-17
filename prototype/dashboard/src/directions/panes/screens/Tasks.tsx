@@ -6,7 +6,7 @@ import { useStore } from "../../../data/store.js";
 import type { Node } from "../../../data/types.js";
 import type { Route } from "../../../shell/nav.js";
 import { taskDetail } from "../details.js";
-import { closeHere, findNode, flags, modeOf, openHere, phref, useLocal } from "../lib.js";
+import { closeHere, findNode, useCanonical, flags, modeOf, openHere, phref, useLocal } from "../lib.js";
 import { openField } from "../omnibox.js";
 import { ListHead, Panes } from "../panes.js";
 import { TaskRow } from "../rows.js";
@@ -37,6 +37,7 @@ export function Tasks({ route }: { route: Route }) {
   const p = route.params;
   const stale = modeOf(p) === "stale";
   const asked = findNode(s.nodes, p.id, (n) => n.type === "task");
+  useCanonical(p, [["id", asked?.id]]);
   const filter: Filter = (FILTERS.some(([f]) => f === p.filter) ? p.filter : asked && !inFilter(asked, "open") ? FILTERS.find(([f]) => inFilter(asked, f))?.[0] : "open") as Filter;
   const tasks = s.nodes.filter((n) => inFilter(n, filter)).sort((a, b) => (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999") || a.title.localeCompare(b.title));
   const day = s.day.date;

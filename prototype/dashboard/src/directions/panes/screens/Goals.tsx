@@ -7,7 +7,7 @@ import { habitDone, updateIntent, useStore } from "../../../data/store.js";
 import type { Node } from "../../../data/types.js";
 import type { Route } from "../../../shell/nav.js";
 import { taskDetail } from "../details.js";
-import { act, closeHere, findNode, fmtH, modeOf, openHere, STALE } from "../lib.js";
+import { act, closeHere, findNode, useCanonical, fmtH, modeOf, openHere, STALE } from "../lib.js";
 import { type Detail, ListHead, More, Panes } from "../panes.js";
 import { TaskRow } from "../rows.js";
 import { Button, cx, Group, Icon } from "../ui.js";
@@ -32,6 +32,7 @@ export function Goals({ route }: { route: Route }) {
   const asked = findNode(s.nodes, p.id);
   const goal = asked ? (asked.type === "goal" ? asked : topGoal(s.nodes, asked)) : undefined;
   const task = findNode(s.nodes, p.task, (n) => n.type === "task");
+  useCanonical(p, [["id", asked?.id], ["task", task?.id]]);
   const nodata = goals.filter((g) => !(g.week_hours ?? 0));
 
   const detail: Detail | null = goal

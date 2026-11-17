@@ -8,7 +8,7 @@ import { doneOn, weekGoals } from "../../../data/derive.js";
 import { useNow, useStore } from "../../../data/store.js";
 import type { Route } from "../../../shell/nav.js";
 import { blockDetail, eventDetail, taskDetail, timerDetail } from "../details.js";
-import { closeHere, dueNow, findNode, flags, fmtH, hm, longDay, minutes, modeOf, openHere, phref, useFit, useLocal } from "../lib.js";
+import { closeHere, dueNow, findNode, useCanonical, flags, fmtH, hm, longDay, minutes, modeOf, openHere, phref, useFit, useLocal } from "../lib.js";
 import { openField } from "../omnibox.js";
 import { type Detail, ListHead, Panes } from "../panes.js";
 import { BlockRow, EventRow, FlagRow, TaskRow, wantsLabel } from "../rows.js";
@@ -45,6 +45,7 @@ export function Today({ route }: { route: Route }) {
   // moves its row: a task given a later due date leaves Due but its pane stays.
   let detail: Detail | null = null;
   const openNode = findNode(s.nodes, p.id);
+  useCanonical(p, [["id", openNode?.id]]);
   if (openNode) {
     const n = openNode;
     if (n) detail = taskDetail(n, close, { flag: fl.find((f) => f.id === n.id), stale });
@@ -269,4 +270,3 @@ function Overview({ inList, morning, toLabel, onLabel }: { inList: boolean; morn
     </div>
   );
 }
-
