@@ -20,7 +20,7 @@ His asks for the look:
 - **Rounded corners.** Today everything is square, with a 6px chamfer on outer panels.
 - **Transparency effects.** Today faces are opaque, and blur is used only behind an open folder and the panels editor.
 - **Better separation between elements.** Today every panel has the same bronze frame, so nothing reads as nearer or further than anything else.
-- **Better chosen font sizes and scales.** Today the web uses 13, 12.5, 14 and 13.5px most often, and the phone's panels override their body size to seven literal sizes between 11 and 22 sp. Nothing leads.
+- **Better chosen font sizes and scales.** Today the web uses 13, 12.5, 14 and 13.5px most often, home overrides its 15 sp body size to seven sizes from 11 to 22 sp, and the agent page and LoR panel add seventeen more literal overrides. Nothing leads.
 
 These four apply to every direction below. They are common ground, so they are not what makes one direction different from another.
 
@@ -161,7 +161,9 @@ Every concept follows these. Changing one goes back to Sumeet (the mission's Aut
 
 1. **A swipe down on home opens the notification shade.** Sumeet chose this on 6 November, and confirmed it on 17 November; the grid stops wrapping down into the drawer. The drawer is reached by a swipe up.
 2. **Edit mode is gone.** Arranging home happens in place, without a mode to enter or leave.
-3. **One implementation each** of the timer, of settings and of pairing, per platform. One timer component with one vocabulary and a switch action; one settings surface in one style; one pairing card that also takes a token.
+3. **One implementation each** of the timer, of settings and of pairing, per platform.
+
+What the third implies, from the audit's recommendations rather than a decision: one timer with one vocabulary (no more "Untitled", "Just start" and "Uncategorized"), and a switch action, which the required interactions now test; one settings surface in one style, in place of the LoR app's Settings tab and Home settings; and one pairing card, with token pairing either in it or left on a debug screen that is hidden. Concepts may take these further; only the three decisions above are fixed.
 4. **"No data yet"**, lor-thnc's wording, where a goal has no committed time in the window, in place of "0 / 3h". The wall says "no data". A figure with no measurement behind it is never drawn as a failure.
 
 ## Common ground for every concept
@@ -169,7 +171,8 @@ Every concept follows these. Changing one goes back to Sumeet (the mission's Aut
 These are not what makes one direction different from another. Every concept has them.
 
 - **Sumeet's four look asks:** rounded corners, transparency on what floats, separation by tone and depth rather than identical frames, and a type scale whose steps each have one job.
-- **One search field that also adds and asks.** It is on every dashboard page at every width (`/` or ⌘K, and `q` for add), and at the thumb on the phone. Plain words find tasks, people, notes, apps, contacts and settings; typed text with a date or `#goal` offers to add a task, and anything else offers to ask the agent. It shows what it understood before acting. No command grammar has to be learned for anything to work. This was the Command direction; all three critics judged it a capability rather than an organisation (below).
+- **One search field that also adds and asks.** It is on every dashboard page at every width (`/` or ⌘K, and `q` for add), and at the thumb on the phone. Plain words find tasks, people, notes, apps, contacts and settings; typed text with a date or `#goal` offers to add a task, and anything else offers to ask the agent. It shows what it understood before acting. No command grammar has to be learned for anything to work. This was the Command direction; Astra and Kimi judged it a capability rather than an organisation, and Grok wanted it built whole (below).
+- **What the spec and the Fold make the same everywhere.** Each direction leads the phone's agent page with the T3 cards waiting on him, because the spec puts them first. Each puts a list beside its open item on the Fold's inner screen, because two phone columns side by side was the audit's finding. These are no longer what separates Panes from the others; what does is that Panes makes list and detail the shape of every page on every surface, the dashboard included, while the others use it only on the inner screen.
 - **Standard controls.** Per the impeccable skill's Operate guidance (`.claude/skills/impeccable/reference/mode-operate.md`, `operate.md`): web components on the web, native controls on Android, every state of each (default, hover, focus, pressed, disabled, loading, error), motion of 150 to 250 ms that says what changed, and nothing reachable only by an invisible gesture.
 - **What Elite lends, if anything.** The theme is kept "only in spirit", and the critics were right that the draft fixed too much of it (a dark ground, amber, cyan, condensed caps and the day route in every direction). A concept may keep any of these and owes no reason for dropping one. The lab's frames happen to keep a dark ground and amber for what is live, and that is a starting point, not a rule. The day route is the Timeline direction's signature, not everyone's.
 
@@ -184,7 +187,14 @@ A direction is a different answer to "how is this organised and how do you work 
 - where the timer and the agent queue live;
 - the one signature move.
 
-The check: describe two directions without naming a colour, a corner radius or a font. If the descriptions match, they are one direction. The draft declared this check and did not hold to it (Queue and Board failed it); the final set below was checked again after the critiques.
+The check: describe two directions without naming a colour, a corner radius or a font. If the descriptions match, they are one direction. The draft declared this check and did not hold to it (Kimi: Queue and Board failed it). Here it is for the final four, pair by pair:
+
+- **Queue and Timeline.** Queue orders what wants him by urgency in one column, and keeps the day to a strip; Timeline orders by the clock, with the day as the page and the untimed things beside it.
+- **Queue and Panes.** Queue is one column where rows expand in place; Panes is a list with a separate detail pane on every page, and leads with the page's list, not a lead card.
+- **Queue and Context.** Queue mixes everything that wants him into one ranking; Context shows one project, person or slot at a time with everything about it, and puts what wants him elsewhere to the side.
+- **Timeline and Panes.** Timeline edits on the route in a popover and has no detail pane; Panes has no route and opens everything in a pane.
+- **Timeline and Context.** Timeline's unit is the hour; Context's is the thing being worked on, and the day appears only as that thing's time this week and the next fixed event.
+- **Panes and Context.** Panes is a navigation shape that works on any page; Context is a grouping, where the first view is assembled from several kinds of thing (tasks, a page, people, time) rather than one list.
 
 Each direction is written against two references:
 
@@ -195,7 +205,7 @@ Each direction has three rough frames in `directions/`, the same three for all o
 
 ## The directions
 
-Four go forward: Queue, Timeline, Panes and Context. Command and Board were dropped after the critiques, for the reasons under "What the critiques changed". The draft's five, as the critics read them, are at commit `748d859`, and their frames stay in `directions/` (`command-*.png`, `board-*.png`) for the record.
+Five were proposed: Queue, Timeline, Command, Panes and Board. Four go forward after the critiques: Queue, Timeline and Panes, revised, and Context, which is new. Command and Board are under "The two directions dropped", in the draft's words, and why under "What the critiques changed". The draft as the critics read it is at commit `748d859` (`git show 748d859:docs/design/lab/brief.md`); the Queue, Timeline and Panes frames have since been redrawn, and the critics' versions are in that commit too.
 
 ### 1. Queue: one list of what wants you
 
@@ -254,7 +264,7 @@ A list and its detail sit side by side, and opening something never takes you aw
 
 ### 4. Context: everything about what you are doing, in one place
 
-New after the critiques. The other three organise by urgency, by time or by screen division; this one organises around the thing Sumeet is doing. The dashboard's first view is the current context, chosen by the running timer or, when nothing runs, by the agent's one thing: its title and the timer, its open tasks, its page in Notes, the people it waits on, its agent threads, and its time this week. Beside it is the next context, the next fixed event with what fits in the gap before it, and below that whatever waits on him elsewhere, each opening in its own context. Projects, goals and people are contexts too, and the top bar holds the current one and the few most recent, like tabs. On the phone, home is icons and search with one card for the current context (its next task, the timer, the next event), and the agent page leads with what waits on him (T3 cards first, as the spec has them) and then the current context's tasks and running agent work. Unfolded, the context is on the left and its thread or page on the right.
+New after the critiques. The other three organise by urgency, by time or by screen division; this one organises around the thing Sumeet is doing. The dashboard's first view is the current context, chosen by the running timer or, when nothing runs, by the agent's one thing: its title and the timer, its open tasks, its page in Notes, the people it waits on, the work it has given the agent (each linking to its T3 thread, which stays in T3), and its time this week. Beside it is the next context, the next fixed event with what fits in the gap before it, and below that whatever waits on him elsewhere, each opening in its own context. Projects, goals and people are contexts too, and the top bar holds the current one and the few most recent, like tabs. On the phone, home is icons and search with one card for the current context (its next task, the timer, the next event), and the agent page leads with what waits on him (T3 cards first, as the spec has them) and then the current context's tasks and running agent work. Unfolded, the context is on the left and its thread or page on the right.
 
 - **Shell.** Dashboard: a top bar of contexts (Now, then recent projects and people, then All tasks and Notes), the current context as one large surface, the next context and "waiting elsewhere" beside it. Phone: home with a context card and a search field at the thumb, the agent page to its left, the drawer below.
 - **Leads with.** What he is doing now, with everything about it gathered.
@@ -267,8 +277,50 @@ New after the critiques. The other three organise by urgency, by time or by scre
 - **Colour.** Amber for the current context's timer and selection; cyan for the next fixed event and the agent's work; each region on its own tone of the ground.
 - **Depth.** The current context raised as one large surface; the next context and everything else flat beside it.
 - **Uncommon things.** Inside each context (its settings, history, cadence), and All tasks and Notes from the bar.
-- **Its risk.** It depends on everything being linked to a context: a task with no project, or a running timer with no label, has nowhere obvious to live. The agent can propose the links, but a concept has to work with them missing.
+- **Its risk.** Its home card takes some of the space Queue gave back to icons; it is one card of three lines at most, and a concept may shrink it to Queue's single line. It also depends on everything being linked to a context: a task with no project, or a running timer with no label, has nowhere obvious to live. The agent can propose the links, but a concept has to work with them missing.
 - **Where it came from.** Astra's "context workspace" and Kimi's "context the agent assembles" are the same idea from two critics independently: none of the draft's five made the relationships between things the organising principle, and the agent appeared only as rows among rows. It keeps T3 approvals and questions on the phone.
+
+## The two directions dropped
+
+These are the draft's text as the critics read it, with their frames (`command-*.png`, `board-*.png`), kept so the five proposed directions are all on this page. Why each was dropped is in the next section.
+
+### Command: type to do anything (dropped)
+
+Search is the main way in, because it already is: 142 of 298 launches were by search. On both platforms one command line finds and does: "book dentist friday", "start work", "done physio", "relabel 14:00 deep work", "approve" (on the phone). It parses as you type, showing the pieces it understood as chips (a goal, a person, a date) and the action it will take, and Enter does it. On the dashboard, the command line sits at the top of every page and opens with `/` or ⌘K; pages are dense lists in the style of a good issue tracker, with keyboard focus always visible and every row's actions on keys. On the phone, home has a search field at the bottom within the thumb's reach, open with the keyboard up after a swipe up, and its results include actions (Approve, Done, Start timer) as well as apps, contacts and settings. The agent page is a compact list of the same actions.
+
+- **Shell.** Dashboard: a top command bar, a slim rail of pages, dense lists, a detail panel that opens on the right over the list. Phone: home with the search field at the bottom, the drawer as search results until you type, the agent page as a list.
+- **Leads with.** The command line and its suggestions for now (the next action, the running timer, the top card).
+- **Details open** in a panel over the right of the list, or by command.
+- **Timer.** A command ("start", "stop", "switch to …") and a chip in the command bar while it runs.
+- **Signature move.** The command line reads back what it understood as chips with the action named before you press Enter: "Add task · Book the dentist · Fri · Body that works".
+- **Hierarchy.** The command line is primary on every screen; list rows are dense and even, with the selected row the only emphasis.
+- **Spacing.** Tight: 32px rows on the desktop, 4 and 8px inside them, 48dp rows on the phone. The densest direction.
+- **Type.** One family, 12, 13, 14, 16 and 20px, monospaced numerals; no condensed caps outside the wordmark.
+- **Colour.** Restrained: greys with amber for focus and the parsed action, cyan for agent rows and planned time.
+- **Depth.** Almost flat. The command palette and menus are the only floating layers, with a large shadow and blur behind them.
+- **Uncommon things.** Everything is a command, so the uncommon is as reachable as the common, if you know its name; the rail lists the pages for when you don't.
+- **Its risk.** Discoverability for someone who does not know the words; little to look at when there is nothing to type.
+
+Frames: [Today](directions/command-today.png), [home](directions/command-home.png), [agent page](directions/command-agent.png).
+
+### Board: one set of blocks, everywhere (dropped)
+
+The dashboard and the phone are built from the same blocks: Today, Needs you, Timer, Due soon, Goals this week, People to contact, a thread, a note. Each block has a small, medium and large size. The dashboard's Today is a board of blocks on a grid, which he arranges by dragging, as he arranges home; Tasks, Goals and People are a single large block each. On the phone, home's stacks already hold LoR blocks (today, needs-you, running, t3-queue); this direction makes them the main thing, so home is blocks and icons together, and the agent page and LoR panel are pages of blocks. Tapping a block grows it in place into its full page; back shrinks it into its spot. The dashboard is home at a larger size, which is also where the web layout editor (lor-kaq8) is heading.
+
+- **Shell.** Dashboard: a top bar of pages, then a board. Phone: home of blocks and icons, pages to either side of blocks, the drawer below.
+- **Leads with.** Whatever he puts at the top left; by default Needs you and the timer.
+- **Details open** by growing the block into a page in place.
+- **Timer.** A block, small (a button and a time) or medium (with recent labels).
+- **Signature move.** A block grows into its page with the same corners and title, so where a thing lives never changes.
+- **Hierarchy.** Each block has one primary line; blocks are equal, so the board leans on position and size for importance.
+- **Spacing.** A strict grid: an 8px unit, 16px gutters, blocks in multiples of a fixed cell.
+- **Type.** Saira for titles at 13, 15, 18 and 24px; Saira Condensed for numbers in blocks at 32 and 56px.
+- **Colour.** Blocks are translucent tiles over the wallpaper on the phone and over a faint sky on the web; amber for live, cyan for agent.
+- **Depth.** Two levels: blocks on the ground with a soft shadow and blur, and the grown block or a sheet over everything.
+- **Uncommon things.** A block's own menu, from a long press or its corner.
+- **Its risk.** Arranging becomes a job of its own, and equal blocks can return the "nothing leads" problem the audit found.
+
+Frames: [Today](directions/board-today.png), [home](directions/board-home.png), [agent page](directions/board-agent.png).
 
 ## What the critiques changed
 
@@ -276,7 +328,7 @@ The three critics' notes are in [brief-critiques.md](brief-critiques.md). Checke
 
 **Dropped:**
 
-- **Board.** All three found it too close to Queue: cards ordered by what wants you, drawn as a grid, and equal blocks bring back the audit's first finding, "nothing leads". Its arranging is the panels editor the owner called random buttons, moved onto the dashboard, and the web home editor (lor-kaq8) already covers arranging.
+- **Board.** Kimi found it the same organisation as Queue (cards ordered by what wants you, drawn as a grid); Astra and Grok found their agent pages the same. Grok and Kimi said its equal blocks bring back the audit's first finding, "nothing leads"; Astra said to defer it until a fixed default proves too little, and Grok and Kimi to drop it. Its arranging is the panels editor the owner called random buttons, moved onto the dashboard, and the web home editor (lor-kaq8) already covers arranging.
 - **Command,** as a direction. Astra and Kimi judged it a capability, not an organisation: its agent page was Queue's list with a text box, a command language asks him to recall verbs, and approving by typing is slower than one tap. Grok wanted to build it, as the measured phone behaviour. What it got right, one field that finds, adds and asks at every width, is now common ground for every concept, without a grammar to learn.
 
 **Added:** Context, from Astra and Kimi (above).

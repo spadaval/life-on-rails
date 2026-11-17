@@ -45,18 +45,18 @@ Before anything is drawn, one page says what the concepts are for and how they d
 
 ## Report
 
-The brief is `docs/design/lab/brief.md`, the critics' notes are `docs/design/lab/brief-critiques.md`, and the frames are in `docs/design/lab/directions/` (an HTML source and three PNGs per direction, plus `sheet.png`). Commits: the draft with five directions (748d859), the "What pauses" note (f01c23d), the brief after the critiques (abca458), and a fix to one frame (fb7b390). No code changed.
+The brief is `docs/design/lab/brief.md`, the critics' notes are `docs/design/lab/brief-critiques.md`, and the frames are in `docs/design/lab/directions/` (an HTML source and three PNGs per direction, plus `sheet.png`). Commits: the draft with five directions (748d859), the "What pauses" note (f01c23d), the brief after the critiques (abca458), a fix to one frame (fb7b390), and fixes after a self-review (below). No code changed.
 
 **Four directions go forward: Queue, Timeline, Panes and a new Context.** The mission gives that choice to the lead, so this is a proposal; the lead may change it before concepts are built.
 
-- **Board is dropped.** All three critics found it too close to Queue: cards ordered by what wants you, drawn as a grid. Its equal blocks also bring back the audit's "nothing leads".
+- **Board is dropped.** Kimi found it the same organisation as Queue, and Astra and Grok found their agent pages the same. Grok and Kimi said its equal blocks bring back the audit's "nothing leads". Astra would have deferred it rather than dropped it.
 - **Command is no longer a direction.** Astra and Kimi judged it a capability rather than an organisation. Grok wanted to build it. Its one field that finds, adds and asks at every width is now common ground for every concept.
-- **Context is new.** Astra and Kimi each proposed it independently: organise around what he is doing, with its tasks, page, people, threads and time in one place.
+- **Context is new.** Astra and Kimi each proposed it independently: organise around what he is doing, with its tasks, page, people, threads and time in one place. No critic has read Context as written. Its first cold read will be the concept critiques (lor-glev).
 - **The other three changed.** Timeline gave up its right-hand inspector, which it shared with Panes. Queue gave home back to icons and search, and dropped swipe-to-clear. Panes put the common actions on the rows. Each final direction ends with what changed and which critic raised it.
 
 **The critics.** GPT-6 Astra (Codex, high effort), Grok 4.6 (high) and Kimi K3 (`opencode-go/kimi-k3`, max) each ran in a fresh thread with the same task. Each read the draft at 748d859, its frames, the audit and the current screens, and returned critique, not edits. Their notes are pasted as returned, with a table of where they agree. The brief's "What the critiques changed" section says which points I checked and found held, which were partly off, and what was not taken. Two were not taken: arranging panels as a required interaction, which lor-kaq8 and lor-qsi6 cover, and a required Notes screen.
 
-**The required set grew after the critiques.** The item's lists are kept word for word as the first eight of each. The critiques added:
+**The required set grew after the critiques.** The item's lists are the first eight of each, word for word, except that phone item 8 (fold and unfold) gained a sentence: the open thread, a draft answer and the scroll position survive. The critiques added:
 
 - states every concept draws: nothing waiting, an empty day, a failed sync, T3 disconnected, LoR unreachable, a crowded queue and larger text;
 - the 1100px width, Today in the morning with the brief, and a thread on the inner screen;
@@ -76,12 +76,20 @@ I skipped a boat build and an emulator run: those shots were enough, and the LoR
 
 **Frames.** They are rough, at organisation level, and use placeholder faces. The render script lived in the scratchpad, since the scope is no code. On every write, the impeccable design hook flagged faces outside DESIGN.md, a few contrast and padding issues, and eyebrow labels:
 
-- I fixed the contrast and the tiny text, removed a glow, and swapped Geist for Public Sans in Queue.
+- I fixed some of the contrast findings (Queue's dim text) and the tiny text, removed a glow, and swapped Geist for Public Sans in Queue. Other low-contrast, padding and eyebrow-label findings on the rough frames are left standing.
 - The faces are deliberate: the theme is kept only in spirit.
 - The hook wrote an ignore into `.impeccable/config.json` when I asked it to. That file is outside this item's scope, so I reverted it, and no ignores are committed.
 - The dropped Command and Board frames keep Geist and their draft state, for the record.
 
+**Self-review fixes.** After a check before submitting:
+- Command's and Board's draft paragraphs and frames are back on the brief, under "The two directions dropped", so all five proposed directions are on the page.
+- The brief now says which critic said what about Command and Board. The draft overstated both as unanimous.
+- Decision 3 is cut back to the item's wording. The audit's extras (a switch action, token pairing) are listed as implications, not decisions.
+- The distinctness check is written out pair by pair for the final four. Two overlaps are now stated as common ground: every direction leads the agent page with T3 cards, and every direction puts list beside detail on the inner screen. The brief also says what still separates Panes.
+- Context's dashboard links to T3 threads rather than holding them.
+- The aim's type-size figures now match the audit: home 11 to 22 sp, plus seventeen overrides on the panels.
+
 **For the reviewer**
 - "What pauses" gets a dated paragraph and is otherwise unchanged. It limits the change to design work and keeps the pause for everything else.
 - The brief carries the audit findings it relies on, but not the findings page's "nothing here needs a new look", which Sumeet's words of 17 November replace.
-- I could not send the proposed final set to the lead's thread from here, so it is in this Report.
+- I did not message the lead's thread with the proposed set mid-task; it is in this Report and in my final answer to that thread.

@@ -13,7 +13,7 @@ Three critics from three labs read the draft brief cold on 17 November 2026: GPT
 
 **The questions.** Which directions are too alike, which is missing, what each would get wrong, what is wrong or missing in the brief itself, and which three to five to build. Critique, not rewrites, in about 900 words.
 
-The notes below are as each critic returned them. Only Grok's file links are shortened to their file names. What the brief changed because of them is in the brief's last section, "What the critiques changed".
+The Queue, Timeline and Panes frames were redrawn after these critiques, so the frames in `directions/` now are not the ones the critics saw; theirs are at commit `748d859` (for example `git show 748d859:docs/design/lab/directions/queue-home.png`). The notes below are as each critic returned them. Only Grok's file links are shortened to their file names. What the brief changed because of them is in the brief's last section, "What the critiques changed".
 
 ## Where they agree
 
