@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.lab.labAnchor
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.foundation.Canvas
@@ -1029,6 +1030,7 @@ private fun MapButton(
 ) {
     Row(
         modifier
+            .labAnchor("map:$text")
             .heightIn(min = 44.dp)
             .then(if (on) Modifier.selection() else Modifier.border(1.dp, if (danger) Bad.copy(alpha = 0.6f) else Edge))
             .clickable(role = Role.Button, onClick = onClick)
