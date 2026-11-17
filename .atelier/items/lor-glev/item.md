@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-glev
 title: Three outside critiques of every concept, and one page that compares them
-status: draft
+status: ready
 mission: lor-2803
 labels:
 - design-lab
@@ -16,7 +16,9 @@ blocked_by:
 - lor-rgx4
 - lor-t8lq
 implementers: []
-ready: null
+ready:
+  by: lead, on the plan agreed in round 7
+  at: 2026-11-17T06:57:12.926382409Z
 trivial: null
 caused_by: null
 created_at: 2026-11-17T05:57:54.172385205Z
