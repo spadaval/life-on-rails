@@ -79,8 +79,10 @@ export function Panes({
     <div className={cx("p-work", `is-${fit}`, open && "has-detail", sub && "has-sub")}>
       <div ref={listRef} className={cx("p-pane", "p-list", behind && "is-behind")} role="region" aria-label={label}>
         <header className="p-list__head">{head}</header>
-        <div className="p-list__body">{list}</div>
-        {fit !== "wide" && rest && restInList ? <div className="p-list__rest">{rest}</div> : null}
+        <div className="p-list__body">
+          {list}
+          {fit !== "wide" && rest && restInList ? <div className="p-list__rest">{rest}</div> : null}
+        </div>
       </div>
       {fit === "wide" && !detail && rest ? (
         <aside className="p-pane p-rest" aria-label={`${label}: overview`}>

@@ -291,8 +291,9 @@ ul {
   scrollbar-color: var(--line-2) transparent;
 }
 .p-list__rest {
+  margin-top: var(--s4);
   border-top: 1px solid var(--line);
-  padding: var(--s2) var(--s2) var(--s4);
+  padding-top: var(--s2);
 }
 
 /* At rest the detail side is recessed: quieter than the list, no glass, no shadow. */
