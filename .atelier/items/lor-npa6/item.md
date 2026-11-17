@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-npa6
 title: 'A design brief: what every concept must cover, and three to five directions to build'
-status: ready
+status: building
 mission: lor-2803
 labels:
 - design-lab
@@ -11,7 +11,8 @@ labels:
 priority: medium
 blocked_by:
 - lor-nde9
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Ad505dd17-c64d-476e-8d30-f41010a20b4c%3Adelegate-task%3Aedc811ab-8cbd-4a1f-9fff-7f51da78fc6a
 ready:
   by: lead, on the plan agreed in round 7
   at: 2026-11-17T06:57:12.926382409Z
