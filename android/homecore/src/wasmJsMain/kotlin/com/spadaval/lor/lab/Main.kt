@@ -38,6 +38,11 @@ import org.w3c.dom.events.Event
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLOptionElement
 import org.w3c.dom.HTMLSelectElement
+import org.w3c.dom.DragEvent
+import org.w3c.files.FileReader
+import org.w3c.files.get
+import kotlinx.serialization.json.Json
+import androidx.compose.runtime.remember
 import org.w3c.fetch.Response
 
 /*
@@ -82,17 +87,42 @@ fun main() {
         }
         show()
         window.addEventListener("hashchange", { hash = window.location.hash; show() })
+        dropOneOffs(controls)
         ComposeViewport(el("phone")) { Frame(hash, parseHash(hash), wallpapers) }
     }
+}
+
+/**
+ * A JSON file dropped anywhere on the page opens as a one-off state, written into the hash so the
+ * link is the state. One that doesn't read is named in the problem line and changes nothing.
+ */
+private fun dropOneOffs(controls: Controls) {
+    document.addEventListener("dragover", { e -> e.preventDefault(); document.body?.classList?.add("dropping") })
+    document.addEventListener("dragleave", { document.body?.classList?.remove("dropping") })
+    document.addEventListener("drop", { e ->
+        e.preventDefault()
+        document.body?.classList?.remove("dropping")
+        val file = (e as DragEvent).dataTransfer?.files?.get(0) ?: return@addEventListener
+        val reader = FileReader()
+        reader.onload = {
+            val text = reader.result.toString()
+            Fixtures.fromJson(text).fold(
+                { controls.oneOff(Json.parseToJsonElement(text).toString()) },
+                { controls.say("${file.name}: ${it.message}") },
+            )
+        }
+        reader.readAsText(file)
+    })
 }
 
 @Composable
 private fun Frame(hash: String, parsed: Parsed, wallpapers: Map<Wallpaper, ImageBitmap>) {
     val link = parsed.link
+    val fixture = remember(link.state) { Lab.fixture(link.state).first }
     Box(Modifier.fillMaxSize()) {
         Image(wallpapers.getValue(link.wallpaper), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         key(link) {
-            Lab.version(link.version)!!.draw(LabScene(Lab.state(link.state)!!, link.screen))
+            Lab.version(link.version)!!.draw(LabScene(fixture, link.screen))
         }
     }
     // Keyed on the hash as written, not the link: two hashes can name one link, and the marker
@@ -111,7 +141,12 @@ private class Controls(val go: (LabLink) -> Unit) {
     private val state = el("state") as HTMLSelectElement
     private val wallpaper = el("wallpaper") as HTMLSelectElement
     private val fold = el("fold") as HTMLButtonElement
+    private val copy = el("copy") as HTMLButtonElement
     private val problem = el("problem")
+    /** The State dropdown's entry for a one-off, shown while the hash holds one. */
+    private val oneOffOption = (document.createElement("option") as HTMLOptionElement).apply {
+        value = ONE_OFF; text = "one-off (JSON)"; title = "A state from JSON in the link or a dropped file"
+    }
     private var current = LabLink.first()
 
     init {
@@ -119,7 +154,13 @@ private class Controls(val go: (LabLink) -> Unit) {
         fill(state, Lab.states.map { Triple(it.name, it.name, it.about) })
         fill(wallpaper, Wallpaper.entries.map { Triple(it.id, it.label, it.label) })
         version.addEventListener("change", { go(current.copy(version = version.value)) })
-        state.addEventListener("change", { go(current.copy(state = state.value)) })
+        state.addEventListener("change", { if (state.value != ONE_OFF) go(current.copy(state = state.value)) })
+        copy.addEventListener("click", {
+            val text = Fixtures.toJson(Lab.fixture(current.state).first)
+            window.navigator.clipboard.writeText(text)
+            copy.textContent = "Copied"
+            window.setTimeout({ copy.textContent = "Copy JSON"; null }, 1200)
+        })
         wallpaper.addEventListener("change", { go(current.copy(wallpaper = Wallpaper.entries.first { it.id == wallpaper.value })) })
         fold.addEventListener("click", {
             go(current.copy(screen = if (current.screen == LabScreen.Cover) LabScreen.Inner else LabScreen.Cover))
@@ -134,15 +175,30 @@ private class Controls(val go: (LabLink) -> Unit) {
         }
     }
 
+    fun oneOff(json: String) = go(current.copy(state = json))
+
+    fun say(text: String) {
+        problem.textContent = text
+        problem.hidden = false
+    }
+
     fun show(parsed: Parsed) {
         current = parsed.link
         version.value = current.version
-        state.value = current.state
+        val oneOff = Lab.isOneOff(current.state)
+        if (oneOff && oneOffOption.parentNode == null) state.appendChild(oneOffOption)
+        if (!oneOff) oneOffOption.remove()
+        state.value = if (oneOff) ONE_OFF else current.state
+        val problemText = listOfNotNull(parsed.problem, Lab.fixture(current.state).second).joinToString("; ").ifEmpty { null }
         wallpaper.value = current.wallpaper.id
         fold.textContent = if (current.screen == LabScreen.Cover) "Unfold" else "Fold"
         fold.title = current.screen.label
-        problem.textContent = parsed.problem ?: ""
-        problem.hidden = parsed.problem == null
-        document.title = "Lab · ${current.hash}"
+        problem.textContent = problemText ?: ""
+        problem.hidden = problemText == null
+        document.title = "Lab · " + if (oneOff) "${current.version}/one-off" else current.hash
+    }
+
+    private companion object {
+        const val ONE_OFF = "(one-off)"
     }
 }

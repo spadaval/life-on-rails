@@ -18,6 +18,8 @@
   .bezel { padding: 14px; background: #000; border: 1px solid #2a2a2e; border-radius: 28px; }
   #phone { position: relative; overflow: hidden; border-radius: 14px; background: #000; }
   #phone canvas { display: block; }
+  /* A JSON file held over the page: it opens as a one-off state when dropped. */
+  body.dropping main { outline: 2px dashed var(--or); outline-offset: -8px; }
 </style>
 </head>
 <body>
@@ -26,6 +28,7 @@
   <label>State <select id="state"></select></label>
   <button id="fold" type="button">Unfold</button>
   <label>Wallpaper <select id="wallpaper"></select></label>
+  <button id="copy" type="button" title="Copy this state's JSON: edit it, then drop the file on the page or put it in the link">Copy JSON</button>
   <span id="problem" hidden></span>
 </header>
 <main><div class="bezel"><div id="phone"></div></div></main>

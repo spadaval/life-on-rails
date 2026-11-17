@@ -6,6 +6,7 @@ import android.util.Log
 import com.spadaval.lor.agent.CardCalls
 import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.home.HomeStore
+import com.spadaval.lor.lab.LabStates
 import com.spadaval.lor.live.LiveUpdates
 import com.spadaval.lor.lor.LorWrites
 import com.spadaval.lor.net.DeviceState
@@ -68,6 +69,8 @@ class LorApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // The debug build's fixture screen runs in its own process and reads nothing (lor-oech).
+        if (Application.getProcessName().endsWith(LabStates.PROCESS)) return
         SyncWorker.schedule(this)
         LiveUpdates.start(this)
     }

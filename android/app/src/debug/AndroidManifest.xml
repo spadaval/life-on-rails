@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The debug build's fixture entry (lor-oech). Release builds have no such activity. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- In its own process, where LorApp starts nothing (LabStates.PROCESS), so a fixture on screen
+             reads no server, no T3 and no layout file. Not exported: HomeActivity hands it the name. -->
+        <activity
+            android:name=".lab.LabStateActivity"
+            android:exported="false"
+            android:process=":lab"
+            android:taskAffinity="com.spadaval.lor.lab"
+            android:theme="@style/Theme.Lor.Home"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode|fontScale" />
+    </application>
+</manifest>

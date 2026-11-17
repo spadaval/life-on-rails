@@ -1,6 +1,6 @@
 {
   "name": "lab",
-  "about": "The launcher lab (android/homecore's wasmJsMain): every version by state by screen, on the dark wallpaper. Each link is the lab's URL hash (#version/state/screen/wallpaper), so it opens the same screen by hand. Serve it with android/web-dev.sh. A new version or state adds its rows here.",
+  "about": "The launcher lab (android/homecore's wasmJsMain): every version by state by screen, on the dark wallpaper. Each link is the lab's URL hash (#version/state/screen/wallpaper), so it opens the same screen by hand. Serve it with android/web-dev.sh. A new version or state adds its rows here; android/homecore/STATES.md lists the states.",
   "base": "http://127.0.0.1:3860",
   "widths": [
     1000
@@ -12,23 +12,68 @@
   "shots": [
     {
       "screen": "Launcher lab · current",
-      "name": "current · home-full · cover",
-      "link": "/#current/home-full"
+      "name": "current · demo · cover",
+      "link": "/#current/demo"
     },
     {
       "screen": "Launcher lab · current",
-      "name": "current · home-full · inner",
-      "link": "/#current/home-full/inner"
+      "name": "current · demo · inner",
+      "link": "/#current/demo/inner"
     },
     {
       "screen": "Launcher lab · current",
-      "name": "current · first-run · cover",
-      "link": "/#current/first-run"
+      "name": "current · empty · cover",
+      "link": "/#current/empty"
     },
     {
       "screen": "Launcher lab · current",
-      "name": "current · first-run · inner",
-      "link": "/#current/first-run/inner"
+      "name": "current · empty · inner",
+      "link": "/#current/empty/inner"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · loading · cover",
+      "link": "/#current/loading"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · loading · inner",
+      "link": "/#current/loading/inner"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · stale · cover",
+      "link": "/#current/stale"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · stale · inner",
+      "link": "/#current/stale/inner"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · failed · cover",
+      "link": "/#current/failed"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · failed · inner",
+      "link": "/#current/failed/inner"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · overfull · cover",
+      "link": "/#current/overfull"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · overfull · inner",
+      "link": "/#current/overfull/inner"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · one-off (T3 unpaired) · inner",
+      "link": "/#current/{\"base\":\"demo\",\"name\":\"t3-unpaired\",\"t3\":{\"status\":\"NOT_PAIRED\"}}/inner"
     }
   ]
 }
