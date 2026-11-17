@@ -56,9 +56,10 @@ import com.spadaval.lor.home.SettingsPage as HomeSettingsPage
  * Home in the lab (version `current`, lor-xdoi): the phone's own HomeScreen from homecore, drawn
  * from a fixture. The fixture stands in for everything the app reads from Android and LoR: the app
  * list, `layout.json`, the launch counts, search's sources, LoR's `/device/home` reply (never read
- * from LoR), the dots, the clock; [LabPlatform] answers the rest with placeholders (icons, widgets,
- * the agent page and the LoR panel until lor-rgx4 moves them). Where the screen is (`where`) is
- * applied once home has drawn its first frame.
+ * from LoR), the dots, the clock; [LabPlatform] draws the agent page, the LoR panel, LoR's blocks
+ * and the set-up card with lor-rgx4's functions from the same fixture, and answers the rest with
+ * placeholders (icons, widgets). Where the screen is (`where`) is applied once home has drawn its
+ * first frame.
  */
 
 /** The work profile's user, as `UserHandle.toString()` writes it on a phone. */
