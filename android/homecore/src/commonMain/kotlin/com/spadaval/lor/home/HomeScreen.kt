@@ -1237,6 +1237,7 @@ private fun FolderPanel(folder: ResolvedFolder, home: HomeContext, blurred: Bool
                         // Its bounds as laid out (before the motion's transform), and drawn from its tile (7.2),
                         // recorded each frame so the close can draw it as a picture.
                         .onGloballyPositioned { c -> c.boundsInRoot().let { card = it; onCard(it) } }
+                        .labAnchor("folder-open:${folder.folder.name}")
                         .graphicsLayer {
                             val c = card
                             val f = if (c == null) FolderMotion.Frame(1f, 0f, 0f, shown()) else FolderMotion.at(shown(), c.toArray(), from?.toArray(), back())

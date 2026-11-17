@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.lab.labAnchor
 import com.spadaval.lor.ui.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -70,6 +71,7 @@ fun UndoBar(state: UndoBarState, onUndo: () -> Unit, modifier: Modifier = Modifi
         modifier
             .padding(horizontal = 12.dp)
             .fillMaxWidth()
+            .labAnchor("undo-bar")
             .heightIn(min = 48.dp)
             // Opaque, unlike StateFill: it sits over icons on home and over text in Home settings.
             .background(PanelFace).border(1.dp, Edge)

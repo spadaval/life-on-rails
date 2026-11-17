@@ -63,6 +63,12 @@ async function measure() {
   frames.push(m.bezel);
 }
 
+/** The phone's screen now, in dp: { width, height } (a fold or a turn changes it). */
+export async function screen() {
+  await measure();
+  return { width: phone.width, height: phone.height };
+}
+
 /** Every anchor on screen now: { name: [left, top, right, bottom] } in dp. */
 export async function anchors() {
   return page.evaluate(() => JSON.parse(document.body.getAttribute("data-anchors") || "{}"));
@@ -148,6 +154,29 @@ export async function wait(ms) {
 }
 
 // The gestures.
+
+/**
+ * Types `text` on the keyboard into what has focus (a search field a tap opened), a key at a time
+ * `delay` ms apart. Letters the lab's toolbar takes (H, B, F, R, S) go to the field while it has focus.
+ */
+export async function type(text, { delay = 80 } = {}) {
+  await mark("type", async () => { await page.keyboard.type(text, { delay }); });
+}
+
+/**
+ * Throws unless `check(anchors, screen)` is true within `ms`: a script states what a gesture did,
+ * through the anchors, so a run that went elsewhere fails rather than recording the wrong thing.
+ * Anchors of cells kept composed off screen are listed too, with their off-screen bounds.
+ */
+export async function expect(what, check, ms = 2000) {
+  const until = Date.now() + ms;
+  for (;;) {
+    const a = await anchors();
+    if (check(a, await screen())) return;
+    if (Date.now() > until) throw new Error(`gesture: expected ${what}; anchors on screen: ${Object.keys(a).sort().join(", ")}`);
+    await sleep(100);
+  }
+}
 
 export async function tap(point, { hold: ms = 60 } = {}) {
   await mark("tap", async () => { await down(point); await hold(ms); await up(); });

@@ -1,6 +1,9 @@
 package com.spadaval.lor.lab
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
@@ -117,8 +120,13 @@ fun Fixture.lorRead(): LorRead {
     return LorRead(home, current = r.load == Load.OK, failed = r.load == Load.FAILED || r.load == Load.STALE, at = at)
 }
 
-/** The platform the lab's home draws on: the fixture's clock, LoR reply, dots and quick dial, and placeholders for the rest. */
-class LabPlatform(fixture: Fixture, apps: List<HomeApp>, wallpaper: Wallpaper) : PlaceholderPlatform(
+/**
+ * The platform the lab's home draws on: the fixture's clock, LoR reply, dots and quick dial, and
+ * placeholders for the rest. An edit changes the lab's own copy of the layout, with Undo, as the
+ * phone's store changes the file; a press that would leave home (open an app, a settings page)
+ * says in home's bar what the phone would have done.
+ */
+class LabPlatform(fixture: Fixture, apps: List<HomeApp>, wallpaper: Wallpaper, private val ui: HomeUi, start: LayoutState) : PlaceholderPlatform(
     zone = TimeZone.of(fixture.clock.zone),
     clock = { Instant.parse(fixture.clock.now) },
     lorRead = fixture.lorRead(),
@@ -126,7 +134,42 @@ class LabPlatform(fixture: Fixture, apps: List<HomeApp>, wallpaper: Wallpaper) :
     // The pale wallpaper is light, so home's text takes dark ink over it, as the phone reads its hints.
     wallpaperInk = MutableStateFlow(if (wallpaper == Wallpaper.Pale) Ink.DARK else Ink.LIGHT),
     opens = MutableStateFlow(fixture.appOpens(apps, TimeZone.of(fixture.clock.zone))),
-)
+) {
+    /** The layout home draws: the fixture's, then as edits leave it. */
+    var layout by mutableStateOf(start)
+        private set
+
+    private val undos = ArrayDeque<LayoutFile>()
+
+    override fun say(what: String) {
+        super.say(what)
+        ui.undo.say("Lab: $what", failed = false)
+    }
+
+    override fun edit(done: String?, after: () -> Unit, change: (LayoutFile) -> LayoutFile) {
+        val now = (layout as? LayoutState.Ready)?.file ?: return say("the broken file takes no edits")
+        try {
+            val next = change(now)
+            // As the store does: what is written is what parses back.
+            val written = LayoutFile.parse(next.toJson())
+            if (written != now) {
+                undos.addLast(now)
+                layout = LayoutState.Ready(written)
+                ui.undo.show(done ?: "Home changed.")
+            }
+        } catch (e: LayoutError) {
+            ui.undo.say("Can't: ${e.message ?: "the layout couldn't be changed"}.", failed = false)
+        }
+        after()
+    }
+
+    override fun undo() {
+        val before = undos.removeLastOrNull() ?: return
+        layout = LayoutState.Ready(before)
+    }
+
+    override fun refused(reason: String) = ui.undo.say("Can't: $reason.", failed = false)
+}
 
 /** Home, drawn from [scene]'s fixture. */
 @Composable
@@ -138,11 +181,11 @@ fun LabHome(scene: LabScene) {
         apps.isEmpty() -> AppsLoad.EMPTY
         else -> AppsLoad.LOADED
     }
-    val layout = remember(f) { f.layoutState() }
     val stats = remember(f, apps) { f.launchStats(apps) }
     val search = remember(f, apps) { f.searchSources(apps) }
-    val platform = remember(f, apps, scene.wallpaper) { LabPlatform(f, apps, scene.wallpaper) }
     val ui = remember(f) { HomeUi() }
+    val platform = remember(f, apps, scene.wallpaper) { LabPlatform(f, apps, scene.wallpaper, ui, f.layoutState()) }
+    val layout = platform.layout
     LaunchedEffect(ui) {
         // After the first frame, as on the phone, where the first layout puts home on its start.
         withFrameNanos {}
