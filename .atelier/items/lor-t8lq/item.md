@@ -44,7 +44,7 @@ The rest of the app can be seen and changed in the lab. Each screen's drawing ta
 
 ## Report
 
-Every Done when line is met except the timing: the lead held this machine's one local wasm build, so `android/web-dev.sh` never ran here and no edit was timed. That line is open, and the item is not submitted. Someone has to take the timing on the local loop, or the lead can drop the line for this item.
+Every Done when line is met except the timing: the lead held this machine's one local wasm build, so `android/web-dev.sh` never ran here and no edit was timed. That line is open, and the item is not submitted. The timing may not just be unmeasured but fail: homecore's wasm compile now comes close to running out of memory at a 2 GB Kotlin daemon heap on boat, and web-dev.sh gives that daemon 1536 MB ("For the lead" below). Someone has to take the timing on the local loop, or the lead can drop the line for this item.
 
 ### What moved
 
@@ -63,16 +63,33 @@ Every Done when line is met except the timing: the lead held this machine's one 
 - Home settings reads the icon packs, the dots state and the contacts permission when the screen opens, not when their rows scroll into view.
 - T3 debug looks a request up by id when acting on it. If the request is gone, the action reports "failed: the request is no longer pending" rather than sending.
 
-### Evidence: the app looks the same
+### Evidence: the app looks and behaves the same
 
 Everything is in `~/.local/state/lor-t8lq/evidence/` (`README.txt`, `compare.txt`, and the drive and compare scripts). `atelier evidence` does not exist in this Atelier, though the verify skill tells authors to use it, so this Report is the receipt.
 
+**Looks, before and after:**
+
 - **Setup:** `T3_Phone_API35` on the Mac, the app on the test server (demo set, `LOR_FAKE_NOW=2026-11-17T15:00`).
-- **APKs:** "before" built on boat from 3f17447 (sha256 9328b0c6…), "after" from 3edfe02 (5211ae0f…).
+- **APKs:** "before" built on boat from 3f17447 (sha256 9328b0c6…); "after" is build b1 of the move (5211ae0f…). The later head build (c27a7c62…) differs from b1 only in tests and a trailing blank line.
 - **Drive:** the same script ran both: Timer (idle, every intent), Sensors (top, bottom), Settings (top, bottom, after back from T3), T3 debug (top, bottom), and Home settings (top, the tab menu, the rename, icon and new-tab dialogs, three scroll positions).
 - **Result:** 17 of 18 shots are pixel-identical. Sensors' top differs only in "Last sync 5m ago" against "7m ago"; the runs were two minutes apart, and two runs of the same APK differ there the same way.
-- **Not covered on the device:** the home-role strip, hidden apps and the broken banner (the emulator holds the home role and has none of these). The lab shows them.
-- **Fixture entry:** the debug app's `lab_state` entry draws `home-settings-tabs` and `sensors-failed` on the device (`lab-entry/`).
+
+**Behaves, on the head APK (c27a7c62), `evidence/interact/`:**
+
+- **Timer:** a typed title, Just start, Pause, Resume and Stop. The title carried through, and the field was cleared after start.
+- **Sensors:** a switch off hides its status, stays off across a tab change and comes back on; Sync now ran and updated the card.
+- **Settings:** Save normalised "Check Phone 9" to `check-phone-9` (set back afterwards); Test connection said "Connected. LoR sees you as …".
+- **T3 debug:** Pair refused a bad token with "Cannot pair: …", and back returned to Settings.
+- **Home settings:** new tab (Undo bar: "Zcheck is a tab, before All."), its icon changed, then deleted; a column choice and its Undo; the drawer-keyboard toggle on and off.
+  - Also renamed an earlier test tab ("Check" to "Checked"); it then vanished from the file without my doing.
+
+**Not checked on the device:**
+
+- Hide and Unhide with a real app icon (no app icons on the page I reached).
+- The home-role strip, the broken banner, the Live Updates off states, and T3 paired (threads, approval, question and launch forms).
+- The lab draws all of these, and the debug app's `lab_state` entry draws `home-settings-tabs` (hidden apps with placeholder icons) and `sensors-failed` on the device (`lab-entry/`).
+
+**Shared emulator:** another thread's agent-device recording session (`t3-8a333b784ac5f6dbef0d8d29`) held this emulator while I worked. I installed APKs on it twice (`install -r`), and its home layout changed under me. I put back every edit I made that was still there (tab deleted, column undone, keyboard off). The head build c27a7c62 is still installed, pointed at the test server.
 
 ### The lab
 
@@ -82,16 +99,24 @@ Everything is in `~/.local/state/lor-t8lq/evidence/` (`README.txt`, `compare.txt
 - Every state the Done when names has a link in STATES.md and in `shots/lab.json` (30 new shots). All were rendered from the boat bundle served on :3871 and checked by eye; copies are in `evidence/lab-shots/`.
 - **What the lab copies from the app:** the T3 status and thread-state words, the broken-layout line for `version` 3, and a small lenient reader of `layout.json`'s `hidden`, `drawer` and `look` (`lab/AppScreens.kt`). lor-xdoi's common reader should replace that reader.
 
-### Tests (boat)
+### Tests
 
-- Command: `:homecore:clean`, then `assembleDebug testDebugUnitTest :homecore:allTests`.
+**Boat, the Done when's command** `assembleDebug testDebugUnitTest :homecore:allTests`:
+
 - **Before** (3f17447): app 433 tests, homecore 23, none failing.
-- **After** (823d631): app 436, homecore 28, none failing. The new tests are `TimerReplyTest` (3) and `AppScreensTest` (5).
+- **After:** app 436, homecore 28, none failing. The new tests are `TimerReplyTest` (3) and `AppScreensTest` (5).
+- **Runs of the after code:** the plain command passed after `:homecore:clean` (b5). Two earlier runs at the default heap ran out of memory in the wasm test link, one incremental and one after a clean (see "For the lead").
+
+**Boat, `boat-build.sh`'s default set:** debug unit tests 436, release unit tests 436, homecore 28, and the lab bundle; all pass.
+
+**Here:**
+
+- `pnpm test` passes (206).
+- `git diff --check` from 3f17447 is clean (the merge check).
+- `pnpm typecheck` fails only in `src/routes/`, which this change doesn't touch. That is lor-iurl: a fresh checkout has no generated route tree.
 
 ### For the lead
 
-- **Wasm link memory.** homecore's wasm test link (`compileTestDevelopmentExecutableKotlinWasmJs`, part of `:homecore:allTests`) now runs out of heap in the Kotlin compiler (`ClassInfoKt.allFields`) at the default daemon heap. That happened twice, once on a clean build directory. With `-Pkotlin.daemon.jvmargs=-Xmx4g` it passes in about 1 minute. `boat-build.sh`'s default tasks don't link the wasm tests, so only an explicit `allTests` hits it.
-- **Local loop risk.** The main development link passed at the default heap. web-dev.sh gives the Kotlin daemon 1536 MB, so whoever times the edit should watch peak memory there.
-- **Stale build directory.** As you warned, this checkout's boat build directory needed `:homecore:clean` once before the wasm compile worked.
-- **Tooling.** This machine's /tmp quota is full of other sessions' review copies, which broke `boat-build.sh`'s tarball and the copy back. I ran with `TMPDIR` under `~/.local/state/lor-t8lq/`. A separate commit (1fbf9b2) makes `boat-build.sh` say why it could not copy the outputs back, instead of "produced no APK".
-
+- **Wasm compile memory.** homecore's wasm test link (`compileTestDevelopmentExecutableKotlinWasmJs`, part of `:homecore:allTests`) ran out of heap in the Kotlin compiler (`ClassInfoKt.allFields`) twice and passed twice at the default 2 GB daemon heap. The other two passes were b1, with the main development link too, and b5 after a clean. With `-Pkotlin.daemon.jvmargs=-Xmx4g` it passed every time. So the heap is marginal at 2 GB. web-dev.sh's 1536 MB daemon may fail outright on the main link, so the open timing line may fail, not just wait for a measurement. I did not change any heap setting.
+- **Boat build directory.** This checkout's directory on boat was first built at 3f17447. Your note about a directory compiled before lor-oech doesn't describe it, and a clean did not prevent the out-of-memory; it is the margin above.
+- **Tooling.** This machine's /tmp quota is full of other sessions' review copies, which broke `boat-build.sh`'s tarball, its copy back, and `verify-lor up`'s copy. I ran with `TMPDIR`, `LOR_VERIFY_COPY` and `LOR_VERIFY_OUT` under `~/.local/state/lor-t8lq/`. A separate commit (1fbf9b2) makes `boat-build.sh` say why it could not copy the outputs back, instead of "produced no APK". The verify skill still names `atelier evidence`, which no longer exists.
