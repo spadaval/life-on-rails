@@ -1,8 +1,8 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertNull
+import kotlin.test.Test
 
 /** The grid's neighbour, wrap and drawer-reach rules (lor-qdmy; decision lor-y7qi). */
 class GridTest {

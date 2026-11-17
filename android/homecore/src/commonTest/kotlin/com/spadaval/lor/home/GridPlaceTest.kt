@@ -1,10 +1,10 @@
 package com.spadaval.lor.home
 
 import androidx.compose.ui.unit.IntOffset
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertNull
+import com.spadaval.lor.testing.assertTrue
+import kotlin.test.Test
 
 /** Where the grid host draws its cells (lor-qdmy's review: lor-glg9, lor-ymm9). */
 class GridPlaceTest {

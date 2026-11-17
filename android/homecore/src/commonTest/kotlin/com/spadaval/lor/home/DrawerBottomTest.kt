@@ -1,9 +1,9 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertFalse
+import com.spadaval.lor.testing.assertTrue
+import kotlin.test.Test
 
 /** The drawer with its controls at the bottom (lor-sqfe): results laid out bottom up, and which swipes the list takes. */
 class DrawerBottomTest {

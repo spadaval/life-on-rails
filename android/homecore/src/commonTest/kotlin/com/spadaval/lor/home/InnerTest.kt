@@ -1,8 +1,8 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertNull
+import kotlin.test.Test
 
 /** The inner screen's rules: pairing, moves, the focus cell, folding and a stack's wide flow (lor-j87u; decision lor-b1dx). */
 class InnerTest {

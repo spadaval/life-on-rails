@@ -1,9 +1,9 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertNull
+import com.spadaval.lor.testing.assertTrue
+import kotlin.test.Test
 
 class SearchTest {
     private val apps = listOf("Calendar", "Café Nero", "Camera", "Google Maps", "Lyft", "Prime Video", "Settings", "T-Mobile", "WhatsApp", "YouTube", "YT Music")
@@ -209,8 +209,8 @@ class SearchTest {
 
     @Test
     fun theBandedTypoDistanceAgreesWithTheFullTable() {
-        val r = java.util.Random(5)
-        fun word(n: Int) = String(CharArray(n) { "abcde"[r.nextInt(5)] })
+        val r = kotlin.random.Random(5)
+        fun word(n: Int) = CharArray(n) { "abcde"[r.nextInt(5)] }.concatToString()
         repeat(20000) {
             val q = word(1 + r.nextInt(10))
             val t = word(r.nextInt(14))

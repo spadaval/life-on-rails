@@ -1,9 +1,9 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertFalse
+import com.spadaval.lor.testing.assertTrue
+import kotlin.test.Test
 
 /** [PopoverPlace] (lor-fhk5): centred on the icon, kept inside the screen, the arrow on the icon. */
 class PopoverTest {

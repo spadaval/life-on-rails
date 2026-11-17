@@ -1,22 +1,28 @@
 package com.spadaval.lor.home
 
 import com.spadaval.lor.net.DeviceHome
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneId
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertFalse
+import com.spadaval.lor.testing.assertNull
+import com.spadaval.lor.testing.assertTrue
+import kotlin.test.Test
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
+import kotlin.time.Instant
 
 class QuickDialTest {
-    private val zone = ZoneId.of("America/Los_Angeles")
+    private val zone = TimeZone.of("America/Los_Angeles")
     /** A Tuesday. */
-    private val today = LocalDate.of(2026, 11, 10)
+    private val today = LocalDate(2026, 11, 10)
 
-    private fun at(day: LocalDate, time: String) = day.atTime(LocalTime.parse(time)).atZone(zone).toInstant().toEpochMilli()
+    private fun at(day: LocalDate, time: String) = LocalDateTime(day, LocalTime.parse(time)).toInstant(zone).toEpochMilliseconds()
 
     private fun id(pkg: String) = AppId(pkg, "$pkg.Main")
 
@@ -27,7 +33,7 @@ class QuickDialTest {
 
     /** [time] on each of the [days] days before [today] that [on] takes. */
     private fun daily(time: String, days: Int = 21, on: (LocalDate) -> Boolean = { true }) =
-        (1..days).map { today.minusDays(it.toLong()) }.filter(on).map { at(it, time) }
+        (1..days).map { today.minus(DatePeriod(days = (it.toLong()).toInt())) }.filter(on).map { at(it, time) }
 
     private fun rank(o: AppOpens, now: Long, apps: List<String>) = rankForNow(apps.map(::id), { it }, o, now, zone).map { it.packageName }
 
@@ -48,7 +54,7 @@ class QuickDialTest {
         val weekdayApps = (1..8).map { "work$it" }
         val o = opens("hike" to daily("09:00", 28, weekend), *weekdayApps.map { it to daily("09:30", 28) { d -> !weekend(d) } }.toTypedArray())
         val apps = weekdayApps + "hike"
-        val saturday = today.with(java.time.temporal.TemporalAdjusters.next(DayOfWeek.SATURDAY))
+        val saturday = (1..7).map { today.plus(DatePeriod(days = it)) }.first { it.dayOfWeek == DayOfWeek.SATURDAY }
         assertEquals("hike", rank(o, at(saturday, "09:00"), apps).first())
         val tuesday = rank(o, at(today, "09:00"), apps)
         assertEquals(QUICK_APPS, tuesday.size)
@@ -57,7 +63,7 @@ class QuickDialTest {
 
     @Test
     fun anAppOpenedOnceRanksBelowADailyOne() {
-        val yesterday = today.minusDays(1)
+        val yesterday = today.minus(DatePeriod(days = (1).toInt()))
         // Opened once, in the very slot asked about, against a daily app of another hour.
         val o = opens("once" to listOf(at(yesterday, "08:00")), "daily" to daily("13:00", 14))
         assertEquals(listOf("daily", "once"), rank(o, at(today, "08:00"), listOf("daily", "once")))
@@ -145,7 +151,7 @@ class QuickDialTest {
         assertTrue(right.last.getValue("mail") <= t + 10_000)
         // A week on, mail has decayed by half a half-life, not stayed at 1.
         val week = right.opened("chat", t + 7 * day, zone)
-        assertEquals(Math.pow(0.5, 0.5), week.counts.getValue("mail").sum(), 0.001)
+        assertEquals(kotlin.math.sqrt(0.5), week.counts.getValue("mail").sum(), 0.001)
         // Moving is idempotent: a work tap's rebase and the next read agree.
         assertEquals(right.cursor, right.corrected(t + 20_000, 1_020_000, 1).cursor)
     }
@@ -172,7 +178,7 @@ class QuickDialTest {
         assertEquals(Band.EVENING, Band.of(21))
         assertEquals(24, Band.entries.sumOf { it.hours })
         assertEquals(1.0, (0 until HourSlot.COUNT).sumOf { i -> HourSlot(Band.entries[i / 2], i % 2 == 1).share }, 1e-9)
-        assertEquals("Tuesday evening", HourSlot.of(java.time.Instant.ofEpochMilli(at(today, "19:00")), zone).words(java.time.Instant.ofEpochMilli(at(today, "19:00")), zone))
+        assertEquals("Tuesday evening", HourSlot.of(Instant.fromEpochMilliseconds(at(today, "19:00")), zone).words(Instant.fromEpochMilliseconds(at(today, "19:00")), zone))
     }
 
     private val now = at(today, "12:00")
@@ -230,7 +236,7 @@ class QuickDialTest {
         val one = DeviceHome.One("In 40 min", "Dinner", null)
         assertNull(quickCard(null, true, null, zone))
         assertEquals(QuickCard("In 40 min", "Dinner", null), quickCard(one, true, null, zone))
-        val read = java.time.Instant.ofEpochMilli(at(today, "07:05"))
+        val read = Instant.fromEpochMilliseconds(at(today, "07:05"))
         assertEquals(QuickCard("In 40 min", "Dinner", "as of 7:05"), quickCard(one, false, read, zone))
     }
 

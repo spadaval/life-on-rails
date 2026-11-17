@@ -1,12 +1,12 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertSame
-import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertFalse
+import com.spadaval.lor.testing.assertNull
+import com.spadaval.lor.testing.assertSame
+import com.spadaval.lor.testing.assertTrue
+import com.spadaval.lor.testing.fail
+import kotlin.test.Test
 
 /** The minimap's edits and the lock's switch (lor-v692). */
 class GridEditTest {

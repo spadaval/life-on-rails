@@ -1,10 +1,10 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertFalse
+import com.spadaval.lor.testing.assertNull
+import com.spadaval.lor.testing.assertTrue
+import kotlin.test.Test
 
 /** What the minimap draws and offers (lor-6get), from the file's grid. */
 class MinimapTest {

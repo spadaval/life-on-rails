@@ -1,9 +1,9 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.fail
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertNull
+import com.spadaval.lor.testing.fail
+import kotlin.test.Test
 
 /** The drawer tabs' hand edits (lor-iyc3): Move to tab… and Home settings' Drawer tabs. */
 class TabEditTest {

@@ -1,8 +1,8 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import com.spadaval.lor.testing.assertFalse
+import com.spadaval.lor.testing.assertTrue
+import kotlin.test.Test
 
 class MotionTest {
     @Test
@@ -83,19 +83,19 @@ class MotionTest {
         val card = floatArrayOf(100f, 500f, 900f, 1300f)
         val tile = floatArrayOf(40f, 300f, 200f, 460f)
         val start = FolderMotion.at(0f, card, tile)
-        org.junit.Assert.assertEquals(0.2f, start.scale, 1e-4f)
+        com.spadaval.lor.testing.assertEquals(0.2f, start.scale, 1e-4f)
         // The card's centre (500, 900) is moved onto the tile's (120, 380).
-        org.junit.Assert.assertEquals(-380f, start.dx, 1e-3f)
-        org.junit.Assert.assertEquals(-520f, start.dy, 1e-3f)
-        org.junit.Assert.assertEquals(0f, start.alpha, 1e-4f)
+        com.spadaval.lor.testing.assertEquals(-380f, start.dx, 1e-3f)
+        com.spadaval.lor.testing.assertEquals(-520f, start.dy, 1e-3f)
+        com.spadaval.lor.testing.assertEquals(0f, start.alpha, 1e-4f)
         val end = FolderMotion.at(1f, card, tile)
-        org.junit.Assert.assertEquals(1f, end.scale, 1e-4f)
-        org.junit.Assert.assertEquals(0f, end.dx, 1e-4f)
-        org.junit.Assert.assertEquals(1f, end.alpha, 1e-4f)
+        com.spadaval.lor.testing.assertEquals(1f, end.scale, 1e-4f)
+        com.spadaval.lor.testing.assertEquals(0f, end.dx, 1e-4f)
+        com.spadaval.lor.testing.assertEquals(1f, end.alpha, 1e-4f)
         // Gone from home: a fade in place.
         val fade = FolderMotion.at(0.5f, card, null)
-        org.junit.Assert.assertEquals(1f, fade.scale, 1e-4f)
-        org.junit.Assert.assertEquals(0.5f, fade.alpha, 1e-4f)
+        com.spadaval.lor.testing.assertEquals(1f, fade.scale, 1e-4f)
+        com.spadaval.lor.testing.assertEquals(0.5f, fade.alpha, 1e-4f)
     }
 
     @Test
@@ -103,13 +103,13 @@ class MotionTest {
         val card = floatArrayOf(100f, 500f, 900f, 1300f)
         val tile = floatArrayOf(40f, 300f, 200f, 460f)
         val f = FolderMotion.at(1f, card, tile, back = 0.9f)
-        org.junit.Assert.assertEquals(0.9f, f.scale, 1e-4f)
+        com.spadaval.lor.testing.assertEquals(0.9f, f.scale, 1e-4f)
         // The centre (500, 900) moves a tenth of the way to the tile's (120, 380).
-        org.junit.Assert.assertEquals(-38f, f.dx, 1e-3f)
-        org.junit.Assert.assertEquals(-52f, f.dy, 1e-3f)
+        com.spadaval.lor.testing.assertEquals(-38f, f.dx, 1e-3f)
+        com.spadaval.lor.testing.assertEquals(-52f, f.dy, 1e-3f)
         // Without back, nothing changes; at the tile, back keeps it there.
-        org.junit.Assert.assertEquals(0f, FolderMotion.at(1f, card, tile).dx, 1e-4f)
-        org.junit.Assert.assertEquals(-380f, FolderMotion.at(0f, card, tile, back = 0.9f).dx, 1e-3f)
+        com.spadaval.lor.testing.assertEquals(0f, FolderMotion.at(1f, card, tile).dx, 1e-4f)
+        com.spadaval.lor.testing.assertEquals(-380f, FolderMotion.at(0f, card, tile, back = 0.9f).dx, 1e-3f)
     }
 
     @Test
@@ -118,12 +118,12 @@ class MotionTest {
         val f1 = Folder("Tools", listOf(AppRef("com.b")))
         val f2 = Folder("Tools", listOf(AppRef("com.c")))
         val keys = itemKeys(listOf(a, f1, f2))
-        org.junit.Assert.assertEquals(3, keys.toSet().size)
+        com.spadaval.lor.testing.assertEquals(3, keys.toSet().size)
         // The same items in another order keep their keys (apps and the folder names that differ).
         val b = AppRef("com.b", "com.b.Main")
         val f = Folder("Media", emptyList())
         val one = itemKeys(listOf(a, b, f)).zip(listOf(a, b, f)).toMap()
         val other = itemKeys(listOf(f, a, b)).zip(listOf(f, a, b)).toMap()
-        org.junit.Assert.assertEquals(one, other)
+        com.spadaval.lor.testing.assertEquals(one, other)
     }
 }

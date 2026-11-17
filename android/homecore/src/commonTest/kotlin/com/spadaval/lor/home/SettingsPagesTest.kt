@@ -1,7 +1,7 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import kotlin.test.Test
 
 class SettingsPagesTest {
     private val pages = SettingsPage.ALL.map { SettingsPage.found(it, it.title) }

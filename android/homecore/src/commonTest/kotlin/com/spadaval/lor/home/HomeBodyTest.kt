@@ -1,7 +1,7 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import kotlin.test.Test
 
 /** What home's grid shows while it loads, when the list comes back empty, and when home is empty (launcher polish 3.2). */
 class HomeBodyTest {

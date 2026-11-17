@@ -63,8 +63,9 @@ kotlin {
         }
         wasmJsMain.dependencies {
             implementation("org.jetbrains.kotlinx:kotlinx-browser:0.5.0")
-            // Time zones other than UTC for kotlinx-datetime in the browser (loaded in TimeZones.kt).
-            implementation(npm("@js-joda/timezone", "2.26.0"))
+            // Time zones other than UTC for kotlinx-datetime in the browser and under Node (TimeZones.kt).
+            // 2.23.0: the last whose peer range takes the @js-joda/core 3.2.0 kotlinx-datetime 0.8.0 uses.
+            implementation(npm("@js-joda/timezone", "2.23.0"))
         }
     }
 }

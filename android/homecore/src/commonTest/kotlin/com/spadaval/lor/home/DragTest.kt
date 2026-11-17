@@ -1,10 +1,10 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertNull
+import com.spadaval.lor.testing.assertTrue
+import com.spadaval.lor.testing.fail
+import kotlin.test.Test
 
 /** Which target is under the finger (launcher polish 4.3). */
 class DragTest {

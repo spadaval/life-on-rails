@@ -1,8 +1,8 @@
 package com.spadaval.lor.home
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import com.spadaval.lor.testing.assertEquals
+import com.spadaval.lor.testing.assertNull
+import kotlin.test.Test
 
 class AnswersTest {
     private fun v(q: String) = Answers.of(q, '.')?.value
