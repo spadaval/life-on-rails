@@ -172,6 +172,14 @@ function Unnamed({ route }: { route: Route }) {
   const off = useOff();
   const u = unnamedTime(s);
   const [open, setOpen] = useState(route.params.time === "open");
+  if (!s.blocks.length) {
+    return (
+      <section className="cx-card cx-unnamedtime">
+        <h2 className="cx-label">Time today</h2>
+        <p className="cx-unnamed-sum">Nothing recorded yet today. Start a timer on what you are doing, or LoR fills this in from your phone and calendar as the day goes.</p>
+      </section>
+    );
+  }
   if (!u.bare.length && !u.guesses.length) return null;
   return (
     <section className="cx-card cx-unnamedtime">
@@ -184,7 +192,7 @@ function Unnamed({ route }: { route: Route }) {
       <p className="cx-unnamed-sum">
         {u.bare.length ? <><span className="cx-num">{dur(u.bareMs)}</span> unnamed in {u.bare.length} stretches</> : null}
         {u.bare.length && u.guesses.length ? " · " : null}
-        {u.guesses.length ? <><span className="cx-num">{u.guesses.length}</span> guesses to confirm</> : null}
+        {u.guesses.length ? <><span className="cx-num">{u.guesses.length}</span> {u.guesses.length === 1 ? "guess" : "guesses"} to confirm</> : null}
       </p>
       {open ? (
         <ul className="cx-blocks">

@@ -103,7 +103,7 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
         </section>
       ) : ctx.kind !== "unnamed" && ctx.kind !== "slot" ? (
         <section className="cx-lead cx-lead-empty">
-          <p>Nothing open here. {ctx.node ? "Add the next step with q, or let it rest." : null}</p>
+          <p>{ctx.person ? `No open task names ${ctx.person.name.split(" ")[0]}.` : <>Nothing open here. {ctx.node ? "Add the next step with q, or let it rest." : null}</>}</p>
         </section>
       ) : null}
 
@@ -195,7 +195,7 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
           </Region>
         ) : null}
 
-        {ctx.kind !== "unnamed" && ctx.kind !== "loose" ? (
+        {ctx.kind !== "unnamed" && ctx.kind !== "loose" && (people.length || ctx.kind !== "person") ? (
           <Region title="People" count={people.length}>
             {people.length ? (
               <ul className="cx-people">
@@ -327,7 +327,7 @@ function TimerHead({ ctx, lead, runHere }: { ctx: Ctx; lead: Node | null; runHer
       {r ? <span className="cx-timer-on cx-timer-else">Timer on {runningLabel(r)}</span> : <span className="cx-timer-on cx-timer-else">No timer running</span>}
       <button
         type="button"
-        className="cx-btn cx-btn-primary"
+        className={r ? "cx-btn cx-btn-quiet" : "cx-btn cx-btn-primary"}
         disabled={off}
         onClick={() => {
           if (r) oneWay(`Switched to ${targetTitle}`, () => switchTimer({ intentId: target }));

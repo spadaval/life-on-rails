@@ -139,7 +139,7 @@ export function App({ route }: { route: Route }) {
             ))}
             <span className="cx-tabs-gap" aria-hidden="true" />
             {INDEX.map((x) => (
-              <a key={x.path} className="cx-tab cx-tab-index" href={href(x.path)} aria-current={page === x.path.slice(1) ? "page" : undefined}>
+              <a key={x.path} className="cx-tab cx-tab-index" href={href(x.path)} aria-label={x.name} title={x.name} aria-current={page === x.path.slice(1) ? "page" : undefined}>
                 <Icon name={x.icon} size={15} />
                 <span className="cx-tab-title">{x.name}</span>
               </a>
@@ -147,19 +147,18 @@ export function App({ route }: { route: Route }) {
           </nav>
         </header>
 
-        {staleSince !== null ? (
-          <div className="cx-stale" role="status">
-            <Icon name="cloud" size={18} />
-            <p>
-              <strong>LoR can’t be reached.</strong> This is what it sent at <span className="cx-num">{hm(staleSince)}</span>, {ago(staleSince, s.sceneAt)}. Changes are off until it answers; it tries again every 30 seconds.
-            </p>
-            <button type="button" className="cx-btn cx-btn-sm" onClick={() => say("Still no answer from LoR.", { tone: "error" })}>
-              Try now
-            </button>
-          </div>
-        ) : null}
-
         <div className="cx-body">
+          {staleSince !== null ? (
+            <div className="cx-stale" role="status">
+              <Icon name="cloud" size={18} />
+              <p>
+                <strong>LoR can’t be reached.</strong> This is what it sent at <span className="cx-num">{hm(staleSince)}</span>, {ago(staleSince, s.sceneAt)}. Changes are off until it answers; it tries again every 30 seconds.
+              </p>
+              <button type="button" className="cx-btn cx-btn-sm" onClick={() => say("Still no answer from LoR.", { tone: "error" })}>
+                Try now
+              </button>
+            </div>
+          ) : null}
           {shown ? (
             <div className="cx-work" data-reading={p.page ? true : undefined}>
               <ContextView ctx={shown.ctx} why={shown.why} focus={shown.focus} route={route} isNow={shown.isNow} />

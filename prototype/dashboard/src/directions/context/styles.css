@@ -458,6 +458,7 @@ html[data-version="context"] body {
   border-radius: 50%;
   border: 1.5px solid var(--text-4);
   color: transparent;
+  pointer-events: none;
   transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
 .cx-check:hover span {
@@ -817,8 +818,7 @@ html[data-version="context"] body {
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  max-width: var(--page-max);
-  margin: var(--s-4) auto 0;
+  margin-bottom: var(--s-region);
   padding: var(--s-3) var(--s-4);
   border-radius: var(--r-row);
   background: var(--red-soft);
@@ -1832,6 +1832,7 @@ button.cx-wikilink:hover {
 }
 .cx-wait-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   color: var(--text-3);
@@ -2025,6 +2026,11 @@ button.cx-wikilink:hover {
   border: 1px solid var(--line-2);
   box-shadow: var(--sh-float);
   animation: cx-notice var(--dur) var(--ease);
+  /* Only its buttons take a press: the words never sit in the way of what is under them. */
+  pointer-events: none;
+}
+.cx-notice button {
+  pointer-events: auto;
 }
 .cx-notice p {
   flex: 1;
@@ -2331,9 +2337,26 @@ button.cx-wikilink:hover {
     padding: var(--s-4) var(--s-4) 120px;
   }
   .cx-stale {
-    margin: var(--s-3) var(--s-4) 0;
+    margin-bottom: var(--s-4);
     align-items: flex-start;
     flex-wrap: wrap;
+  }
+  /* The pages first, as icons, then the recent contexts, so nothing common hides off the edge. */
+  .cx-tab-index {
+    order: 1;
+    padding: 0 var(--s-3);
+  }
+  .cx-tab-index .cx-tab-title {
+    display: none;
+  }
+  .cx-tabs-sep {
+    order: 2;
+  }
+  .cx-tabs > .cx-tab:not(.cx-tab-now):not(.cx-tab-index) {
+    order: 3;
+  }
+  .cx-tabs-gap {
+    display: none;
   }
   .cx-surface {
     padding: var(--s-5) var(--s-4);
@@ -2409,10 +2432,14 @@ button.cx-wikilink:hover {
     padding: var(--s-4);
   }
   .cx-notice {
-    top: calc(var(--bar-h) + var(--tabs-h) + var(--s-2));
-    bottom: auto;
+    bottom: var(--s-4);
     width: calc(100vw - 2 * var(--s-4));
     animation: none;
+  }
+  /* A sheet rises from the bottom, so the notice moves up while one is open. */
+  body:has(.cx-layer) .cx-notice {
+    top: var(--s-3);
+    bottom: auto;
   }
 }
 .cx-next-free {
@@ -2425,4 +2452,13 @@ button.cx-wikilink:hover {
   color: var(--cyan);
   font-size: var(--t-body);
   font-weight: var(--w-bold);
+}
+.cx-btn-quiet {
+  min-height: 44px;
+  border-color: var(--amber-line);
+  background: var(--amber-faint);
+  color: var(--amber-hi);
+}
+.cx-btn-quiet:hover:not(:disabled) {
+  background: var(--amber-soft);
 }

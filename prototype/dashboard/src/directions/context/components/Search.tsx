@@ -74,7 +74,8 @@ export const Search = forwardRef<SearchHandle, { here: Ctx; initial?: string; in
       setOpen(true);
       setSel(0);
       setKeepHere(true);
-      requestAnimationFrame(() => input.current?.focus());
+      // At once, not on the next frame: keys typed straight after `/` or `q` must land in the field.
+      input.current?.focus();
     },
   }));
 
