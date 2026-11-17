@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-nde9
 title: The dashboard reloads a change in under two seconds on demo data, and one command shoots every screen
-status: in_review
+status: approved
 mission: lor-2803
 labels:
 - design-lab
