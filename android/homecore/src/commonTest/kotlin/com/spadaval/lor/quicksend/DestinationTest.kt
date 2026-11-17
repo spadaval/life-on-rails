@@ -2,9 +2,9 @@ package com.spadaval.lor.quicksend
 
 import com.spadaval.lor.quicksend.Destination.Screen
 import com.spadaval.lor.quicksend.Destination.Why
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.Test
 
 class DestinationTest {
     private val projects = mapOf(
@@ -77,5 +77,15 @@ class DestinationTest {
     fun segmentsAreDecodedWithoutSchemeQueryOrFragment() {
         assertEquals(listOf("threads", "e 1", "a:b+c"), Destination.segments("t3code://threads/e%201/a%3Ab+c?x=1#y"))
         assertEquals(listOf("x"), Destination.segments("mailto:x"))
+    }
+
+    /** What `URLDecoder` did here before the move to common code: UTF-8, `+` kept, a bad escape left as written. */
+    @Test
+    fun percentDecodingIsUrlDecodersWithPlusKept() {
+        assertEquals("café", Destination.percentDecoded("caf%C3%A9"))
+        assertEquals("a+b c", Destination.percentDecoded("a+b%20c"))
+        assertNull(Destination.percentDecoded("100%"))
+        assertNull(Destination.percentDecoded("%zz"))
+        assertEquals(listOf("100%", "x"), Destination.segments("t3code://100%/x"))
     }
 }

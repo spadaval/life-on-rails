@@ -47,14 +47,23 @@ Each is a condition of the whole app; a surface draws the part of it it reads.
 - `overfull`: Everything at its most: 200 apps, five full pages, twelve cards, nine flags, long names everywhere.
 - `sensors-failed`: Sensors after a failed sync with two permissions missing.
 - `home-settings-tabs`: Home settings with hidden apps and four drawer tabs.
+- `first-run`: A first-run home with the set-up card: not yet the home app, T3 unpaired, LoR not reached at the address.
+- `agent-waiting`: The agent page with one approval, one question, a failed turn and two LoR flags.
+- `agent-t3-stale`: The agent page with T3 disconnected and what it saw 40 minutes ago.
+- `thread-long`: The agent page with the approval's thread open beside it and a long transcript (inner screen).
 
 ## Surfaces in the module
 
 | Surface | States it draws |
 | --- | --- |
-| The kit sheet (`current`, until home moves) | One look for every state that opens nothing (`where.open` `NOTHING`); its title names the state and the screen. |
+| The kit sheet (`current`, until home moves) | One look for every state that opens nothing (`where.open` `NOTHING`) and points at no panel below; its title names the state and the screen. |
 | The LoR app's tabs (`current`): `where.open` `APP_TAB`, `where.target` `timer`, `sensors`, `settings` or `t3` (Settings' T3 debug view) | Every state, as one-offs over it; the links below. |
 | Home settings (`current`): `where.open` `HOME_SETTINGS` | `home-settings-tabs`, and every state as a one-off; the links below. |
+| The agent page (`current`, `where.cell` at the layout's `t3` panel, `[0, 0]` in the demo's) | Today from LoR's `/device/home`, T3's connection, cards and threads; `where.open` THREAD with `where.target` a thread id opens that thread beside the page on the inner screen. `agent-waiting`, `agent-t3-stale`, `thread-long`, and any state with `"where":{"cell":[0,0]}`. |
+| The LoR panel (`current`, `where.cell` at the `lor` panel, `[3, 0]` in the demo's) | `/device/home`, `/device/tasks`, `/device/people`; on the inner screen the Tasks tab, or People with `where.target` "people". |
+| LoR's blocks (`current`, `where.cell` at a stack holding `today`, `needs-you`, `running` or `t3-queue`) | Those blocks one under another, as the stack draws them (home's other blocks are lor-xdoi's). |
+| The set-up card (`current`, a state with no layout file and `settings.setupDone` false) | The home role (`phone.permissions.home`), T3's pairing, LoR's `/device/home` read (OK reached, loading checking, else failed). `first-run`, `empty`. |
+| The quick-send sheet (`current`, `where.open` QUICK_SEND) | T3's connection and its threads' projects, `where.typed` as the field's start; `where.target` "assist" opens it as the assistant does, with a stand-in screenshot. |
 | The gesture test surface (`gestures`) | One look for every state: a pager, a list, a tile with a long-press menu, two panes on the inner screen. Not a launcher; `scripts/lab/run.mjs` is proven on it. |
 
 A screen in each of its states, by link (`android/web-dev.sh`, then `http://127.0.0.1:3860/` and the hash;
@@ -97,13 +106,9 @@ and to the list above by the item that moves its surface into the module, with t
 ordinary, empty, loading, stale, failed and overfull states where it has them.
 
 - `home-full` (lor-xdoi): a full home on the cover screen over a pale wallpaper (`#current/home-full/cover/pale`).
-- `first-run` (lor-rgx4): a first-run home with the set-up card.
 - `drawer-all-scrolled` (lor-xdoi): the drawer's All tab mid-scroll.
 - `search-mixed` (lor-xdoi): search with app, contact and settings results.
 - `app-menu` (lor-xdoi): an app's long-press menu.
-- `agent-waiting` (lor-rgx4): the agent page with one approval, one question and two LoR flags.
-- `agent-t3-stale` (lor-rgx4): the agent page with T3 disconnected and stale.
-- `thread-long` (lor-rgx4): a thread open on the inner screen with a long transcript.
 
 Widgets (decided here, for lor-xdoi to build): a fixture's layout names a widget by its provider,
 and in the lab a widget is to be drawn as a labelled box of its height, not a snapshot image.

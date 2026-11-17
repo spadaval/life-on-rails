@@ -20,29 +20,6 @@ data class ModelSelection(val instanceId: String, val model: String, val options
     }
 }
 
-/** One question of a pending `user_input` request (T3's `OrchestrationV2UserInputQuestion`). */
-data class Question(
-    val id: String,
-    val header: String,
-    val question: String,
-    val options: List<Option>,
-    val multiSelect: Boolean,
-    /** False only when the server says so; otherwise free text is accepted. */
-    val allowCustomAnswer: Boolean,
-    /** Text the answer field starts with; when set, typed text is sent untrimmed (T3's `initialAnswer`). */
-    val initialAnswer: String? = null,
-) {
-    /** [value] is null when the provider gave none; [answer] is what the server takes: the value, else the label. */
-    data class Option(val label: String, val description: String, val value: String? = null) {
-        val answer: String get() = value ?: label
-    }
-}
-
-/**
- * A user or assistant message of a thread (T3's `OrchestrationV2ConversationMessage`), as the T3
- * panel's thread column shows it: plain text, with who wrote it ([fromUser]) and when ([createdAt], ISO).
- */
-data class ThreadMessage(val id: String, val fromUser: Boolean, val text: String, val createdAt: String, val streaming: Boolean)
 
 /**
  * What a launch uses when the caller names no model or runtime mode: the project's settings, then the server's.

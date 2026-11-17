@@ -1,16 +1,15 @@
 package com.spadaval.lor.lor
 
-import com.spadaval.lor.net.DeviceHome
-import com.spadaval.lor.net.DevicePeople
-import com.spadaval.lor.net.DeviceTasks
-import java.time.Duration
-import java.time.Instant
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.plus
+import kotlin.math.floor
+import kotlin.time.Instant
 
 /**
  * What LoR's panel and blocks write in their rows, the way the web writes it (`src/components/format.ts`,
- * `src/routes/index.tsx`, `tasks.tsx`, `people.tsx`), and which rows a block shows. Pure, for the JVM tests.
+ * `src/routes/index.tsx`, `tasks.tsx`, `people.tsx`), and which rows a block shows. Pure.
  */
 object LorRows {
     /** The first [max] of [rows] and how many more there are (a block's "N more" line); all of them for a null [max]. */
@@ -22,28 +21,28 @@ object LorRows {
     private val WEEKDAYS = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
     /** "15 Oct", as the web's `shortDate`. */
-    fun shortDate(d: LocalDate): String = "${d.dayOfMonth} ${MONTHS[d.monthValue - 1]}"
+    fun shortDate(d: LocalDate): String = "${d.dayOfMonth} ${MONTHS[d.month.ordinal]}"
 
     /** A due date the way a list reads it, as the web's `dueLabel`: Today, Tomorrow, Yesterday, a weekday within the week, else the date. */
     fun dueLabel(due: LocalDate, today: LocalDate): String {
-        val d = ChronoUnit.DAYS.between(today, due)
+        val d = today.daysUntil(due)
         return when {
-            d == 0L -> "Today"
-            d == 1L -> "Tomorrow"
-            d == -1L -> "Yesterday"
-            d in 2..6 -> WEEKDAYS[due.dayOfWeek.value - 1]
+            d == 0 -> "Today"
+            d == 1 -> "Tomorrow"
+            d == -1 -> "Yesterday"
+            d in 2..6 -> WEEKDAYS[due.dayOfWeek.ordinal]
             else -> shortDate(due)
         }
     }
 
     /** Due soon's rows, as the web's Today: the first six open tasks, then those done today (drawn struck through), each with whether it is done. */
-    fun dueSoon(t: DeviceTasks): List<Pair<DeviceTasks.Task, Boolean>> = t.tasks.take(DUE_SOON).map { it to false } + t.doneToday.map { it to true }
+    fun dueSoon(t: LorTasks): List<Pair<LorTasks.Task, Boolean>> = t.tasks.take(DUE_SOON).map { it to false } + t.doneToday.map { it to true }
 
     /** How many open tasks Due soon shows, as the web's. */
     const val DUE_SOON = 6
 
     /** The line under a task in Due soon, as the web's: "due 15 Oct · waiting on Priya · House move · Google Tasks", or "done today" in place of the due date. */
-    fun dueSoonLine(t: DeviceTasks.Task, done: Boolean = false): String =
+    fun dueSoonLine(t: LorTasks.Task, done: Boolean = false): String =
         listOfNotNull(
             if (done) "done today" else t.due?.let { "due ${shortDate(it)}" },
             t.waitingOn?.let { "waiting on $it" },
@@ -52,7 +51,7 @@ object LorRows {
         ).joinToString(" · ")
 
     /** The line under a task in the Tasks tab: what the web's Tasks row shows beside the title, its due date as [dueLabel]. */
-    fun taskLine(t: DeviceTasks.Task, today: LocalDate): String =
+    fun taskLine(t: LorTasks.Task, today: LocalDate): String =
         listOfNotNull(
             t.due?.let { dueLabel(it, today) },
             t.waitingOn?.let { "waiting on $it" },
@@ -61,15 +60,15 @@ object LorRows {
         ).joinToString(" · ")
 
     /** A group of the Tasks tab: the web's Tasks grouped by due date, flagged first. */
-    data class Group(val title: String, val tasks: List<DeviceTasks.Task>)
+    data class Group(val title: String, val tasks: List<LorTasks.Task>)
 
     /**
      * The open tasks as the web's Tasks groups them by due date (`grouped` in `tasks.tsx`): Needs
      * you (flagged), Past due, Today, This week (the next six days), Later on and No date, each in
      * the order given (by due date, then title), empty groups left out.
      */
-    fun groups(tasks: List<DeviceTasks.Task>, today: LocalDate): List<Group> {
-        val week = today.plusDays(6)
+    fun groups(tasks: List<LorTasks.Task>, today: LocalDate): List<Group> {
+        val week = today.plus(6, DateTimeUnit.DAY)
         val (flagged, rest) = tasks.partition { it.flagged }
         return listOf(
             Group("Needs you", flagged),
@@ -84,33 +83,36 @@ object LorRows {
     /** How long ago, as the web's `ago`: "40s ago", "12m ago", "5h ago", "3d ago"; "never" for none. */
     fun ago(at: Instant?, now: Instant): String {
         if (at == null) return "never"
-        val s = Duration.between(at, now).seconds.coerceAtLeast(0)
+        val s = (now - at).inWholeSeconds.coerceAtLeast(0)
         return when {
             s < 90 -> "${s}s ago"
-            s < 90 * 60 -> "${Math.round(s / 60.0)}m ago"
-            s < 36 * 3600 -> "${Math.round(s / 3600.0)}h ago"
-            else -> "${Math.round(s / 86400.0)}d ago"
+            s < 90 * 60 -> "${round(s / 60.0)}m ago"
+            s < 36 * 3600 -> "${round(s / 3600.0)}h ago"
+            else -> "${round(s / 86400.0)}d ago"
         }
     }
+
+    /** Half up, as `Math.round` and the web's `Math.round` round (not `kotlin.math.round`, which rounds half to even). */
+    private fun round(x: Double): Long = floor(x + 0.5).toLong()
 
     /** How someone was last in touch, as the web's People list says it. */
     private val VIA = mapOf("mail_in" to "they emailed", "mail_out" to "you emailed", "meeting" to "you met", "phone" to "call, text or WhatsApp")
 
     /** Last in touch, as the web's People column: "40d ago · call, text or WhatsApp", or "Not seen yet". */
-    fun lastTouch(p: DevicePeople.Person, now: Instant): String =
+    fun lastTouch(p: LorPeople.Person, now: Instant): String =
         if (p.lastAt == null) "Not seen yet" else listOfNotNull(ago(p.lastAt, now), p.lastVia?.let { VIA[it] ?: it }).joinToString(" · ")
 
     /** "10 days past the cadence", for someone past it; null otherwise. */
-    fun overdueLine(p: DevicePeople.Person): String? = p.overdueBy?.takeIf { it > 0 }?.let { "$it days past the cadence" }
+    fun overdueLine(p: LorPeople.Person): String? = p.overdueBy?.takeIf { it > 0 }?.let { "$it days past the cadence" }
 
     /** "in 5 days, turning 36" or "today", for a birthday within 30 days; null otherwise. */
-    fun birthdayLine(p: DevicePeople.Person): String? {
+    fun birthdayLine(p: LorPeople.Person): String? {
         val days = p.birthdayIn?.takeIf { it <= 30 } ?: return null
         return (if (days == 0) "today" else "in $days days") + (p.turning?.let { ", turning $it" } ?: "")
     }
 
     /** What an agent task is waiting on: queued for the next run, or worked in a T3 thread. */
-    fun agentLine(t: DeviceHome.AgentTask): String = when {
+    fun agentLine(t: LorHome.AgentTask): String = when {
         t.thread != null -> "in a T3 thread"
         t.queuedAt != null -> "queued for the next run"
         else -> "given to the agent"

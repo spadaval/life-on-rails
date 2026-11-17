@@ -33,11 +33,13 @@ class Version(val name: String, val about: String, val draw: @Composable (LabSce
 object Lab {
     /**
      * Every version, `current` first. A concept is one more line here. `current` draws the app's
-     * tabs and Home settings when the state opens one (`where.open`); until home and the agent
-     * page move into this module (lor-xdoi, lor-rgx4), it draws the kit sheet for the rest.
+     * tabs and Home settings when the state opens one (`where.open`, [AppScreen]), and the agent
+     * page, the LoR panel, LoR's blocks, the set-up card or the quick-send sheet when the state
+     * points at one ([PanelScreen]); until home moves into this module (lor-xdoi), it draws the kit
+     * sheet for the rest.
      */
     val versions: List<Version> = listOf(
-        Version("current", "The app as it is: its tabs and Home settings, and the kit sheet of its look for the rest") { if (!AppScreen(it)) KitSheet(it) },
+        Version("current", "The app as it is: its tabs, Home settings, the agent page, the LoR panel and quick send where the state points, the kit sheet of its look for the rest") { if (!AppScreen(it) && !PanelScreen(it)) KitSheet(it) },
         Version("gestures", "Not a launcher: the surface scripts/lab/run.mjs is proven on (a pager, a list, a tile with a menu, two panes)") { GestureSurface(it) },
     )
 
