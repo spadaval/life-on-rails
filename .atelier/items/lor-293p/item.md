@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-293p
 title: 'Gestures by script in the lab: swipe, fling, long press, drag and fold, with a recording'
-status: ready
+status: building
 mission: lor-2803
 labels:
 - design-lab
@@ -12,7 +12,8 @@ labels:
 priority: medium
 blocked_by:
 - lor-vbfd
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A275230a9-0f8b-446e-b3b1-4303d9895adf%3Adelegate-task%3A0a95ef95-ae92-4147-bb88-abd412041ae7
 ready:
   by: lead, on the plan agreed in round 7
   at: 2026-11-17T06:57:12.926382409Z
