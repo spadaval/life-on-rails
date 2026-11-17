@@ -158,3 +158,9 @@ The brief's other half of the risk, home's card taking space from icons, is the 
 - Status.
 - Earlier and later days, since the snapshot holds one.
 - Week hours for a project: they come only from its goal, because the store keeps no project week until a block stops.
+
+### Responses
+
+1-dt44.1: fixed in 4c3b064. At phone width the sheet's scrolling rows end 64 px above the bottom, clear of the Version chip; with the shell visible at 412, "Meetings" in the relabel picker takes the click and relabels.
+1-dt44.2: fixed in 4c3b064. At phone width a person's badges wrap under the name; Sam Whitfield's text column is 262 px and the row 84 px tall.
+1-dt44.3: fixed in 4c3b064. Free time and Fits before it start when the current event ends; at 09:35 in the morning scene the card reads "in 2 h 55" to lunch and "2 h 45 free before it, from 09:45".
