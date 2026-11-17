@@ -80,7 +80,7 @@ export function ago(iso: string | null, nowMs: number): string {
  */
 const ONE_THING = {
   title: "Draft the offline maps spec",
-  why: "Finish it before tomorrow's design review. Lena is waiting on the icon sizes.",
+  why: "The brief leads with it: the design review needs it, and Lena is waiting on the icon sizes.",
 };
 
 // ---- the queue ----

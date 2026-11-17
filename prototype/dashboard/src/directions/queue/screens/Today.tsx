@@ -117,7 +117,8 @@ function Lead({ item, open, onOpen, stale, next }: { item: Item; open: boolean; 
           {item.kind === "one" ? (
             <Button
               tone="ghost"
-              title="Put it aside for today; it stays on Tasks"
+              disabled={stale}
+              title={off ?? "Put it aside for today; it stays on Tasks"}
               onClick={() => {
                 setLocal((x) => ({ ...x, aside: true }));
                 act("Set aside for today", () => {}, { localUndo: () => setLocal((x) => ({ ...x, aside: false })) });

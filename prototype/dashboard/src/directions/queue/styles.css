@@ -76,9 +76,9 @@ fieldset {
   gap: var(--s6);
 }
 .q-mark {
-  font: 600 var(--t-row) / 1 var(--cond);
-  letter-spacing: 0.06em;
-  color: var(--amber);
+  font: 600 var(--t-row) / 1 var(--sans);
+  letter-spacing: 0.02em;
+  color: var(--text-1);
   text-decoration: none;
   border-radius: var(--r-xs);
 }
@@ -1291,6 +1291,23 @@ fieldset {
 }
 .q-row.is-open > .q-row__head .q-row__open {
   transform: rotate(180deg);
+}
+.q-row__more {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background var(--fast), color var(--fast);
+}
+.q-row__more:hover,
+.q-row__more[aria-expanded="true"] {
+  background: var(--wash);
+  color: var(--text-1);
 }
 .q-row__acts {
   display: flex;

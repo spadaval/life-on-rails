@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { deleteIntent, setDone, setParent, startTimer, unflag, updateIntent, useStore } from "../../data/store.js";
 import type { Node } from "../../data/types.js";
-import { act, dueWords, parentTitle, say, setLocal, shortDay } from "./lib.js";
-import { revealOnOpen } from "./lib.js";
+import { act, dueWords, parentTitle, revealOnOpen, say, setLocal, shortDay } from "./lib.js";
 import { Button, Check, cx, Icon } from "./ui.js";
 import { addDays } from "../../../../../src/shared/localTime.js";
 
@@ -96,6 +95,9 @@ export function FlagRow({
         </button>
         <div className="q-row__acts">
           <FlagActions node={node} made={made} stale={stale} />
+          <button type="button" className="q-row__more" aria-label={open ? "Close" : "Open: due date, notes and more"} title="Open" aria-expanded={open} onClick={() => onOpen(!open)}>
+            <Icon name="more" />
+          </button>
         </div>
       </div>
       {open ? <TaskFields node={node} stale={stale} /> : null}
@@ -112,10 +114,7 @@ export function FlagActions({ node, made, stale, big }: { node: Node; made?: boo
         tone={big ? "primary" : "quiet"}
         disabled={stale || g}
         title={off ?? (g ? googleNote : undefined)}
-        onClick={() => {
-          if (made) setLocal((l) => ({ ...l, seen: new Set(l.seen).add(node.id) }));
-          act(`Done: ${node.title}`, () => setDone(node.id, true), { undoable: true });
-        }}
+        onClick={() => act(`Done: ${node.title}`, () => setDone(node.id, true), { undoable: true })}
       >
         Done
       </Button>
