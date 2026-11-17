@@ -223,7 +223,7 @@ internal fun searchAll(query: String, apps: List<HomeApp>, sources: SearchSource
     val results = Search.run(query, entries, { e -> if (e.kind == Kind.APPS) stats.entries[e.key]?.weight ?: 0.0 else 0.0 }, { Answers.of(it) }, check)
         .withShortcutsOfOneApp({ (it.value as HomeApp).packageName }) { one ->
             // The app's menu's shortcuts: its own activity's, manifest first, then by rank (1.2); not its cached chats.
-            shortcuts.filter { (it.value as SearchShortcut).owner === one.value && !(it.value as SearchShortcut).hit.info.isCached }
+            shortcuts.filter { (it.value as SearchShortcut).owner === one.value && !it.value.hit.info.isCached }
                 .sortedWith(compareBy({ !(it.value as SearchShortcut).hit.info.isDeclaredInManifest }, { (it.value as SearchShortcut).hit.info.rank }))
         }
     Log.d(HomeStore.SEARCH_TAG, "searched ${entries.size} items in ${"%.2f".format((System.nanoTime() - start) / 1e6)} ms")

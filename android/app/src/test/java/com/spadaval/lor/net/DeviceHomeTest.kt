@@ -26,7 +26,7 @@ class DeviceHomeTest {
         assertEquals("He needs an answer by Friday.", home.needsYou[0].note)
         assertEquals(listOf("Dentist", "Dinner with Priya"), home.day.events.map { it.title })
         assertEquals("Dentist", home.one!!.text)
-        assertFalse(home.one!!.isTimer)
+        assertFalse(home.one.isTimer)
         assertNull(home.day.running)
         assertTrue(home.day.remainingFraction in 0.0..1.0)
     }

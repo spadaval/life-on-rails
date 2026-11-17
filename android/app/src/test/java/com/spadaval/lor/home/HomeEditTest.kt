@@ -224,12 +224,12 @@ class HomeEditTest {
         // Held, a.a steps onto a new page, then back onto home; working copies keep empty pages.
         val out = original.drop(at(original, Spot.Apps(page(0), 0)), Target.AtEnd(Place.NewPanel), strip = false)
         assertEquals(listOf(listOf("b.b"), listOf("c.c"), listOf("a.a")), out.file.pages)
-        val from = From.At(out.at!!, out.file.itemAt(out.at!!)!!)
+        val from = From.At(out.at!!, out.file.itemAt(out.at)!!)
         val back = out.file.drop(from, Target.AtEnd(Place.InApps(page(0))), strip = false)
         assertEquals(listOf(listOf("b.b", "a.a"), listOf("c.c"), emptyList()), back.file.pages)
         // Let go where it is: the drop changes nothing, then strips as HomeScreen's dropHeld does.
         val work = back.file
-        val final = work.drop(From.At(back.at!!, work.itemAt(back.at!!)!!), Target.AtEnd(Place.InApps(page(0))), strip = false).file
+        val final = work.drop(From.At(back.at!!, work.itemAt(back.at)!!), Target.AtEnd(Place.InApps(page(0))), strip = false).file
         val written = final.withCurrent(final.current.stripEmptyPanels(original.current))
         assertEquals(original.current.panels.map { it.at }, written.current.panels.map { it.at })
         assertEquals(listOf(listOf("b.b", "a.a"), listOf("c.c")), written.pages)
@@ -287,10 +287,10 @@ class HomeEditTest {
         // From the review of the review's fixes (R1): the first step pins the folder in the copy, and the second checks against it.
         val f = file(listOf(ref("a.a"), ref("b.b"), Folder("F", listOf(ref("x.x")))))
         val first = f.drop(at(f, Spot.Apps(page(0), 2)), Target.Before(Spot.Apps(page(0), 0)), strip = false)
-        val from = From.At(first.at!!, first.file.itemAt(first.at!!)!!)
+        val from = From.At(first.at!!, first.file.itemAt(first.at)!!)
         val second = first.file.drop(from, Target.Before(Spot.Apps(page(0), 2)), strip = false)
         assertEquals(listOf("a.a", "[F: x.x]", "b.b"), second.file.pages[0])
-        assertEquals(listOf("a.a", "b.b"), second.file.drop(From.At(second.at!!, second.file.itemAt(second.at!!)!!), Target.Remove).file.pages[0])
+        assertEquals(listOf("a.a", "b.b"), second.file.drop(From.At(second.at!!, second.file.itemAt(second.at)!!), Target.Remove).file.pages[0])
         assertEquals(HOME_CHANGED, refused { f.drop(at(f, Spot.Apps(page(0), 0)), Target.AtEnd(Place.InFolder(Spot.Apps(page(5), 0)))) })
     }
 
@@ -389,7 +389,7 @@ class HomeEditTest {
         val drawer = From.Drawer(app("y.y"), ref("y.y"))
         val step = f.drop(drawer, Target.AtEnd(Place.InApps(page(0))), strip = false)
         assertEquals(listOf(listOf("a.a", "[Google: g.g]", "y.y")), step.file.pages)
-        val held = From.At(step.at!!, step.file.itemAt(step.at!!)!!)
+        val held = From.At(step.at!!, step.file.itemAt(step.at)!!)
         fun end(to: Target): Dropped {
             val d = step.file.drop(held, to, strip = false)
             return drawerDragResult(f, d.file, drawer, d.at)

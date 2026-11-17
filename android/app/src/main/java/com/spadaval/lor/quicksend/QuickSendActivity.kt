@@ -186,7 +186,7 @@ private fun Sheet(connection: T3Connection, from: QuickSend.From, initial: Strin
                     primary = true,
                     enabled = live && !sending && target != null && choice.text.isNotBlank(),
                 ) {
-                    val image = jpeg?.let { T3Connection.Image(imageName(capture?.appLabel), "image/jpeg", it) }
+                    val image = jpeg?.let { T3Connection.Image(imageName(capture.appLabel), "image/jpeg", it) }
                     QuickSend.send(context, target!!, shell.projects[target] ?: target, choice.text, image) { error ->
                         if (error == null) close() else failure = error
                     }

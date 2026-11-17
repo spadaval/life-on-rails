@@ -182,7 +182,7 @@ class SearchTest {
         assertEquals(listOf("New tab", "Incognito tab", "Chromecast setup"), r.blocks[1].entries.map { it.value })
         // One app in two profiles counts once.
         val twice = entries(Kind.APPS, listOf("Chrome", "Chrome ")) + entries(Kind.SHORTCUTS, listOf("Chromecast setup"))
-        assertEquals(3, Search.run("chro", twice).withShortcutsOfOneApp({ (it.value as String).trim() }) { if ((it.value as String).trim() == "Chrome") its else emptyList() }.blocks[1].entries.size)
+        assertEquals(3, Search.run("chro", twice).withShortcutsOfOneApp({ it.value.trim() }) { if (it.value.trim() == "Chrome") its else emptyList() }.blocks[1].entries.size)
         // Two apps: nothing added.
         val two = Search.run("c", sources).withShortcutsOfOneApp { its }
         assertEquals(listOf(Kind.APPS), two.blocks.map { it.kind })
