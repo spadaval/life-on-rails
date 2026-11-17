@@ -79,7 +79,7 @@ class CommandsTest {
     fun aRefusedCommandSaysWhy() {
         val (_, reply) = dispatch[3]
         assertNull(reply.value)
-        assertTrue(reply.error!!, reply.error!!.endsWith("is resolved."))
+        assertTrue(reply.error!!, reply.error.endsWith("is resolved."))
     }
 
     @Test
@@ -160,7 +160,7 @@ class CommandsTest {
         val (sent, reply) = exchanges("projection-question.ndjson").single()
         val requestId = (reply.value as JSONObject).getJSONArray("runtimeRequests").getJSONObject(0).getString("id")
         val questions = Commands.questions(reply.value, requestId)
-        assertEquals(sent.getString("threadId"), (reply.value as JSONObject).getJSONObject("thread").getString("id"))
+        assertEquals(sent.getString("threadId"), reply.value.getJSONObject("thread").getString("id"))
         val q = questions.single()
         assertEquals("schema_vs_ui_flexibility", q.id)
         assertEquals("Should this fixture prefer strict schemas or UI flexibility?", q.question)
