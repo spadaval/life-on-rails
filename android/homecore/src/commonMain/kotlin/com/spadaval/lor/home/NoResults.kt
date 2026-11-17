@@ -1,10 +1,6 @@
 package com.spadaval.lor.home
 
 import com.spadaval.lor.ui.*
-import android.app.SearchManager
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -59,33 +55,6 @@ internal fun elsewhere(targets: SearchTargets, query: String): List<Elsewhere> {
         Elsewhere(Elsewhere.Kind.AGENT, "Ask the agent about \"$q\""),
     )
 }
-
-/** The intent for [way] and [query]; null for the agent, which opens quick send. */
-internal fun intentFor(way: Elsewhere, query: String): Intent? = when (way.kind) {
-    Elsewhere.Kind.WEB -> webSearch(query.trim())
-    Elsewhere.Kind.STORE -> storeSearch(query.trim())
-    Elsewhere.Kind.AGENT -> null
-}
-
-private fun webSearch(q: String) = Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, q)
-
-private fun storeSearch(q: String) = Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=" + Uri.encode(q)))
-
-/** Resolves [SearchTargets]; asks the package manager, so it runs off the main thread. */
-internal fun searchTargets(pm: PackageManager): SearchTargets {
-    val web = webSearch("").takeIf { takes(pm, it) }?.let { takenBy(pm, it) ?: "" }
-    val store = storeSearch("").takeIf { takes(pm, it) }?.let { intent ->
-        val pkg = takenBy(pm, intent) ?: return@let "app stores"
-        runCatching { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() }.getOrDefault("app stores")
-    }
-    return SearchTargets(web, store)
-}
-
-private fun takes(pm: PackageManager, intent: Intent) = pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY).isNotEmpty()
-
-/** The package that opens [intent] without asking; null when Android asks (its chooser is `android`). */
-internal fun takenBy(pm: PackageManager, intent: Intent): String? =
-    pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName?.takeIf { it != "android" }
 
 /** "Nothing matches …" (left out under an answer) and the rows under it. */
 @Composable

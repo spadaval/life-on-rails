@@ -2,11 +2,6 @@ package com.spadaval.lor.home
 
 import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Intent
-import android.net.Uri
-import android.provider.ContactsContract
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -37,7 +32,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -111,7 +105,8 @@ private fun Gear() {
         drawCircle(Mute, radius = 0.16f * w, center = center, style = line)
         drawCircle(Mute, radius = 0.32f * w, center = center, style = line)
         for (k in 0 until 8) {
-            val a = Math.toRadians(k * 45.0)
+            // As Math.toRadians computes it.
+            val a = k * 45.0 * 0.017453292519943295
             val c = Offset(center.x + (0.32f * w * cos(a)).toFloat(), center.y + (0.32f * w * sin(a)).toFloat())
             val e = Offset(center.x + (0.46f * w * cos(a)).toFloat(), center.y + (0.46f * w * sin(a)).toFloat())
             drawLine(Mute, c, e, 2.4.dp.toPx(), StrokeCap.Round)
@@ -144,7 +139,7 @@ internal fun ShortcutIcon(s: SearchShortcut, home: HomeContext, modifier: Modifi
  */
 @Composable
 internal fun AnswerCard(answer: Answer) {
-    val context = LocalContext.current
+    val platform = LocalHomePlatform.current
     val shape = Chamfer
     Column(
         Modifier
@@ -152,7 +147,7 @@ internal fun AnswerCard(answer: Answer) {
             .padding(start = 16.dp, end = 16.dp, top = 12.dp)
             .framedPanel(StateFill)
             .clickable(role = Role.Button, onClickLabel = "Copy") {
-                context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(answer.input, answer.value))
+                platform.copy(answer.input, answer.value)
             }
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
@@ -169,13 +164,6 @@ internal fun AnswerCard(answer: Answer) {
 
 /** What a contact's row does: open the contact, dial its first number, or text it. */
 enum class ContactWay { OPEN, CALL, MESSAGE }
-
-/** The intent for [way] on [c]. */
-internal fun contactIntent(c: SearchContact, way: ContactWay): Intent = when (way) {
-    ContactWay.OPEN -> Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.getLookupUri(c.id, c.lookupKey))
-    ContactWay.CALL -> Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", c.numbers.first(), null))
-    ContactWay.MESSAGE -> Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", c.numbers.first(), null))
-}
 
 /** A 48 dp button at a row's end, read as [label]. */
 @Composable

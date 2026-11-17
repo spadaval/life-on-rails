@@ -2,7 +2,6 @@ package com.spadaval.lor.home
 
 import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -82,14 +81,12 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import com.spadaval.lor.LorApp
-import java.time.Instant
-import java.time.ZoneId
+import kotlinx.datetime.TimeZone
+import kotlin.time.Instant
 
 /*
  * The drawer (lor-iyc3): tabs from `drawer.tabs`, quick dial first and All last, with a floating
@@ -147,8 +144,8 @@ private fun build(tab: DrawerTab, apps: List<HomeApp>, file: LayoutFile?, stats:
         // Quick dial (lor-2imw): the card, the apps for now, the people, the new installs.
         TabKind.QUICK -> {
             quick.card?.let { out.add(Entry.Card(it)) }
-            val zone = ZoneId.systemDefault()
-            header("Now", HourSlot.of(Instant.ofEpochMilli(now), zone).words(Instant.ofEpochMilli(now), zone))
+            val zone = TimeZone.currentSystemDefault()
+            header("Now", HourSlot.of(Instant.fromEpochMilliseconds(now), zone).words(Instant.fromEpochMilliseconds(now), zone))
             val ranked = rankForNow(apps, { it.id }, quick.opens, now, zone)
             if (ranked.isEmpty()) note("The apps you open at this time of day will show here.")
             else tiles("now", ranked)
@@ -210,13 +207,13 @@ internal fun letterOf(label: String): String {
  * fallback when the results on screen are for an older text.
  */
 internal fun searchAll(query: String, apps: List<HomeApp>, sources: SearchSources, stats: LaunchStats, check: () -> Unit = {}): Results<Any> {
-    val start = System.nanoTime()
+    val start = nanoTime()
     // A shortcut shows only when its app is in the drawer's list (launcher polish 5.2), so a hidden app's don't.
-    val owners = apps.map { Owner(it.packageName, it.id.className, it.user.toString()) to it }
+    val owners = apps.map { Owner(it.packageName, it.id.className, it.profile) to it }
     val shortcuts = sources.shortcuts.mapNotNull { f ->
         val hit = f.value as ShortcutHit
         val i = hit.info
-        ownerOf(owners, i.`package`, i.activity?.className, i.userHandle.toString())?.let { Found<Any>(f.kind, f.key, f.names, SearchShortcut(hit, it)) }
+        ownerOf(owners, i.packageName, i.activityClass, i.profile)?.let { Found<Any>(f.kind, f.key, f.names, SearchShortcut(hit, it)) }
     }
     val entries: List<Found<Any>> = apps.map { Found(Kind.APPS, it.key, listOf(it.searchName), it) } +
         shortcuts + sources.settings + sources.contacts
@@ -226,7 +223,7 @@ internal fun searchAll(query: String, apps: List<HomeApp>, sources: SearchSource
             shortcuts.filter { (it.value as SearchShortcut).owner === one.value && !it.value.hit.info.isCached }
                 .sortedWith(compareBy({ !(it.value as SearchShortcut).hit.info.isDeclaredInManifest }, { (it.value as SearchShortcut).hit.info.rank }))
         }
-    Log.d(HomeStore.SEARCH_TAG, "searched ${entries.size} items in ${"%.2f".format((System.nanoTime() - start) / 1e6)} ms")
+    Log.d(SEARCH_TAG, "searched ${entries.size} items in ${fixed((nanoTime() - start) / 1e6, 2)} ms")
     return results
 }
 
@@ -234,18 +231,18 @@ internal fun searchAll(query: String, apps: List<HomeApp>, sources: SearchSource
 internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSources, ui: HomeUi, home: HomeContext) {
     val tabs = home.file?.drawer?.tabs ?: Drawer.DEFAULT_TABS
     val current = ui.tab.coerceIn(tabs.indices)
-    val lor = LocalContext.current.applicationContext as LorApp
+    val platform = home.actions
     // Quick dial's counts, read up to now each time the drawer opens (lor-2imw).
-    val opens by lor.home.opens.collectAsStateWithLifecycle()
-    LaunchedEffect(ui.drawer) { if (ui.drawer) lor.home.readUsage() }
+    val opens by platform.opens.collectAsStateWithLifecycle()
+    LaunchedEffect(ui.drawer) { if (ui.drawer) platform.readUsage() }
     // Quick dial's card holds LoR's reader while it shows, as home's header does.
     val quickShown = ui.drawer && tabs[current].kind == TabKind.QUICK
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(quickShown, lifecycle) { if (quickShown) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { lor.reads.hold() } }
-    val reads = lor.reads
+    LaunchedEffect(quickShown, lifecycle) { if (quickShown) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { platform.holdLor() } }
+    val reads = platform.lor.value
     // Greyed while the kept reply isn't current or the last read failed, as the lor panel's lists are.
-    val card = quickCard(reads.home?.one, reads.current && reads.error == null, reads.homeRead.at, ZoneId.systemDefault())
-    val people = remember(apps, sources.shortcuts) { quickPeople(apps, sources, System.currentTimeMillis()) }
+    val card = quickCard(reads.home?.one, reads.current && !reads.failed, reads.at, platform.zone)
+    val people = remember(apps, sources.shortcuts) { quickPeople(apps, sources, platform.now()) }
     val quick = QuickParts(opens, card, people)
     val open = ui.searchOpen
     // Something typed makes it a search, recorded with the text as typed.
@@ -333,7 +330,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
         val built = remember(tab, apps, home.file, stats, searching, results, goKey, quick.opens, quick.card, quick.people, ui.drawer) {
             if (searching) searchEntries(results, goKey)
             // Now is read again each time the drawer opens, so quick dial ranks for the hour it opens in.
-            else build(tab, apps, home.file, stats, quick, System.currentTimeMillis())
+            else build(tab, apps, home.file, stats, quick, home.actions.now())
         }
         // A tab's place and the results' are kept apart, so clearing a search goes back to where the tab was.
         val browse = rememberLazyGridState()
@@ -427,7 +424,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
                             // Search keeps its size; the tabs take what is left (lor-81d4).
                             TabBar(tabs, current, tabWidth(full.value, tabs.size).dp) { i ->
                                 ui.tab = i
-                                flash = tabs[i].name to System.nanoTime()
+                                flash = tabs[i].name to nanoTime()
                             }
                             Spacer(Modifier.width(BarSize.GAP.dp))
                         }
@@ -493,12 +490,12 @@ private fun SectionHeader(title: String, sub: String? = null) {
  * of apps the drawer lists, by [recentPeople].
  */
 internal fun quickPeople(apps: List<HomeApp>, sources: SearchSources, now: Long): List<SearchShortcut> {
-    val owners = apps.map { Owner(it.packageName, it.id.className, it.user.toString()) to it }
+    val owners = apps.map { Owner(it.packageName, it.id.className, it.profile) to it }
     val chats = sources.shortcuts.mapNotNull { f ->
         val hit = f.value as ShortcutHit
         if (!hit.conversation) return@mapNotNull null
         val i = hit.info
-        ownerOf(owners, i.`package`, i.activity?.className, i.userHandle.toString())?.let { Chat(hit.label, i.lastChangedTimestamp, SearchShortcut(hit, it), manifest = i.isDeclaredInManifest, rank = i.rank, app = "${i.`package`}#${i.userHandle}") }
+        ownerOf(owners, i.packageName, i.activityClass, i.profile)?.let { Chat(hit.label, i.lastChangedTimestamp, SearchShortcut(hit, it), manifest = i.isDeclaredInManifest, rank = i.rank, app = "${i.packageName}#${i.profile}") }
     }
     return recentPeople(chats, now).map { it.value }
 }

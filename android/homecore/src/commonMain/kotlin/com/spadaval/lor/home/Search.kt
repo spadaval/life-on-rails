@@ -1,7 +1,5 @@
 package com.spadaval.lor.home
 
-import java.text.Normalizer
-import java.util.Locale
 
 /*
  * Search (launcher polish 5.1): the matcher, and ranking across kinds of result. No Android here,
@@ -60,7 +58,7 @@ object Match {
     const val TYPO = 6
 
     fun normalize(s: String): String =
-        Normalizer.normalize(s.lowercase(Locale.ROOT), Normalizer.Form.NFD).replace(MARKS, "")
+        decompose(s.lowercase()).replace(MARKS, "")
 
     private val MARKS = Regex("\\p{Mn}+")
 

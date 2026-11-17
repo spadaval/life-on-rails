@@ -113,7 +113,8 @@ fun itemKeys(items: List<LayoutItem>): List<String> {
             is AppRef -> "app:$item"
             is Folder -> "folder:${item.name}"
         }
-        val n = seen.merge(base, 1, Int::plus)!!
+        val n = (seen[base] ?: 0) + 1
+        seen[base] = n
         "$base#$n"
     }
 }

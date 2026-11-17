@@ -1,7 +1,5 @@
 package com.spadaval.lor.home
 
-import android.util.Log
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.foundation.Canvas
@@ -65,7 +63,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -759,10 +756,9 @@ private fun BlockEditor(
     val current by rememberUpdatedState(stack)
     // A widget's provider's label, as its long-press menu on home names it (lor-r0f9); its
     // provider while it isn't bound.
-    val widgets = rememberWidgets()
-    val pm = LocalContext.current.packageManager
+    val platform = home.actions
     val labels = remember(stack, home.apps) {
-        stack.blocks.filterIsInstance<StackBlock.Widget>().associate { w -> w.id to (widgets.info(w.id, w.provider)?.loadLabel(pm) ?: w.provider) }
+        stack.blocks.filterIsInstance<StackBlock.Widget>().associate { w -> w.id to (platform.widget(w.id, w.provider)?.label ?: w.provider) }
     }
     val label: (StackBlock.Widget) -> String = { labels[it.id] ?: it.provider }
 

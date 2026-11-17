@@ -1,12 +1,5 @@
 package com.spadaval.lor.home
 
-import android.app.AlarmManager
-import android.content.BroadcastReceiver
-import android.icu.util.LocaleData
-import android.icu.util.ULocale
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -17,16 +10,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
@@ -38,20 +26,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import com.spadaval.lor.LorApp
 import com.spadaval.lor.net.DeviceHome
 import com.spadaval.lor.ui.Cy
 import com.spadaval.lor.ui.Saira
 import com.spadaval.lor.ui.SairaCondensed
-import java.time.Duration
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.math.floor
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Instant
 
 /*
  * Home's header, the `clock` block (launcher polish 6.7, lor-leh4): the date or a clock in
@@ -62,34 +48,35 @@ import java.time.format.DateTimeFormatter
  * one on the alarm line the alarm list. Nothing moves but the minute.
  */
 
-private val Clock = DateTimeFormatter.ofPattern("H:mm")
+/** [at] in [zone] as home's 24-hour clock writes it: "H:mm". */
+fun clockText(at: Instant, zone: TimeZone): String = at.toLocalDateTime(zone).let { "${it.hour}:${it.minute.toString().padStart(2, '0')}" }
 
 /**
  * The event line: the one under way ("<title> until H:mm"), else the next one today ("<title> at
  * H:mm"), else null. [events] are the reply's, not yet over when read; ones over by [now] are
  * dropped, and so are ones on another day than [now]'s.
  */
-fun headerEvent(events: List<DeviceHome.Event>, now: Instant, zone: ZoneId): String? {
-    val today = now.atZone(zone).toLocalDate()
-    val left = events.filter { it.end.isAfter(now) && it.start.atZone(zone).toLocalDate() <= today }.sortedBy { it.start }
-    left.firstOrNull { !it.start.isAfter(now) }?.let { return "${it.title} until ${Clock.format(it.end.atZone(zone))}" }
-    return left.firstOrNull { it.start.atZone(zone).toLocalDate() == today }?.let { "${it.title} at ${Clock.format(it.start.atZone(zone))}" }
+fun headerEvent(events: List<DeviceHome.Event>, now: Instant, zone: TimeZone): String? {
+    val today = now.toLocalDateTime(zone).date
+    val left = events.filter { it.end > now && it.start.toLocalDateTime(zone).date <= today }.sortedBy { it.start }
+    left.firstOrNull { it.start <= now }?.let { return "${it.title} until ${clockText(it.end, zone)}" }
+    return left.firstOrNull { it.start.toLocalDateTime(zone).date == today }?.let { "${it.title} at ${clockText(it.start, zone)}" }
 }
 
 /** How long ahead the next alarm is shown. */
-private val ALARM_AHEAD: Duration = Duration.ofHours(24)
+private val ALARM_AHEAD = 24.hours
 
 /**
  * The alarm line: "Alarm 7:00" in home's 24-hour clock when the next alarm, at [ringsAt], rings
  * within [ALARM_AHEAD] of [now] (24 hours away still shows); else, or with none, null.
  */
-fun alarmLine(ringsAt: Instant?, now: Instant, zone: ZoneId): String? {
-    if (ringsAt == null || ringsAt.isBefore(now) || ringsAt.isAfter(now.plus(ALARM_AHEAD))) return null
-    return "Alarm ${Clock.format(ringsAt.atZone(zone))}"
+fun alarmLine(ringsAt: Instant?, now: Instant, zone: TimeZone): String? {
+    if (ringsAt == null || ringsAt < now || ringsAt > now + ALARM_AHEAD) return null
+    return "Alarm ${clockText(ringsAt, zone)}"
 }
 
 /** How old a reading may be and still be shown. */
-private val WEATHER_FOR: Duration = Duration.ofHours(2)
+private val WEATHER_FOR = 2.hours
 
 /**
  * The weather line: "18° Partly cloudy", in whole degrees Fahrenheit when [fahrenheit] (the
@@ -97,76 +84,10 @@ private val WEATHER_FOR: Duration = Duration.ofHours(2)
  * more than [WEATHER_FOR] before [now].
  */
 fun weatherLine(weather: DeviceHome.Weather?, now: Instant, fahrenheit: Boolean): String? {
-    if (weather == null || weather.observedAt.plus(WEATHER_FOR).isBefore(now)) return null
+    if (weather == null || weather.observedAt + WEATHER_FOR < now) return null
     val degrees = if (fahrenheit) weather.tempC * 9 / 5 + 32 else weather.tempC
-    return "${Math.round(degrees)}° ${weather.condition}"
-}
-
-/** The locale's measurement system is the US's, whose people read Fahrenheit (decision lor-g4ta). */
-private fun usesFahrenheit(): Boolean =
-    LocaleData.getMeasurementSystem(ULocale.getDefault(ULocale.Category.FORMAT)) == LocaleData.MeasurementSystem.US
-
-/**
- * Now, read again each minute (`ACTION_TIME_TICK`) and when the time or zone changes, while home is
- * started: the receiver is registered on start and let go on stop, so a home in the background
- * takes no ticks. Starting again reads the time at once.
- */
-@Composable
-private fun rememberMinute(): Instant = rememberWhileStarted(
-    listOf(Intent.ACTION_TIME_TICK, Intent.ACTION_DATE_CHANGED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED),
-) { Instant.now() }
-
-/** When the next alarm rings, read again when it changes, while home is started; null with none. */
-@Composable
-private fun rememberNextAlarm(): Instant? {
-    val context = LocalContext.current
-    return rememberWhileStarted(listOf(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED)) {
-        context.getSystemService(AlarmManager::class.java)?.nextAlarmClock?.triggerTime?.let(Instant::ofEpochMilli)
-    }
-}
-
-/**
- * [read], read again on each broadcast of [actions] while home is started, and on each start: the
- * receiver is registered on start and let go on stop, so a home in the background takes none.
- */
-@Composable
-private fun <T> rememberWhileStarted(actions: List<String>, read: () -> T): T {
-    val context = LocalContext.current
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var value by remember { mutableStateOf(read()) }
-    DisposableEffect(context, lifecycle) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(c: Context, intent: Intent) {
-                value = read()
-            }
-        }
-        val filter = IntentFilter().apply { actions.forEach(::addAction) }
-        var registered = false
-        fun start() {
-            if (registered) return
-            ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-            registered = true
-            value = read()
-        }
-        fun stop() {
-            if (!registered) return
-            context.unregisterReceiver(receiver)
-            registered = false
-        }
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_START -> start()
-                Lifecycle.Event.ON_STOP -> stop()
-                else -> {}
-            }
-        }
-        lifecycle.addObserver(observer)
-        onDispose {
-            lifecycle.removeObserver(observer)
-            stop()
-        }
-    }
-    return value
+    // Half up, as Java's Math.round: floor(x + 0.5).
+    return "${floor(degrees + 0.5).toLong()}° ${weather.condition}"
 }
 
 /**
@@ -178,17 +99,17 @@ private fun <T> rememberWhileStarted(actions: List<String>, read: () -> T): T {
 internal fun HomeHeader(style: HomeLook.Header, size: Int, openCalendar: () -> Unit, openAlarms: () -> Unit) {
     if (style == HomeLook.Header.NONE) return
     val ink = LocalWallInk.current
-    val now = rememberMinute()
-    val ringsAt = rememberNextAlarm()
-    val zone = ZoneId.systemDefault()
-    val reads = (LocalContext.current.applicationContext as LorApp).reads
+    val platform = LocalHomePlatform.current
+    val now = platform.rememberMinute()
+    val ringsAt = platform.rememberNextAlarm()
+    val zone = platform.zone
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { reads.hold() } }
-    val reply = reads.home
+    LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { platform.holdLor() } }
+    val reply = platform.lor.value.home
     val event = reply?.day?.events?.let { headerEvent(it, now, zone) }
     val alarm = alarmLine(ringsAt, now, zone)
-    val weather = weatherLine(reply?.weather, now, remember { usesFahrenheit() })
-    val date = DateTimeFormatter.ofPattern("EEEE d MMMM").format(now.atZone(zone))
+    val weather = weatherLine(reply?.weather, now, platform.fahrenheit)
+    val date = platform.dateWords(now)
     val shadow = ink.shadow
     val line = TextStyle(fontFamily = Saira, fontSize = 15.sp, color = ink.text, shadow = shadow, textMotion = TextMotion.Animated)
     Column(
@@ -201,7 +122,7 @@ internal fun HomeHeader(style: HomeLook.Header, size: Int, openCalendar: () -> U
     ) {
         if (style == HomeLook.Header.CLOCK) {
             // DESIGN.md's display readout, then the date as a title.
-            Text(Clock.format(now.atZone(zone)), style = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 56.sp, lineHeight = 56.sp, color = ink.text, shadow = shadow, fontFeatureSettings = "tnum", textMotion = TextMotion.Animated))
+            Text(clockText(now, zone), style = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 56.sp, lineHeight = 56.sp, color = ink.text, shadow = shadow, fontFeatureSettings = "tnum", textMotion = TextMotion.Animated))
             Text(date.uppercase(), style = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, letterSpacing = 1.sp, color = ink.text, shadow = shadow, textMotion = TextMotion.Animated))
         } else {
             Text(date, style = TextStyle(fontFamily = Saira, fontSize = size.sp, color = ink.text, shadow = shadow, textMotion = TextMotion.Animated))

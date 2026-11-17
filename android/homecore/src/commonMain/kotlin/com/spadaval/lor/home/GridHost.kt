@@ -302,7 +302,7 @@ fun SettleGrid(grid: GridPlace) {
             if (held || grid.move == null) return@collect
             if (p == 1f && t == 1f) grid.arrive()?.let { from ->
                 // On the inner screen, the screen's cells too, which the emulator checks read.
-                android.util.Log.d("LorGrid", "at ${grid.cell} from $from" + if (grid.paired) " on ${grid.inner.screen.cells}" else "")
+                Log.d("LorGrid", "at ${grid.cell} from $from" + if (grid.paired) " on ${grid.inner.screen.cells}" else "")
             }
             else if (p == 0f && t == 0f) grid.move = null
         }
@@ -358,7 +358,7 @@ fun Modifier.scrollsInGrid(state: ScrollableState): Modifier =
  * [way]. A [reversed] list (the drawer's search results, which run upward from the field) scrolls
  * forward toward its top, so it takes a finger going down forward.
  */
-internal fun listTakes(way: Way, forward: Boolean, backward: Boolean, reversed: Boolean): Boolean =
+fun listTakes(way: Way, forward: Boolean, backward: Boolean, reversed: Boolean): Boolean =
     // A finger going up moves the grid down, and scrolls a list toward its end: forward, or backward when reversed.
     if ((way == Way.DOWN) != reversed) forward else backward
 
@@ -377,7 +377,7 @@ internal fun Modifier.gridFinger(ui: HomeUi, haptics: HapticFeedback, topPx: () 
         // Under an open menu (lor-fhk5) a press only closes it.
         if (ui.popovers.open != null) return@awaitEachGesture
         // Any press on a half makes it the one a fold lands on.
-        grid.pressed(down.position.x, size.width)?.let { android.util.Log.d("LorGrid", "touched $it on ${grid.inner.screen.cells}") }
+        grid.pressed(down.position.x, size.width)?.let { Log.d("LorGrid", "touched $it on ${grid.inner.screen.cells}") }
         // A widget being resized, and the widget picker over home, have the finger (lor-r0f9); a
         // press something took first (a press outside a resize frame, which only closes it) is not the grid's.
         if (down.isConsumed || ui.drag.held != null || ui.folder != null || ui.resizing != null || ui.widgetPicker != null || down.position.y < topPx()) return@awaitEachGesture
@@ -397,7 +397,7 @@ internal fun Modifier.gridFinger(ui: HomeUi, haptics: HapticFeedback, topPx: () 
         val sizePx = (if (move.way.horizontal) size.width else size.height).toFloat()
         val finger = FollowFinger(grid.follow, sizePx, density, vertical = !move.way.horizontal, onTick = { haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) }) { toOne, dpS ->
             // One line per release, which the emulator checks read (as the drawer's did, launcher polish 7.1).
-            android.util.Log.d("LorMotion", "grid $from to ${move.to} let go at ${grid.follow.position} of ${(sizePx / density).toInt()} dp, $dpS dp/s: ${if (toOne) "goes" else "stays"}")
+            Log.d("LorMotion", "grid $from to ${move.to} let go at ${grid.follow.position} of ${(sizePx / density).toInt()} dp, $dpS dp/s: ${if (toOne) "goes" else "stays"}")
         }
         // Held before the move is set, so the settle never sees a move nobody has.
         grid.move = move
@@ -422,8 +422,8 @@ internal fun GridCells(grid: GridPlace, cell: @Composable (Panel) -> Unit) {
         shown.forEach { panel ->
             key(panel.at) {
                 DisposableEffect(Unit) {
-                    android.util.Log.d("LorGrid", "composed ${panel.at} ${panel.type}")
-                    onDispose { android.util.Log.d("LorGrid", "left ${panel.at}") }
+                    Log.d("LorGrid", "composed ${panel.at} ${panel.type}")
+                    onDispose { Log.d("LorGrid", "left ${panel.at}") }
                 }
                 CompositionLocalProvider(LocalCellSides provides grid.sidesOf(panel.at)) { cell(panel) }
             }

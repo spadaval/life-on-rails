@@ -51,12 +51,20 @@ kotlin {
             implementation("org.jetbrains.androidx.navigationevent:navigationevent-compose:1.1.0")
             // api: the app's debug fixture entry reads a fixture's JSON parts too.
             api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+            // Local dates and times for the header and LoR's replies (DeviceHome's zone).
+            api("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
+        }
+        androidMain.dependencies {
+            // The phone's own back handlers (Platform.android.kt), as the app used before the split.
+            implementation("androidx.activity:activity-compose:1.13.0")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
         wasmJsMain.dependencies {
             implementation("org.jetbrains.kotlinx:kotlinx-browser:0.5.0")
+            // Time zones other than UTC for kotlinx-datetime in the browser (loaded in TimeZones.kt).
+            implementation(npm("@js-joda/timezone", "2.26.0"))
         }
     }
 }

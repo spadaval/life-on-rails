@@ -1,12 +1,14 @@
 package com.spadaval.lor.home
 
 import com.spadaval.lor.net.DeviceHome
-import org.json.JSONArray
-import org.json.JSONObject
-import java.time.DayOfWeek
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.spadaval.lor.json.JSONArray
+import com.spadaval.lor.json.JSONObject
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.math.abs
+import kotlin.math.pow
+import kotlin.time.Instant
 
 /*
  * Quick dial (lor-2imw), the drawer's first tab: what Sumeet likely wants now. Pure, so the JVM
@@ -37,13 +39,13 @@ data class HourSlot(val band: Band, val weekend: Boolean) {
     val share: Double get() = band.hours / 24.0 * (if (weekend) 2 else 5) / 7.0
 
     /** "Sunday evening", for the tab's Now header. */
-    fun words(at: Instant, zone: ZoneId): String = "${DateTimeFormatter.ofPattern("EEEE").format(at.atZone(zone))} ${band.word}"
+    fun words(at: Instant, zone: TimeZone): String = "${dayName(at.toLocalDateTime(zone).dayOfWeek)} ${band.word}"
 
     companion object {
         const val COUNT = 10
 
-        fun of(at: Instant, zone: ZoneId): HourSlot {
-            val t = at.atZone(zone)
+        fun of(at: Instant, zone: TimeZone): HourSlot {
+            val t = at.toLocalDateTime(zone)
             return HourSlot(Band.of(t.hour), t.dayOfWeek == DayOfWeek.SATURDAY || t.dayOfWeek == DayOfWeek.SUNDAY)
         }
     }
@@ -69,16 +71,16 @@ class AppOpens(
     /** The counts decayed to [now] (never back in time). */
     private fun decayedTo(now: Long): Map<String, DoubleArray> {
         if (now <= at) return counts
-        val f = Math.pow(0.5, (now - at).toDouble() / HALF_LIFE_MS)
+        val f = 0.5.pow( (now - at).toDouble() / HALF_LIFE_MS)
         return counts.mapValues { (_, c) -> DoubleArray(c.size) { c[it] * f } }
     }
 
     /** Counts an open of [key] at [time] in [zone]; opens are counted in time order. */
-    fun opened(key: String, time: Long, zone: ZoneId): AppOpens {
+    fun opened(key: String, time: Long, zone: TimeZone): AppOpens {
         val now = maxOf(time, at)
         val decayed = decayedTo(now).filterValues { it.sum() >= FLOOR }
         val c = (decayed[key] ?: DoubleArray(HourSlot.COUNT)).copyOf()
-        c[HourSlot.of(Instant.ofEpochMilli(time), zone).index] += 1.0
+        c[HourSlot.of(Instant.fromEpochMilliseconds(time), zone).index] += 1.0
         return AppOpens(decayed + (key to c), now, last + (key to maxOf(time, last[key] ?: 0)), cursor, foreground, cursorClock, cursorBoot)
     }
 
@@ -98,7 +100,7 @@ class AppOpens(
     fun corrected(now: Long, clock: Long, boot: Int): AppOpens {
         if (cursor <= 0 || cursorClock <= 0 || boot <= 0 || boot != cursorBoot || clock < cursorClock) return this
         val jump = now - (cursor + (clock - cursorClock))
-        if (Math.abs(jump) <= CLOCK_SET_MS) return this
+        if (abs(jump) <= CLOCK_SET_MS) return this
         return AppOpens(counts, if (at > 0) at + jump else at, last.mapValues { it.value + jump }, cursor + jump, foreground, cursorClock, cursorBoot)
     }
 
@@ -107,11 +109,11 @@ class AppOpens(
      * smoothed share in now's slot, `(n + M·u) / (total + M)`, where u is the slot's share of the
      * week. M pseudo-opens spread evenly keep an app opened once from being ranked by that one.
      */
-    fun score(key: String, now: Long, zone: ZoneId): Double {
+    fun score(key: String, now: Long, zone: TimeZone): Double {
         val c = counts[key] ?: return 0.0
-        val f = if (now > at) Math.pow(0.5, (now - at).toDouble() / HALF_LIFE_MS) else 1.0
+        val f = if (now > at) 0.5.pow( (now - at).toDouble() / HALF_LIFE_MS) else 1.0
         val total = c.sum() * f
-        val slot = HourSlot.of(Instant.ofEpochMilli(now), zone)
+        val slot = HourSlot.of(Instant.fromEpochMilliseconds(now), zone)
         return total * (c[slot.index] * f + SMOOTHING * slot.share) / (total + SMOOTHING)
     }
 
@@ -167,7 +169,7 @@ data class Resumed(val pkg: String, val time: Long)
  * UI), which still count as being in front. [now], [clock] (`elapsedRealtime`) and [boot] become
  * the cursor; the events start at the cursor [AppOpens.corrected] for a clock set since.
  */
-fun AppOpens.withUsage(events: List<Resumed>, ignored: Set<String>, now: Long, clock: Long, boot: Int, zone: ZoneId): AppOpens {
+fun AppOpens.withUsage(events: List<Resumed>, ignored: Set<String>, now: Long, clock: Long, boot: Int, zone: TimeZone): AppOpens {
     var out = corrected(now, clock, boot)
     var front = foreground
     val from = out.cursor
@@ -185,7 +187,7 @@ fun opensKey(id: AppId): String = if (id.work) "work:${id.packageName}" else id.
  * The [most] [apps] with the highest [AppOpens.score] at [now], best first; apps never opened are
  * left out. Ties go to the order [apps] gives (label order).
  */
-fun <T> rankForNow(apps: List<T>, id: (T) -> AppId, opens: AppOpens, now: Long, zone: ZoneId, most: Int = QUICK_APPS): List<T> =
+fun <T> rankForNow(apps: List<T>, id: (T) -> AppId, opens: AppOpens, now: Long, zone: TimeZone, most: Int = QUICK_APPS): List<T> =
     apps.map { it to opens.score(opensKey(id(it)), now, zone) }
         .filter { it.second > 0.0 }
         .sortedByDescending { it.second }
@@ -240,9 +242,9 @@ private const val BATCH_MS = 1000L
 data class QuickCard(val kicker: String, val text: String, val stale: String?)
 
 /** The card for [one], read at [readAt]; [current] when the reply is current and the last read didn't fail ([com.spadaval.lor.net.LorReads]). Null without one. */
-fun quickCard(one: DeviceHome.One?, current: Boolean, readAt: Instant?, zone: ZoneId): QuickCard? {
+fun quickCard(one: DeviceHome.One?, current: Boolean, readAt: Instant?, zone: TimeZone): QuickCard? {
     one ?: return null
-    val stale = if (current) null else "as of ${readAt?.let { DateTimeFormatter.ofPattern("H:mm").format(it.atZone(zone)) } ?: "earlier"}"
+    val stale = if (current) null else "as of ${readAt?.let { clockText(it, zone) } ?: "earlier"}"
     return QuickCard(one.kicker, one.text, stale)
 }
 

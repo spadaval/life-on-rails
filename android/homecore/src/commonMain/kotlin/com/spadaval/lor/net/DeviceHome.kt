@@ -1,14 +1,13 @@
 package com.spadaval.lor.net
 
-import org.json.JSONObject
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.ZoneId
+import com.spadaval.lor.json.JSONObject
+import kotlinx.datetime.TimeZone
+import kotlin.time.Instant
 
 /** `GET /device/home`: what the agent page shows from LoR (`deviceHome` in `src/server/device.ts`). */
 data class DeviceHome(
     val now: Instant,
-    val zone: ZoneId,
+    val zone: TimeZone,
     /** The one thing (`oneFrom`): a pin, the running timer, an event on or soon, the brief, or the oldest flag. */
     val one: One?,
     val needsYou: List<Need>,
@@ -44,13 +43,16 @@ data class DeviceHome(
     data class Weather(val tempC: Double, val condition: String, val isDay: Boolean, val observedAt: Instant)
 
     companion object {
+        /** Parses the reply's text. */
+        fun parse(text: String): DeviceHome = parse(JSONObject(text))
+
         fun parse(o: JSONObject): DeviceHome {
             val day = o.getJSONObject("day")
             val needs = o.getJSONArray("needs_you")
             val events = day.getJSONArray("events")
             return DeviceHome(
                 now = time(o.getString("now")),
-                zone = ZoneId.of(o.getString("timezone")),
+                zone = TimeZone.of(o.getString("timezone")),
                 one = o.optJSONObject("one")?.let { One(it.getString("kicker"), it.getString("text"), str(it, "why")) },
                 needsYou = List(needs.length()) { i -> needs.getJSONObject(i).let { Need(it.getString("id"), it.getString("title"), str(it, "note"), it.optBoolean("google")) } },
                 day = Day(
@@ -72,8 +74,9 @@ data class DeviceHome(
         }
 
         /** An ISO time with `Z` or an offset. */
-        internal fun time(s: String): Instant = OffsetDateTime.parse(s).toInstant()
+        fun time(s: String): Instant = Instant.parse(s)
 
-        internal fun str(o: JSONObject, key: String): String? = if (o.isNull(key)) null else o.optString(key)
+        /** [key]'s string, null when it is missing or JSON's null. */
+        fun str(o: JSONObject, key: String): String? = if (o.isNull(key)) null else o.optString(key)
     }
 }

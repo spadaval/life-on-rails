@@ -1,7 +1,7 @@
 package com.spadaval.lor.home
 
-import org.json.JSONArray
-import org.json.JSONObject
+import com.spadaval.lor.json.JSONArray
+import com.spadaval.lor.json.JSONObject
 
 /*
  * The drawer's tabs (lor-iyc3) and the launcher's own launch counts. No Android here, so the JVM

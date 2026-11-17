@@ -1,8 +1,6 @@
 package com.spadaval.lor.home
 
 import com.spadaval.lor.ui.*
-import android.content.pm.ApplicationInfo
-import android.content.pm.ShortcutInfo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -19,6 +17,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
 import com.spadaval.lor.collect.LaunchFrom
 import kotlin.math.roundToInt
@@ -66,7 +65,7 @@ fun appEdits(places: Places, locked: Boolean): List<AppEdit> {
 data class At(val from: LaunchFrom, val folder: String? = null, val query: String? = null)
 
 /** An app shortcut for the menu, with its icon. */
-class MenuShortcut(val info: ShortcutInfo, val icon: ImageBitmap?)
+class MenuShortcut(val info: AppShortcut, val icon: ImageBitmap?)
 
 /** What home does for its screens, implemented by [HomeActivity]. */
 interface HomeActions {
@@ -75,10 +74,10 @@ interface HomeActions {
 
     /** The app's shortcuts for its menu; empty unless LoR is the default home. */
     suspend fun shortcuts(app: HomeApp): List<MenuShortcut>
-    fun openShortcut(app: HomeApp, shortcut: ShortcutInfo, at: At, icon: IconSpot? = null)
+    fun openShortcut(app: HomeApp, shortcut: AppShortcut, at: At, icon: IconSpot? = null)
 
     /** A shortcut's icon for a search row, drawn off the main thread and cached; null when it has none. */
-    suspend fun shortcutIcon(shortcut: ShortcutInfo): ImageBitmap?
+    suspend fun shortcutIcon(shortcut: AppShortcut): ImageBitmap?
     fun appInfo(app: HomeApp)
     fun uninstall(app: HomeApp)
 
@@ -129,7 +128,7 @@ interface HomeActions {
      * bind dialog when it asks, then the widget's own configure screen when it has one, then the
      * block with Undo. A cancel at either step deletes the id and changes nothing.
      */
-    fun addWidget(at: Cell, provider: android.appwidget.AppWidgetProviderInfo)
+    fun addWidget(at: Cell, provider: WidgetProvider)
 
     /** Opens the widget [id]'s configure screen again (its menu's Settings); a cancel changes nothing. */
     fun widgetSettings(id: Int)
@@ -143,8 +142,8 @@ class IconSpot {
     private var at: LayoutCoordinates? = null
 
     /** The icon's bounds in the window, or null when it isn't on screen. */
-    fun bounds(): android.graphics.Rect? = at?.takeIf { it.isAttached }?.boundsInWindow()?.takeIf { it.width > 0f && it.height > 0f }?.let {
-        android.graphics.Rect(it.left.roundToInt(), it.top.roundToInt(), it.right.roundToInt(), it.bottom.roundToInt())
+    fun bounds(): IntRect? = at?.takeIf { it.isAttached }?.boundsInWindow()?.takeIf { it.width > 0f && it.height > 0f }?.let {
+        IntRect(it.left.roundToInt(), it.top.roundToInt(), it.right.roundToInt(), it.bottom.roundToInt())
     }
 
     fun place(c: LayoutCoordinates) {
@@ -156,7 +155,7 @@ class IconSpot {
 fun Modifier.iconSpot(spot: IconSpot): Modifier = onGloballyPositioned(spot::place)
 
 /** What a screen of home needs to draw apps and their menus. */
-class HomeContext(val actions: HomeActions, val file: LayoutFile?, val apps: List<HomeApp>, val ui: HomeUi) {
+class HomeContext(val actions: HomePlatform, val file: LayoutFile?, val apps: List<HomeApp>, val ui: HomeUi) {
     val drag: DragState get() = ui.drag
 
     /** The apps of both profiles in label order, as the edits resolve refs (launcher polish 4.1, lor-72c3). */
@@ -233,7 +232,7 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
     val file = home.file
     val installed = home.installed
     val places = file?.placesOf(app.id, installed)
-    val removable = (app.info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+    val removable = app.removable
     // "Move to tab…" turns the menu into the list tabs (lor-iyc3).
     var picking by remember(app) { mutableStateOf(false) }
     val anchor = { icon.bounds()?.toBounds() }
@@ -259,7 +258,7 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
     val removes = edits.count { it == AppEdit.REMOVE_FROM_FOLDER || it == AppEdit.REMOVE_FROM_HOME }
     Popover(home.ui.popovers, anchor, close) {
         shortcuts.forEach { s ->
-            PopoverItem(s.info.shortLabel?.toString() ?: s.info.longLabel?.toString() ?: "Shortcut", s.icon) {
+            PopoverItem(s.info.shortLabel ?: s.info.longLabel ?: "Shortcut", s.icon) {
                 close(); actions.openShortcut(app, s.info, at, icon)
             }
         }
@@ -298,8 +297,8 @@ private fun AppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At?, ico
     }
 }
 
-/** An [android.graphics.Rect] in the window as [Bounds]. */
-internal fun android.graphics.Rect.toBounds() = Bounds(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
+/** An [IntRect] in the window as [Bounds]. */
+internal fun IntRect.toBounds() = Bounds(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
 
 /**
  * The menu for a long press on empty home, pointing at the finger, [at] in the window (launcher

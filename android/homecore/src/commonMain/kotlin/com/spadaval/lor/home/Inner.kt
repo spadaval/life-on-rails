@@ -35,7 +35,7 @@ object InnerScreens {
      * when that panel is also a `half` not yet paired; otherwise it is alone and drawn full.
      */
     fun of(panels: Collection<Panel>): List<InnerScreen> =
-        panels.groupBy { it.at.row }.toSortedMap().values.flatMap { row ->
+        panels.groupBy { it.at.row }.let { rows -> rows.keys.sorted().map(rows::getValue) }.flatMap { row ->
             val screens = mutableListOf<InnerScreen>()
             var half: Cell? = null
             for (p in row.sortedBy { it.at.column }) {

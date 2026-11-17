@@ -1,6 +1,6 @@
 package com.spadaval.lor.home
 
-import org.json.JSONObject
+import com.spadaval.lor.json.JSONObject
 
 /**
  * How home looks on this device (launcher polish 6.4): `look` at the top of `layout.json`, every

@@ -1,8 +1,6 @@
 package com.spadaval.lor.home
 
-import java.math.BigDecimal
-import java.math.MathContext
-import java.text.DecimalFormatSymbols
+import kotlin.math.pow
 
 /*
  * Quick answers in search (launcher polish 5.4): a calculator and unit conversions. No Android
@@ -14,7 +12,7 @@ import java.text.DecimalFormatSymbols
 
 object Answers {
     /** The answer to [query], or null. [decimal] is the locale's decimal point. */
-    fun of(query: String, decimal: Char = DecimalFormatSymbols.getInstance().decimalSeparator): Answer? {
+    fun of(query: String, decimal: Char = decimalSeparator()): Answer? {
         val q = query.trim()
         // The parser recurses per bracket and sign: a long paste is no sum, and mustn't overflow the stack.
         if (q.isEmpty() || q.length > MAX_LENGTH || q.none { it.isDigit() }) return null
@@ -57,9 +55,7 @@ object Answers {
     /** [v] to [digits] significant digits, without trailing zeros, with [decimal] as the point. */
     internal fun format(v: Double, digits: Int, decimal: Char = '.'): String {
         if (v == 0.0) return "0"
-        val d = BigDecimal(v).round(MathContext(digits)).stripTrailingZeros()
-        val big = d.abs() >= BigDecimal("1e15") || d.abs() < BigDecimal("1e-6")
-        val s = if (big) d.toString().replace("E+", "E") else d.toPlainString()
+        val s = significant(v, digits)
         return if (decimal == '.') s else s.replace('.', decimal)
     }
 
@@ -145,7 +141,7 @@ object Answers {
             val base = primary()
             if (at('^') == null) return base
             binary = true
-            return Math.pow(base, unary())
+            return base.pow(unary())
         }
 
         private fun primary(): Double {

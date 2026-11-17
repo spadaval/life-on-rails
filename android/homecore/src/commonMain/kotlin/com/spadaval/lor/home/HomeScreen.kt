@@ -20,10 +20,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import com.spadaval.lor.ui.*
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.offset
@@ -47,7 +43,6 @@ import androidx.compose.ui.geometry.lerp
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.CoroutineScope
@@ -122,7 +117,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -134,16 +128,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.spadaval.lor.agent.AgentPage
-import com.spadaval.lor.lor.LorBlock
-import com.spadaval.lor.lor.LorPanel
 import com.spadaval.lor.collect.LaunchFrom
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 /*
  * The home shell (T3 Launcher, Increment 3.2), drawn from the layout's grid of panels since
@@ -435,7 +423,12 @@ private fun HomeContext.pick(slot: Slot): Picked? {
 }
 
 @Composable
-fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, reads: Int, stats: LaunchStats, search: SearchSources, ui: HomeUi, actions: HomeActions) {
+fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, reads: Int, stats: LaunchStats, search: SearchSources, ui: HomeUi, actions: HomePlatform) {
+    CompositionLocalProvider(LocalHomePlatform provides actions) { HomeScreenOn(apps, appsLoad, layout, reads, stats, search, ui, actions) }
+}
+
+@Composable
+private fun HomeScreenOn(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, reads: Int, stats: LaunchStats, search: SearchSources, ui: HomeUi, actions: HomePlatform) {
     // While the file is broken, everything draws from the last good layout (launcher polish 3.1).
     // While an item is held, home draws the drag's working copy; just after a drop, what it wrote (launcher polish 4.3).
     val drag = ui.drag
@@ -451,7 +444,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // The open folder as drawn now, so the next edit (a rename, an added app) is matched against it.
     SideEffect { if (folder != null && ui.folder != OpenFolder.of(folder)) ui.folder = OpenFolder.of(folder) }
     // A LoR write from a panel or block takes home's one Undo bar, as a layout edit does (lor-rz50).
-    val lorBar = (LocalContext.current.applicationContext as com.spadaval.lor.LorApp).writes.bar
+    val lorBar = actions.lorBar
     // A write that failed takes its line back, unless something else has the bar by now.
     val lastLorBar = remember { arrayOfNulls<UndoMessage>(1) }
     LaunchedEffect(lorBar) {
@@ -467,14 +460,13 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // While something is held, an empty page follows the last in the start row, for a drop that makes one (launcher polish 4.5).
     val newPanel = remember(held?.work) { held?.work?.current?.let(::heldPanel) }
     val panels = drawn.panels + listOfNotNull(newPanel)
-    val config = androidx.compose.ui.platform.LocalConfiguration.current
-    val wideScreen = config.screenWidthDp >= 600
+    val wideScreen = screenWidthDp() >= 600
     val start = if (wideScreen) drawn.start.wide ?: drawn.start.narrow else drawn.start.narrow
     // Halves share a screen only where the smallest width is 600 dp or more: the inner screen in
     // either orientation, never a phone turned sideways (decision note on lor-ph30).
     // A fold or unfold lands where lor-j87u's rules say; the lines the fold checks read (lor-ozj2).
-    if (grid.pair(config.smallestScreenWidthDp >= 600)) {
-        android.util.Log.d("LorGrid", if (grid.paired) "unfolded: at ${grid.cell} on ${grid.inner.screen.cells}" else "folded: at ${grid.cell}")
+    if (grid.pair(smallestScreenWidthDp() >= 600)) {
+        Log.d("LorGrid", if (grid.paired) "unfolded: at ${grid.cell} on ${grid.inner.screen.cells}" else "folded: at ${grid.cell}")
     }
     // The first layout puts home on its start; after that a cell that went leaves home on the nearest
     // in its row, so it stands on a cell that exists (launcher polish 4.5).
@@ -518,17 +510,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     val mapShown = remember { Animatable(0f) }
     LaunchedEffect(ui.minimap) { mapShown.animateTo(if (ui.minimap) 1f else 0f, if (ui.minimap) Motion.move() else Motion.quick()) }
     val darkBarIcons = ink.ink == Ink.DARK && underBar is Panel.Stack && folder == null && panel == null && !ui.minimap && mapShown.value == 0f
-    val view = androidx.compose.ui.platform.LocalView.current
-    var barsDark by remember { mutableStateOf<Boolean?>(null) }
-    SideEffect {
-        if (barsDark == darkBarIcons) return@SideEffect
-        val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
-        androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
-            isAppearanceLightStatusBars = darkBarIcons
-            isAppearanceLightNavigationBars = darkBarIcons
-        }
-        barsDark = darkBarIcons
-    }
+    actions.SystemBars(darkBarIcons)
     // Each move goes to its target, unless a finger has it; a home press from elsewhere jumps (7.1).
     SettleGrid(grid)
     // A target waits 300 ms under the finger before the working copy takes it (Kvaesitso's attemptMove).
@@ -621,8 +603,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     var folderFading by remember { mutableStateOf(false) }
     val folderOpen = folder != null
     // The wallpaper behind an open folder blurs where the window can (lor-gnk0), with the motion.
-    val blurred = rememberCrossWindowBlur()
-    BlurBehind(blurred, view) { maxOf(folderShown.value, mapShown.value) }
+    val blurred = actions.rememberBlur()
+    actions.BlurBehind(blurred) { maxOf(folderShown.value, mapShown.value) }
     LaunchedEffect(folderOpen, ui.homePresses) {
         if (folderOpen) {
             folderFading = false
@@ -664,7 +646,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             else -> Back.PAGE
         }
         try {
-            events.collect { e -> if (what == Back.FOLDER || what == Back.DRAWER) ui.back = BackEasing.transform(e.progress) }
+            events.collect { p -> if (what == Back.FOLDER || what == Back.DRAWER) ui.back = BackEasing.transform(p) }
         } catch (e: kotlinx.coroutines.CancellationException) {
             // A cancelled gesture returns it to full size.
             backEase.start()
@@ -686,7 +668,7 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
     // The drag handler lives across recompositions, so it reads the latest of these.
     val latestHome by rememberUpdatedState(home)
     val latestDrop by rememberUpdatedState<(Held, Target?) -> Unit>(::dropHeld)
-    val dots by Dots.withDots.collectAsState()
+    val dots by actions.dots.collectAsState()
     CompositionLocalProvider(LocalHomeLook provides (file?.look ?: HomeLook()), LocalDots provides dots) {
     val barTop = rememberUpdatedState(barPx)
     val shownApps = remember(apps, home) { apps.filterNot(home::hidden) }
@@ -697,8 +679,8 @@ fun HomeScreen(apps: List<HomeApp>, appsLoad: AppsLoad, layout: LayoutState, rea
             CompositionLocalProvider(LocalGridScrolls provides ui.scrolls) {
                 GridCells(grid) { p ->
                     when (p) {
-                        is Panel.T3 -> AgentPage()
-                        is Panel.Lor -> LorPanel()
+                        is Panel.T3 -> actions.AgentPanel()
+                        is Panel.Lor -> actions.LorPanel()
                         // The drawer, wherever the finger or its settle has it (launcher polish 7.1).
                         is Panel.Drawer -> Box(
                             Modifier.fillMaxSize().graphicsLayer {
@@ -818,7 +800,7 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
                     home.actions::restore,
                 )
             }
-            SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
+            home.actions.SetupCard(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 16.dp))
         }
         val notesAt = if (start) notesBlock(panel) else -1
         val apps = @Composable { at: BlockAt ->
@@ -853,7 +835,7 @@ private fun StackPanel(panel: Panel.Stack, start: Boolean, placed: PlacedHome?, 
                         StackBlock.Clock -> header()
                         is StackBlock.Apps -> apps(BlockAt(cell, i))
                         is StackBlock.Widget -> key(block.id) { WidgetBlock(block, panelHeight, ui, home) }
-                        StackBlock.Today, StackBlock.NeedsYou, StackBlock.Running, StackBlock.T3Queue -> key(block.type) { LorBlock(block, ui.grid) }
+                        StackBlock.Today, StackBlock.NeedsYou, StackBlock.Running, StackBlock.T3Queue -> key(block.type) { home.actions.LorBlock(block, ui.grid) }
                     }
                     // With no `apps` block, the notes go under the block [notesBlock] names (lor-bdus's review, R4).
                     if (i == notesAt && block !is StackBlock.Apps) notes()
@@ -1218,36 +1200,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.folderGlass(shown: 
 }
 
 /**
- * Blurs the wallpaper behind home's window by [shown] of DESIGN.md's 24 dp while [on], and clears
- * it when the folder has gone or blur goes off. Home's window is opaque (it shows the wallpaper),
- * and Android blurs only behind a translucent window's background (`setBackgroundBlurRadius`), so
- * this asks the window manager to blur what is behind the window (`FLAG_BLUR_BEHIND` with
- * `blurBehindRadius`, Android 12 and up), with no dim.
- */
-@Composable
-private fun BlurBehind(on: Boolean, view: android.view.View, shown: () -> Float) {
-    val full = with(LocalDensity.current) { 24.dp.toPx() }
-    LaunchedEffect(on, full) {
-        val window = (view.context as? android.app.Activity)?.window
-        if (!on || window == null || android.os.Build.VERSION.SDK_INT < 31) return@LaunchedEffect
-        fun blur(radius: Int) {
-            if (radius > 0) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            window.attributes = window.attributes.apply { blurBehindRadius = radius }
-        }
-        var radius = 0
-        try {
-            snapshotFlow { (shown() * full).roundToInt() }.collect {
-                if (it != radius) blur(it)
-                radius = it
-            }
-        } finally {
-            if (radius != 0) blur(0)
-        }
-    }
-}
-
-/**
  * An open folder (lor-gnk0, after Smart Launcher's): it fills the screen as dark glass, with its
  * name, which is edited in place, a + to add apps, and its apps under them. The name row and the
  * apps are the part that opens from the tile (launcher polish 7.2) and takes a drop after the last
@@ -1421,7 +1373,7 @@ private fun FolderName(folder: ResolvedFolder, home: HomeContext, add: () -> Uni
  */
 @Composable
 private fun AppPicker(folder: ResolvedFolder, home: HomeContext, done: () -> Unit) {
-    androidx.activity.compose.BackHandler(onBack = done)
+    BackHandler(onBack = done)
     val name = folder.folder.name
     val inFolder = remember(folder) { folder.apps.map { it.first.id }.toSet() }
     val apps = remember(home.apps, inFolder) {
