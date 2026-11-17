@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-vujy
 title: 'The Context direction on the dashboard prototype: every required screen, state and interaction'
-status: ready
+status: building
 mission: lor-2803
 labels:
 - dashboard
@@ -11,7 +11,8 @@ labels:
 priority: medium
 blocked_by:
 - lor-5uxk
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A275230a9-0f8b-446e-b3b1-4303d9895adf%3Adelegate-task%3A48c42c47-9986-42ca-ad54-ead9605548d4
 ready:
   by: lead of lor-2803, after the brief (lor-npa6)
   at: 2026-11-17T15:10:01.415410287Z
