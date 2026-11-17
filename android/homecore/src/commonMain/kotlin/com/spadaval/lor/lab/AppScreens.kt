@@ -265,14 +265,14 @@ private fun Placeholder(label: String) {
     }
 }
 
-private class SettingsRead(val file: SettingsFileUi?, val broken: BrokenUi?)
+internal class SettingsRead(val file: SettingsFileUi?, val broken: BrokenUi?)
 
 /**
  * The parts of the fixture's `layout.json` Home settings shows. No file is a first run's, which
  * the app starts with the default tabs. A version other than 2 is the broken file, shown over the
  * last good one, with the parser's words for it.
  */
-private fun readSettings(f: Fixture): SettingsRead {
+internal fun readSettings(f: Fixture): SettingsRead {
     val layout = f.layout ?: return SettingsRead(SettingsFileUi(tabs = DEFAULT_TABS), null)
     val version = layout["version"]?.jsonPrimitive?.intOrNull
     if (version != 2) {
