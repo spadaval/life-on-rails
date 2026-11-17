@@ -32,8 +32,8 @@ export function parseClock(value: string | null | undefined, tz: string, base: D
   const v = (value ?? "").trim();
   if (!v) return null;
   if (/^\d{1,2}:\d{2}$/.test(v)) return localTimeOnDay(tz, localYmd(tz, base), v.padStart(5, "0"));
-  const local = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::\d{2})?$/.exec(v);
-  if (local) return localTimeOnDay(tz, local[1]!, local[2]!);
+  const local = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::(\d{2}))?$/.exec(v);
+  if (local) return new Date(localTimeOnDay(tz, local[1]!, local[2]!).getTime() + Number(local[3] ?? 0) * 1000);
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/.test(v)) return null;
   const t = new Date(v);
   return Number.isNaN(t.getTime()) ? null : t;

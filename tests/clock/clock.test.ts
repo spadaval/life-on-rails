@@ -33,6 +33,7 @@ describe("the fixed clock", () => {
     expect(parseClock("2026-11-16T09:00:00-08:00", TZ, real)?.toISOString()).toBe("2026-11-16T17:00:00.000Z");
     expect(parseClock("2026-11-16T17:00:00Z", TZ, real)?.toISOString()).toBe("2026-11-16T17:00:00.000Z");
     expect(parseClock("2026-07-01T09:00", TZ, real)?.toISOString()).toBe("2026-07-01T16:00:00.000Z");
+    expect(parseClock("2026-11-17T09:00:47", TZ, real)?.toISOString()).toBe("2026-11-17T17:00:47.000Z");
     expect(parseClock("9:00", TZ, real)?.toISOString()).toBe("2026-11-17T17:00:00.000Z");
     expect(parseClock("", TZ, real)).toBeNull();
     expect(parseClock("2026-11-16", TZ, real)).toBeNull();
