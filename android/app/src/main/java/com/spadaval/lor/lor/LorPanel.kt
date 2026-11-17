@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -443,6 +444,6 @@ private fun Link(text: String, onClick: () -> Unit) {
         Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 18.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text, style = TextStyle(fontFamily = Type.button.fontFamily, fontSize = 13.sp, color = Or))
+        Text(text, style = TextStyle(fontFamily = Type.button.fontFamily, fontSize = 13.sp, color = Or, textMotion = TextMotion.Animated))
     }
 }

@@ -128,6 +128,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -178,7 +179,7 @@ internal val iconSize: Dp @Composable get() = LocalHomeLook.current.iconSize.dp
 
 /** An app's or folder's label in the ink of what it stands on (launcher polish 6.3: the wallpaper's on home). */
 internal val labelStyle: TextStyle
-    @Composable get() = LocalWallInk.current.let { TextStyle(fontFamily = Saira, color = it.text, fontSize = LocalHomeLook.current.labelSize.sp, shadow = it.shadow) }
+    @Composable get() = LocalWallInk.current.let { TextStyle(fontFamily = Saira, color = it.text, fontSize = LocalHomeLook.current.labelSize.sp, shadow = it.shadow, textMotion = TextMotion.Animated) }
 
 /** What the activity can reset on a home press. */
 class HomeUi {
