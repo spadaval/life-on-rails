@@ -20,6 +20,14 @@ function home() {
   writeFileSync(path.join(gallery, "index.html"), "gallery");
   writeFileSync(path.join(gallery, "today@1500.png"), "png");
   writeFileSync(path.join(gallery, "previous/today@1500.png"), "old png");
+  writeFileSync(path.join(gallery, ".lor-stamp"), "commit=aaaa111\ntime=2026-11-10T12:00:00Z\n");
+  const lab = path.join(h, ".local/state/lor-shots/lab");
+  mkdirSync(lab, { recursive: true });
+  writeFileSync(path.join(lab, "index.html"), "lab gallery");
+  writeFileSync(path.join(lab, ".lor-stamp"), "commit=bbbb222 (uncommitted changes)\ntime=2026-11-15T08:30:00Z\n");
+  const bare = path.join(h, ".local/state/lor-shots/old");
+  mkdirSync(bare, { recursive: true });
+  writeFileSync(path.join(bare, "index.html"), "no stamp");
   return h;
 }
 
@@ -39,8 +47,12 @@ describe("publish.sh", () => {
     expect(existsSync(path.join(lab, "stale.html"))).toBe(false);
     expect(existsSync(path.join(lab, "old-folder"))).toBe(false);
     const index = readFileSync(path.join(lab, "index.html"), "utf8");
-    expect(index).toContain('Screenshot galleries: <a href="shots/dashboard/">dashboard</a>');
-    expect(index).toMatch(/published from [0-9a-f]{7,}/);
+    // Each gallery shows what made it, not the checkout that published it.
+    const line = (sub: string) => index.split("\n").find((l) => l.includes(`href="shots/${sub}/"`)) ?? "";
+    expect(line("dashboard")).toMatch(/Screenshot galleries: dashboard<\/a> <span>made 2026-11-1\d \d\d:\d\d \w+ from aaaa111<\/span>/);
+    expect(line("lab")).toContain("from bbbb222 (uncommitted changes)");
+    expect(line("old")).toContain("from a commit not recorded");
+    expect(index).toMatch(/by the checkout at [0-9a-f]{7,}/);
   });
 
   it("refuses a directory it did not make, and one inside the checkout", () => {

@@ -49,6 +49,25 @@ fi
 commit="$(git -C "$ROOT" rev-parse --short HEAD)"
 [[ -z "$(git -C "$ROOT" status --porcelain)" ]] || commit="$commit (uncommitted changes)"
 
+# What made a page: the producer writes STAMP beside its index.html, as `commit=<sha>` and
+# `time=<ISO 8601>` lines (scripts/shots.mjs does; a build that lands here should too).
+# Without one, the index says the commit is not recorded and shows the newest file's time.
+STAMP=".lor-stamp"
+provenance() {
+  local dir="$1" c="" t=""
+  if [[ -f "$dir/$STAMP" ]]; then
+    c="$(sed -n 's/^commit=//p' "$dir/$STAMP" | head -n1)"
+    t="$(sed -n 's/^time=//p' "$dir/$STAMP" | head -n1)"
+    [[ -n "$t" ]] && t="$(date -d "$t" '+%Y-%m-%d %H:%M %Z' 2>/dev/null || echo "$t")"
+  fi
+  if [[ -z "$t" ]]; then
+    local newest
+    newest="$(find "$dir" -type f ! -name "$STAMP" -printf '%T@\n' | sort -n | tail -n1)"
+    t="$( [[ -n "$newest" ]] && date -d "@${newest%.*}" '+%Y-%m-%d %H:%M %Z' || echo "no files")"
+  fi
+  esc "made $t from ${c:-a commit not recorded}"
+}
+
 esc() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g' <<<"$1"; }
 
 mkdir -p "$(dirname "$LAB")"
@@ -67,19 +86,22 @@ for line in "${SOURCES[@]}"; do
   fi
   mkdir -p "$stage/$folder"
   cp -RL --preserve=timestamps "$src/." "$stage/$folder/"
-  newest="$(find "$stage/$folder" -type f -printf '%T@\n' | sort -n | tail -n1)"
-  when="$(date -d "@${newest%.*}" '+%Y-%m-%d %H:%M %Z' 2>/dev/null || echo "empty")"
-  # A folder of several pages (the galleries, one per catalogue) links each of them.
-  links="<a href=\"$folder/\">$(esc "$name")</a>"
-  if [[ ! -f "$stage/$folder/index.html" ]]; then
-    links="$(esc "$name"):"
+  # One entry per page: a source with its own index.html is one, and a folder of several
+  # (the galleries, one per catalogue) is one per subfolder with an index.
+  pages=()
+  if [[ -f "$stage/$folder/index.html" ]]; then
+    pages=("$folder|$name")
+  else
     for page in "$stage/$folder"/*/index.html; do
       [[ -f "$page" ]] || continue
       sub="$(basename "$(dirname "$page")")"
-      links+=" <a href=\"$folder/$sub/\">$(esc "$sub")</a>"
+      pages+=("$folder/$sub|$name: $sub")
     done
   fi
-  items+="<li>$links <span>built $when, published from $(esc "$commit")</span></li>"$'\n'
+  for p in "${pages[@]}"; do
+    IFS='|' read -r path label <<<"$p"
+    items+="<li><a href=\"$path/\">$(esc "$label")</a> <span>$(provenance "$stage/$path")</span></li>"$'\n'
+  done
   published=$((published + 1))
   echo "publish: $folder <- $src"
 done
@@ -100,7 +122,7 @@ footer { margin-top: 24px; color: #9a978f; font-size: 13px; }
 <ul>
 ${items:-<li>Nothing is published yet.</li>}
 </ul>
-<footer>Published $(date '+%Y-%m-%d %H:%M %Z') from $(esc "$commit").</footer>
+<footer>Published $(date '+%Y-%m-%d %H:%M %Z') by the checkout at $(esc "$commit").</footer>
 </body></html>
 HTML
 

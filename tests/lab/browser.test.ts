@@ -36,6 +36,16 @@ window.run = async () => {
   embed.type = "text/html";
   document.body.append(obj, embed);
   await new Promise((r) => setTimeout(r, 300));
+  // A window on the dashboard carries the app's policy, so the lab must not get one.
+  try {
+    const w = window.open("/tasks");
+    await new Promise((r) => setTimeout(r, 500));
+    out.popup = w ? "opened" : "refused";
+    if (w) {
+      out.popupRead = w.document.body.textContent;
+      out.popupWrite = await w.fetch("/_serverFn/write", { method: "POST", body: "{}" }).then((r) => r.status);
+    }
+  } catch { out.popup = "refused"; }
   document.getElementById("f").requestSubmit();
   await new Promise((r) => setTimeout(r, 300));
   out.stayed = location.pathname;
@@ -81,7 +91,7 @@ describe("a page under /lab/", () => {
       await page.goto(`${base}/lab/attack.html`);
       const out = await page.evaluate("run()");
       const violations = (await page.evaluate("violations")) as string[];
-      expect(out).toEqual({ fixture: "read", api: "refused", serverFn: "refused", frame: "refused", stayed: "/lab/attack.html" });
+      expect(out).toEqual({ fixture: "read", api: "refused", serverFn: "refused", frame: "refused", popup: "refused", stayed: "/lab/attack.html" });
       expect(hits).toEqual([]);
       expect(violations.join("\n")).toMatch(/connect-src .*\/api\/v1\/status/);
       expect(violations.join("\n")).toMatch(/connect-src .*\/_serverFn\/getStatus/);

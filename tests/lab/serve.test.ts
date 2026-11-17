@@ -81,6 +81,21 @@ describe("labStatic", () => {
     }
   });
 
+  it("cannot be walked out of through a directory's index", async () => {
+    const base = mkdtempSync(path.join(tmpdir(), "lor-lab-"));
+    const dir = path.join(base, "lab");
+    mkdirSync(path.join(dir, "gallery"), { recursive: true });
+    writeFileSync(path.join(base, "secret.txt"), "outside");
+    symlinkSync(path.join(base, "secret.txt"), path.join(dir, "index.html"));
+    symlinkSync(path.join(base, "secret.txt"), path.join(dir, "gallery/index.html"));
+    const lab = labStatic(dir) as Handler;
+    for (const p of ["/lab/", "/lab/gallery/", "/lab/gallery/index.html"]) {
+      const res = await get(lab, p);
+      expect(res.status, p).toBe(404);
+      expect(await res.text(), p).not.toBe("outside");
+    }
+  });
+
   it("is read-only", async () => {
     const { lab } = setup();
     for (const method of ["POST", "PUT", "DELETE", "PATCH"]) {
@@ -99,6 +114,7 @@ describe("labStatic", () => {
       expect(csp, p).toContain("frame-src http://buildbot:3847/lab/");
       expect(csp, p).toContain("form-action 'none'");
       expect(csp, p).toContain("object-src 'none'");
+      expect(csp, p).toMatch(/sandbox allow-scripts allow-same-origin(?!.*allow-popups)/);
     }
     expect((await get(lab, "/lab/", { method: "POST" })).headers.get("content-security-policy")).toContain("form-action 'none'");
   });

@@ -4,8 +4,8 @@
 //
 // A lab page shares the dashboard's origin and its identity check, so every response
 // carries a policy that keeps it off LoR's data: it may connect to and frame only
-// /lab/ on this origin, and submit no form. Nothing under /lab/ ever reaches the app:
-// a miss here is this handler's own 404, never next().
+// /lab/ on this origin, submit no form, and open no window. Nothing under /lab/ ever
+// reaches the app: a miss here is this handler's own 404, never next().
 import { createReadStream, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -52,7 +52,18 @@ export const isHashed = (name) => {
 
 /** The policy on every /lab/ response, for the origin the browser used. */
 export const labPolicy = (origin) =>
-  [`connect-src ${origin}/lab/`, `frame-src ${origin}/lab/`, `worker-src ${origin}/lab/ blob:`, "object-src 'none'", "form-action 'none'", "base-uri 'none'"].join("; ");
+  [
+    `connect-src ${origin}/lab/`,
+    `frame-src ${origin}/lab/`,
+    `worker-src ${origin}/lab/ blob:`,
+    "object-src 'none'",
+    "form-action 'none'",
+    "base-uri 'none'",
+    // No allow-popups: a window the lab opened on /tasks would carry the app's policy, not
+    // this one, and the lab could read it and call through it. Scripts, storage and the
+    // lab's own forms' submit handlers still work; form-action keeps a form from posting.
+    "sandbox allow-scripts allow-same-origin allow-forms allow-modals allow-downloads",
+  ].join("; ");
 
 const isLab = (pathname) => pathname === "/lab" || pathname.startsWith("/lab/");
 
@@ -88,7 +99,9 @@ export function labStatic(dir) {
     if (st?.isDirectory()) {
       // A directory without its slash would break every relative link in its index.
       if (!url.pathname.endsWith("/")) return answer(308, "", { location: `${url.pathname}/${url.search}` });
-      target = path.join(file, "index.html");
+      // The index is checked like any other path: it too may be a link out.
+      target = resolveInside(real, path.join(path.relative(real, file), "index.html"));
+      if (!target) return answer(404, "not found\n");
       st = statSync(target, { throwIfNoEntry: false });
     }
     if (!st?.isFile()) return answer(404, "not found\n");
