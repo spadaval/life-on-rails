@@ -123,4 +123,7 @@ Everything is in `~/.local/state/lor-t8lq/evidence/` (`README.txt`, `compare.txt
 - **Boat build directory.** This checkout's directory on boat was first built at 3f17447. Your note about a directory compiled before lor-oech doesn't describe it, and a clean did not prevent the out-of-memory; it is the margin above.
 - **Tooling.** This machine's /tmp quota is full of other sessions' review copies, which broke `boat-build.sh`'s tarball, its copy back, and `verify-lor up`'s copy. I ran with `TMPDIR`, `LOR_VERIFY_COPY` and `LOR_VERIFY_OUT` under `~/.local/state/lor-t8lq/`. A separate commit (1fbf9b2) makes `boat-build.sh` say why it could not copy the outputs back, instead of "produced no APK". The verify skill still names `atelier evidence`, which no longer exists.
 - **Merged main** (lor-293p's gestures and landscape) before review. STATES.md, `Lab.kt` and `shots/lab.json` conflicted; both sides are kept. Home settings in the lab now reads "this screen" from the scene's width, so a landscape link marks the right class.
+  - After the merge, boat passed `:homecore:clean` plus the default set and `:homecore:allTests` at the default heap: unit tests 436 debug and 436 release, homecore 29 (main added one).
+  - The merged lab bundle rendered all 46 shots in `shots/lab.json`.
+- **Port :3871.** On the merged bundle, my lab server did not start because :3871 was already taken, and my cleanup then killed the process listening there. It may have been another thread's lab server. I used :3893 after that.
 
