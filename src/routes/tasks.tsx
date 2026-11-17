@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Ago } from "../components/Ago.js";
 import { dueLabel, longDate } from "../components/format.js";
 import { type GraphNode, TaskCheck, parentChoices } from "../components/IntentEditor.js";
+import { byRef, pickRefs } from "../components/links.js";
 import { Key, QuickAdd, type QuickAddOptions, typing } from "../components/QuickAdd.js";
 import { Empty, Notice, PageHead, Panel, Star } from "../components/ui.js";
 import {
@@ -55,7 +56,10 @@ const Search = z.object({
   q: z.string().optional(),
   group: z.enum(["due", "for", "status", "none"]).optional(),
   sort: z.enum(["due", "created", "updated", "title"]).optional(),
-  id: z.string().optional(),
+  /** A task by id or title. */
+  id: z.coerce.string().optional(),
+  /** Picked rows, by link: positions among the rows shown, ids or titles, comma-separated. */
+  pick: z.coerce.string().optional(),
 });
 type Filters = z.infer<typeof Search>;
 
@@ -79,7 +83,8 @@ function Tasks() {
   const router = useRouter();
   const [notice, setNotice] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
-  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  // Null until a row is picked by hand: until then the rows `pick=` names.
+  const [pickedByHand, setPicked] = useState<ReadonlySet<string> | null>(null);
   const filterBox = useRef<HTMLInputElement>(null);
 
   const view: View = search.view ?? "open";
@@ -134,7 +139,8 @@ function Tasks() {
   const groups = grouped(sorted, group, today, view);
   const order = groups.flatMap((g) => g.rows);
   const count = (v: View) => tasks.filter((n) => inView(v, n)).length;
-  const selected = tasks.find((n) => n.id === search.id) ?? null;
+  const picked = pickedByHand ?? pickRefs(order, search.pick, (n) => n.title);
+  const selected = byRef(tasks, search.id, (n) => n.title);
   const open = (id: string | null) => set({ id: id ?? undefined });
   const pickedIds = [...picked].filter((id) => order.some((n) => n.id === id));
   const filtering = !!(search.for || search.due || search.from || search.flagged || q);

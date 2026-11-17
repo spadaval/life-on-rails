@@ -5,13 +5,15 @@ import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-r
 import { z } from "zod";
 import { Ago } from "../components/Ago.js";
 import { dueLabel } from "../components/format.js";
+import { byRef } from "../components/links.js";
 import { Markdown } from "../components/Markdown.js";
 import { Empty, Notice, PageHead, Panel } from "../components/ui.js";
 import { getPeopleFn, getPersonFn, setPersonFn } from "../server/functions/memory.js";
 import { GlobalActions } from "./__root.js";
 
 const Search = z.object({
-  id: z.string().uuid().optional(),
+  /** A person's hub: their id, or their name by link. */
+  id: z.coerce.string().optional(),
   filter: z.enum(["important", "all", "keep-in-touch", "overdue", "birthdays", "groups"]).optional(),
   q: z.string().optional(),
 });
@@ -19,10 +21,21 @@ const Search = z.object({
 export const Route = createFileRoute("/people")({
   validateSearch: (search) => Search.parse(search),
   loaderDeps: ({ search }) => ({ id: search.id, filter: search.filter, q: search.q }),
-  loader: async ({ deps }) =>
-    deps.id ? { person: await getPersonFn({ data: { id: deps.id } }), list: null } : { person: null, list: await getPeopleFn({ data: { filter: deps.filter, q: deps.q } }) },
+  loader: async ({ deps }) => {
+    const id = deps.id ? await personId(deps.id) : null;
+    return id ? { person: await getPersonFn({ data: { id } }), list: null } : { person: null, list: await getPeopleFn({ data: { filter: deps.filter, q: deps.q } }) };
+  },
   component: People,
 });
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** `id=` is an id, or a name a link gives (ids change each time the demo set loads): the person of that name, else the first found. */
+async function personId(ref: string): Promise<string | null> {
+  if (UUID.test(ref)) return ref;
+  const { people } = await getPeopleFn({ data: { filter: "all", q: ref } });
+  return (byRef(people, ref, (p) => p.name) ?? people[0])?.id ?? null;
+}
 
 type Act = (fn: () => Promise<unknown>, done?: string) => Promise<void>;
 type List = NonNullable<Awaited<ReturnType<typeof getPeopleFn>>>;

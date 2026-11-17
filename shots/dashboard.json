@@ -1,0 +1,42 @@
+{
+  "name": "dashboard",
+  "about": "Every dashboard screen and its named states, on the demo set (pnpm demo:test). Each link names its clock (at=) and data (data=), so it draws the same by hand. lor-q165's ten states are here under its names.",
+  "base": "http://127.0.0.1:3858",
+  "widths": [1500, 1100, 412],
+  "height": 950,
+  "shots": [
+    { "screen": "Today", "name": "Today at 00:05 before the waking day", "link": "/?at=00:05&data=base" },
+    { "screen": "Today", "name": "Today at 09:00", "link": "/?at=09:00&data=base" },
+    { "screen": "Today", "name": "Today at 15:00", "link": "/?at=15:00&data=base" },
+    { "screen": "Today", "name": "Today at 21:30", "link": "/?at=21:30&data=base" },
+    { "screen": "Today", "name": "Today at 15:00 with a running timer", "link": "/?at=15:00&data=running" },
+    { "screen": "Today", "name": "Today with a time block selected", "link": "/?block=11:00&at=15:00&data=base" },
+    { "screen": "Today", "name": "Today on a past day", "link": "/?date=yesterday&at=15:00&data=base" },
+    { "screen": "Today", "name": "Today on a past day with a block selected", "link": "/?date=yesterday&block=18:30&at=15:00&data=base" },
+    { "screen": "Today", "name": "Today scrolled to the lists", "link": "/?scroll=700&at=15:00&data=base", "capture": "viewport" },
+
+    { "screen": "Tasks", "name": "Tasks", "link": "/tasks?at=15:00&data=base" },
+    { "screen": "Tasks", "name": "Tasks with a flagged task open in its panel", "link": "/tasks?id=Reply%20to%20the%20App%20Store%20review%20notes&at=15:00&data=base" },
+    { "screen": "Tasks", "name": "Tasks with three rows picked and the bulk bar showing", "link": "/tasks?pick=1,2,3&at=15:00&data=base" },
+    { "screen": "Tasks", "name": "quick add open with a parent and a date typed", "link": "/tasks?add=Book%20the%20ferry%20to%20Sintra%20%23Lisbon%20trip%20in%20April%20fri&at=15:00&data=base", "capture": "viewport" },
+
+    { "screen": "Goals", "name": "Goals", "link": "/goals?at=15:00&data=base" },
+    { "screen": "Goals", "name": "Goals with a goal selected", "link": "/goals?id=Ship%20the%20Field%20Guide%20app&at=15:00&data=base" },
+    { "screen": "Goals", "name": "Goals with a habit selected and its editor open", "link": "/goals?id=Portuguese%20lesson&edit=1&at=15:00&data=base" },
+
+    { "screen": "People", "name": "People", "link": "/people?at=15:00&data=base" },
+    { "screen": "People", "name": "People's list on \"Due a hello\"", "link": "/people?filter=overdue&at=15:00&data=base" },
+    { "screen": "People", "name": "a person's hub with messages and mail", "link": "/people?id=Maya%20Okafor&at=15:00&data=base" },
+
+    { "screen": "Notes", "name": "Notes index", "link": "/notes?at=15:00&data=base" },
+    { "screen": "Notes", "name": "Notes on a page", "link": "/notes?slug=topics/lisbon-trip&at=15:00&data=base" },
+    { "screen": "Notes", "name": "Notes on a page's history with a diff showing", "link": "/notes?slug=topics/lisbon-trip&history=1&at=15:00&data=base" },
+    { "screen": "Notes", "name": "Notes graph", "link": "/notes?view=graph&at=15:00&data=base" },
+
+    { "screen": "Search", "name": "Search with results", "link": "/search?q=lisbon&at=15:00&data=base" },
+    { "screen": "Search", "name": "Search with no results", "link": "/search?q=quokka%20zeppelin&at=15:00&data=base" },
+
+    { "screen": "Status", "name": "Status healthy", "link": "/status?at=15:00&data=base" },
+    { "screen": "Status", "name": "Status failing", "link": "/status?at=15:00&data=failing" }
+  ]
+}

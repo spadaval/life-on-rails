@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link, Outlet, createRootRoute, HeadContent, Scripts, retainSearchParams, useNavigate, useRouter } from "@tanstack/react-router";
 import { FixedClockProvider, useNow } from "../components/clock.js";
 import { duration } from "../components/format.js";
@@ -21,9 +21,12 @@ export const Route = createRootRoute({
     ],
   }),
   // The test server's demo controls (src/server/clock.ts, src/server/demo.ts): kept across links, so a tab stays on its clock.
-  validateSearch: (search: Record<string, unknown>): { at?: string; data?: string } => ({
+  // On any page, by link only (lor-nde9): `add=` opens quick add with that text typed, `scroll=` scrolls the page that far down.
+  validateSearch: (search: Record<string, unknown>): { at?: string; data?: string; add?: string; scroll?: number } => ({
     ...(typeof search.at === "string" ? { at: search.at } : {}),
     ...(typeof search.data === "string" ? { data: search.data } : {}),
+    ...(search.add !== undefined && search.add !== null ? { add: String(search.add) } : {}),
+    ...(Number.isFinite(Number(search.scroll)) && search.scroll !== "" && search.scroll !== undefined ? { scroll: Number(search.scroll) } : {}),
   }),
   search: { middlewares: [retainSearchParams(["at", "data"])] },
   loader: () => getShellFn(),
@@ -43,6 +46,10 @@ const NAV = [
 
 function RootComponent() {
   const shell = Route.useLoaderData();
+  const { add, scroll } = Route.useSearch();
+  useEffect(() => {
+    if (scroll) window.scrollTo(0, scroll);
+  }, [scroll]);
 
   return (
     <RootDocument clock={shell.clock}>
@@ -92,7 +99,7 @@ function RootComponent() {
         <main className="min-w-0 px-4 pb-10 md:px-[30px]">
           <Outlet />
         </main>
-        <QuickAddDialog />
+        <QuickAddDialog linked={add} />
       </div>
     </RootDocument>
   );
