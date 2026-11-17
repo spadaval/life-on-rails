@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-zj7x
 title: A demo dataset fills every dashboard screen and the phone's panels on the test server
-status: in_review
+status: changes_requested
 mission: lor-2803
 labels:
 - design-lab
