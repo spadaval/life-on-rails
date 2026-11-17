@@ -25,14 +25,14 @@ Changing the dashboard's look is a save-and-see loop, and a full set of screensh
 ## Done when
 
 - [ ] `scripts/ui-dev.sh` starts Vite's dev server with hot reload on the test database at `127.0.0.1:3858`, with no jobs, channel or wall listener, and refuses the real database and lor-web's ports. A saved change to a route's markup or to `src/styles.css` shows in the open page in under 2 seconds, measured and written in the Report.
-- [ ] `node scripts/shots.mjs [--only <name>] [--out <dir>]` captures every route and its named states at 1500, 1100 and 412 px wide against `:3858` or `:3857`: Today at four clock times and on a past day, a selected time block, Tasks with a task open and with rows picked, quick add open, Goals with an item selected and the editor open, People list and hub, Notes index, page, history and graph, Search with results and none, Status healthy and failing. The list of shots is one data table in the script.
+- [ ] `node scripts/shots.mjs [--only <name>] [--out <dir>]` captures every route and its named states at 1500, 1100 and 412 px wide against `:3858` or `:3857`: Today at four clock times and on a past day, a selected time block, Tasks with a task open and with rows picked, quick add open, Goals with an item selected and the editor open, People list and hub, Notes index, page, history and graph, Search with results and none, Status healthy and failing. Every shot is a link: a state that is not in the URL today (a selected block, an open editor, picked rows, quick add open, a version's history) gets a search parameter in its route, and the clock and data are named in the link too (`at=` as lor-zj7x defines it). The list of shots is one table of names and links in `scripts/shots.mjs`, printed by `node scripts/shots.mjs --list`, and opening a link by hand draws the same state the script captured.
 - [ ] A full run takes under 60 seconds on this machine, measured in the Report. It writes PNGs and `index.html`, a gallery grouped by screen with the three widths side by side, and keeps the previous run so each shot can be flipped between before and after.
 - [ ] The gallery opens over `/lab/shots/` once lor-zwfd lands, and from the file until then.
 - [ ] The verify skill's `SKILL.md` names both commands under a 'Designing' heading and says they are not evidence for a review.
 
 ## Scope
 
-`scripts/ui-dev.sh`, `scripts/shots.mjs`, `package.json` scripts, the verify skill's text. `scripts/ui-check.mjs` and its flows are left alone (lor-mxrc owns them).
+`scripts/ui-dev.sh`, `scripts/shots.mjs`, `package.json` scripts, the verify skill's text, and the search parameters the routes under `src/routes/` need for a state to be linkable (no visible change without the parameter). `scripts/ui-check.mjs` and its flows are left alone (lor-mxrc owns them).
 
 ## Context
 

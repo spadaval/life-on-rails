@@ -27,7 +27,7 @@ Sumeet can use each direction's dashboard: click through it, tick things, open a
 
 - [ ] `prototype/dashboard/` is a small Vite and React app with no server: it reads a frozen snapshot of the demo set and keeps changes in memory, so every control works and nothing is saved. A Version dropdown (and the URL hash) switches direction; `current` is the shipped dashboard's look on the same screens.
 - [ ] A direction is one folder with its own tokens, components and screens; nothing is shared between directions but the data and the shell, so each is free to differ in structure.
-- [ ] The shell and `current` are built here. Each direction from the brief is then one item, added by the lead, whose Done when is the brief's required set and eight interactions at 1500 and 412 px, with `scripts/shots.mjs --prototype` capturing them.
+- [ ] The shell and `current` are built here. Each direction from the brief is then one item, added by the lead, whose Done when is the brief's required dashboard set and dashboard interactions at 1500 and 412 px, with `scripts/shots.mjs --prototype` (a flag this item adds to lor-nde9's script) capturing them.
 - [ ] `pnpm proto:dev` reloads a change in under 2 seconds; `scripts/lab/publish.sh` puts the build under `/lab/dashboard/`.
 
 ## Scope

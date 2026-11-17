@@ -14,7 +14,7 @@ created_at: 2026-11-17T05:56:53.698751316Z
 
 ## Why
 
-Sumeet, 2026-11-17, after the audit of the dashboard and launcher (https://claude.ai/artifact/TGotPxRg56dJfqe9kQKMuD): "the biggest issue with the system is that it's rough, janky, and annoying to use", and fixing it "will take more effort than a single pass. Let's iterate and refine the design." He asked for a small mission "starting with refactors and tool installs and ending with a set of 3-5 concepts, and viewers for me to see and interact with the outputs (a dashboard prototype and a virtual in-browser interactive app mockup (with a dropdown for the version))", and said to treat the tools as "rapid-development tools, not QA tools".
+Sumeet, 2026-11-17, after the audit of the dashboard and launcher (its inventories are in `docs/design/lab/audit/`): "the biggest issue with the system is that it's rough, janky, and annoying to use", and fixing it "will take more effort than a single pass. Let's iterate and refine the design." He asked for a small mission "starting with refactors and tool installs and ending with a set of 3-5 concepts, and viewers for me to see and interact with the outputs (a dashboard prototype and a virtual in-browser interactive app mockup (with a dropdown for the version))", and said to treat the tools as "rapid-development tools, not QA tools".
 
 What he wants from the design: the app, launcher and dashboard "feel designed and polished", "make common things easy and uncommon things accessible", and "feel like a delight to use". The Elite-inspired theme stays "only in spirit. Nothing in the theme is actually sacred." His asks for the look: rounded corners, transparency effects, better separation between elements, better chosen font sizes and scales.
 
@@ -27,15 +27,15 @@ Today none of that can be worked on quickly. There is no screenshot set, the tes
 - **Touch and motion can be tried and replayed** in the browser: swipes that follow the finger, long press into drag, fold and unfold, at full or slow speed, by hand or by script with a recording.
 - **Every page and state is one command's screenshots,** in a gallery that flips between before and after.
 - **Three to five concepts, each one usable.** A dashboard prototype and a phone mockup in the browser, each with a Version dropdown that switches between today's look and every concept, on the same made-up data, opened from the PC and from the phone at `/lab/`.
-- **Each concept has three outside critiques** from three labs, on one page that compares the concepts, ready for Sumeet to pick from or mix.
+- **Each concept has three outside critiques** from three labs, one of them outside the United States, on one page that compares the concepts, ready for Sumeet to pick from or mix.
 
 Nothing Sumeet uses changes its look or behaviour in this mission. The current screens move into a shared module unchanged; the concepts live beside them. Rebuilding the real screens to a chosen concept is the next mission.
 
 ## Success criteria
 
-- fast-loop: On this machine, with the dev servers running, a one-line change to a dashboard route shows in the open page in under 2 seconds, and a one-line change to a launcher composable shows in the lab in at most 15 seconds, each timed three times. Shown by lor-nde9's and lor-vbfd's Reports. If the launcher's time cannot be met, the lead brings the measured number to Sumeet before the concepts start.
-- any-state: Someone who built none of it opens, by URL alone, each of twenty states picked from the audit's inventory (ten dashboard, ten launcher and app, including one T3 approval, one failed sync and one inner-screen thread), and each draws the state named. Shown by an acceptance validation item the lead adds, with the twenty screenshots.
-- usable-concepts: At `/lab/`, from a desktop browser and from a phone browser over Tailscale, the dashboard prototype and the phone mockup each switch between `current` and at least three concepts with the Version dropdown, and in each concept the brief's eight interactions work by hand. Shown by the same validation item, with a recording of each interaction in one concept on each viewer, and by lor-glev's comparison page.
+- fast-loop: On this machine, with the dev servers running, a one-line change to a dashboard route shows in the open page in under 2 seconds, and a one-line change to a launcher composable shows in the lab in at most 15 seconds, each timed three times. The launcher's time is taken twice: on the empty lab (lor-vbfd's Report), as a first check, and again after home, the panels and the settings and app screens have moved in (the Reports of lor-xdoi, lor-rgx4 and lor-t8lq), which is the measurement that counts. Shown by those Reports and lor-nde9's. If either launcher measurement is over 15 seconds, the lead brings the number to Sumeet before more concepts are built on it.
+- any-state: Someone who built none of it opens, by URL alone, each of twenty states picked from the audit's inventory (ten dashboard, ten launcher and app, including one T3 approval, one failed sync and one inner-screen thread), and each draws the state named. The dashboard's links are lor-nde9's and the phone's are lor-oech's. Shown by lor-q165, with the twenty links and screenshots.
+- usable-concepts: At `/lab/`, from a desktop browser and from a phone browser over Tailscale, the dashboard prototype and the phone mockup each switch between `current` and at least three concepts with the Version dropdown, and in each concept that viewer's interactions from the brief work by hand (the dashboard's on the dashboard, the phone's on the phone). Shown by lor-q165, with a recording of each of a viewer's interactions in one concept on that viewer, and by lor-glev's comparison page.
 
 ## Scope
 
@@ -55,7 +55,7 @@ This mission replaces, for design work, the order in `docs/making-lor-useful.md`
 
 Environment: this host for the dashboard tools and, capped as decision lor-0v68 says, for `homecore`'s browser build; boat for every Android build and test; `T3_Phone_API35` and `T3_Fold_API35` on the Mac for the before-and-after checks of moved screens; the test database only. Sumeet's phone and Fold are used only as browsers opening `/lab/`.
 
-Roles: implementers are Claude Opus 5.5 and code reviews GPT-6.1 Sol, as usual. The plan's reviewers and the design critics are GPT-6 Astra, Grok 4.6 and the OpenCode model Sumeet called "Space Bunny Free", chosen by him for range of view. No model of that name was listed on 2026-11-17, so the third seat waits for him to say which model it is; Astra and Grok review the plan meanwhile.
+Roles: implementers are Claude Opus 5.5 and code reviews GPT-6.1 Sol, as usual. The plan's reviewers and the design critics are GPT-6 Astra, Grok 4.6 and Kimi K3 through OpenCode (`opencode-go/kimi-k3`), chosen by Sumeet for range of view, the third to bring a perspective from a model made outside the United States. He named an OpenCode model that was not in its list on 2026-11-17 and then said to pick one with a good name for design; Kimi K3, from Moonshot AI in China, was second on Design Arena's website board in October and November 2026.
 
 ## Authority
 

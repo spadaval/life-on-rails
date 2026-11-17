@@ -12,6 +12,8 @@ labels:
 priority: medium
 blocked_by:
 - lor-3hnk
+- lor-sghw
+- lor-nde9
 implementers: []
 ready: null
 trivial: null
@@ -30,7 +32,7 @@ A page in the browser runs Compose code from a shared Kotlin module inside a pho
 - [ ] A version is a registered composable tree in common code; `current` is the first, and adding one is a single registration. A state is a named fixture (lor-oech fills the list). Until screens move in, `current` shows a kit sheet: every colour, type step, the chamfered panel, the selection, the press scales and the motion tokens.
 - [ ] `android/web-dev.sh` runs the continuous development build as decision lor-0v68 allows: a `systemd-run --user --scope` capped at `MemoryMax=4G` and `MemorySwapMax=512M`, Gradle `-Xmx1g`, the Kotlin daemon at `-Xmx1536m -Dlor.web=1`, two workers, incremental wasm on, refusing to start beside an emulator here. After a one-line edit to a composable the page shows the change in at most 15 seconds; the measured time and peak memory are in the Report. If it cannot be brought under 15 seconds, the item says what was tried and the lead takes the number to Sumeet.
 - [ ] `android/settings.gradle.kts` lets the wasm build fetch Node.js while keeping `FAIL_ON_PROJECT_REPOS`; `android/boat-build.sh` also builds and returns the wasm distribution.
-- [ ] `node scripts/shots.mjs --lab` captures version by state by screen size into the same gallery as the dashboard's.
+- [ ] `scripts/shots.mjs`, which lor-nde9 wrote, gains `--lab`: it captures version by state by screen size into the same gallery as the dashboard's.
 
 ## Scope
 

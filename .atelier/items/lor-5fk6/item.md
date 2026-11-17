@@ -13,6 +13,7 @@ blocked_by:
 - lor-npa6
 - lor-293p
 - lor-zwfd
+- lor-oech
 implementers: []
 ready: null
 trivial: null
@@ -28,7 +29,7 @@ Sumeet can use each direction's phone in the browser: swipe to the drawer, searc
 
 - [ ] Each direction from the brief is a registered version in the lab, drawn in Compose in `homecore`'s `wasmJsMain` (so it never ships in the app), from the same fixtures as `current`.
 - [ ] The first direction is built here, with whatever shared pieces a direction needs to be quick to write (a navigation shell that follows the finger, a sheet, a fixture-backed store for taps). Each further direction is one item, added by the lead.
-- [ ] A direction's Done when is the brief's required set on the cover and inner screens and its eight interactions working by touch and by `scripts/lab/gesture.mjs`, with recordings of the drawer swipe and one drag, and `scripts/shots.mjs --lab` capturing its states on a dark, a pale and a mixed wallpaper.
+- [ ] A direction's Done when is the brief's required set on the cover and inner screens and the brief's phone interactions working by touch and by `scripts/lab/gesture.mjs`, with recordings of the drawer swipe and one drag, and `scripts/shots.mjs --lab` capturing its states on a dark, a pale and a mixed wallpaper.
 - [ ] `scripts/lab/publish.sh` puts the build under `/lab/phone/`, and on Sumeet's Fold the page fills the screen it is opened on.
 
 ## Scope

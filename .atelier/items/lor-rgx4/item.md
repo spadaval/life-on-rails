@@ -12,6 +12,7 @@ labels:
 priority: medium
 blocked_by:
 - lor-oech
+- lor-293p
 implementers: []
 ready: null
 trivial: null
@@ -28,6 +29,8 @@ The two panels Sumeet called 'pretty bad overall' (lor-hybv) can be seen and cha
 - [ ] The drawing of the agent page, the thread column, the pair card, the LoR panel, LoR's four blocks and the quick-send sheet is in `homecore`'s common code as functions of a state object and a callbacks object, with no `Context`, `LorClient`, `T3Connection` or `Prefs` in them. `Pill`, `Field`, `SectionHeader` and the state lines move to the module's kit and quick send's copies are deleted.
 - [ ] The app builds those state objects from what it reads today and behaves as before: on `T3_Phone_API35` and `T3_Fold_API35`'s inner screen against the test server with the demo set, each panel is screenshotted before and after and is pixel-identical (an evidence receipt).
 - [ ] The lab's `current` version shows both panels, the blocks and the sheet at both screen sizes in these states: T3 unpaired, connecting, disconnected and stale; nothing waiting; one approval, a question with options, a failed turn and two LoR flags together; twelve cards; a running timer; a thread open with a long transcript; the LoR panel's Tasks and People tabs; quick send with a screenshot.
+- [ ] Gesture scripts for approving a card, answering a question, and starting and stopping the timer run against `current` with `scripts/lab/run.mjs` (lor-293p), and their recordings are in the receipt.
+- [ ] After the move, a one-line edit to one of the moved composables is timed three times with `android/web-dev.sh` running, with peak memory; the times are in the Report, and a time over 15 seconds goes to the lead.
 - [ ] boat: `assembleDebug testDebugUnitTest :homecore:allTests` pass, with the test counts before and after in the Report.
 
 ## Scope
@@ -36,4 +39,4 @@ The two panels Sumeet called 'pretty bad overall' (lor-hybv) can be seen and cha
 
 ## Context
 
-- The audit's inventory of these screens is `inventory/launcher-panels-app.md` beside the audit page; the file list is under its section 1.
+- The audit's inventory of these screens is `docs/design/lab/audit/launcher-panels-app.md`; the file list is under its section 1.

@@ -28,6 +28,7 @@ The rest of the app can be seen and changed in the lab. Each screen's drawing ta
 - [ ] The drawing of Home settings (every row and its dialogs), the app's tab shell, Timer, Sensors, Settings and T3 debug is in `homecore`'s common code as functions of state and callbacks. The Dashboard tab stays in the app (it is a WebView of the dashboard).
 - [ ] The app behaves and looks as before on `T3_Phone_API35`: each screen screenshotted before and after, pixel-identical (an evidence receipt).
 - [ ] The lab's `current` version shows each screen in its states: sensors all allowed, some not allowed, a failed sync with errors; Timer idle, running, paused, unreachable; Settings saved, testing, failed; Home settings with hidden apps, several drawer tabs, an icon-pack list, a broken layout banner; T3 debug paired and not.
+- [ ] After the move, a one-line edit to one of the moved composables is timed three times with `android/web-dev.sh` running, with peak memory; the times are in the Report, and a time over 15 seconds goes to the lead.
 - [ ] boat: `assembleDebug testDebugUnitTest :homecore:allTests` pass, with the test counts before and after in the Report.
 
 ## Scope
