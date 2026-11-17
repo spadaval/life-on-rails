@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-vx69
 title: 'The Queue direction on the dashboard prototype: every required screen, state and interaction'
-status: changes_requested
+status: in_review
 mission: lor-2803
 labels:
 - dashboard
@@ -56,10 +56,10 @@ Queue is in the prototype's Version control as "Queue: one list of what wants yo
 - Amber appears only on the lead card's edge and the running timer (the bar, the chip and its strip block). Cyan marks the agent: its flags, its suggestions on the strip, and its tasks in Tasks. Everything else is three greys, plus one red for errors and LoR not answering.
 - Depth has three levels. Rows lie flat on the ground, the lead card is raised with a two-part shadow, and popovers, sheets, the toast and the field's choices float with blur. The field's choices are nearly opaque because they sit inside the blurred top bar, where a second blur does not reach the page.
 - Corners are 8 to 18px. Motion runs 150 to 220ms and only says what changed: a row opening, a popover appearing, and the signature move.
-- The signature move: the lead card wears the reticle, and clearing it slides the next item up into the card while the reticle relocks. The reticle's ring turns slowly while a timer runs on the lead. Checked at both widths: Done on the lead brings "Find a physio…" into the card (labelled "Flagged by the agent"), the card runs its `q-rise` animation, and Undo puts the one thing back.
+- The signature move: the lead card wears the reticle, and clearing it slides the next item up into the card while the reticle relocks. The reticle's ring turns slowly while a timer runs on the lead. Checked at both widths in the morning: Done on the lead brings "Organise Sam's birthday dinner" into the card (labelled "Flagged by the agent"), the card runs its `q-rise` animation, and Undo puts the one thing back.
 - Every flag row has a visible ⋯ that opens it in place (its due date, notes and the rest), so nothing hides behind a long press.
 
-**Ranking.** First the one thing, then LoR's flags (oldest first), then his tasks due today or earlier, by due time. T3 cards are not on the dashboard. The snapshot does not record the agent's one thing, so `lib.ts` names it by title ("Draft the offline maps spec", which the day's brief leads with). It is absent in the quiet scene, since "nothing wants you" includes it. "Not today" sets it aside, and Undo brings it back. Not built: the brief's "steps aside once its time has passed". The snapshot gives the one thing no deadline, so the card keeps it until he clears it or sets it aside.
+**Ranking.** First the one thing, then LoR's flags (oldest first), then his tasks due today or earlier, by due time. T3 cards are not on the dashboard. The snapshot does not record the agent's one thing, so `lib.ts` names it by title ("Draft the offline maps spec", which the day's brief leads with). It is absent in the quiet scene, since "nothing wants you" includes it. "Not today" sets it aside, and Undo brings it back. The one thing is for 14:00, the design review the brief names. Once the clock passes that, it steps aside: it leaves the lead without being ticked or deleted, and stays on Tasks and in the timer bar if a timer runs on it. The morning shot (09:00) shows it leading. The afternoon shot (15:00) shows it stepped aside, with the oldest flag in the card.
 
 ### Where each required state appears
 
@@ -97,7 +97,7 @@ Undo is offered only for changes LoR can reverse: tick and untick, Done, Seen, d
 ### Its risk: "A single list hides structure"
 
 It did show up. The afternoon screenshot at 412 (`/lab/shots/prototype/`, "queue: Today in the afternoon…", `queue-today-in-the-afternoon-a-timer-running-two-flags@412.png`) shows it.
-- The default afternoon is already ten things: the lead plus nine rows (two flags and seven tasks due today or before). At phone width that list fills about 1,400px, and "This week" (the goals) sits at the bottom of a page about 2,000px tall.
+- The default afternoon is already nine things: the lead (a flag, once the one thing has stepped aside at 14:00) plus eight rows (the other flag and seven tasks due today or before). At phone width that list fills about 1,400px, and "This week" (the goals) sits at the bottom of a page about 2,000px tall.
 - The day's shape is a strip with no words on it, and you tap a block to learn what it was.
 - Every look at Today is a look at what is owed. What has gone well appears only as a collapsed "Done today 4" and the one-line week at the foot.
 - In the crowded state the fold ("4 more waiting") keeps the list readable, but it also hides those four.
@@ -108,8 +108,13 @@ Two things soften it. The lead card always leads, so the first screen is one thi
 
 - Checks: the prototype's typecheck passes (`tsc -p prototype/dashboard/tsconfig.json`), `vitest run` passes 206 of 206, and `pnpm proto:build` builds. Root `pnpm typecheck` fails with 65 errors, all in `src/routes` and `src/router.tsx` from the missing generated `routeTree.gen`. That is lor-iurl, and none of the errors is in the prototype.
 
-- One full-page capture at 412 once came out with the page repeated down its length. A re-take was clean, and no other shot did it. It looks like a capture glitch rather than the page. If it recurs, look at `scripts/shots.mjs` running six pages at once.
+- `scripts/shots.mjs` sometimes draws a page with its first 863px repeated down the image, even in a viewport capture. It does this only when it runs its six pages at once, 2 to 5 of every 36 images. A shot taken on its own was clean every time. Removing the top bar's blur or its sticky position did not change the rate, so it looks like Chrome reusing raster tiles under this session's 4 GB cap, not the page. I re-took the affected Queue shots one at a time until all 42 were clean, checked by a script that looks for the top bar repeating. This is worth a tooling item: lower `PARALLEL` in `scripts/shots.mjs`, or have it re-take a capture that repeats.
 - The catalogue's widths are 1500, 1100 and 412 (set by lor-5uxk). The interactions were scripted at 1440.
 - In this worktree, `pnpm <script>` first runs an install that fails because `node_modules` is a symlink to the main checkout. It warns and then runs the script anyway. This is worth a tooling item: set `verifyDepsBeforeRun: false`, or let worktrees skip it.
 - Concept code is rough where it does not show. The one thing is chosen by title, and the crowded flags are invented in the view.
 
+### Responses
+
+- 1-hiyq.1: fixed in 66209e1
+- 1-hiyq.2: fixed in 66209e1
+- 1-hiyq.3: fixed in 66209e1
