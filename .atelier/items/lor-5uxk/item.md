@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-5uxk
 title: 'The dashboard prototype: Today, Tasks, Goals and People per direction, switched by a dropdown'
-status: ready
+status: building
 mission: lor-2803
 labels:
 - design-lab
@@ -12,7 +12,8 @@ priority: medium
 blocked_by:
 - lor-npa6
 - lor-zwfd
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Ad505dd17-c64d-476e-8d30-f41010a20b4c%3Adelegate-task%3A35c79320-8bf5-4eed-ba9f-0119df7c21f5
 ready:
   by: lead, on the plan agreed in round 7
   at: 2026-11-17T06:57:12.926382409Z
