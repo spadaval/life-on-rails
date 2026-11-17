@@ -181,6 +181,8 @@ private fun setSpeed(speed: Double): Unit = js("window.labSetSpeed(speed)")
 
 private fun detailOf(e: Event): String = js("String(e.detail)")
 
+private fun typedInto(e: Event): String = js("String(e.composedPath()[0]?.tagName ?? '')")
+
 /** A back with no gesture to it, as a phone's button sends it. */
 private fun backNow() {
     backInput.backStarted(NavigationEvent())
@@ -267,7 +269,8 @@ private class Controls(val go: (LabLink) -> Unit) {
      */
     private fun key(e: KeyboardEvent) {
         if (e.ctrlKey || e.metaKey || e.altKey) return
-        val tag = (e.target as? HTMLElement)?.tagName
+        // The element typed into, inside Compose's shadow root too (e.target is retargeted to its host).
+        val tag = typedInto(e)
         if (tag == "INPUT" || tag == "TEXTAREA" || tag == "SELECT") return
         when (e.key) {
             "h", "H" -> homes.intValue++

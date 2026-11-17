@@ -24,6 +24,8 @@ const VIDEO_FPS = 50;
 const SETTLE_QUIET_MS = 400; // no new frame for this long: the screen has settled
 const SETTLE_MAX_MS = 3000;
 const STRIP_SCALE = 0.3;
+// Room for the largest screen on its side, with the toolbar, so no touch lands off the viewport.
+const VIEWPORT = { width: 1240, height: 1290 };
 const FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
 
 function fail(msg) {
@@ -85,8 +87,7 @@ console.log(
 );
 
 async function play() {
-  // Room for the largest screen on its side, with the toolbar, so no touch lands off the viewport.
-  const context = await browser.newContext({ viewport: { width: 1240, height: 1290 }, deviceScaleFactor: 1, hasTouch: true });
+  const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1, hasTouch: true });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -143,7 +144,9 @@ async function play() {
   const after = await phoneRect();
   const x0 = Math.floor(Math.min(before.x, after.x)), y0 = Math.floor(Math.min(before.y, after.y));
   const x1 = Math.ceil(Math.max(before.x + before.width, after.x + after.width)), y1 = Math.ceil(Math.max(before.y + before.height, after.y + after.height));
-  const crop = `crop=${2 * Math.floor((x1 - x0) / 2)}:${2 * Math.floor((y1 - y0) / 2)}:${x0}:${y0}`;
+  // A frame Chrome sends can come smaller than the viewport now and then (a run with a fold and
+  // two turns did), which ffmpeg's crop fails on, so every frame is brought to the viewport's size first.
+  const crop = `scale=${VIEWPORT.width}:${VIEWPORT.height},crop=${2 * Math.floor((x1 - x0) / 2)}:${2 * Math.floor((y1 - y0) / 2)}:${x0}:${y0}`;
   const videoTimes = [];
   for (let t = begin; t <= end; t += 1000 / VIDEO_FPS) videoTimes.push(t);
   const stripTimes = [];
