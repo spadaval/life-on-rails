@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-5fk6
 title: 'The launcher and app in the lab per direction: home, drawer, search, panels, a menu, settings and the timer'
-status: ready
+status: building
 mission: lor-2803
 labels:
 - design-lab
@@ -17,7 +17,8 @@ blocked_by:
 - lor-xdoi
 - lor-rgx4
 - lor-t8lq
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A1d7328d9-468a-43e2-acf6-a7c7c564b7bf%3Adelegate-task%3A7f767896-358a-46e5-a4e7-20d71de5c647
 ready:
   by: lead, on the plan agreed in round 7
   at: 2026-11-17T06:57:12.926382409Z
