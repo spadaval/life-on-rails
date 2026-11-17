@@ -99,7 +99,7 @@ I scripted them in Chrome with playwright-core at 1440 (mouse and keys) and at 4
 
 Undo is offered only for changes LoR can reverse: tick and untick, Done, Seen, due date, counts toward, notes, rename, waiting on, Later, delete, add, relabel, accepting a guess, split, a habit check-in, the weekly aim, and a person's cadence and priority. It is never offered for starting, stopping or switching a timer, or for a message to the agent. The toast drops its Undo when any other change lands.
 
-**Back and dismissal.** Opening a pane from nothing adds a history entry, so Back closes it. Opening another row while one is open replaces that entry, so Back never walks through every row you looked at. Close is Back when the pane was opened in this tab. On a cold link, Close replaces the entry, so Back leaves the prototype as it arrived. Escape walks a layer stack and closes only the one in front: the field's choices, then a picker, then a stacked pane, then the detail.
+**Back and dismissal.** Opening a pane from nothing adds a history entry, so Back closes it. Opening another row while one is open replaces that entry, so Back never walks through every row you looked at. Choosing another item while a stacked pane is open drops the stacked pane's entry as well, so Close and Back go to the list rather than the old item. Close goes Back over every entry opening panes added in this tab. On a cold link, Close replaces the entry, so Back leaves the prototype as it arrived. Escape walks a layer stack and closes only the one in front: the field's choices, then a picker, then a stacked pane, then the detail.
 
 ### Shots and the lab
 
@@ -122,10 +122,16 @@ The first half showed up. The second did not reach the screen, but only because 
 - The list needed 52vh of padding at its foot, so its last rows can rise above the sheet.
 - Opening a row scrolls it clear of the sheet's top edge.
 
-Back and Close followed the history rules above, and the scripted checks pass. But every rule there exists because the obvious version was wrong. Pushing an entry on every open made Back walk through rows. Closing with Back after a cold link left the prototype. An Escape handler per layer, firing in React's child-first order, closed the goal before the task stacked over it. So the risk is real. It is answered in this build, but it would need the same care everywhere the shape is reused, the phone included.
+Back and Close followed the history rules above, and the scripted checks pass. But every rule there exists because the obvious version was wrong. Pushing an entry on every open made Back walk through rows. Closing with Back after a cold link left the prototype. An Escape handler per layer, firing in React's child-first order, closed the goal before the task stacked over it. Review round 1 found one more: switching goals while a task was stacked left the old goal one Back away, and Close reopened it. The rule now counts the pushed entries. So the risk is real. It is answered in this build, but it would need the same care everywhere the shape is reused, the phone included.
 
 ### Notes
 
 - **Checks.** `tsc -p prototype/dashboard/tsconfig.json` passes, `vitest run` passes 206 of 206, and `vite build` builds.
 - **Tooling outside the repository.** The interaction, quick-look, repeat-check and lab-check scripts are in `~/.cache/lor-3wzs/` (`interact.mjs`, `look.mjs`, `repeat.mjs`, `labcheck.mjs`). The dev server ran on :3863 as asked.
+- **Links name things by id** (tasks, goals, people; notes by slug), so a renamed task keeps its pane and two tasks with one title open separately. A title still works in a hand-written link, which is what the shots use, since ids change each time the snapshot is remade.
 - **Rough where it does not show.** The crowded flags are invented in the view. People's "due a first hello" stands for "never in touch, with a cadence set".
+
+### Responses
+
+- 1-b4nm.1: fixed in 8a4a052
+- 1-b4nm.2: fixed in 8a4a052
