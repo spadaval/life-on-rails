@@ -3,8 +3,8 @@
 // (lor-zwfd). scripts/lab/publish.sh is what fills the directory.
 //
 // A lab page shares the dashboard's origin and its identity check, so every response
-// carries a policy that keeps it off LoR's data: it may connect to and frame only
-// /lab/ on this origin, submit no form, and open no window. Nothing under /lab/ ever
+// carries a policy that keeps it off LoR's data: it may connect only to /lab/ on this
+// origin, submit no form, open no window, frame nothing and be framed by nothing. Nothing under /lab/ ever
 // reaches the app: a miss here is this handler's own 404, never next().
 import { createReadStream, realpathSync, statSync } from "node:fs";
 import path from "node:path";
@@ -54,13 +54,18 @@ export const isHashed = (name) => {
 export const labPolicy = (origin) =>
   [
     `connect-src ${origin}/lab/`,
-    `frame-src ${origin}/lab/`,
+    // A lab page is never framed and frames nothing: framed by a dashboard page, it could
+    // reach that page through window.parent.
+    "frame-src 'none'",
+    "frame-ancestors 'none'",
     `worker-src ${origin}/lab/ blob:`,
     "object-src 'none'",
     "form-action 'none'",
     "base-uri 'none'",
     // No allow-popups: a window the lab opened on /tasks would carry the app's policy, not
-    // this one, and the lab could read it and call through it. Scripts, storage and the
+    // this one, and the lab could read it and call through it. The other way round, a lab
+    // page opened by a dashboard script's window.open would hold it as window.opener; no
+    // dashboard code does that, and a link with target=_blank gives no opener. Scripts, storage and the
     // lab's own forms' submit handlers still work; form-action keeps a form from posting.
     "sandbox allow-scripts allow-same-origin allow-forms allow-modals allow-downloads",
   ].join("; ");

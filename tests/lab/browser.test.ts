@@ -53,6 +53,22 @@ window.run = async () => {
 };
 </script>`;
 
+// A lab page that, given a dashboard window, reads it and posts through it.
+const PROBE = `<!doctype html><meta charset="utf-8"><link rel="icon" href="data:,"><script>
+window.probe = async (w) => {
+  if (!w) return "no window";
+  try { return { read: w.document.body.textContent, write: await w.fetch("/_serverFn/write", { method: "POST", body: "{}" }).then((r) => r.status) }; }
+  catch (e) { return "refused"; }
+};
+window.result = window.parent !== window ? probe(window.parent) : null;
+</script>`;
+
+// Dashboard pages that frame the lab, and link to it the way a page would.
+const DASHBOARD: Record<string, string> = {
+  "/dash-frame": `<!doctype html><link rel="icon" href="data:,"><p id="data">dashboard data</p><iframe src="/lab/probe.html"></iframe>`,
+  "/dash-link": `<!doctype html><link rel="icon" href="data:,"><p id="data">dashboard data</p><a id="go" href="/lab/probe.html" target="_blank">lab</a>`,
+};
+
 let server: ReturnType<typeof serve>;
 let base = "";
 const hits: string[] = [];
@@ -64,6 +80,7 @@ beforeAll(async () => {
   writeFileSync(path.join(top, "secret.txt"), "outside the lab");
   writeFileSync(path.join(dir, "attack.html"), ATTACK);
   writeFileSync(path.join(dir, "fixture.json"), '{"ok":true}');
+  writeFileSync(path.join(dir, "probe.html"), PROBE);
   server = serve({
     hostname: "127.0.0.1",
     port: 0,
@@ -71,8 +88,10 @@ beforeAll(async () => {
     gracefulShutdown: false,
     middleware: [labStatic(dir)],
     fetch: (request) => {
-      hits.push(`${request.method} ${new URL(request.url).pathname}`);
-      return new Response("<p>from the app</p>", { headers: { "content-type": "text/html" } });
+      const p = new URL(request.url).pathname;
+      hits.push(`${request.method} ${p}`);
+      const html = DASHBOARD[p] ?? "<p>from the app</p>";
+      return new Response(html, { headers: { "content-type": "text/html" } });
     },
   });
   await server.ready();
@@ -95,9 +114,34 @@ describe("a page under /lab/", () => {
       expect(hits).toEqual([]);
       expect(violations.join("\n")).toMatch(/connect-src .*\/api\/v1\/status/);
       expect(violations.join("\n")).toMatch(/connect-src .*\/_serverFn\/getStatus/);
-      expect(violations.join("\n")).toMatch(/frame-src .*\/tasks/);
+      expect(violations.join("\n")).toMatch(/frame-src/);
       expect(violations.join("\n")).toMatch(/form-action/);
       expect(violations.join("\n")).toMatch(/object-src/);
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+});
+
+describe("a lab page next to a dashboard page", () => {
+  it("is not shown in the dashboard's frame, and a link gives it no opener", async () => {
+    const browser = await chromium.launch({ channel: "chrome", headless: true });
+    try {
+      const context = await browser.newContext();
+      const dash = await context.newPage();
+      hits.length = 0;
+      await dash.goto(`${base}/dash-frame`);
+      await dash.waitForTimeout(500);
+      const frame = dash.frames().find((f) => f.url().includes("/lab/probe.html"));
+      const framed = frame ? await frame.evaluate("window.result").catch(() => "blocked") : "blocked";
+      expect(framed === null || framed === "blocked" || framed === "no window").toBe(true);
+
+      await dash.goto(`${base}/dash-link`);
+      const [lab] = await Promise.all([context.waitForEvent("page"), dash.click("#go")]);
+      await lab.waitForLoadState();
+      expect(await lab.evaluate("window.opener === null")).toBe(true);
+      expect(await lab.evaluate("probe(window.opener)")).toBe("no window");
+      expect(hits.filter((h) => h.startsWith("POST"))).toEqual([]);
     } finally {
       await browser.close();
     }

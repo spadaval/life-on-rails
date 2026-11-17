@@ -111,7 +111,8 @@ describe("labStatic", () => {
     for (const p of ["/lab/", "/lab/missing", "/lab", "/lab/launcher/homecore.wasm"]) {
       const csp = (await get(lab, p, { host: "buildbot:3847" })).headers.get("content-security-policy") ?? "";
       expect(csp, p).toContain("connect-src http://buildbot:3847/lab/");
-      expect(csp, p).toContain("frame-src http://buildbot:3847/lab/");
+      expect(csp, p).toContain("frame-src 'none'");
+      expect(csp, p).toContain("frame-ancestors 'none'");
       expect(csp, p).toContain("form-action 'none'");
       expect(csp, p).toContain("object-src 'none'");
       expect(csp, p).toMatch(/sandbox allow-scripts allow-same-origin(?!.*allow-popups)/);
