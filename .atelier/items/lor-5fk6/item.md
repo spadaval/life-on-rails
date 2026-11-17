@@ -144,3 +144,5 @@ The pieces take their look from a `KitLook` the direction provides.
 1-j6j3.2: fixed in 2a7385b7: the store keeps one clock (`ConceptStore.clock()`), which Start, Switch and every readout use; `timer-clock.mjs` starts a timer six seconds in and checks home's line and the sheet agree, from zero.
 1-j6j3.3: fixed in 2a7385b7: Settings' sections are keyed and opened by name.
 1-j6j3.4: fixed in 2a7385b7: the Timer hit opens the timer sheet.
+2-5x97.3: fixed in beb1f778: every opening of Settings scrolls to where it was opened for, the sync (and the top) by default.
+2-5x97.4: fixed in beb1f778: a flagged task opens as its flag from search, and the store's tick completes a flagged task as flagDone does, with one Undo; `search-flag.mjs` checks it leaves the queue and Undo restores it.
