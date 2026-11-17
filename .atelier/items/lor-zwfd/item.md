@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-zwfd
 title: The lab is served at /lab on LoR's owner listener, so the viewers open on the PC and the phone
-status: building
+status: in_review
 mission: lor-2803
 labels:
 - design-lab
