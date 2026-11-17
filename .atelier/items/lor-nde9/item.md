@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-nde9
 title: The dashboard reloads a change in under two seconds on demo data, and one command shoots every screen
-status: ready
+status: building
 mission: lor-2803
 labels:
 - design-lab
@@ -11,7 +11,8 @@ labels:
 priority: medium
 blocked_by:
 - lor-zj7x
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A336528d8-568a-46be-80e7-fa243e638044%3Adelegate-task%3A7b6735d6-ec60-49fb-9cbd-347e71e2279a
 ready:
   by: lead, on the plan agreed in round 7
   at: 2026-11-17T06:57:12.926382409Z
