@@ -8,7 +8,7 @@ import { doneOn, weekGoals } from "../../../data/derive.js";
 import { useNow, useStore } from "../../../data/store.js";
 import type { Route } from "../../../shell/nav.js";
 import { blockDetail, eventDetail, taskDetail, timerDetail } from "../details.js";
-import { closeHere, dueNow, flags, fmtH, hm, longDay, minutes, modeOf, openHere, phref, useFit, useLocal } from "../lib.js";
+import { closeHere, dueNow, findNode, flags, fmtH, hm, longDay, minutes, modeOf, openHere, phref, useFit, useLocal } from "../lib.js";
 import { openField } from "../omnibox.js";
 import { type Detail, ListHead, Panes } from "../panes.js";
 import { BlockRow, EventRow, FlagRow, TaskRow, wantsLabel } from "../rows.js";
@@ -44,8 +44,9 @@ export function Today({ route }: { route: Route }) {
   // What is open, found in the store (not in the visible list), so it stays open when a change
   // moves its row: a task given a later due date leaves Due but its pane stays.
   let detail: Detail | null = null;
-  if (p.id) {
-    const n = s.nodes.find((x) => x.title === p.id);
+  const openNode = findNode(s.nodes, p.id);
+  if (openNode) {
+    const n = openNode;
     if (n) detail = taskDetail(n, close, { flag: fl.find((f) => f.id === n.id), stale });
   } else if (p.block) {
     const list = s.blocks.some((b) => hm(b.t_start) === p.block && wantsLabel(b)) && !allTime ? toLabel : s.blocks;
@@ -96,7 +97,7 @@ export function Today({ route }: { route: Route }) {
         <Group label="Needs you" count={fl.length} aside={modeOf(p) === "crowded" ? "the agent flagged these" : undefined}>
           <ul className="p-rows">
             {fl.map((f) => (
-              <FlagRow key={f.id} flag={f} sel={p.id === f.title} onOpen={() => open({ id: f.title })} stale={stale} />
+              <FlagRow key={f.id} flag={f} sel={openNode?.id === f.id} onOpen={() => open({ id: f.id })} stale={stale} />
             ))}
           </ul>
         </Group>
@@ -108,7 +109,7 @@ export function Today({ route }: { route: Route }) {
         <Group label="Due" count={due.length}>
           <ul className="p-rows">
             {due.map((n) => (
-              <TaskRow key={n.id} node={n} sel={p.id === n.title} onOpen={() => open({ id: n.title })} stale={stale} />
+              <TaskRow key={n.id} node={n} sel={openNode?.id === n.id} onOpen={() => open({ id: n.id })} stale={stale} />
             ))}
           </ul>
         </Group>
@@ -159,7 +160,7 @@ export function Today({ route }: { route: Route }) {
             <ul className="p-rows">
               {doneToday.map((t) => {
                 const n = s.nodes.find((x) => x.id === t.id)!;
-                return <TaskRow key={t.id} node={n} sel={p.id === n.title} onOpen={() => open({ id: n.title })} stale={stale} showDone />;
+                return <TaskRow key={t.id} node={n} sel={openNode?.id === n.id} onOpen={() => open({ id: n.id })} stale={stale} showDone />;
               })}
             </ul>
           ) : null}
@@ -244,7 +245,7 @@ function Overview({ inList, morning, toLabel, onLabel }: { inList: boolean; morn
           <ul>
             {goals.map((g) => (
               <li key={g.id}>
-                <a href={phref("/goals", { id: g.title })} className="p-week__row">
+                <a href={phref("/goals", { id: g.id })} className="p-week__row">
                   <span className="p-week__name">{g.title}</span>
                   {g.hours > 0 ? (
                     <>

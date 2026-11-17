@@ -28,53 +28,89 @@ const hashSub = (l: () => void) => {
   return () => removeEventListener("hashchange", l);
 };
 
-/** Write a hash and tell the app. `mark` records that this entry was opened here, so Close can go Back. */
-function write(next: string, how: "push" | "replace", mark: boolean) {
-  if (next === location.hash) return;
-  const state = mark ? { panes: 1 } : null;
+/**
+ * What this tab's history knows about the panes: `panes` is how many entries opening panes has
+ * pushed since the list (0 when a link opened them), `sub` that this entry was pushed by opening a
+ * stacked pane over another.
+ */
+interface PaneState {
+  panes: number;
+  sub: boolean;
+}
+const paneState = (): PaneState => ({ panes: Number(history.state?.panes ?? 0), sub: Boolean(history.state?.sub) });
+
+/** Write a hash and tell the app. */
+function write(next: string, how: "push" | "replace", state: PaneState | null) {
+  if (next === location.hash && how === "replace") {
+    history.replaceState(state, "", next);
+    return;
+  }
   if (how === "push") history.pushState(state, "", next);
-  else history.replaceState(state ?? history.state, "", next);
+  else history.replaceState(state, "", next);
   dispatchEvent(new HashChangeEvent("hashchange"));
+}
+
+/** Go back `steps` entries, then run `fn` on the entry that lands. */
+function backThen(steps: number, fn: () => void) {
+  if (steps <= 0) return fn();
+  addEventListener("popstate", () => fn(), { once: true });
+  history.go(-steps);
+}
+
+/** A task, goal or project from a link: by id, or by title for hand-written links. */
+export function findNode<T extends { id: string; title: string }>(nodes: T[], key: string | undefined, ok: (n: T) => boolean = () => true): T | undefined {
+  if (!key) return undefined;
+  return nodes.find((n) => n.id === key && ok(n)) ?? nodes.find((n) => n.title === key && ok(n));
 }
 
 /** Go to a page (a new history entry), keeping Panes' parameters. */
 export function go(path: string, params: Params = {}) {
-  write(phref(path, params), "push", false);
+  write(phref(path, params), "push", null);
 }
 
 /**
- * Open something in this page's detail pane. From nothing open it adds a history entry, so Back
- * closes it; with something already open it replaces the entry, so Back never walks through
- * every row he looked at.
+ * Open something in this page's detail pane (`sub`: a pane stacked over the open one). From
+ * nothing open it adds a history entry, so Back closes it. With something already open it replaces
+ * the entry, so Back never walks through every row he looked at; and when that drops a stacked
+ * pane pushed over the old item, its entry goes too, so Close and Back return to the list.
  */
-export function openHere(patch: Params, openKeys: string[]) {
-  const cur = parse(location.hash);
-  const wasOpen = openKeys.some((k) => cur.params[k] !== undefined);
-  const params: Params = { ...cur.params };
-  for (const k of openKeys) delete params[k];
-  Object.assign(params, patch);
-  write(href(cur.path, params), wasOpen ? "replace" : "push", true);
+export function openHere(patch: Params, openKeys: string[], opts: { sub?: boolean } = {}) {
+  const st = paneState();
+  const target = () => {
+    const c = parse(location.hash);
+    const params: Params = { ...c.params };
+    for (const k of openKeys) delete params[k];
+    Object.assign(params, patch);
+    return href(c.path, params);
+  };
+  const wasOpen = openKeys.some((k) => parse(location.hash).params[k] !== undefined);
+  if (!wasOpen) return write(target(), "push", { panes: st.panes + 1, sub: Boolean(opts.sub) });
+  if (!opts.sub && st.sub) return backThen(1, () => write(target(), "replace", { ...paneState(), sub: false }));
+  write(target(), "replace", st);
 }
 
 /**
- * Close the detail pane. When it was opened in this tab, that is Back, so Back afterwards does
- * not reopen it; opened by a link, it replaces the entry, so Back leaves the prototype as it came.
+ * Close the detail pane (`sub`: only the stacked pane in front). What was opened in this tab
+ * closes by going Back over its entries, so Back afterwards does not reopen it; what a link
+ * opened is taken off its entry, so Back leaves the prototype as it came.
  */
-export function closeHere(openKeys: string[]) {
-  const cur = parse(location.hash);
-  if (history.state?.panes === 1) {
-    history.back();
-    return;
-  }
-  const params: Params = { ...cur.params };
-  for (const k of [...openKeys, "sheet"]) delete params[k];
-  write(href(cur.path, params), "replace", false);
+export function closeHere(openKeys: string[], opts: { sub?: boolean } = {}) {
+  const st = paneState();
+  const strip = () => {
+    const c = parse(location.hash);
+    if (![...openKeys, "sheet"].some((k) => c.params[k] !== undefined)) return;
+    const params: Params = { ...c.params };
+    for (const k of [...openKeys, ...(opts.sub ? [] : ["sheet"])]) delete params[k];
+    write(href(c.path, params), "replace", paneState());
+  };
+  if (opts.sub) return st.sub ? history.back() : strip();
+  backThen(st.panes, strip);
 }
 
 /** Change parameters in place (a filter, the sheet's height), without a new history entry. */
 export function setHere(patch: Params) {
   const cur = parse(location.hash);
-  write(href(cur.path, { ...cur.params, ...patch }), "replace", history.state?.panes === 1);
+  write(href(cur.path, { ...cur.params, ...patch }), "replace", paneState());
 }
 
 // ---- the layer stack: Escape closes only the one in front ----

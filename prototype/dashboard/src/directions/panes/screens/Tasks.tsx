@@ -6,7 +6,7 @@ import { useStore } from "../../../data/store.js";
 import type { Node } from "../../../data/types.js";
 import type { Route } from "../../../shell/nav.js";
 import { taskDetail } from "../details.js";
-import { closeHere, flags, modeOf, openHere, phref, useLocal } from "../lib.js";
+import { closeHere, findNode, flags, modeOf, openHere, phref, useLocal } from "../lib.js";
 import { openField } from "../omnibox.js";
 import { ListHead, Panes } from "../panes.js";
 import { TaskRow } from "../rows.js";
@@ -36,7 +36,7 @@ export function Tasks({ route }: { route: Route }) {
   const l = useLocal();
   const p = route.params;
   const stale = modeOf(p) === "stale";
-  const asked = p.id ? s.nodes.find((n) => n.title === p.id && n.type === "task") : undefined;
+  const asked = findNode(s.nodes, p.id, (n) => n.type === "task");
   const filter: Filter = (FILTERS.some(([f]) => f === p.filter) ? p.filter : asked && !inFilter(asked, "open") ? FILTERS.find(([f]) => inFilter(asked, f))?.[0] : "open") as Filter;
   const tasks = s.nodes.filter((n) => inFilter(n, filter)).sort((a, b) => (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999") || a.title.localeCompare(b.title));
   const day = s.day.date;
@@ -83,7 +83,7 @@ export function Tasks({ route }: { route: Route }) {
         <Group key={label} label={label} count={g.length}>
           <ul className="p-rows">
             {g.map((n) => (
-              <TaskRow key={n.id} node={n} sel={asked?.id === n.id} onOpen={() => openHere({ id: n.title }, OPEN)} stale={stale} showDone={filter === "done"} />
+              <TaskRow key={n.id} node={n} sel={asked?.id === n.id} onOpen={() => openHere({ id: n.id }, OPEN)} stale={stale} showDone={filter === "done"} />
             ))}
           </ul>
         </Group>

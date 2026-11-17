@@ -7,7 +7,7 @@ import { habitDone, updateIntent, useStore } from "../../../data/store.js";
 import type { Node } from "../../../data/types.js";
 import type { Route } from "../../../shell/nav.js";
 import { taskDetail } from "../details.js";
-import { act, closeHere, fmtH, modeOf, openHere, STALE } from "../lib.js";
+import { act, closeHere, findNode, fmtH, modeOf, openHere, STALE } from "../lib.js";
 import { type Detail, ListHead, More, Panes } from "../panes.js";
 import { TaskRow } from "../rows.js";
 import { Button, cx, Group, Icon } from "../ui.js";
@@ -29,9 +29,9 @@ export function Goals({ route }: { route: Route }) {
   const p = route.params;
   const stale = modeOf(p) === "stale";
   const goals = s.nodes.filter((n) => n.type === "goal" && n.status === "active").sort((a, b) => b.weight - a.weight || a.title.localeCompare(b.title));
-  const asked = p.id ? s.nodes.find((n) => n.title === p.id) : undefined;
+  const asked = findNode(s.nodes, p.id);
   const goal = asked ? (asked.type === "goal" ? asked : topGoal(s.nodes, asked)) : undefined;
-  const task = p.task ? s.nodes.find((n) => n.title === p.task && n.type === "task") : undefined;
+  const task = findNode(s.nodes, p.task, (n) => n.type === "task");
   const nodata = goals.filter((g) => !(g.week_hours ?? 0));
 
   const detail: Detail | null = goal
@@ -40,16 +40,16 @@ export function Goals({ route }: { route: Route }) {
         kicker: "Goal · this week",
         title: goal.title,
         close: () => closeHere(OPEN),
-        body: <GoalBody g={goal} stale={stale} openTask={(t) => openHere({ id: goal.title, task: t.title }, ["task"])} selTask={task?.id ?? null} />,
+        body: <GoalBody g={goal} stale={stale} openTask={(t) => openHere({ task: t.id }, ["task"], { sub: true })} selTask={task?.id ?? null} />,
       }
     : null;
-  const sub = goal && task ? taskDetail(task, () => closeHere(["task"]), { stale, backLabel: goal.title }) : null;
+  const sub = goal && task ? taskDetail(task, () => closeHere(["task"], { sub: true }), { stale, backLabel: goal.title }) : null;
 
   const head = <ListHead title="Goals" sub={`This week: ${goals.length} goals, ${nodata.length} with no time recorded yet`} />;
   const list = (
     <ul className="p-rows p-rows--goals">
       {goals.map((g) => (
-        <GoalRow key={g.id} g={g} sel={goal?.id === g.id} onOpen={() => openHere({ id: g.title }, OPEN)} />
+        <GoalRow key={g.id} g={g} sel={goal?.id === g.id} onOpen={() => openHere({ id: g.id }, OPEN)} />
       ))}
     </ul>
   );

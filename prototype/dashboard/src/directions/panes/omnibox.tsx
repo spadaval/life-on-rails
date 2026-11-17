@@ -22,10 +22,10 @@ export function openField(mode: "find" | "add") {
 }
 
 function open(hit: Hit) {
-  if (hit.kind === "task") go("/tasks", { id: hit.title });
-  else if (hit.kind === "person") go("/people", { id: hit.title });
+  if (hit.kind === "task") go("/tasks", { id: hit.id });
+  else if (hit.kind === "person") go("/people", { id: hit.id });
   else if (hit.kind === "page") go("/notes", { id: hit.id });
-  else go("/goals", { id: hit.title });
+  else go("/goals", { id: hit.id });
 }
 
 export function Omnibox({ initial, initialMode, stale }: { initial?: string; initialMode?: "add"; stale?: boolean }) {
@@ -131,9 +131,10 @@ export function Omnibox({ initial, initialMode, stale }: { initial?: string; ini
     }
     const p = o.parsed;
     if (!p.title) return;
-    act(`Added “${p.title}”`, () => addIntent({ title: p.title, due: p.due, parentId: p.parentId, assignee: p.assignee, waitingOnEntityId: p.waitingOnId, status: p.waitingOnId ? "waiting" : "active" }), {
+    let id = "";
+    act(`Added “${p.title}”`, () => (id = addIntent({ title: p.title, due: p.due, parentId: p.parentId, assignee: p.assignee, waitingOnEntityId: p.waitingOnId, status: p.waitingOnId ? "waiting" : "active" })), {
       undoable: true,
-      action: { label: "Open", run: () => go("/tasks", { id: p.title }) },
+      action: { label: "Open", run: () => go("/tasks", { id }) },
     });
     close();
   };

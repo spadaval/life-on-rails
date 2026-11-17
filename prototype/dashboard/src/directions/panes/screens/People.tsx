@@ -7,7 +7,7 @@ import { askAgent, setPerson, useNow, useStore } from "../../../data/store.js";
 import type { Person } from "../../../data/types.js";
 import type { Route } from "../../../shell/nav.js";
 import { taskDetail } from "../details.js";
-import { act, ago, closeHere, firstName, hm, initials, modeOf, openHere, phref, STALE } from "../lib.js";
+import { act, ago, closeHere, findNode, firstName, hm, initials, modeOf, openHere, phref, STALE } from "../lib.js";
 import { type Detail, ListHead, More, Panes } from "../panes.js";
 import { Button, cx, Group, Icon, Prose } from "../ui.js";
 
@@ -36,10 +36,10 @@ export function People({ route }: { route: Route }) {
   const p = route.params;
   const stale = modeOf(p) === "stale";
   const [q, setQ] = useState("");
-  const target = p.id ? s.people.find((x) => x.name === p.id) : undefined;
+  const target = p.id ? (s.people.find((x) => x.id === p.id) ?? s.people.find((x) => x.name === p.id)) : undefined;
   const filter = p.filter ?? (target && !peopleIn(s, "important").some((x) => x.id === target.id) ? "all" : "important");
   const people = peopleIn(s, filter, q);
-  const task = target && p.task ? s.nodes.find((n) => n.title === p.task && n.type === "task") : undefined;
+  const task = target ? findNode(s.nodes, p.task, (n) => n.type === "task") : undefined;
 
   const detail: Detail | null = target
     ? {
@@ -52,10 +52,10 @@ export function People({ route }: { route: Route }) {
             <Icon name="spark" /> Ask the agent before a call
           </Button>
         ),
-        body: <PersonBody p={target} stale={stale} openTask={(title) => openHere({ id: target.name, task: title }, ["task"])} />,
+        body: <PersonBody p={target} stale={stale} openTask={(id) => openHere({ task: id }, ["task"], { sub: true })} />,
       }
     : null;
-  const sub = target && task ? taskDetail(task, () => closeHere(["task"]), { stale, backLabel: target.name }) : null;
+  const sub = target && task ? taskDetail(task, () => closeHere(["task"], { sub: true }), { stale, backLabel: target.name }) : null;
 
   const head = (
     <ListHead title="People" sub={`${peopleIn(s, "overdue").length} past their cadence, ${peopleIn(s, "birthdays").length} birthdays this month`}>
@@ -74,7 +74,7 @@ export function People({ route }: { route: Route }) {
   const list = people.length ? (
     <ul className="p-rows">
       {people.map((x) => (
-        <PersonRow key={x.id} p={x} sel={target?.id === x.id} onOpen={() => openHere({ id: x.name }, OPEN)} />
+        <PersonRow key={x.id} p={x} sel={target?.id === x.id} onOpen={() => openHere({ id: x.id }, OPEN)} />
       ))}
     </ul>
   ) : (
@@ -91,7 +91,7 @@ export function People({ route }: { route: Route }) {
           <ul className="p-mini">
             {overdue.map((x) => (
               <li key={x.id}>
-                <a href={phref("/people", { id: x.name, filter })}>{x.name}</a>
+                <a href={phref("/people", { id: x.id, filter })}>{x.name}</a>
                 <span className="p-mini__meta is-late">{x.overdue_by} days past</span>
               </li>
             ))}
@@ -103,7 +103,7 @@ export function People({ route }: { route: Route }) {
           <ul className="p-mini">
             {soon.map((x) => (
               <li key={x.id}>
-                <a href={phref("/people", { id: x.name, filter })}>{x.name}</a>
+                <a href={phref("/people", { id: x.id, filter })}>{x.name}</a>
                 <span className="p-mini__meta">{x.birthday_in === 0 ? "today" : `in ${x.birthday_in} days`}</span>
               </li>
             ))}
@@ -136,7 +136,7 @@ function PersonRow({ p, sel, onOpen }: { p: Person; sel: boolean; onOpen: () => 
   );
 }
 
-function PersonBody({ p, stale, openTask }: { p: Person; stale?: boolean; openTask: (title: string) => void }) {
+function PersonBody({ p, stale, openTask }: { p: Person; stale?: boolean; openTask: (id: string) => void }) {
   const s = useStore();
   const now = useNow(60_000);
   const hub = s.hubs[p.id];
@@ -188,7 +188,7 @@ function PersonBody({ p, stale, openTask }: { p: Person; stale?: boolean; openTa
           <ul className="p-mini">
             {waiting.map((t) => (
               <li key={t.id}>
-                <button type="button" className="p-link" onClick={() => openTask(t.title)}>
+                <button type="button" className="p-link" onClick={() => openTask(t.id)}>
                   {t.title}
                 </button>
                 <span className="p-mini__meta">since {t.waiting_since ? day(t.waiting_since) : "a while"}</span>
