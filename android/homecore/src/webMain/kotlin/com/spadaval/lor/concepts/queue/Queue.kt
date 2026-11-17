@@ -133,8 +133,13 @@ fun ConceptStore.items(): List<Item> {
  * The item a key opens: one in the queue, or any open task by `task:<id>` (search finds tasks that
  * aren't due, so not in the queue); null once it has gone.
  */
-fun ConceptStore.item(key: String): Item? = items().firstOrNull { it.key == key }
-    ?: key.removePrefix("task:").takeIf { key.startsWith("task:") }?.let { id -> tasks.firstOrNull { it.id == id } }?.let { Item.Due(it) }
+fun ConceptStore.item(key: String): Item? {
+    items().firstOrNull { it.key == key }?.let { return it }
+    val id = key.removePrefix("task:").takeIf { key.startsWith("task:") } ?: return null
+    // A flagged task opens as its flag, so Done and Seen act as they do on the queue.
+    home?.needsYou?.firstOrNull { it.id == id }?.let { return Item.Flag(it) }
+    return tasks.firstOrNull { it.id == id }?.let { Item.Due(it) }
+}
 
 /** How many things want him: what the queue holds less what is ticked. */
 fun ConceptStore.waiting(): Int = items().count { it !is Item.Due || done[it.task.id] != true }

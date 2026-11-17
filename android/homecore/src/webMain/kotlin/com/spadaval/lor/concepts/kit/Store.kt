@@ -171,7 +171,9 @@ class ConceptStore(val fixture: Fixture, private val scope: CoroutineScope) {
 
     // ---- LoR's writes, with Undo ----
 
+    /** A task marked done, from any surface. A flagged one also leaves Needs you, as [flagDone] does. */
     fun tick(id: String) {
+        if (home?.needsYou?.any { it.id == id } == true) return flagDone(id)
         val title = tasks.firstOrNull { it.id == id }?.title ?: home?.needsYou?.firstOrNull { it.id == id }?.title ?: "Task"
         undoable("Done: ${title.take(48)}", { done[id] = true }, { done.remove(id) })
     }

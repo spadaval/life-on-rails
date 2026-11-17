@@ -185,8 +185,9 @@ private fun Settings(store: ConceptStore, ui: QueueUi, section: String?) {
     // The list's items, in order, by name, so a section is found by its name, not a counted index.
     val order = listOf("title", "sync", "connections", "home", "sensors")
     LaunchedEffect(section) {
-        val name = when (section) { "connections", "server address", "t3 pairing", "t3" -> "connections"; "home" -> "home"; "sensors" -> "sensors"; else -> null }
-        if (name != null) list.scrollToItem(order.indexOf(name))
+        // Every opening goes where it was opened for; the sync (and the top) by default.
+        val name = when (section) { "connections", "server address", "t3 pairing", "t3" -> "connections"; "home" -> "home"; "sensors" -> "sensors"; "sync" -> "sync"; else -> "title" }
+        list.scrollToItem(order.indexOf(name))
     }
     LazyColumn(Modifier.fillMaxSize().labAnchor("settings"), state = list, contentPadding = PaddingValues(bottom = 32.dp)) {
         item(key = "title") { SheetTitle("Settings", "LoR on this phone") }
