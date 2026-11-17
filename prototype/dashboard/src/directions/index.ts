@@ -18,6 +18,7 @@ export interface Version {
 
 export const VERSIONS: Version[] = [
   { id: "current", name: "Current (shipped)", load: () => import("./current/index.js") },
+  { id: "queue", name: "Queue: one list of what wants you", load: () => import("./queue/index.js") },
   // The starting point a direction item copies. Dev only: it is not a concept.
   ...(import.meta.env.DEV ? [{ id: "template", name: "Template (dev only)", load: () => import("./template/index.js") }] : []),
 ];

@@ -1,0 +1,81 @@
+/* Queue's tokens. Every value the styles use comes from here.
+   Type: one workhorse sans (Saira) at five steps, each with one job; Saira Condensed caps only
+   for the timer's readout and the lead card's label.
+   Colour: amber only for the lead card's edge and the running timer, cyan for the agent's rows,
+   three greys for everything else, and one red kept for errors and LoR not answering.
+   Depth: three levels. Rows lie flat on the ground, the lead card is raised with a two-part
+   shadow, and popovers, sheets, the field's choices and the toast float with blur. */
+@import "@fontsource/saira/latin-400.css";
+@import "@fontsource/saira/latin-500.css";
+@import "@fontsource/saira/latin-600.css";
+@import "@fontsource/saira-condensed/latin-500.css";
+@import "@fontsource/saira-condensed/latin-600.css";
+
+:root {
+  color-scheme: dark;
+
+  /* type: 13 labels and meta, 15 body and controls, 17 row titles, 22 page titles and the
+     readout, 40 the lead card's title */
+  --sans: Saira, ui-sans-serif, system-ui, sans-serif;
+  --cond: "Saira Condensed", Saira, ui-sans-serif, sans-serif;
+  --t-label: 13px;
+  --t-body: 15px;
+  --t-row: 17px;
+  --t-title: 22px;
+  --t-lead: 40px;
+
+  /* space: generous, the lowest density of the four directions */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --col: 720px;
+  --row-min: 56px;
+
+  /* ground and surfaces, each a step lighter */
+  --ground: #0d0e12;
+  --surface-1: #15161b;
+  --surface-2: #1b1c23;
+  --wash: rgb(255 255 255 / 0.05);
+  --wash-2: rgb(255 255 255 / 0.09);
+  --line: rgb(255 255 255 / 0.07);
+  --line-2: rgb(255 255 255 / 0.12);
+  --float: rgb(30 31 39 / 0.78);
+  --float-solid: rgb(27 28 35 / 0.97);
+  --bar: rgb(13 14 18 / 0.72);
+
+  /* the three greys */
+  --text-1: #eceef2;
+  --text-2: #a5a9b3;
+  --text-3: #70747e;
+
+  /* jobs */
+  --amber: #f59e42;
+  --amber-edge: rgb(245 158 66 / 0.5);
+  --amber-glow: rgb(245 158 66 / 0.1);
+  --cyan: #6cc6ec;
+  --cyan-soft: rgb(108 198 236 / 0.1);
+  --red: #ef7a5f;
+  --red-soft: rgb(239 122 95 / 0.08);
+  --red-edge: rgb(239 122 95 / 0.32);
+
+  /* corners */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-pill: 999px;
+
+  /* depth */
+  --lift: 0 1px 2px rgb(0 0 0 / 0.45), 0 18px 40px -16px rgb(0 0 0 / 0.7);
+  --float-shadow: 0 2px 6px rgb(0 0 0 / 0.35), 0 28px 56px -16px rgb(0 0 0 / 0.75);
+  --blur: blur(20px) saturate(1.4);
+
+  /* motion: 150 to 250 ms, and only to say what changed */
+  --fast: 150ms;
+  --mid: 220ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
