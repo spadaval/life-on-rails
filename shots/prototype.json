@@ -61,6 +61,24 @@
     {"screen": "panes", "name": "panes: search with results", "link": "/#/panes/?find=lisbon&still=1&shell=0", "capture": "viewport"},
     {"screen": "panes", "name": "panes: add a task, read as you type", "link": "/#/panes/?add=Book%20the%20ferry%20to%20Sintra%20%23Lisbon%20fri&still=1&shell=0", "capture": "viewport"},
     {"screen": "panes", "name": "panes: a task stacked over its goal", "link": "/#/panes/goals?id=Be%20a%20good%20friend&task=Send%20Noor%20the%20photos%20from%20the%20hike&still=1&shell=0", "capture": "viewport"},
-    {"screen": "panes", "name": "panes: the open task's sheet at full height", "link": "/#/panes/tasks?id=Reply%20to%20the%20App%20Store%20review%20notes&sheet=full&still=1&shell=0", "capture": "viewport"}
+    {"screen": "panes", "name": "panes: the open task's sheet at full height", "link": "/#/panes/tasks?id=Reply%20to%20the%20App%20Store%20review%20notes&sheet=full&still=1&shell=0", "capture": "viewport"},
+    {"screen": "context", "name": "context: Today in the afternoon, a timer running, two flags", "link": "/#/context/?still=1&shell=0"},
+    {"screen": "context", "name": "context: Today in the morning, with the brief", "link": "/#/context/?scene=morning&still=1&shell=0"},
+    {"screen": "context", "name": "context: Tasks with a task open", "link": "/#/context/tasks?id=Reply%20to%20the%20App%20Store%20review%20notes&still=1&shell=0"},
+    {"screen": "context", "name": "context: Goals, three goals at no data yet", "link": "/#/context/goals?still=1&shell=0"},
+    {"screen": "context", "name": "context: A goal at no data yet, as its context", "link": "/#/context/goals?id=Be%20a%20good%20friend&still=1&shell=0"},
+    {"screen": "context", "name": "context: People", "link": "/#/context/people?still=1&shell=0"},
+    {"screen": "context", "name": "context: A person, as their context", "link": "/#/context/people?id=Maya%20Okafor&still=1&shell=0"},
+    {"screen": "context", "name": "context: state: nothing wants you", "link": "/#/context/?scene=quiet&still=1&shell=0"},
+    {"screen": "context", "name": "context: state: an empty day at 09:00", "link": "/#/context/?scene=empty&still=1&shell=0"},
+    {"screen": "context", "name": "context: state: LoR unreachable, its last data shown as stale", "link": "/#/context/?state=stale&still=1&shell=0"},
+    {"screen": "context", "name": "context: state: a crowded queue, twelve flagged", "link": "/#/context/?state=crowded&still=1&shell=0"},
+    {"screen": "context", "name": "context: a project's page in the right half", "link": "/#/context/?page=projects/offline-maps&still=1&shell=0", "capture": "viewport"},
+    {"screen": "context", "name": "context: the next context, the event and the gap before it", "link": "/#/context/slot?id=Dentist&still=1&shell=0"},
+    {"screen": "context", "name": "context: Loose ends, tasks under nothing, with the agent's suggested links", "link": "/#/context/loose?still=1&shell=0"},
+    {"screen": "context", "name": "context: relabel a block, the picker", "link": "/#/context/?block=07:00&still=1&shell=0", "capture": "viewport"},
+    {"screen": "context", "name": "context: switch the timer, the picker", "link": "/#/context/?timer=switch&still=1&shell=0", "capture": "viewport"},
+    {"screen": "context", "name": "context: search with results", "link": "/#/context/?q=lisbon&still=1&shell=0", "capture": "viewport"},
+    {"screen": "context", "name": "context: add a task, read as you type", "link": "/#/context/?add=Book%20the%20ferry%20to%20Sintra%20%23Lisbon%20fri&still=1&shell=0", "capture": "viewport"}
   ]
 }
