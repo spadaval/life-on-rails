@@ -10,7 +10,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Sql, sql as defaultSql } from "../src/db/client.js";
-import { ensureSeed } from "../src/db/seed.js";
+import { SEED_PAGES, ensureSeed } from "../src/db/seed.js";
 import { proposeTime, recategorizeBlock, startManualBlock, stopRunningBlock } from "../src/server/attribution/blocks.js";
 import { TEST_DATABASE, clockNow, isTestDatabase, withClock } from "../src/server/clock.js";
 import { ingest } from "../src/server/device.js";
@@ -124,8 +124,19 @@ export async function loadDemo(opts: { db?: Sql; databaseUrl?: string; now?: Dat
   // ---- empty, then the system rows ----
   const tables = await db<{ tablename: string }[]>`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`;
   if (tables.length) await db.unsafe(`TRUNCATE ${tables.map((t) => `"${t.tablename}"`).join(", ")} RESTART IDENTITY CASCADE`);
-  await ensureSeed(db);
   const weekAgo = at("d-7 08:00");
+  // The system's own pages (src/db/seed.ts) hold the owner's words: the demo writes its own
+  // first, so ensureSeed finds them and the owner's text is in no version, not even the first.
+  const pageFiles = readdirSync(path.join(SEED, "pages")).filter((f) => f.endsWith(".md") && !/^(lisbon-\d|brief-|day-)/.test(f)).map(readPageFile);
+  for (const sp of SEED_PAGES) {
+    const p = pageFiles.find((f) => f.slug === sp.slug);
+    if (!p) throw new Error(`the demo set has no page for the system page ${sp.slug}: add seeds/demo/pages/<name>.md with slug: ${sp.slug}`);
+    await when(weekAgo, () => createPage(db, { slug: p.slug, title: p.title, body: p.body, ...agent("demo-thread-notes") }));
+    if (sp.inDigest) await setInDigest(db, sp.slug, true);
+  }
+  await ensureSeed(db);
+  const [seeded] = await db<{ n: number }[]>`SELECT count(*)::int AS n FROM page_version WHERE via = 'seed'`;
+  if (seeded!.n > 0) throw new Error("a system page kept its seed text; the demo set must replace every one");
 
   // ---- goals, projects, habits, metrics ----
   const ids = new Map<string, string>();
@@ -307,23 +318,18 @@ export async function loadDemo(opts: { db?: Sql; databaseUrl?: string; now?: Dat
   await when(at("d0 16:30"), () => mailCheck(db, mailPort, at("d0 16:30")));
 
   // ---- the wiki ----
-  const files = readdirSync(path.join(SEED, "pages")).filter((f) => f.endsWith(".md"));
-  const plain = files.filter((f) => !/^(lisbon-\d|brief-|day-)/.test(f)).map(readPageFile);
+  const plain = pageFiles.filter((p) => !SEED_PAGES.some((sp) => sp.slug === p.slug));
   let i = 0;
   for (const p of plain) {
     // Spread over the week, some written by the owner and most by the agent.
     const t = at(`d-${7 - (i % 7)} ${String(8 + (i % 12)).padStart(2, "0")}:15`);
     const who = i % 3 === 0 ? ui : agent("demo-thread-notes");
-    // The system's own pages (src/db/seed.ts) are there already: they get the demo's text over them.
-    const [seeded] = await db<{ head_version: number }[]>`SELECT head_version FROM page WHERE slug = ${p.slug}`;
-    await when<unknown>(t, () =>
-      seeded
-        ? updatePage(db, { slug: p.slug, base: seeded.head_version, title: p.title, body: p.body, ...who })
-        : createPage(db, {
-            slug: p.slug, title: p.title, body: p.body, ...who,
-            entityId: p.entity ? people.get(p.entity)!.id : null,
-            intentId: p.intent ? ids.get(p.intent)! : null,
-          }),
+    await when(t, () =>
+      createPage(db, {
+        slug: p.slug, title: p.title, body: p.body, ...who,
+        entityId: p.entity ? people.get(p.entity)!.id : null,
+        intentId: p.intent ? ids.get(p.intent)! : null,
+      }),
     );
     i++;
   }

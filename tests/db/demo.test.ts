@@ -63,6 +63,19 @@ dbDescribe("the demo set", () => {
     expect((await withClock(NOW, () => listPeople(sql, { filter: "overdue" }))).people.length).toBeGreaterThan(2);
     expect((await withClock(NOW, () => listPeople(sql, { filter: "groups" }))).people.map((p) => p.name)).toEqual(["Saturday Run Club"]);
 
+    // The system pages carry the demo's text in every version, never the owner's seed text.
+    const system = await sql<{ slug: string; versions: number; titles: string[] }[]>`
+      SELECT p.slug, count(*)::int AS versions, array_agg(v.title ORDER BY v.version) AS titles
+      FROM page p JOIN page_version v ON v.page_id = p.id
+      WHERE p.slug IN ('agent', 'me', 'messaging-rules', 'inbox') GROUP BY p.slug ORDER BY p.slug`;
+    expect(system).toEqual([
+      { slug: "agent", versions: 1, titles: ["Agent"] },
+      { slug: "inbox", versions: 1, titles: ["Inbox"] },
+      { slug: "me", versions: 1, titles: ["Me"] },
+      { slug: "messaging-rules", versions: 1, titles: ["Messaging rules"] },
+    ]);
+    expect((await sql`SELECT 1 FROM page_version WHERE via = 'seed'`).length).toBe(0);
+
     // The page with five versions, by the owner and the agent in turn.
     expect((await pageHistory(sql, "topics/lisbon-trip")).map((v) => v.via).sort()).toEqual(["agent", "agent", "ui", "ui", "ui"]);
     const briefs = await sql<{ slug: string }[]>`SELECT slug FROM page WHERE slug LIKE 'briefs/%' ORDER BY slug`;
