@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-3hnk
 title: The app builds on Kotlin 2.3.20, ready for the shared module
-status: in_review
+status: approved
 mission: lor-ncpw
 labels:
 - launcher
