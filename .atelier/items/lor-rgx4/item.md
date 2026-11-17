@@ -39,4 +39,4 @@ The two panels Sumeet called 'pretty bad overall' (lor-hybv) can be seen and cha
 
 ## Context
 
-- The audit's inventory of these screens is `docs/design/lab/audit/launcher-panels-app.md`; the file list is under its section 1.
+- The audit's inventory of these screens is `.atelier/missions/lor-2803/audit/launcher-panels-app.md`; the file list is under its section 1.

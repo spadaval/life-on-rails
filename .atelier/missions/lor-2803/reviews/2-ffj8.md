@@ -102,7 +102,7 @@ Recommendation: fix now
 Was: 1-vw31.6
 Now: fixed
 
-lor-q165 exists with twenty named states, per-viewer interaction checks and timings. The audit inventories are checked into docs/design/lab/audit/. lor-glev now finishes only its page and points to lor-q165 for mission acceptance.
+lor-q165 exists with twenty named states, per-viewer interaction checks and timings. The audit inventories are checked into .atelier/missions/lor-2803/audit/. lor-glev now finishes only its page and points to lor-q165 for mission acceptance.
 
 ## Finding 13: lor-5uxk requires the brief's eight interactions of the dashboard prototype
 Recommendation: fix now
@@ -115,6 +115,6 @@ lor-5uxk now requires the dashboard interaction set defined in lor-npa6, which e
 ## Finding 14: Move the app-menu drawing needed by current into the lab
 Recommendation: fix now
 
-`.atelier/items/lor-xdoi/item.md:30` expressly leaves `AppMenu.kt`'s menu drawing in the Android app, while line 44 assigns that same item browser scripts for an app menu and a long press drifting into a drag. `.atelier/items/lor-q165/item.md` also requires current to open an app's long-press menu by URL. The audit (`docs/design/lab/audit/launcher-home.md:266`) and `android/app/src/main/java/com/spadaval/lor/home/AppMenu.kt` identify this as the actual shipped AppMenu composable. Neither the panels move nor the settings move owns it. Consequently following the explicit split boundary leaves a required current surface unavailable in wasm; moving only HomeContext and HomeActions does not move its drawing.
+`.atelier/items/lor-xdoi/item.md:30` expressly leaves `AppMenu.kt`'s menu drawing in the Android app, while line 44 assigns that same item browser scripts for an app menu and a long press drifting into a drag. `.atelier/items/lor-q165/item.md` also requires current to open an app's long-press menu by URL. The audit (`.atelier/missions/lor-2803/audit/launcher-home.md:266`) and `android/app/src/main/java/com/spadaval/lor/home/AppMenu.kt` identify this as the actual shipped AppMenu composable. Neither the panels move nor the settings move owns it. Consequently following the explicit split boundary leaves a required current surface unavailable in wasm; moving only HomeContext and HomeActions does not move its drawing.
 
 Include the app-menu drawing and its popover dependencies in lor-xdoi's shared drawing, with shortcuts and Android actions supplied as state/callbacks, and require its fixture and script there. If a separate browser implementation is intended instead, assign it explicitly and explain how it satisfies the current-code comparison. Remove the contradictory instruction to keep that drawing only in the app.

@@ -20,7 +20,7 @@ Risk of merging it: medium. Agreeing the plan authorizes a Kotlin upgrade and ex
 
 The outcome is still worth the size. I am not recording Shrink or Reject. Round 5 closes the carried publish finding. One acceptance state still has no owner: the first-run set-up card lives on home and is named in q165, and no move item lists `Setup.kt`.
 
-Checked commit `e101910` as it stands: the mission, all thirteen of its items, lor-xdoi, lor-dkut, lor-3hnk, lor-sghw, lor-3ilp, mission lor-ncpw (`mission.md` and `design.md`), `docs/design/lab/audit/` (README plus the three inventories), and the current code those items name (`useNow` / `useTick`, `people.tsx` `filter=overdue`, `notes.tsx` `version` for history, `home/Setup.kt` and its call from `HomeScreen.kt`). Compared each item's `blocked_by` to its Done when, and the carried finding to the round-5 text of lor-glev and lor-zwfd. `atelier list --mission lor-ncpw` on this checkout reads ncpw as agreed, with lor-3hnk and lor-sghw able to start.
+Checked commit `e101910` as it stands: the mission, all thirteen of its items, lor-xdoi, lor-dkut, lor-3hnk, lor-sghw, lor-3ilp, mission lor-ncpw (`mission.md` and `design.md`), `.atelier/missions/lor-2803/audit/` (README plus the three inventories), and the current code those items name (`useNow` / `useTick`, `people.tsx` `filter=overdue`, `notes.tsx` `version` for history, `home/Setup.kt` and its call from `HomeScreen.kt`). Compared each item's `blocked_by` to its Done when, and the carried finding to the round-5 text of lor-glev and lor-zwfd. `atelier list --mission lor-ncpw` on this checkout reads ncpw as agreed, with lor-3hnk and lor-sghw able to start.
 
 Could not check: whether the 15-second wasm loop holds under the lor-0v68 cap (lor-vbfd already takes a miss to Sumeet); a live `/lab/` (it does not exist yet); the two claude.ai artifact links (only Sumeet can open them; the inventories are in-repo). Did not read another reviewer's file.
 
@@ -36,7 +36,7 @@ Recommendation: fix now
 
 lor-q165 line 31 requires, by link alone in the lab's `current` version, "a first-run home with the set-up card". lor-oech line 30 puts q165's ten launcher states in `STATES.md` "under those names, each added by the item that moves its surface".
 
-The card is `SetupCard` in `android/app/src/main/java/com/spadaval/lor/home/Setup.kt` (lines 75–158), called from the start stack's notes in `HomeScreen.kt` line 820. The audit inventories it as home §1.18 (`docs/design/lab/audit/launcher-home.md` lines 494–504) and as panels-app §1.13.
+The card is `SetupCard` in `android/app/src/main/java/com/spadaval/lor/home/Setup.kt` (lines 75–158), called from the start stack's notes in `HomeScreen.kt` line 820. The audit inventories it as home §1.18 (`.atelier/missions/lor-2803/audit/launcher-home.md` lines 494–504) and as panels-app §1.13.
 
 No move item names it. lor-xdoi line 30 lists the home files that go into `homecore` and the Android halves that stay in the app: `Setup.kt` is in neither list. lor-rgx4 moves the agent page, pair card, LoR panel and `Pill`; lor-t8lq moves Home settings and the app tabs. The card is Android-heavy (`Prefs`, `T3Connection`, `LorClient`, `isHome`, `MainActivity.open`), so an xdoi extract of `HomeScreen.kt`'s drawing will leave it as a slot or in the app, the way line 30 already keeps `AgentPage`. AgentPage is later moved by lor-rgx4. Nothing does that for the set-up card, so the first-run fixture has no drawing in the lab.
 

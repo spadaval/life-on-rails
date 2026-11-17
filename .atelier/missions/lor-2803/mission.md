@@ -14,7 +14,7 @@ created_at: 2026-11-17T05:56:53.698751316Z
 
 ## Why
 
-Sumeet, 2026-11-17, after the audit of the dashboard and launcher (its inventories are in `docs/design/lab/audit/`): "the biggest issue with the system is that it's rough, janky, and annoying to use", and fixing it "will take more effort than a single pass. Let's iterate and refine the design." He asked for a small mission "starting with refactors and tool installs and ending with a set of 3-5 concepts, and viewers for me to see and interact with the outputs (a dashboard prototype and a virtual in-browser interactive app mockup (with a dropdown for the version))", and said to treat the tools as "rapid-development tools, not QA tools".
+Sumeet, 2026-11-17, after the audit of the dashboard and launcher (its inventories are in `.atelier/missions/lor-2803/audit/`): "the biggest issue with the system is that it's rough, janky, and annoying to use", and fixing it "will take more effort than a single pass. Let's iterate and refine the design." He asked for a small mission "starting with refactors and tool installs and ending with a set of 3-5 concepts, and viewers for me to see and interact with the outputs (a dashboard prototype and a virtual in-browser interactive app mockup (with a dropdown for the version))", and said to treat the tools as "rapid-development tools, not QA tools".
 
 What he wants from the design: the app, launcher and dashboard "feel designed and polished", "make common things easy and uncommon things accessible", and "feel like a delight to use". The Elite-inspired theme stays "only in spirit. Nothing in the theme is actually sacred." His asks for the look: rounded corners, transparency effects, better separation between elements, better chosen font sizes and scales.
 

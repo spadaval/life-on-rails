@@ -18,7 +18,7 @@ Risk of merging it: medium. Agreeing the plan authorizes a Kotlin upgrade and ex
 
 The outcome is still worth the size. Round 2 answered the round-1 holes on per-viewer interactions, linkable dashboard states, the browser clock, a CSP boundary on `/lab/`, the loop timed after the moves, the gesture runner split, lor-xdoi's Done when, the acceptance item, and the inventories in the repo. I am not recording Shrink or Reject.
 
-Checked commit `dc0babe` as it stands: the mission, all thirteen of its items (including lor-q165), the edits to lor-xdoi, lor-dkut, lor-vbfd, lor-3hnk and lor-sghw, mission lor-ncpw (mission.md and design.md), `docs/design/lab/audit/` (README plus the three inventories), and the current code those items name (`src/routes/index.tsx`, `src/routes/__root.tsx`, `src/routes/tasks.tsx`, `src/routes/notes.tsx`, `src/server/functions/today.ts`, `src/server/today.ts`, `scripts/serve.mjs`). Compared each item's `blocked_by` to its Done when, and each carried finding to the round-2 text.
+Checked commit `dc0babe` as it stands: the mission, all thirteen of its items (including lor-q165), the edits to lor-xdoi, lor-dkut, lor-vbfd, lor-3hnk and lor-sghw, mission lor-ncpw (mission.md and design.md), `.atelier/missions/lor-2803/audit/` (README plus the three inventories), and the current code those items name (`src/routes/index.tsx`, `src/routes/__root.tsx`, `src/routes/tasks.tsx`, `src/routes/notes.tsx`, `src/server/functions/today.ts`, `src/server/today.ts`, `scripts/serve.mjs`). Compared each item's `blocked_by` to its Done when, and each carried finding to the round-2 text.
 
 Could not check: the audit page at `https://claude.ai/artifact/TGotPxRg56dJfqe9kQKMuD` (the inventories are now in-repo, so this no longer blocks the twenty named states); whether the 15-second wasm loop holds under the lor-0v68 cap (lor-vbfd already takes a miss to Sumeet); a live `/lab/` (it does not exist yet). Did not read another reviewer's file.
 
@@ -98,7 +98,7 @@ Same contract as Finding 4. lor-zj7x now requires one fake clock in the test ser
 Recommendation: fix now
 Was: 1-vw31.6
 Now: fixed
-lor-q165 exists, names the twenty states, and is the mission's `any-state` and `usable-concepts` proof (`.atelier/missions/lor-2803/mission.md` lines 37–38). lor-glev's last Done when (`.atelier/items/lor-glev/item.md` line 35) finishes the comparison page and points acceptance at lor-q165. The three inventories are in `docs/design/lab/audit/` (README, `dashboard.md`, `launcher-home.md`, `launcher-panels-app.md`). A leftover mismatch between those named states and the link contracts is Finding 15.
+lor-q165 exists, names the twenty states, and is the mission's `any-state` and `usable-concepts` proof (`.atelier/missions/lor-2803/mission.md` lines 37–38). lor-glev's last Done when (`.atelier/items/lor-glev/item.md` line 35) finishes the comparison page and points acceptance at lor-q165. The three inventories are in `.atelier/missions/lor-2803/audit/` (README, `dashboard.md`, `launcher-home.md`, `launcher-panels-app.md`). A leftover mismatch between those named states and the link contracts is Finding 15.
 
 ## Finding 13: lor-5uxk requires the brief's eight interactions of the dashboard prototype
 Recommendation: fix now
