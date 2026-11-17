@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-vx69
 title: 'The Queue direction on the dashboard prototype: every required screen, state and interaction'
-status: ready
+status: building
 mission: lor-2803
 labels:
 - dashboard
@@ -11,7 +11,8 @@ labels:
 priority: medium
 blocked_by:
 - lor-5uxk
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Ac1ec7934-b773-472e-bc30-dc89caf2d5f4%3Adelegate-task%3Ac7b01b7e-4c16-4a7b-b0eb-f7ac1d94cc96
 ready:
   by: lead of lor-2803, after the brief (lor-npa6)
   at: 2026-11-17T15:10:01.322569134Z
