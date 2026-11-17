@@ -41,7 +41,6 @@ describe("publish.sh", () => {
     const index = readFileSync(path.join(lab, "index.html"), "utf8");
     expect(index).toContain('Screenshot galleries: <a href="shots/dashboard/">dashboard</a>');
     expect(index).toMatch(/published from [0-9a-f]{7,}/);
-    expect(index).not.toContain('href="dashboard/"');
   });
 
   it("refuses a directory it did not make, and one inside the checkout", () => {

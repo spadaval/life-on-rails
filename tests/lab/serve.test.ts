@@ -98,6 +98,7 @@ describe("labStatic", () => {
       expect(csp, p).toContain("connect-src http://buildbot:3847/lab/");
       expect(csp, p).toContain("frame-src http://buildbot:3847/lab/");
       expect(csp, p).toContain("form-action 'none'");
+      expect(csp, p).toContain("object-src 'none'");
     }
     expect((await get(lab, "/lab/", { method: "POST" })).headers.get("content-security-policy")).toContain("form-action 'none'");
   });
@@ -124,14 +125,20 @@ describe("labStatic", () => {
 
 describe("isHashed", () => {
   it("knows a bundler's hash from a gallery's names", () => {
-    for (const n of ["index-B3x9aZ_k.js", "homecore.4f2a9c1e.wasm", "app.0123456789abcdef.css", "chunk-Dq3k_1aZ.mjs"]) expect(isHashed(n), n).toBe(true);
+    for (const n of ["index-B3x9aZ_k.js", "homecore.4f2a9c1e.wasm", "app.0123456789abcdef.css", "chunk-Dq3k_1aZ.mjs", "0d7a432110fc5479b82d.wasm"]) expect(isHashed(n), n).toBe(true);
     for (const n of [
       "index.html",
       "homecore.wasm",
       "goals-with-a-habit-selected-and-its-editor-open@1100.png",
       "a-person-s-hub-with-messages-and-mail@412.png",
       "composeApp.js",
+      "today-concept2a.png",
+      "home-version2.png",
+      "tasks-recording1.webm",
+      "my-page-20261117.html",
       "skiko.wasm",
+      "homecore.js",
+      "screenshots.png",
       "dashboard.json",
     ])
       expect(isHashed(n), n).toBe(false);

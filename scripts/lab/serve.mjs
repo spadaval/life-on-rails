@@ -36,19 +36,23 @@ const TYPES = {
 };
 
 /**
- * A bundler's content-hashed name (`index-B3x9aZ_k.js`, `homecore.4f2a9c1e.wasm`): a run of
- * eight or more letters, digits or `_`, with at least one digit, set off by `-` or `.` just
- * before the extension. A hash with a `-` in it is missed, which only costs a revalidation. Such a file never changes under its name, so it is cached for a
- * year; everything else (galleries' `slug@1100.png`, `index.html`) is revalidated each time.
+ * A bundler's content-hashed name: `index-B3x9aZ_k.js` (Vite: mixed case and digits), or
+ * `homecore.4f2a9c1e.wasm` and Kotlin's `0d7a432110fc5479b82d.wasm` (hex), the whole stem or
+ * set off by `-` or `.` before the extension. Such a file never changes under its name, so
+ * it is cached for a year. Anything else, including hand-named files like `today@1100.png`
+ * or `home-version2.png`, is revalidated each time: a hash missed here only costs a 304, a
+ * name taken for a hash would go stale for a year.
  */
 export const isHashed = (name) => {
-  const m = /[.-]([A-Za-z0-9_]{8,})\.[A-Za-z0-9]+$/.exec(name);
-  return !!m && /\d/.test(m[1]);
+  const m = /(?:^|[.-])([A-Za-z0-9_]{8,})\.[A-Za-z0-9]+$/.exec(name);
+  if (!m) return false;
+  const h = m[1];
+  return (/^[0-9a-f]+$/.test(h) && /\d/.test(h) && /[a-f]/.test(h)) || (/[A-Z]/.test(h) && /[a-z]/.test(h) && /\d/.test(h));
 };
 
 /** The policy on every /lab/ response, for the origin the browser used. */
 export const labPolicy = (origin) =>
-  [`connect-src ${origin}/lab/`, `frame-src ${origin}/lab/`, `worker-src ${origin}/lab/`, "form-action 'none'", "base-uri 'none'"].join("; ");
+  [`connect-src ${origin}/lab/`, `frame-src ${origin}/lab/`, `worker-src ${origin}/lab/ blob:`, "object-src 'none'", "form-action 'none'", "base-uri 'none'"].join("; ");
 
 const isLab = (pathname) => pathname === "/lab" || pathname.startsWith("/lab/");
 
