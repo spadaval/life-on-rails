@@ -26,7 +26,7 @@ The layout as `layout.json` holds it; the app list (placeholder icons unless one
 icon); LoR's `/device/home`, `/device/tasks` and `/device/people` replies as the server sends them,
 each loading, read, stale or failed; T3's connection, threads (cards come from their requests),
 questions and transcripts; the timer; sensors, the last sync, notification dots and permissions;
-settings; what search, the drawer and quick dial read (contacts, shortcuts and conversations,
+settings (and Android's font size, `phone.fontScale`, which the lab draws every version at); what search, the drawer and quick dial read (contacts, shortcuts and conversations,
 settings pages, launch counts, recent searches, quick dial's ranking); and where the screen is: the
 cell, what is open and what it points at, the scroll, the typed text, the held item.
 
@@ -55,6 +55,10 @@ Each is a condition of the whole app; a surface draws the part of it it reads.
 - `agent-waiting`: The agent page with one approval, one question, a failed turn and two LoR flags.
 - `agent-t3-stale`: The agent page with T3 disconnected and what it saw 40 minutes ago.
 - `thread-long`: The agent page with the approval's thread open beside it and a long transcript (inner screen).
+- `quiet`: Nothing wants you: no flags, no T3 cards, no tasks due, at 15:00 on the demo day.
+- `empty-day`: An empty day at 09:00: nothing recorded or synced yet, nothing flagged, the day's events ahead.
+- `sync-failed`: The demo day with the phone's last sync failed, as home and the agent page see it.
+- `large-text`: The demo day with Android's font size at 1.3.
 
 ## Surfaces in the module
 

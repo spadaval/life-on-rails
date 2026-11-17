@@ -32,16 +32,23 @@ class Version(val name: String, val about: String, val draw: @Composable (LabSce
 
 object Lab {
     /**
-     * Every version, `current` first. A concept is one more line here. `current` draws the app's
-     * tabs and Home settings when the state opens one (`where.open`, [AppScreen]), the quick-send
-     * sheet when it is open ([PanelScreen]), and home for the rest (lor-xdoi): its grid with the
-     * agent page, the LoR panel, LoR's blocks and the set-up card in their cells, on `where.cell`.
+     * Every version, `current` first, then the design concepts ([concepts]), then the kit sheet and
+     * the gesture surface. `current` draws the app's tabs and Home settings when the state opens one
+     * (`where.open`, [AppScreen]), the quick-send sheet when it is open ([PanelScreen]), and home for
+     * the rest (lor-xdoi): its grid with the agent page, the LoR panel, LoR's blocks and the set-up
+     * card in their cells, on `where.cell`.
      */
-    val versions: List<Version> = listOf(
-        Version("current", "The app as it is: home, and its tabs, Home settings, the agent page, the LoR panel and quick send where the state points") { if (!AppScreen(it) && !(it.fixture.where.open == Opened.QUICK_SEND && PanelScreen(it))) LabHome(it) },
-        Version("kit", "The kit sheet of the look: every part, for every state") { KitSheet(it) },
-        Version("gestures", "Not a launcher: the surface scripts/lab/run.mjs is proven on (a pager, a list, a tile with a menu, two panes)") { GestureSurface(it) },
-    )
+    val versions: List<Version> get() = listOf(current) + concepts + listOf(kit, gestures)
+
+    /**
+     * The design concepts (mission lor-2803), one version each. They live in wasmJsMain so they never
+     * ship in the app, and the lab page sets this before anything reads [versions].
+     */
+    var concepts: List<Version> = emptyList()
+
+    private val current = Version("current", "The app as it is: home, and its tabs, Home settings, the agent page, the LoR panel and quick send where the state points") { if (!AppScreen(it) && !(it.fixture.where.open == Opened.QUICK_SEND && PanelScreen(it))) LabHome(it) }
+    private val kit = Version("kit", "The kit sheet of the look: every part, for every state") { KitSheet(it) }
+    private val gestures = Version("gestures", "Not a launcher: the surface scripts/lab/run.mjs is proven on (a pager, a list, a tile with a menu, two panes)") { GestureSurface(it) }
 
     val states: List<Fixture> get() = Fixtures.all
 

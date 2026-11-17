@@ -135,8 +135,36 @@ object Fixtures {
         where = Where(cell = listOf(0, 0), open = Opened.THREAD, target = "t-approve"),
     )
 
+    // ---- The design brief's required states (docs/design/lab/brief.md, "States every concept draws") ----
+
+    val quiet = demo.copy(
+        name = "quiet", about = "Nothing wants you: no flags, no T3 cards, no tasks due, at 15:00 on the demo day",
+        lor = Parts.demoLor.copy(home = Parts.ok(Parts.homeNothingFlagged()), tasks = Parts.ok(Parts.tasksNothingDue())),
+        t3 = Parts.quietT3,
+    )
+
+    /** 09:00 on the demo day: no time recorded, no sync yet today, nothing flagged; the day's events are still ahead. */
+    val emptyDay = demo.copy(
+        name = "empty-day", about = "An empty day at 09:00: nothing recorded or synced yet, nothing flagged, the day's events ahead",
+        clock = Clock("2026-11-17T14:00:00.000Z", "America/New_York"),
+        lor = Parts.demoLor.copy(home = Parts.ok(Parts.homeNothingFlagged(now = "2026-11-17T14:00:00.000Z"), at = "2026-11-17T14:00:00.000Z")),
+        t3 = Parts.quietT3,
+        phone = Parts.demoPhone.copy(sync = SyncStatus("2026-11-17T03:10:00Z")),
+    )
+
+    /** The demo day with the last sync failed and two permissions gone, seen from home rather than the Sensors tab. */
+    val syncFailed = demo.copy(
+        name = "sync-failed", about = "The demo day with the phone's last sync failed, as home and the agent page see it",
+        phone = Parts.failedPhone,
+    )
+
+    val largeText = demo.copy(
+        name = "large-text", about = "The demo day with Android's font size at 1.3",
+        phone = Parts.demoPhone.copy(fontScale = 1.3f),
+    )
+
     /** The State dropdown, in order; the first is what a link without a state opens. */
-    val all: List<Fixture> = listOf(demo, empty, loading, stale, failed, overfull, homeFull, drawerAllScrolled, searchMixed, appMenu, sensorsFailed, homeSettingsTabs, firstRun, agentWaiting, agentT3Stale, threadLong)
+    val all: List<Fixture> = listOf(demo, empty, loading, stale, failed, overfull, homeFull, drawerAllScrolled, searchMixed, appMenu, sensorsFailed, homeSettingsTabs, firstRun, agentWaiting, agentT3Stale, threadLong, quiet, emptyDay, syncFailed, largeText)
 
     fun named(name: String): Fixture? = all.firstOrNull { it.name == name }
 
