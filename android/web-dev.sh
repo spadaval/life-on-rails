@@ -21,6 +21,14 @@
 # of 32 to 68 s, then an edit takes about 21 s cold and 13 to 16 s warm, and a long session peaks at
 # about 4,080 MB of the scope's 4 GB (3,730 MB of it anon, never killed). A compile in another
 # process does not warm it.
+# With a second concept that would be past the cap, so lor-j1fe added --only rather than raise it
+# (the cap is lor-0v68's). Measured with --only timeline:
+#   before Timeline was written (current and the kit): first build 79 s, edits 13 to 19 s, peak
+#   3,732 MB after three edits (3,281 MB anon; the Kotlin daemon alone 2,078 MB).
+#   with Timeline in: first build 36 s, edits 13 to 18 s, peak 3,511 MB after four edits
+#   (3,011 MB anon). A working session of about forty edits grew to 4,078 MB (3,734 MB anon) with
+#   its 512 MB of swap full, and was never killed: one concept fits, at the edge, and a long
+#   session is best restarted now and then.
 # Known crash (Kotlin 2.3.20): an incremental compile whose changed files are all in wasmJsMain
 # fails with ArrayIndexOutOfBoundsException in WasmIrFileMetadata.fromByteArray, and every build
 # after it fails the same way until this script restarts. Changes that include a file from webMain
