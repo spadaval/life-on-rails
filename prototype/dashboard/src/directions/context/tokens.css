@@ -98,4 +98,6 @@
   --tabs-h: 48px;
   --row-h: 44px;
   --check: 22px;
+  /* The notice sits above the prototype's Version chip (bottom right, 12px in, about 40px tall). */
+  --notice-bottom: 64px;
 }

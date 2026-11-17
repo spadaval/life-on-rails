@@ -6,7 +6,7 @@ import { setDone, today as todayOf, unflag, useNow, useStore } from "../../../da
 import type { Route } from "../../../shell/nav.js";
 import { Check, Icon, kindIcon, Prose } from "../components/bits.js";
 import { anchorFrom } from "../components/Layer.js";
-import { type Ctx, ctxPath, eventNow, homeOf, nextEvent, unnamedTime, type Waiting, waitingElsewhere, blockSource } from "../lib/model.js";
+import { type Ctx, ctxPath, eventNow, fitsBefore, nextEvent, unnamedTime, type Waiting, waitingElsewhere, blockSource } from "../lib/model.js";
 import { href, setParams } from "../lib/nav.js";
 import { at, dueWords, dur, hm } from "../lib/time.js";
 import { crowdSee, crowdUnsee, reversible, say, useCrowdSeen, useMode, useOff, usePhone } from "../lib/ui.js";
@@ -62,6 +62,7 @@ function NextCard({ here }: { here: Ctx }) {
     );
   }
   const e = nx.event;
+  const fits = fitsBefore(s, here, nx.gapMs);
   const isHere = here.kind === "slot" && here.key === e.event_id;
   return (
     <section className="cx-card cx-next" data-here={isHere || undefined}>
@@ -84,6 +85,19 @@ function NextCard({ here }: { here: Ctx }) {
       <p className="cx-next-free">
         <span className="cx-num">{dur(nx.gapMs)}</span> free before it. Nothing is put there unasked.
       </p>
+      {fits.length ? (
+        <div className="cx-next-fits">
+          <span className="cx-label">Fits before it</span>
+          <ul>
+            {fits.map((f) => (
+              <li key={f.node.id}>
+                <a href={href(ctxPath(f.home).path, { ...ctxPath(f.home).params, task: f.node.title })}>{f.node.title}</a>
+                <span className="cx-chip cx-num" title="The agent’s estimate">{f.minutes} min</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -113,7 +127,7 @@ function WaitingList({ items, crowded }: { items: Waiting[]; crowded: boolean })
           </ul>
           {items.length > limit ? (
             <button type="button" className="cx-morebtn" onClick={() => setAll(!all)} aria-expanded={all}>
-              {all ? "Show fewer" : `${items.length - limit} more waiting, oldest first`}
+              {all ? "Show fewer" : `${items.length - limit} more waiting: flags, then what is due`}
               <Icon name="down" size={14} />
             </button>
           ) : null}

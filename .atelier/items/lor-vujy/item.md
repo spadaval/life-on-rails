@@ -50,7 +50,7 @@ Sumeet can use the Context direction's dashboard in the prototype: pick it in th
 Context is in the Version dropdown as "Context: everything about what you are doing" (`#/context/`). It lives in one folder, `prototype/dashboard/src/directions/context/`, with its own tokens (`tokens.css`), components and screens, and imports only `src/data` and `src/shell`. Outside that folder it changes one line of `directions/index.ts` and adds 18 shots to `shots/prototype.json`.
 
 **The shell, as the brief draws it**
-- **Navigation.** A bar with the search field and the timer, and under it a row of contexts like tabs: Now (with the current context's name and a live dot), then the projects, goals and people he opened or timed lately, then All tasks, Goals, People and Notes. At 412 the pages come right after Now as icons, so nothing common sits off the edge of the scrolling row.
+- **Navigation.** A bar with the search field and the timer, and under it a row of contexts like tabs: Now (with the current context's name and a live dot), then the projects, goals and people he opened or timed lately, then All tasks, Goals, People and Notes. Only the recent contexts scroll, fading at the edge; the pages are pinned. At 412 the pages come right after Now as icons.
 - **The first view.** Now is the current context, picked in this order:
   1. what the running timer is on;
   2. what he stopped in the last 20 minutes, so it does not jump away under him;
@@ -59,13 +59,15 @@ Context is in the Version dropdown as "Context: everything about what you are do
 
   A task's context is its nearest project or goal.
 - **The surface.** One raised surface holds the context's title and timer, then the next task (what leads), then its regions, each on its own tone: Tasks, Given to the agent (each linking to its T3 thread, which stays in T3), Page, People, Habits and Time. Uncommon things (targets, a person's cadence and contact details) are folded at the bottom. A task opens in place. The context's page opens in the right half at 1440 and 1100, and in a sheet at 412.
-- **Beside it, flat:** the morning brief (open before noon, one line after), the next context (the next fixed event, how long until it, and the free time before it), Waiting elsewhere (LoR's flags with Done and Seen, then tasks due today or late), and Time in no context.
+- **Beside it, flat:** the morning brief (open before noon, one line after), the next context, Waiting elsewhere (LoR's flags with Done and Seen, then tasks due today or late), and Time in no context.
+  - The next context is the next fixed event, how long until it, the free time before it, and up to three tasks that fit that time (this context's first, then the soonest due). The snapshot has no estimates, so the agent's estimates are made up by title in `lib/model.ts` (`ESTIMATE`). Nothing is put in the gap unasked.
+  - At 412 all of this sits below the context, so one line under the bar says how much waits elsewhere and what is next, and jumps there.
 - **Every kind of context uses the same surface.**
   - Project and goal: `/project?id=…`, `/goals?id=…`.
   - Person: `/people?id=…`, with what was said lately, the tasks that name them, their page and the pages they are part of.
   - The next fixed event as a slot: `/slot?id=…`.
   - Loose ends, for tasks under nothing: `/loose`.
-  - An unnamed timer.
+  - An unnamed timer, and a timer on a label such as Meetings, which shows its time and the agent's guesses for it.
 - **The signature move.** A context arrives as a whole: the surface settles and its regions follow 40 and 80 ms behind (240 ms in all). Motion is off with `still=1` and for reduced motion.
 - **Common ground.**
   - **One field.** It finds, adds and asks on every page at every width (`/` or ⌘K, `q` to add). Its first row is what Enter does. A day word or `#goal` turns the text into "Add task" and reads back the date and parent as chips. In add mode a task with no `#` goes into the context on show, with a × to take it out. Asking waits 3 s with Cancel, then sends with no Undo.
@@ -97,37 +99,43 @@ Extra shots: the page in the right half (`?page=projects/offline-maps`), the nex
   - The running clock stops at 14:22 (0:09:00), and every write control is disabled.
   - Search still reads; adding and asking say why they wait.
   - `state` is kept by the direction's own links (`lib/nav.ts`), so changing page does not fake a recovery.
-- **A crowded queue** (`?state=crowded`). Twelve flags (2 real, 10 made-up notes laid over real open tasks in `lib/model.ts`) plus 3 due tasks wait under Waiting elsewhere, with a filled count. The oldest four show (three at 412) with "11 more waiting, oldest first". Done goes through the store. Seen on a made-up flag is kept in the direction, because the store cannot raise a flag.
+- **A crowded queue** (`?state=crowded`). Twelve flags (2 real, 10 made-up notes laid over real open tasks in `lib/model.ts`) plus 3 due tasks wait under Waiting elsewhere, with a filled count. Four show (three at 412), flags first, with "11 more waiting: flags, then what is due" (12 at 412). Done goes through the store. Seen on a made-up flag is kept in the direction, because the store cannot raise a flag.
 
-**The ten interactions, and how each is done here.** A script drove all ten in Chrome against the dev server at 1440, 1100 and 412, plus Stop from another page and stale navigation: 12 checks per width, all passing, no page errors, no sideways scroll.
+**The ten interactions, and how each is done here.** A script drove all ten in Chrome against the dev server at 1440, 1100 and 412: 17 checks per width, all passing, with no page errors and no sideways scroll. Beyond the ten, it checks:
+- Stop and Switch from another page, through the bar chip;
+- that the page tabs stay on screen after five contexts are opened in one session;
+- search opening tasks no ordinary row draws open (an agent's task, a Later task, a task done before today), which open at the top under "Opened";
+- that stale holds across pages.
+
+I also switched Current → Context → Timeline through the Version dropdown at 1100 and 412. Each loaded at the same path, with only its own stylesheet linked, and the Undo notice sits clear of the Version chip.
 
 | # | Interaction | How it is done here | Undo? |
 |---|---|---|---|
 | 1 | Add a task | `q` (or Add in a context), then "Call the plumber fri #Keep the house". The first row reads Add task · Fri 20 Nov · Keep the house running. | Yes |
 | 2 | Tick, and untick | The round box on any row. In a context a ticked task moves to Done today, where it unticks. A Google Tasks row's box is disabled and says to tick it there. | Yes |
-| 3 | Open a task, change its due date | Press its title: it opens in place with day chips and a date field. Rows in Waiting elsewhere open the task in its own context. | Yes |
+| 3 | Open a task, change its due date | Press its title: it opens in place with day chips and a date field. Rows in Waiting elsewhere and Fits before it open the task in its own context. | Yes |
 | 4 | Mark a flagged item done | Done on the flag in Waiting elsewhere, or the box on the task. | Yes (Seen too) |
 | 5 | Start a timer, and stop it | Start in a context's header (on its next task), Start a timer on any task, or Start a timer in the bar on any page (with "Start without a label"). Stop is in the header, or on the bar's chip from every other page. | No |
 | 6 | Relabel a block of time | Relabel on a block in a context's Time region, or Name it on a block under Time in no context. Then pick from one picker (recent first). The block moves to that context's time. A guess has ✓ or "Something else". | Yes |
 | 7 | Search, and open a result | Type, then Enter or click. A project, goal or person opens as its context; a task opens in its context, opened in place; a note opens in Notes. | n/a |
 | 8 | Open a person | People, then a row, or any person in a context's People region. | n/a |
-| 9 | Switch a running timer | Switch in the header or the bar chip, then pick. The block ends now and a new one starts. Now turns to the new context. "Relabel the whole block instead" sits under the picker. | No |
+| 9 | Switch a running timer | Switch in the header, or on the bar chip from any other page (at every width), then pick. The block ends now and a new one starts. Now turns to the new context. "Relabel the whole block instead" sits under the picker. | No |
 | 10 | Undo a relabel | Undo in the notice, or ⌘Z. | n/a |
 
 - **How Undo is limited** (`lib/ui.ts`). `reversible` offers Undo, and any later change withdraws it, so Undo never takes back something it does not name. ⌘Z does only what the Undo on show would. Start, stop and switch say what happened with no Undo, because nothing in LoR reopens a closed block. Asking has a 3 s Cancel and no Undo.
-- **Two bugs the script found, both fixed.**
+- **Bugs the script found, all fixed.**
   - Keys typed straight after `/` or `q` were lost, because the field took focus a frame late.
-  - At 412 the notice covered the next row's checkbox. It now sits at the bottom (at the top while a sheet is open), and only its buttons take a press.
+  - At 412 the notice covered the next row's checkbox. It now sits at the bottom (at the top while a sheet is open), above the prototype's Version chip, and only its buttons take a press.
 
 **Shots and publish**
 - **Shots.** `shots/prototype.json` gains 18 `context` shots (54 images). I ran `node scripts/shots.mjs --catalogue shots/prototype.json --base http://127.0.0.1:3864 --only "<name>"` once per shot, into `~/.cache/lor-vujy/gallery`. Every run reported `problems: []`, and I checked all 54 images on contact sheets: none repeats the top of the page.
 - **/tmp is quota-limited.** This session's /tmp gives error -122 (quota) on screenshot writes. That is the "screenshot-write error -122" Timeline's reviewer hit, so write shots to a directory on disk.
-- **Publish.** `pnpm proto:build`, then `LOR_LAB_DIR=~/.cache/lor-vujy/lab scripts/lab/publish.sh`. That published `dashboard/` (Context in it) and `shots/`, and the published page opens `#/context/` with no errors. I did not publish to the real lab: the lead publishes from main after the merges.
+- **Publish.** `pnpm proto:build`, then `LOR_LAB_DIR=~/.cache/lor-vujy/lab scripts/lab/publish.sh`. That published `dashboard/` (Context in it) and the shared `~/.local/state/lor-shots` galleries under `shots/`; Context's 54 images are not among them yet, because I wrote them outside that shared folder. The published page opens `#/context/` with no errors. The real publish and gallery run belong on main after the merges, from the lead.
 - **Merging.** `shots/prototype.json` gains one block at the end in the file's one-line-per-shot form.
 
 **Its risk: it showed up, on this data and in two ways.**
 
-1. **A task with no project has nowhere obvious to live.** 7 of the snapshot's 33 open tasks sit under nothing, among them "Renew the parking permit", due today. Time does the same: in the afternoon, 1 h 53 in 4 stretches nobody named, and 8 agent guesses, belong to no context.
+1. **A task with no project has nowhere obvious to live.** 7 of the snapshot's 33 open tasks sit under nothing, among them "Renew the parking permit", a day late. Time does the same: in the afternoon, 1 h 53 in 4 stretches nobody named, and 8 agent guesses, belong to no context.
 2. **A timer with no label has no context.** Phone time and a timer started without a label have no context to sit in.
 
 ![Loose ends: tasks under nothing, each with the agent's suggested link](risk-loose-ends.png)

@@ -3,7 +3,7 @@
 // tasks, the agent's work, its page, its people, its time. Uncommon things (cadence, targets)
 // sit folded at the bottom. Every kind of context uses this one surface.
 import { type ReactNode } from "react";
-import { doneOn, isOpen } from "../../../data/derive.js";
+import { doneOn, habitDoneOn, isOpen } from "../../../data/derive.js";
 import { answerProposal, habitDone, link, relabel as relabelBlock, setPerson, startTimer, switchTimer, today as todayOf, useNow, useStore } from "../../../data/store.js";
 import type { Node } from "../../../data/types.js";
 import type { Route } from "../../../shell/nav.js";
@@ -17,7 +17,7 @@ import {
 } from "../lib/model.js";
 import { href, navigate, setParams } from "../lib/nav.js";
 import { ago, clock, dueWords, dur, hm, hours } from "../lib/time.js";
-import { oneWay, reversible, useOff } from "../lib/ui.js";
+import { oneWay, reversible, useMode, useOff } from "../lib/ui.js";
 
 const WHY: Record<Why, string> = {
   timer: "The timer is running here",
@@ -46,12 +46,17 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
   const sub = nodes.filter((n) => n.type === "project" && n.status === "active");
   const page = pageOf(s, ctx);
   const people = peopleOf(s, ctx, nodes);
-  const time = timeOf(s, ctx, nodes, now);
+  const { staleSince } = useMode();
+  const time = timeOf(s, ctx, nodes, staleSince ?? now);
   const r = runningBlock(s);
   const runHere = r ? sameCtx(blockCtx(s, r), ctx) || (ctx.kind === "unnamed" && !r.intent_id) : false;
   const parent = ctx.node?.parents[0];
   const openPage = (slug: string) => setParams({ page: slug });
   const taskParam = p.task;
+  // A task opened by a link or a search result that no row here draws open (the agent's, or done
+  // before today) opens at the top, so the link always lands on it.
+  const drawn = new Set([lead, ...rest, ...later].filter(Boolean).map((n) => n!.id).concat(done.map((d) => d.id)));
+  const asked = taskParam ? tasks.find((n) => n.title === taskParam && !drawn.has(n.id)) : undefined;
 
   return (
     <article className="cx-surface" data-kind={ctx.kind} aria-labelledby="cx-ctx-title" key={`${ctx.kind}:${ctx.key}`}>
@@ -60,7 +65,7 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
           <p className="cx-kicker">
             <span className="cx-kind">
               <Icon name={kindIcon(ctx.kind)} size={14} />
-              {ctx.kind === "project" ? "Project" : ctx.kind === "goal" ? "Goal" : ctx.kind === "person" ? "Person" : ctx.kind === "slot" ? "Next fixed event" : ctx.kind === "loose" ? "Under nothing yet" : "Timer"}
+              {ctx.kind === "project" ? "Project" : ctx.kind === "goal" ? "Goal" : ctx.kind === "person" ? "Person" : ctx.kind === "slot" ? "Next fixed event" : ctx.kind === "loose" ? "Under nothing yet" : ctx.kind === "label" ? "Label" : "Timer"}
             </span>
             {parent ? (
               <span className="cx-kicker-part">
@@ -101,9 +106,18 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
           </ul>
           {why === "one" && lead.title === ONE_THING.title ? <p className="cx-lead-why">{ONE_THING.why}</p> : null}
         </section>
-      ) : ctx.kind !== "unnamed" && ctx.kind !== "slot" ? (
+      ) : ctx.kind !== "unnamed" && ctx.kind !== "slot" && ctx.kind !== "label" ? (
         <section className="cx-lead cx-lead-empty">
           <p>{ctx.person ? `No open task names ${ctx.person.name.split(" ")[0]}.` : <>Nothing open here. {ctx.node ? "Add the next step with q, or let it rest." : null}</>}</p>
+        </section>
+      ) : null}
+
+      {asked ? (
+        <section className="cx-lead" aria-label="Opened">
+          <h2 className="cx-label">Opened</h2>
+          <ul className="cx-tasks cx-tasks-lead">
+            <TaskRow node={asked} open />
+          </ul>
         </section>
       ) : null}
 
@@ -137,7 +151,7 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
               </div>
             ) : null}
             {later.length ? (
-              <details className="cx-fold">
+              <details className="cx-fold" open={later.some((n) => n.title === taskParam) || undefined}>
                 <summary>{later.length} for later</summary>
                 <ul className="cx-tasks">
                   {later.map((n) => (
@@ -181,7 +195,7 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
           </Region>
         ) : null}
 
-        {ctx.kind !== "unnamed" && ctx.kind !== "loose" ? (
+        {ctx.kind !== "unnamed" && ctx.kind !== "loose" && ctx.kind !== "label" ? (
           <Region title="Page" tone="page" action={page ? <button type="button" className="cx-btn cx-btn-sm cx-btn-ghost" onClick={() => openPage(page.slug)} aria-pressed={p.page === page.slug}>Open <Icon name="chevron" size={14} /></button> : null}>
             {page ? (
               <button type="button" className="cx-pagecard" onClick={() => openPage(page.slug)}>
@@ -195,7 +209,7 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
           </Region>
         ) : null}
 
-        {ctx.kind !== "unnamed" && ctx.kind !== "loose" && (people.length || ctx.kind !== "person") ? (
+        {ctx.kind !== "unnamed" && ctx.kind !== "loose" && ctx.kind !== "label" && (people.length || ctx.kind !== "person") ? (
           <Region title="People" count={people.length}>
             {people.length ? (
               <ul className="cx-people">
@@ -224,7 +238,7 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
           <Region title="Habits">
             <ul className="cx-habits">
               {habits.map((h) => {
-                const n = s.habitDone.filter((x) => x.intent_id === h.id && x.t.slice(0, 10) >= today.slice(0, 10)).length;
+                const n = habitDoneOn(s, h.id, today);
                 return (
                   <li key={h.id}>
                     <span>{h.title}</span>
@@ -436,8 +450,9 @@ export function Guess({ b }: { b: ReturnType<typeof timeOf>["guesses"][number] }
   return (
     <li data-guess>
       <span className="cx-num cx-block-at">{range}</span>
-      <span className="cx-block-name">{b.intent}?</span>
-      <span className="cx-block-src">{blockSource(b)}</span>
+      <span className="cx-block-name">
+        {b.intent}? <span className="cx-block-from">{blockSource(b)}</span>
+      </span>
       <span className="cx-guess-acts">
         <button type="button" className="cx-iconbtn cx-iconbtn-sm cx-iconbtn-ok" aria-label={`Yes, ${range} was ${b.intent}`} title="Yes" disabled={off} onClick={() => reversible(`${range} counted as ${b.intent}`, () => answerProposal(b.id, true))}>
           <Icon name="check" size={14} />

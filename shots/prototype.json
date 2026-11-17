@@ -57,7 +57,7 @@
     {"screen": "context", "name": "context: state: an empty day at 09:00", "link": "/#/context/?scene=empty&still=1&shell=0"},
     {"screen": "context", "name": "context: state: LoR unreachable, its last data shown as stale", "link": "/#/context/?state=stale&still=1&shell=0"},
     {"screen": "context", "name": "context: state: a crowded queue, twelve flagged", "link": "/#/context/?state=crowded&still=1&shell=0"},
-    {"screen": "context", "name": "context: a project's page in the right half", "link": "/#/context/?page=projects/offline-maps&still=1&shell=0"},
+    {"screen": "context", "name": "context: a project's page in the right half", "link": "/#/context/?page=projects/offline-maps&still=1&shell=0", "capture": "viewport"},
     {"screen": "context", "name": "context: the next context, the event and the gap before it", "link": "/#/context/slot?id=Dentist&still=1&shell=0"},
     {"screen": "context", "name": "context: Loose ends, tasks under nothing, with the agent's suggested links", "link": "/#/context/loose?still=1&shell=0"},
     {"screen": "context", "name": "context: relabel a block, the picker", "link": "/#/context/?block=07:00&still=1&shell=0", "capture": "viewport"},

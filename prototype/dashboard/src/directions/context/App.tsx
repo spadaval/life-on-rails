@@ -4,15 +4,15 @@
 // next context and what waits elsewhere beside it. Links: state=stale (LoR unreachable) and
 // state=crowded (twelve waiting) are this direction's own; the scenes come from the shell.
 import { useEffect, useRef } from "react";
-import { useNow, useStore } from "../../data/store.js";
+import { today as todayOf, useNow, useStore } from "../../data/store.js";
 import type { Route } from "../../shell/nav.js";
 import { Icon, kindIcon, NoticeBar } from "./components/bits.js";
 import { Search, type SearchHandle } from "./components/Search.js";
 import { BlockLayer, TimerChip, TimerLayer } from "./components/Timer.js";
-import { blockCtx, type Ctx, ctxPath, current, fromLink, homeOf, LOOSE, runningBlock, sameCtx, type Why } from "./lib/model.js";
+import { blockCtx, type Ctx, ctxPath, current, fromLink, homeOf, LOOSE, nextEvent, runningBlock, sameCtx, waitingElsewhere, type Why } from "./lib/model.js";
 import { href, navigate } from "./lib/nav.js";
 import { ago, hm } from "./lib/time.js";
-import { ModeCtx, say, undoOffered, useVisits, visit, type Visit } from "./lib/ui.js";
+import { ModeCtx, say, undoOffered, useCrowdSeen, usePhone, useVisits, visit, type Visit } from "./lib/ui.js";
 import { ContextView } from "./screens/ContextView.js";
 import { GoalsIndex, Notes, PageReader, PeopleIndex, Tasks } from "./screens/Index.js";
 import { Side } from "./screens/Side.js";
@@ -32,6 +32,8 @@ export function App({ route }: { route: Route }) {
   const staleSince = p.state === "stale" ? s.sceneAt - 38 * 60_000 : null;
   const crowded = p.state === "crowded";
   const visits = useVisits();
+  const phone = usePhone();
+  const seen = useCrowdSeen();
 
   const cur = current(s, now);
   // Which context this page shows, if it shows one.
@@ -130,20 +132,23 @@ export function App({ route }: { route: Route }) {
               </span>
               <span className="cx-tab-title">{cur.ctx.title}</span>
             </a>
-            <span className="cx-tabs-sep" aria-hidden="true" />
-            {tabs.slice(0, 5).map((c) => (
-              <a key={`${c.kind}:${c.key}`} className="cx-tab" href={href(ctxPath(c).path, ctxPath(c).params)} aria-current={ctxShown && page === "ctx" && sameCtx(ctxShown, c) ? "page" : undefined}>
-                <Icon name={kindIcon(c.kind)} size={14} />
-                <span className="cx-tab-title">{c.title}</span>
-              </a>
-            ))}
-            <span className="cx-tabs-gap" aria-hidden="true" />
-            {INDEX.map((x) => (
-              <a key={x.path} className="cx-tab cx-tab-index" href={href(x.path)} aria-label={x.name} title={x.name} aria-current={page === x.path.slice(1) ? "page" : undefined}>
-                <Icon name={x.icon} size={15} />
-                <span className="cx-tab-title">{x.name}</span>
-              </a>
-            ))}
+            <div className="cx-tabs-recent" aria-label="Recent contexts" role="group">
+              {tabs.slice(0, 5).map((c) => (
+                <a key={`${c.kind}:${c.key}`} className="cx-tab" href={href(ctxPath(c).path, ctxPath(c).params)} aria-current={ctxShown && page === "ctx" && sameCtx(ctxShown, c) ? "page" : undefined}>
+                  <Icon name={kindIcon(c.kind)} size={14} />
+                  <span className="cx-tab-title">{c.title}</span>
+                </a>
+              ))}
+            </div>
+            {/* The pages never scroll away: only the recent contexts do. */}
+            <div className="cx-tabs-pages" role="group" aria-label="Pages">
+              {INDEX.map((x) => (
+                <a key={x.path} className="cx-tab cx-tab-index" href={href(x.path)} aria-label={x.name} title={x.name} aria-current={page === x.path.slice(1) ? "page" : undefined}>
+                  <Icon name={x.icon} size={15} />
+                  <span className="cx-tab-title">{x.name}</span>
+                </a>
+              ))}
+            </div>
           </nav>
         </header>
 
@@ -159,6 +164,7 @@ export function App({ route }: { route: Route }) {
               </button>
             </div>
           ) : null}
+          {shown && phone ? <PhoneCue here={shown.ctx} crowded={crowded} seen={seen} /> : null}
           {shown ? (
             <div className="cx-work" data-reading={p.page ? true : undefined}>
               <ContextView ctx={shown.ctx} why={shown.why} focus={shown.focus} route={route} isNow={shown.isNow} />
@@ -187,6 +193,31 @@ export function App({ route }: { route: Route }) {
         <NoticeBar />
       </main>
     </ModeCtx.Provider>
+  );
+}
+
+/**
+ * At phone width what waits elsewhere sits below the whole context, so one line above it says how
+ * much waits and what is next, and takes him there.
+ */
+function PhoneCue({ here, crowded, seen }: { here: Ctx; crowded: boolean; seen: string[] }) {
+  const s = useStore();
+  const now = useNow(60_000);
+  const n = waitingElsewhere(s, here, todayOf(), crowded, seen).length;
+  const nx = nextEvent(s, now);
+  if (!n && !nx) return null;
+  return (
+    <button type="button" className="cx-cue" onClick={() => document.querySelector(".cx-side")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+      {n ? (
+        <span>
+          <span className="cx-count" data-loud={n > 6 || undefined}>{n}</span> waiting elsewhere
+        </span>
+      ) : (
+        <span>Nothing waiting elsewhere</span>
+      )}
+      {nx ? <span className="cx-cue-next">Next: {nx.event.title} {hm(nx.event.t_start)}</span> : null}
+      <Icon name="down" size={15} />
+    </button>
   );
 }
 

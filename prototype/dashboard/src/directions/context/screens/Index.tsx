@@ -2,7 +2,7 @@
 // lives in), Goals, People and Notes. Opening a goal or a person turns the page into its context.
 import { useState } from "react";
 import { isOpen, PEOPLE_FILTERS, peopleIn } from "../../../data/derive.js";
-import { useNow, useStore } from "../../../data/store.js";
+import { dayAfter, today, useNow, useStore } from "../../../data/store.js";
 import type { Node } from "../../../data/types.js";
 import type { Route } from "../../../shell/nav.js";
 import { Icon, kindIcon, Prose } from "../components/bits.js";
@@ -10,7 +10,7 @@ import { Layer } from "../components/Layer.js";
 import { TaskRow } from "../components/TaskRow.js";
 import { type Ctx, ctxPath, homeOf, LOOSE, members, sameCtx } from "../lib/model.js";
 import { href, navigate, setParams } from "../lib/nav.js";
-import { ago, hours } from "../lib/time.js";
+import { ago } from "../lib/time.js";
 import { usePhone } from "../lib/ui.js";
 import { WeekBar } from "./ContextView.js";
 
@@ -27,7 +27,7 @@ export function Tasks({ route }: { route: Route }) {
   const s = useStore();
   const p = route.params;
   const f = FILTERS.find((x) => x.id === p.show)?.id ?? "open";
-  const week = new Date(Date.parse(s.day.date) + 7 * 86_400_000).toISOString().slice(0, 10);
+  const week = dayAfter(today(), 7);
   const keep = (n: Node) => {
     if (n.type !== "task") return false;
     switch (f) {
@@ -261,4 +261,3 @@ export function PageReader({ slug, here }: { slug: string; here: Ctx }) {
   );
 }
 
-export { hours, ctxPath };

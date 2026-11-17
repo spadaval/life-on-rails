@@ -241,6 +241,43 @@ export function nextEvent(s: State, now: number) {
 }
 export const eventNow = (s: State, now: number) => s.day.planned.find((x) => !x.all_day && Date.parse(x.t_start) <= now && Date.parse(x.t_end) > now) ?? null;
 
+// ---- what fits before the next fixed event ----
+
+/**
+ * Minutes each task should take, as the agent would estimate them. Made up here (by title): the
+ * snapshot has no estimates, and "what fits in the gap" needs some.
+ */
+export const ESTIMATE: Record<string, number> = {
+  "Renew the parking permit": 15,
+  "Return the library books": 20,
+  "Pick up dry cleaning": 20,
+  "Buy a birthday card for Sam": 15,
+  "Send Noor the photos from the hike": 10,
+  "Replace the hallway bulb": 10,
+  "Book a sports massage": 10,
+  "Fix the dripping bathroom tap": 45,
+  "Finish unit 8 of the course": 40,
+  "Write release notes for beta 0.4": 60,
+  "Reply to the App Store review notes": 30,
+  "Move the emergency fund to the high-yield account": 15,
+  "Choose the kitchen paint colour": 30,
+  "Draft the offline maps spec": 120,
+  "Fix the crash on rotate in the map view": 90,
+  "Invite twenty beta testers": 30,
+  "Book flights to Lisbon": 30,
+  "Find a physio for the left knee": 20,
+};
+
+/** Up to three open tasks whose estimate fits the gap: this context's first, then the soonest due. */
+export function fitsBefore(s: State, here: Ctx, gapMs: number) {
+  const mine = new Set(members(s, here).map((n) => n.id));
+  return s.nodes
+    .filter((n) => n.type === "task" && isOpen(n) && n.assignee !== "agent" && n.status !== "waiting" && ESTIMATE[n.title] !== undefined && ESTIMATE[n.title]! * 60_000 <= gapMs)
+    .sort((a, b) => Number(!mine.has(a.id)) - Number(!mine.has(b.id)) || (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999") || a.title.localeCompare(b.title))
+    .slice(0, 3)
+    .map((n) => ({ node: n, minutes: ESTIMATE[n.title]!, home: homeOf(s, n), here: mine.has(n.id) }));
+}
+
 // ---- what waits on him elsewhere ----
 
 export interface Waiting {
