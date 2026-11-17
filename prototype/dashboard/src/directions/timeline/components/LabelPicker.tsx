@@ -17,11 +17,14 @@ export function LabelPicker({ current, suggestion, onPick, allowNone }: {
   const s = useStore();
   const [q, setQ] = useState("");
   const all = useMemo(() => pickable(s), [s]);
+  // The suggestion, the recent labels, then Meetings: each once, however it got into the list.
   const recent = [
     ...(suggestion ? [suggestion] : []),
-    ...s.recent.filter((r) => r.id !== suggestion?.id),
+    ...s.recent,
     ...s.system.filter((x) => x.title === "Meetings"),
-  ].slice(0, 6);
+  ]
+    .filter((r, i, all) => all.findIndex((x) => x.id === r.id) === i)
+    .slice(0, 6);
   const needle = q.trim().toLowerCase();
   const found = needle ? all.filter((x) => x.title.toLowerCase().includes(needle)).slice(0, 7) : [];
   return (
