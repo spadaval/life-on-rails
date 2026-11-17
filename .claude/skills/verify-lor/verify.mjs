@@ -383,7 +383,7 @@ const commands = {
     if (!existsSync(modules)) throw new Failed(`${modules} is missing. Instead: pnpm install in ${ROOT}, or symlink the main checkout's node_modules there.`);
     const env = { DATABASE_URL: TEST_DB_URL };
     const steps = [
-      ["rsync", "-a", "--delete", "--exclude=/node_modules", "--exclude=/dist", "--exclude=.git", "--exclude=/.atelier/runtime", "--exclude=/android/.gradle", "--exclude=/android/app/build", `${ROOT}/`, `${copy}/`],
+      ["rsync", "-a", "--delete", "--exclude=/node_modules", "--exclude=/dist", "--exclude=.git", "--exclude=/.atelier/runtime", "--exclude=/android/.gradle", "--exclude=/android/app/build", "--exclude=/android/build", "--exclude=/android/homecore/build", "--exclude=/android/.kotlin", `${ROOT}/`, `${copy}/`],
       ["ln", "-sfn", realpathSync(modules), path.join(copy, "node_modules")],
       ["node_modules/.bin/vite", "build"],
       ["node_modules/.bin/tsx", "src/db/migrate.ts"],
