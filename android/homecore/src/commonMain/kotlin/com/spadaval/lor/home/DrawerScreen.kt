@@ -1,5 +1,6 @@
 package com.spadaval.lor.home
 
+import com.spadaval.lor.lab.LabAnchors
 import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
 import androidx.compose.foundation.background
@@ -340,7 +341,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
         LaunchedEffect(current) { browse.scrollToItem(0) }
         // A named state's scroll (only the lab asks, lor-xdoi), once the tab is on screen.
         val scrollDensity = LocalDensity.current.density
-        LaunchedEffect(ui.scrollRequest, current) {
+        if (LabAnchors.on) LaunchedEffect(ui.scrollRequest, current) {
             val dp = ui.scrollRequest
             if (dp > 0) {
                 ui.scrollRequest = 0

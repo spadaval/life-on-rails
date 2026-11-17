@@ -21,7 +21,8 @@ import androidx.compose.ui.platform.LocalDensity
 object LabAnchors {
     /**
      * Set by the lab page before anything draws. Off, [labAnchor] adds nothing to a modifier, so the
-     * screens the app draws from this module (home, since lor-xdoi) carry no anchors on the phone.
+     * screens the app draws from this module (home, since lor-xdoi) carry no anchors on the phone,
+     * and home leaves out what only the lab's named states use (`HomeUi.menuRequest`, `scrollRequest`).
      */
     var on = false
 
