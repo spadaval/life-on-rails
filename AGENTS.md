@@ -9,6 +9,7 @@ Single-user self-hosted personal OS. What LoR is, what it is not, and how it sit
 - Prefer the simplest shape: no fallbacks, watchdogs, retention, or permission layers until their absence is felt.
 - Add a table when the code that uses it is written.
 - Never import from `archive/2023/` (frozen 2023 draft).
+- `vercel.json` is a stopgap, not a deploy config: LoR is not hosted on Vercel. A Vercel project from 2023, `life-on-rails-hxia`, is still connected to the GitHub repo and failed a deploy on every push; the file turns its Git deploys off. Delete the file once that project is disconnected in Vercel (item lor-h3e9).
 - `pnpm dev` is UI-only. The scheduler starts only from `scripts/serve.mjs`.
 - Scoring reads **commitments only**, never observations. `time_block.committed` is denormalized; truth = `commitment`.
 - The scorer recomputes hours from `[t, t_end]` intervals with a sweep-line merge. `commitment.value` is display-only. A pause is never inside a block.
