@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-p0ei
 title: A task whose tick fails to save shows as not done, with the error
-status: draft
+status: ready
 mission: null
 labels:
 - dashboard
@@ -11,7 +11,9 @@ labels:
 priority: medium
 blocked_by: []
 implementers: []
-ready: null
+ready:
+  by: lead of lor-2803, from the design audit
+  at: 2026-11-17T14:42:51.132915048Z
 trivial: null
 caused_by: null
 created_at: 2026-11-17T14:42:10.632143568Z

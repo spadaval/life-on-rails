@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-qjs4
 title: Phone sync keeps a record of every row the server rejects, not only the first reason
-status: draft
+status: ready
 mission: null
 labels:
 - launcher
@@ -11,7 +11,9 @@ labels:
 priority: low
 blocked_by: []
 implementers: []
-ready: null
+ready:
+  by: lead of lor-2803, from the design audit
+  at: 2026-11-17T14:42:51.190816696Z
 trivial: null
 caused_by: null
 created_at: 2026-11-17T14:42:10.680333756Z
