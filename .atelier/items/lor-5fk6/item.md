@@ -33,9 +33,9 @@ Sumeet can use each direction's phone in the browser: swipe to the drawer, searc
 
 ## Done when
 
-- [ ] Each direction from the brief is a registered version in the lab, drawn in Compose in `homecore`'s `wasmJsMain` (so it never ships in the app), from the same fixtures as `current`. It starts once home, the panels and the settings and app screens are in the lab and the launcher loop has been timed with them there, so each concept is built beside the real thing and on a loop known to be fast enough.
-- [ ] The first direction is built here, with whatever shared pieces a direction needs to be quick to write (a navigation shell that follows the finger, a sheet, a fixture-backed store for taps). Each further direction is one item, added by the lead.
-- [ ] A direction's Done when is the brief's required set on the cover and inner screens and the brief's phone interactions working by touch and by `scripts/lab/gesture.mjs`, with recordings of the drawer swipe and one drag, and `shots/lab.json` gaining its states, captured on a dark, a pale and a mixed wallpaper.
+- [x] Each direction from the brief is a registered version in the lab, drawn in Compose in `homecore`'s `wasmJsMain` (so it never ships in the app), from the same fixtures as `current`. It starts once home, the panels and the settings and app screens are in the lab and the launcher loop has been timed with them there, so each concept is built beside the real thing and on a loop known to be fast enough.
+- [x] The first direction is built here, with whatever shared pieces a direction needs to be quick to write (a navigation shell that follows the finger, a sheet, a fixture-backed store for taps). Each further direction is one item, added by the lead.
+- [x] A direction's Done when is the brief's required set on the cover and inner screens and the brief's phone interactions working by touch and by `scripts/lab/gesture.mjs`, with recordings of the drawer swipe and one drag, and `shots/lab.json` gaining its states, captured on a dark, a pale and a mixed wallpaper.
 - [ ] `scripts/lab/publish.sh` puts the build under `/lab/phone/`, the lab's first load over Tailscale is measured in the Report, and on Sumeet's Fold the page fills the screen it is opened on.
 
 ## Scope
@@ -114,7 +114,10 @@ The scripts found three real bugs, now fixed. At its lower rest point a sheet sl
 
 ### Publishing, and the first load
 
-(Filled in after the boat build.)
+- **boat:** `android/boat-build.sh` with its default tasks (`assembleDebug testDebugUnitTest testReleaseUnitTest :homecore:allTests` and the lab's production bundle) passed in 3 min 20 s on 2837efa. That is 940 tests and 0 failures, `FixtureCatalogueTest` among them, so STATES.md matches the registry and the app still compiles with the common-code changes.
+- **The scratch publish:** the production bundle went into the folder `publish.sh` copies, and `LOR_LAB_DIR=~/.cache/lor-5fk6/lab-scratch scripts/lab/publish.sh` put it at `phone/`, listed in the lab's index as "Phone lab". I did not publish to the real lab, because that would replace the dashboard prototype's build; the lead publishes from main.
+- **First load**, from a stand-in for lor-web's `/lab/` (`scripts/lab/serve.mjs`'s `labStatic`, with its Content-Security-Policy), cold cache, to `#queue/demo` drawn: 17.8 MB transferred, 1.6 s on loopback, and 8.3 s with Chrome throttled to 20 Mbit/s and 60 ms. No console errors and nothing blocked by the policy (`published-queue-demo.png` in the evidence folder). The real figure over Tailscale needs the real lab, so it is the lead's to take after publishing from main.
+- **On the Fold:** the page's fill mode (under "Tool fixes") makes a phone-sized touch screen show only the phone, and follows a fold. I checked it in Chrome at the cover's and the inner screen's sizes. Whether it fills Sumeet's Fold can only be seen on his Fold.
 
 ### The kit, for the next directions
 
