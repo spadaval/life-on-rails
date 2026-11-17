@@ -10,8 +10,9 @@ states are made of, and `Fixtures.kt` the states. `FixtureCatalogueTest` keeps t
 - In the lab (`android/web-dev.sh`, then `http://127.0.0.1:3860/`): the State dropdown, or the hash
   `#<version>/<state>/<screen>/<wallpaper>`, as in `#current/overfull/inner/pale`. The screen
   (`cover`, `inner`) and the wallpaper (`dark`, `pale`, `mixed`) may be left off.
-- A one-off: JSON in the state's place, starting from a named state and changing what it names,
-  objects key by key: `#current/{"base":"demo","t3":{"status":"NOT_PAIRED"}}/inner`. Or drop a
+- A one-off: JSON in the state's place. With `base`, it starts from that named state and changes
+  what it names, objects key by key: `#current/{"base":"demo","t3":{"status":"NOT_PAIRED"}}/inner`.
+  Without `base`, it is the whole fixture, and what it leaves out takes the defaults. Or drop a
   `.json` file on the page. Copy JSON puts the open state's full JSON on the clipboard to start from.
 - On a device, in the debug build:
   `adb shell am start -n com.spadaval.lor/.home.HomeActivity --es lab_state overfull`

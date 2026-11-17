@@ -45,11 +45,17 @@ class FixturesTest {
 
     @Test
     fun aOneOffPatchesAReplyKeyByKey() {
-        val f = Fixtures.fromJson("""{"name":"no-flags","lor":{"home":{"reply":{"needs_you":[]}}}}""").getOrThrow()
+        val f = Fixtures.fromJson("""{"base":"demo","name":"no-flags","lor":{"home":{"reply":{"needs_you":[]}}}}""").getOrThrow()
         assertEquals("no-flags", f.name)
         val home = f.lor.home.reply!!
         assertEquals(0, home["needs_you"]!!.jsonArray.size)
         assertEquals(Fixtures.demo.lor.home.reply!!["day"], home["day"])
+    }
+
+    @Test
+    fun withoutABaseTheObjectIsTheWholeFixture() {
+        val f = Fixtures.fromJson("""{"name":"bare","t3":{"status":"LIVE"}}""").getOrThrow()
+        assertEquals(Fixture("bare", t3 = T3(T3Status.LIVE)), f)
     }
 
     @Test

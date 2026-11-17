@@ -74,10 +74,12 @@ object Fixtures {
     fun toJson(f: Fixture): String = json.encodeToString(Fixture.serializer(), f)
 
     /**
-     * A one-off state from JSON: an object whose `base` names the state it starts from (the default
-     * when absent), and whose other keys replace that state's, objects key by key and anything else
-     * whole. `{"base":"demo","t3":{"status":"NOT_PAIRED"}}` is the demo day with T3 unpaired. Without
-     * a `name`, it is called `one-off`. A full fixture's JSON (`toJson`) reads back as itself.
+     * A one-off state from JSON. With `base`, it starts from that named state and the other keys
+     * replace that state's, objects key by key (a map's keys are added to the base's) and anything
+     * else whole: `{"base":"demo","t3":{"status":"NOT_PAIRED"}}` is the demo day with T3 unpaired.
+     * Without `base`, the object is the whole fixture and what it leaves out takes the defaults, so
+     * a fixture's full JSON (`toJson`, the lab's Copy JSON) reads back as itself. Without a `name`,
+     * it is called `one-off`.
      */
     fun fromJson(text: String): Result<Fixture> = runCatching {
         val given = try {
@@ -87,11 +89,14 @@ object Fixtures {
         } catch (e: IllegalArgumentException) {
             throw IllegalArgumentException("not a JSON object")
         }
-        val baseName = given["base"]?.jsonPrimitive?.contentOrNull ?: all.first().name
-        val base = named(baseName) ?: throw IllegalArgumentException("no state \"$baseName\" to start from")
+        val baseName = given["base"]?.let { it.jsonPrimitive.contentOrNull ?: throw IllegalArgumentException("base: must be a state's name") }
         val over = JsonObject(given - "base").let { if ("name" in it) it else it.with("name", JsonPrimitive("one-off")) }
+        val whole = if (baseName == null) over else {
+            val base = named(baseName) ?: throw IllegalArgumentException("no state \"$baseName\" to start from")
+            merge(json.encodeToJsonElement(Fixture.serializer(), base).jsonObject, over)
+        }
         try {
-            json.decodeFromJsonElement(Fixture.serializer(), merge(json.encodeToJsonElement(Fixture.serializer(), base).jsonObject, over))
+            json.decodeFromJsonElement(Fixture.serializer(), whole)
         } catch (e: SerializationException) {
             throw IllegalArgumentException(e.message?.lineSequence()?.first() ?: "doesn't fit a fixture")
         }
