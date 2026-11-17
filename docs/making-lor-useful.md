@@ -123,6 +123,8 @@ Until the slice has been lived with:
 - The web layout editor (lor-ncpw) after lor-pmzz and lor-dkut, which give layout history in LoR and agent edits without adb. The shared Kotlin module and the pixel-exact web copy of home wait.
 - New wall screens, new dashboard screens, a Money screen, and scoring work.
 
+**17 November 2026: this section no longer holds for design work.** After the audit of the dashboard and launcher, Sumeet: "Pacing the changes keeps it in a bad state longer; let's nuke that plan and just fix the whole thing." Design work on the dashboard, launcher and app now follows mission lor-2803 (`.atelier/missions/lor-2803/mission.md`) and its brief (`docs/design/lab/brief.md`), not "the slice first" or this pause. The pause still stands for everything else, and mission lor-l9a7's items are unaffected.
+
 This is the part of the plan most open to argument. The launcher is the surface he opens most and the one he is keenest on, and iterating on it from his usage worked. The case for pausing is that its panels show LoR's content, and that content is what is thin. A better account of his day and a sharper next action improve the home screen without launcher code.
 
 ## How the work changes
