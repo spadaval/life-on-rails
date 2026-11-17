@@ -137,3 +137,10 @@ The pieces take their look from a `KitLook` the direction provides.
 - **The lab page fills a phone:** on a touch screen under 1,000 px, the toolbar and bezel go and the phone takes the viewport. The screen follows the viewport's width, so folding the real Fold flips cover and inner and keeps the place. A Lab button shows the toolbar; `?fill` and `?framed` force it either way. Checked in Chrome at 412 × 900 and 875 × 971, with a resize between them: no sideways scroll, and the state kept.
 - **`scripts/lab/snap.mjs`:** screenshots lab links one page at a time, cropped to the phone.
 - **web-dev.sh's header:** today's numbers and the crash.
+
+### Responses
+
+1-j6j3.1: fixed in 2a7385b7: a task from search opens from the whole task list and stays open while it exists, in a sheet on the cover and the queue's right pane unfolded; `search-task.mjs` checks both screens.
+1-j6j3.2: fixed in 2a7385b7: the store keeps one clock (`ConceptStore.clock()`), which Start, Switch and every readout use; `timer-clock.mjs` starts a timer six seconds in and checks home's line and the sheet agree, from zero.
+1-j6j3.3: fixed in 2a7385b7: Settings' sections are keyed and opened by name.
+1-j6j3.4: fixed in 2a7385b7: the Timer hit opens the timer sheet.
