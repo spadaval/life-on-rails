@@ -7,6 +7,8 @@
 /* The frozen 2023 app is full of class names; do not scan it. */
 @source not "../archive";
 @source not "../android";
+/* The design lab's prototype has its own copy of these styles; its class names are not the app's. */
+@source not "../prototype";
 
 /* Elite: Mostly Harmless. Dark only; see docs/design/README.md. */
 @theme {
