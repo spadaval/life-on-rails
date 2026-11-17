@@ -160,13 +160,16 @@ function RouteView({ model, now, narrow, params, running: isRunning }: { model: 
     if (v !== null && v >= shift && Math.abs(t - now) >= 25 * 60_000 && Math.abs(y(v) - y(model.nowY)) > 22 && (!prev || y(v) - prev.y >= 24)) hours.push({ t, y: y(v) });
   }
 
-  // `block=HH:MM` names the block that starts in that minute (the newest, if a timer was switched
-  // twice in it), else the one the minute falls inside. A minute alone would pick the block
-  // before a timer started at 15:00:30, so starting minute wins over containment.
-  const blockAt = params.block
-    ? (spans.filter((sp) => sp.block && hm(sp.start) === params.block).at(-1) ??
-      spans.find((sp) => sp.block && sp.start <= at(todayOf(), params.block!) && at(todayOf(), params.block!) < Math.max(sp.end, sp.start + 60_000)))
-    : undefined;
+  // A press names the block by its id (`blk=`), which no other block shares. `block=HH:MM` is
+  // the readable form for links and screenshots: the block that starts in that minute (the
+  // newest, if a timer was switched in it), else the one the minute falls inside.
+  const blockAt = params.blk
+    ? spans.find((sp) => sp.block?.id === params.blk)
+    : params.block
+      ? (spans.filter((sp) => sp.block && hm(sp.start) === params.block).at(-1) ??
+        spans.find((sp) => sp.block && sp.start <= at(todayOf(), params.block!) && at(todayOf(), params.block!) < Math.max(sp.end, sp.start + 60_000)))
+      : undefined;
+  const closeBlock = () => setParams({ block: undefined, blk: undefined });
   const gapAt = params.gap ? spans.find((sp) => sp.kind === "free" && hm(sp.start) === params.gap) : undefined;
   const toFold = folded.filter((sp) => sp.block);
   const foldAsk = toFold.filter((sp) => toneOf(sp.block!) !== "tracked").length;
@@ -200,8 +203,8 @@ function RouteView({ model, now, narrow, params, running: isRunning }: { model: 
           ))}
           <NowLine top={y(model.nowY)} now={now} running={isRunning} params={params} off={off} />
           {blockAt?.block ? (
-            <Popover anchorId={`blk-${blockAt.block.id}`} label="A block of time" onClose={() => setParams({ block: undefined })}>
-              <BlockEditor id={blockAt.block.id} startMode={blockAt.kind === "running" ? "switch" : "relabel"} onDone={() => setParams({ block: undefined })} />
+            <Popover anchorId={`blk-${blockAt.block.id}`} label="A block of time" onClose={closeBlock}>
+              <BlockEditor key={blockAt.block.id} id={blockAt.block.id} startMode={blockAt.kind === "running" ? "switch" : "relabel"} onDone={closeBlock} />
             </Popover>
           ) : null}
           {gapAt ? (
@@ -324,7 +327,7 @@ function SpanView({ sp, now, params, off, empty, selected }: { sp: Span; now: nu
   // A recorded block, or the running one.
   const b = sp.block!;
   const tone = toneOf(b);
-  const open = () => setParams({ block: selected ? undefined : hm(b.t_start) });
+  const open = () => setParams({ block: undefined, blk: selected ? undefined : b.id });
   if (sp.kind === "running") {
     return (
       <>
@@ -338,7 +341,7 @@ function SpanView({ sp, now, params, off, empty, selected }: { sp: Span; now: nu
           </button>
           <span className="tl-num tl-blk-clock">{clock((staleSince ?? now) - Date.parse(b.t_start))}</span>
           <span className="tl-blk-actions">
-            <button type="button" className="tl-btn tl-btn-quiet" disabled={off} onClick={() => setParams({ block: hm(b.t_start) })}>
+            <button type="button" className="tl-btn tl-btn-quiet" disabled={off} onClick={() => setParams({ block: undefined, blk: b.id })}>
               <Icon name="switch" size={16} /> Switch
             </button>
             <button type="button" className="tl-btn" disabled={off} onClick={() => oneWay(`Stopped: ${b.intent ?? "Unlabelled"}, ${clock(now - Date.parse(b.t_start))}`, stopTimer)}>

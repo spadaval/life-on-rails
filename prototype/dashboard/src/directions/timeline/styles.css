@@ -889,6 +889,11 @@ a.tl-tag:hover {
   box-shadow: var(--sh-float);
   animation: tl-rise var(--dur) var(--ease);
 }
+/* While an editor is open the notice moves to the top, so it never covers the editor's controls. */
+body:has(.tl-pop, .tl-sheet) .tl-notice {
+  top: var(--s-4);
+  bottom: auto;
+}
 .tl-notice > span {
   flex: 1;
   min-width: 0;
@@ -2212,8 +2217,14 @@ a.tl-row-main {
   .tl-narrow-only {
     display: block;
   }
+  /* Phone width: the full width less the gutters, so a message is one or two lines. */
   .tl-notice {
+    left: var(--s-4);
+    right: var(--s-4);
     bottom: var(--s-4);
+    max-width: none;
+    transform: none;
+    animation-name: tl-rise;
   }
   .tl-pop-close {
     top: var(--s-3);
