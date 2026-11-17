@@ -52,7 +52,7 @@ function RootComponent() {
             Life on Rails
           </Link>
           <p className="mx-[22px] mb-6 text-[13px] text-mute" suppressHydrationWarning>
-            <Stamp />
+            <Stamp timezone={shell.timezone} />
           </p>
           <nav className="flex flex-col gap-[3px]" aria-label="Main">
             {NAV.map((n) => (
@@ -98,9 +98,9 @@ function RootComponent() {
   );
 }
 
-function Stamp() {
+function Stamp({ timezone }: { timezone: string }) {
   const now = useNow(20_000);
-  return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(now)).replace(",", " ·");
+  return new Intl.DateTimeFormat("en-GB", { timeZone: timezone, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(now)).replace(",", " ·");
 }
 
 function Health({ unwell, className }: { unwell: Shell["unwell"]; className: string }) {

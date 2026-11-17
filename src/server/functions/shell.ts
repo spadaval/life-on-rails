@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { sql } from "../../db/client.js";
 import { fixedNow } from "../clock.js";
+import { env } from "../env.js";
 import { jobStatuses } from "../status.js";
 
 /** What every screen's frame shows: the running timer, open tasks, whether the jobs are healthy, and the clock. */
@@ -20,5 +21,7 @@ export const getShellFn = createServerFn({ method: "GET" }).handler(async () => 
     unwell,
     /** The fixed time the page reads instead of its own clock (the test database only), or null. */
     clock: fixedNow(),
+    /** LoR's time zone (LOR_TZ): the frame's clock reads in it on the server and the page alike. */
+    timezone: env.LOR_TZ,
   };
 });
