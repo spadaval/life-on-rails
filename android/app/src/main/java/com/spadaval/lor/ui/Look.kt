@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
@@ -110,13 +111,13 @@ private const val TNUM = "tnum"
 
 /** DESIGN.md's type scale; px become sp. Condensed caps are for titles, labels and readouts: callers uppercase the text. */
 object Type {
-    val display = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 56.sp, lineHeight = 56.sp, letterSpacing = 0.03.em, fontFeatureSettings = TNUM, color = Txt)
-    val headline = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, letterSpacing = 0.08.em, fontFeatureSettings = TNUM, color = Txt)
-    val title = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, letterSpacing = 0.07.em, fontFeatureSettings = TNUM, color = Mute)
-    val body = TextStyle(fontFamily = Saira, fontWeight = FontWeight.Normal, fontSize = 15.sp, fontFeatureSettings = TNUM, color = Txt)
-    val bodySmall = TextStyle(fontFamily = Saira, fontWeight = FontWeight.Normal, fontSize = 13.sp, fontFeatureSettings = TNUM, color = Mute)
-    val label = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.Medium, fontSize = 12.5.sp, letterSpacing = 0.07.em, fontFeatureSettings = TNUM, color = Dim)
-    val button = TextStyle(fontFamily = Saira, fontWeight = FontWeight.Medium, fontSize = 13.5.sp, fontFeatureSettings = TNUM, color = Txt)
+    val display = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 56.sp, lineHeight = 56.sp, letterSpacing = 0.03.em, fontFeatureSettings = TNUM, color = Txt, textMotion = TextMotion.Animated)
+    val headline = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, letterSpacing = 0.08.em, fontFeatureSettings = TNUM, color = Txt, textMotion = TextMotion.Animated)
+    val title = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, letterSpacing = 0.07.em, fontFeatureSettings = TNUM, color = Mute, textMotion = TextMotion.Animated)
+    val body = TextStyle(fontFamily = Saira, fontWeight = FontWeight.Normal, fontSize = 15.sp, fontFeatureSettings = TNUM, color = Txt, textMotion = TextMotion.Animated)
+    val bodySmall = TextStyle(fontFamily = Saira, fontWeight = FontWeight.Normal, fontSize = 13.sp, fontFeatureSettings = TNUM, color = Mute, textMotion = TextMotion.Animated)
+    val label = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.Medium, fontSize = 12.5.sp, letterSpacing = 0.07.em, fontFeatureSettings = TNUM, color = Dim, textMotion = TextMotion.Animated)
+    val button = TextStyle(fontFamily = Saira, fontWeight = FontWeight.Medium, fontSize = 13.5.sp, fontFeatureSettings = TNUM, color = Txt, textMotion = TextMotion.Animated)
 }
 
 private val Square = RoundedCornerShape(0.dp)

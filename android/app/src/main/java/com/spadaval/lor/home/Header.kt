@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextMotion
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -189,7 +190,7 @@ internal fun HomeHeader(style: HomeLook.Header, size: Int, openCalendar: () -> U
     val weather = weatherLine(reply?.weather, now, remember { usesFahrenheit() })
     val date = DateTimeFormatter.ofPattern("EEEE d MMMM").format(now.atZone(zone))
     val shadow = ink.shadow
-    val line = TextStyle(fontFamily = Saira, fontSize = 15.sp, color = ink.text, shadow = shadow)
+    val line = TextStyle(fontFamily = Saira, fontSize = 15.sp, color = ink.text, shadow = shadow, textMotion = TextMotion.Animated)
     Column(
         Modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 28.dp)
             .clickable(role = Role.Button, onClickLabel = "Open calendar", onClick = openCalendar)
@@ -200,10 +201,10 @@ internal fun HomeHeader(style: HomeLook.Header, size: Int, openCalendar: () -> U
     ) {
         if (style == HomeLook.Header.CLOCK) {
             // DESIGN.md's display readout, then the date as a title.
-            Text(Clock.format(now.atZone(zone)), style = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 56.sp, lineHeight = 56.sp, color = ink.text, shadow = shadow, fontFeatureSettings = "tnum"))
-            Text(date.uppercase(), style = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, letterSpacing = 1.sp, color = ink.text, shadow = shadow))
+            Text(Clock.format(now.atZone(zone)), style = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 56.sp, lineHeight = 56.sp, color = ink.text, shadow = shadow, fontFeatureSettings = "tnum", textMotion = TextMotion.Animated))
+            Text(date.uppercase(), style = TextStyle(fontFamily = SairaCondensed, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, letterSpacing = 1.sp, color = ink.text, shadow = shadow, textMotion = TextMotion.Animated))
         } else {
-            Text(date, style = TextStyle(fontFamily = Saira, fontSize = size.sp, color = ink.text, shadow = shadow))
+            Text(date, style = TextStyle(fontFamily = Saira, fontSize = size.sp, color = ink.text, shadow = shadow, textMotion = TextMotion.Animated))
         }
         event?.let {
             Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
