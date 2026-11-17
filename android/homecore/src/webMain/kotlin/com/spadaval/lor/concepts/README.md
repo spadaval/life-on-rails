@@ -14,14 +14,30 @@ web-dev.sh.
 
 1. Make a package beside `queue/`, with a `Version`:
    `val version = Version("timeline", "Concept: Timeline. …") { TimelinePhone(it) }`.
-2. Add it to `Concepts.all` in `Concepts.kt`. That one line is the registration. The lab page hands
-   the list to `Lab.concepts` before anything reads the registry.
-3. Open it: `android/web-dev.sh`, then `http://127.0.0.1:3860/#timeline/demo`. Every named state
+2. Add it to `concepts` in `android/homecore/build.gradle.kts`, as `"timeline" to "Timeline"` (the
+   package's name and its object's). That one line is the registration: the build generates
+   `Concepts.all` from the list, and the lab page hands it to `Lab.concepts` before anything reads
+   the registry.
+3. Open it: `android/web-dev.sh --only timeline`, then `http://127.0.0.1:3860/#timeline/demo`. Every named state
    works, including the brief's required ones: `quiet`, `empty-day`, `sync-failed`, `large-text`,
    `stale`, `failed`, `overfull` (twelve cards), `agent-waiting`, `agent-t3-stale`, `thread-long`.
 
 A direction's root composable gets a `LabScene`: the fixture, the screen (cover or inner) and the
 wallpaper. Draw the same fixture as `current` and read nothing else.
+
+## Building one concept at a time
+
+`android/web-dev.sh --only <concept>` compiles only that concept's package (the Gradle property
+`lor.concepts`, a comma-separated list): the lab holds current, the kit and that concept, and the
+others are left out of the source set and the Version dropdown. Use it while working on a concept.
+With Queue alone in, a development session peaked at 4,085 MB of the scope's 4,096 MB; the cap is
+decision lor-0v68's, so the build is made smaller instead. web-dev.sh's header has the numbers.
+
+Without `--only` every concept is compiled, as boat's full bundle (`android/boat-build.sh`) is.
+Each package must therefore compile on its own: a concept imports from `kit/` and the lab, never
+from another concept. Copy what you want from another direction into your package.
+
+A bundle built with `--only` holds one concept, so it is not the lab to publish under `/lab/phone/`.
 
 ## The kit
 

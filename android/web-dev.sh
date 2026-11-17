@@ -1,7 +1,14 @@
 #!/bin/bash
 # The launcher lab, rebuilt on every save: homecore's wasm development build in Gradle's continuous
 # mode, served with live reload at http://127.0.0.1:${LOR_LAB_PORT:-3860}/ (loopback only).
-# Usage: android/web-dev.sh [--dry-run]
+# Usage: android/web-dev.sh [--only <concept>[,<concept>]] [--dry-run]
+#
+# --only compiles just the named design concepts (homecore/build.gradle.kts's `concepts` list,
+# passed as -Plor.concepts): the lab then holds current, the concepts' shared kit and those
+# concepts, and the others drop out of the Version dropdown. Work on one concept with it set to
+# that concept: with every concept in, the build no longer fits the scope (lor-j1fe below). Without
+# it every concept is compiled, as boat's full bundle is. The bundle a build with --only leaves in
+# homecore/build/dist is not the lab to publish: publish one built with every concept.
 #
 # Decision lor-0v68 (spike lor-8a7n's numbers) is why it looks like this: the only Gradle build
 # allowed on this host, in a scope capped at 4 GB of memory and 512 MB of swap, Gradle at -Xmx1g,
@@ -23,6 +30,15 @@
 # --dry-run runs the refusals and prints the command without starting it.
 set -euo pipefail
 cd "$(dirname "$0")"
+ONLY=() DRY=
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --only) [ $# -ge 2 ] || { echo "web-dev: --only needs a concept name" >&2; exit 2; }; ONLY=("-Plor.concepts=$2"); shift 2 ;;
+    --only=*) ONLY=("-Plor.concepts=${1#--only=}"); shift ;;
+    --dry-run) DRY=1; shift ;;
+    *) echo "web-dev: unknown argument $1 (usage: web-dev.sh [--only <concept>] [--dry-run])" >&2; exit 2 ;;
+  esac
+done
 UNIT=lor-web-dev
 PORT=${LOR_LAB_PORT:-3860}
 
@@ -41,13 +57,13 @@ if ss -Htln "sport = :$PORT" | grep -q .; then refuse "port $PORT is taken"; fi
 GRADLE=(./gradlew --no-daemon --console=plain --max-workers=2
   -Dorg.gradle.jvmargs="-Xmx1g -Dfile.encoding=UTF-8"
   "-Pkotlin.daemon.jvmargs=-Xmx1536m -Dlor.web=1"
-  -Pkotlin.incremental.wasm=true)
+  -Pkotlin.incremental.wasm=true "${ONLY[@]}")
 CMD=(systemd-run --user --scope --quiet --slice=agents.slice --unit="$UNIT"
   -p MemoryMax=4G -p MemorySwapMax=512M
   env LOR_LAB_PORT="$PORT"
   "${GRADLE[@]}" --continuous :homecore:wasmJsBrowserDevelopmentRun)
 
-if [ "${1:-}" = --dry-run ]; then printf '%q ' "${CMD[@]}"; echo; exit 0; fi
+if [ -n "$DRY" ]; then printf '%q ' "${CMD[@]}"; echo; exit 0; fi
 
 rm -rf homecore/build/classes/kotlin/wasmJs/main homecore/build/compileSync/wasmJs/main/developmentExecutable
 
