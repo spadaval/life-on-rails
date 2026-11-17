@@ -409,6 +409,366 @@
       "screen": "Launcher lab · panels",
       "name": "quick send with a screenshot · inner",
       "link": "/#current/{%22base%22:%22demo%22,%22where%22:{%22open%22:%22QUICK_SEND%22,%22target%22:%22assist%22}}/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · demo · cover",
+      "link": "/#queue/demo"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · demo · inner",
+      "link": "/#queue/demo/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · empty · cover",
+      "link": "/#queue/empty"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · empty · inner",
+      "link": "/#queue/empty/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · loading · cover",
+      "link": "/#queue/loading"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · loading · inner",
+      "link": "/#queue/loading/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · stale · cover",
+      "link": "/#queue/stale"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · stale · inner",
+      "link": "/#queue/stale/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · failed · cover",
+      "link": "/#queue/failed"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · failed · inner",
+      "link": "/#queue/failed/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · overfull · cover",
+      "link": "/#queue/overfull"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · overfull · inner",
+      "link": "/#queue/overfull/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · quiet · cover",
+      "link": "/#queue/quiet"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · quiet · inner",
+      "link": "/#queue/quiet/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · empty-day · cover",
+      "link": "/#queue/empty-day"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · empty-day · inner",
+      "link": "/#queue/empty-day/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · sync-failed · cover",
+      "link": "/#queue/sync-failed"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · sync-failed · inner",
+      "link": "/#queue/sync-failed/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · large-text · cover",
+      "link": "/#queue/large-text"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · large-text · inner",
+      "link": "/#queue/large-text/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · agent-waiting · cover",
+      "link": "/#queue/agent-waiting"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · agent-waiting · inner",
+      "link": "/#queue/agent-waiting/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · agent-t3-stale · cover",
+      "link": "/#queue/agent-t3-stale"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · agent-t3-stale · inner",
+      "link": "/#queue/agent-t3-stale/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · thread-long · cover",
+      "link": "/#queue/thread-long"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · thread-long · inner",
+      "link": "/#queue/thread-long/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · search-mixed · cover",
+      "link": "/#queue/search-mixed"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · search-mixed · inner",
+      "link": "/#queue/search-mixed/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · app-menu · cover",
+      "link": "/#queue/app-menu"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · app-menu · inner",
+      "link": "/#queue/app-menu/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · drawer-all-scrolled · cover",
+      "link": "/#queue/drawer-all-scrolled"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · drawer-all-scrolled · inner",
+      "link": "/#queue/drawer-all-scrolled/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · home-settings-tabs · cover",
+      "link": "/#queue/home-settings-tabs"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · home-settings-tabs · inner",
+      "link": "/#queue/home-settings-tabs/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · sensors-failed · cover",
+      "link": "/#queue/sensors-failed"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · sensors-failed · inner",
+      "link": "/#queue/sensors-failed/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · demo · queue page · cover",
+      "link": "/#queue/{\"base\":\"demo\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · demo · queue page · inner",
+      "link": "/#queue/{\"base\":\"demo\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · quiet · queue page · cover",
+      "link": "/#queue/{\"base\":\"quiet\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · quiet · queue page · inner",
+      "link": "/#queue/{\"base\":\"quiet\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · empty-day · queue page · cover",
+      "link": "/#queue/{\"base\":\"empty-day\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · empty-day · queue page · inner",
+      "link": "/#queue/{\"base\":\"empty-day\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · stale · queue page · cover",
+      "link": "/#queue/{\"base\":\"stale\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · stale · queue page · inner",
+      "link": "/#queue/{\"base\":\"stale\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · failed · queue page · cover",
+      "link": "/#queue/{\"base\":\"failed\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · failed · queue page · inner",
+      "link": "/#queue/{\"base\":\"failed\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · overfull · queue page · cover",
+      "link": "/#queue/{\"base\":\"overfull\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · overfull · queue page · inner",
+      "link": "/#queue/{\"base\":\"overfull\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · sync-failed · queue page · cover",
+      "link": "/#queue/{\"base\":\"sync-failed\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · sync-failed · queue page · inner",
+      "link": "/#queue/{\"base\":\"sync-failed\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · large-text · queue page · cover",
+      "link": "/#queue/{\"base\":\"large-text\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · large-text · queue page · inner",
+      "link": "/#queue/{\"base\":\"large-text\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · timer · cover",
+      "link": "/#queue/{\"base\":\"demo\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · timer running · cover",
+      "link": "/#queue/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · quick send · cover",
+      "link": "/#queue/{\"base\":\"demo\",\"where\":{\"open\":\"QUICK_SEND\"}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · settings · cover",
+      "link": "/#queue/{\"base\":\"sync-failed\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · demo · cover · pale",
+      "link": "/#queue/demo/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · demo · inner · pale",
+      "link": "/#queue/demo/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · agent-waiting · cover · pale",
+      "link": "/#queue/agent-waiting/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · agent-waiting · inner · pale",
+      "link": "/#queue/agent-waiting/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · search-mixed · cover · pale",
+      "link": "/#queue/search-mixed/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · search-mixed · inner · pale",
+      "link": "/#queue/search-mixed/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · app-menu · cover · pale",
+      "link": "/#queue/app-menu/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · app-menu · inner · pale",
+      "link": "/#queue/app-menu/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · demo · cover · mixed",
+      "link": "/#queue/demo/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · demo · inner · mixed",
+      "link": "/#queue/demo/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · agent-waiting · cover · mixed",
+      "link": "/#queue/agent-waiting/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · agent-waiting · inner · mixed",
+      "link": "/#queue/agent-waiting/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · search-mixed · cover · mixed",
+      "link": "/#queue/search-mixed/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · search-mixed · inner · mixed",
+      "link": "/#queue/search-mixed/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · app-menu · cover · mixed",
+      "link": "/#queue/app-menu/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · queue",
+      "name": "queue · app-menu · inner · mixed",
+      "link": "/#queue/app-menu/inner/mixed"
     }
   ]
 }
