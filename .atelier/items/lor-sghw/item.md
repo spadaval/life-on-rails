@@ -29,7 +29,7 @@ Text in the app stops shimmering when it scales, and lays out as the browser wil
 ## Done when
 
 - [x] Every `TextStyle(` under `android/app/src/main` sets `textMotion = TextMotion.Animated`, shown by a grep listing each with its line. On 2026-11-08 they are `Type`'s seven in `ui/Look.kt`, home's `labelStyle` in `home/HomeScreen.kt`, the header's four in `home/Header.kt` (the line, the clock and both dates), and the LoR panel's one in `lor/LorPanel.kt`. Material's typography in `Look.kt` copies `Type`, so it follows.
-- [ ] On `T3_Phone_API35` against the test server, home's first page and the drawer screenshotted before and after: no label newly cut by its ellipsis, and the header and labels at most about 1% wider. Both pairs recorded as an evidence receipt on this item.
+- [x] On `T3_Phone_API35` against the test server, home's first page and the drawer screenshotted before and after: no label newly cut by its ellipsis, and the header and labels up to about 4% wider (Sumeet accepted the measured 0.8% to 3.5% on 2026-11-17). Both pairs recorded as an evidence receipt on this item.
 - [x] On the emulator with animations slowed (`settings put global animator_duration_scale 10`), before and after: a tile pressed and held, a folder opened and closed, and a predictive back on the drawer, each captured as a run of frames (`adb exec-out screencap -p` in a loop, or `screenrecord --bit-rate 20000000`). In each frame, a label's measured width divided by that frame's scale stays within 1 px of its width at rest after the change; before, the jumps are larger. The widths per frame, before and after, recorded as an evidence receipt.
 - [x] `assembleDebug testDebugUnitTest` passes on boat.
 
@@ -44,7 +44,9 @@ Text in the app stops shimmering when it scales, and lays out as the browser wil
 
 ## Report
 
-Scaled text no longer shimmers. During a press, a folder opening and the drawer's predictive back, every label's width tracks the frame's scale to within 0.60 px; before the change it jumped by up to 1.22 px. The cost is at rest: labels on home are 0.8% to 3.5% wider, which is more than the "about 1%" Done-when line 2 allows, so that line is left unticked (below). No label is cut by its ellipsis.
+Scaled text no longer shimmers. During a press, a folder opening and the drawer's predictive back, every label's width tracks the frame's scale to within 0.60 px; before the change it jumped by up to 1.22 px. The cost is at rest: labels on home are 0.8% to 3.5% wider, and no label is cut by its ellipsis.
+
+**Done-when line 2 was amended on 2026-11-17.** It allowed the header and labels to grow "at most about 1%". The measured growth is 0.8% to 3.5%, and it comes from `TextMotion.Animated` itself, so meeting 1% would mean revisiting decision lor-mc37. Sumeet accepted the measured widths on 2026-11-17, and the line now allows "up to about 4% wider". It is ticked on the static pair below, which was not re-measured.
 
 **The change** (d6fc94a; taken over after the first implementer's session hit the 4 GB memory cap while measuring). Every `TextStyle(` under `android/app/src/main` sets `textMotion = TextMotion.Animated`. `grep -rn "TextStyle(" android/app/src/main` lists 13, and each has it:
 
@@ -57,7 +59,7 @@ Scaled text no longer shimmers. During a press, a folder opening and the drawer'
 
 **Evidence:** `/tmp/lor-verify/t3-894fb3ee-528162b46c30b0ed/sghw/`. `README.txt` describes each file. The device was `T3_Phone_API35` on the Mac, with LoR as home and `server_url` `http://10.0.2.2:3857`. Both final runs show the header as the date alone, with no event line, so the app most likely did not reach the test server in either run. Both runs saw the same header and grid (`header.txt`, `dy.txt`). Before and after were installed and captured back to back by one script. Earlier rounds whose header differed are in `stale/` and were not used.
 
-**Static pair (Done-when 2, not ticked).** These are home's first page and the drawer's All tab (`home.png`, `drawer.png`).
+**Static pair (Done-when 2).** These are home's first page and the drawer's All tab (`home.png`, `drawer.png`).
 
 - Nothing is newly cut by an ellipsis, on home or in the drawer. The longest home label, "Life on Rails", is 178 px in a 270 px cell.
 - Widths are the layout rects from the accessibility snapshots, in whole pixels, so 1 px is about 1% on a 100 px label:
@@ -77,7 +79,7 @@ Scaled text no longer shimmers. During a press, a folder opening and the drawer'
 | Settings | 118 | 122 | +3.4% |
 
 - Measured on the pixels instead (subpixel ink width at rest), the growth is +2.3% for Settings on home (114.89 to 117.53 px). In the drawer it is +0.7% to +1.6%: Calendar 124.64 to 125.56, Camera 104.03 to 105.71, Chrome 106.47 to 107.65, Clock 71.45 to 72.04. In the open folder it is +0.8% to +1.3%: the Google title 160.98 to 162.23, Maps 74.91 to 75.92, Photos 96.91 to 97.78.
-- The growth comes from `TextMotion.Animated` itself. Hinted text rounds each glyph's advance to whole pixels at these sizes, mostly down, and unhinted text keeps the font's linear advances. So meeting 1% would mean revisiting decision lor-mc37, not changing this code. I've asked the thread that started me whether to accept and amend the line. Since nothing is cut, I recommend accepting.
+- The growth comes from `TextMotion.Animated` itself. Hinted text rounds each glyph's advance to whole pixels at these sizes, mostly down, and unhinted text keeps the font's linear advances. So meeting 1% would mean revisiting decision lor-mc37, not changing this code. Sumeet accepted the growth on 2026-11-17, and line 2 was amended to match (above).
 
 **Motion (Done-when 3).** At `animator_duration_scale 10`, recorded with `screenrecord --bit-rate 20000000`: the Settings tile pressed and held, the Google folder opened and closed, and a predictive back on the drawer's All tab. `measure.py` takes each frame's scale from the icons, which are bitmaps and scale exactly. It measures each label's width to subpixel precision, and reports |width / scale - width at rest| in px. Every frame is in `<run>/<scenario>.csv`.
 
