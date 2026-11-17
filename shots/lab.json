@@ -1,0 +1,34 @@
+{
+  "name": "lab",
+  "about": "The launcher lab (android/homecore's wasmJsMain): every version by state by screen, on the dark wallpaper. Each link is the lab's URL hash (#version/state/screen/wallpaper), so it opens the same screen by hand. Serve it with android/web-dev.sh. A new version or state adds its rows here.",
+  "base": "http://127.0.0.1:3860",
+  "widths": [
+    1000
+  ],
+  "height": 1250,
+  "wait": {
+    "function": "document.body.getAttribute('data-drawn') === location.hash"
+  },
+  "shots": [
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · home-full · cover",
+      "link": "/#current/home-full"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · home-full · inner",
+      "link": "/#current/home-full/inner"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · first-run · cover",
+      "link": "/#current/first-run"
+    },
+    {
+      "screen": "Launcher lab · current",
+      "name": "current · first-run · inner",
+      "link": "/#current/first-run/inner"
+    }
+  ]
+}
