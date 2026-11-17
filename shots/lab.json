@@ -74,6 +74,21 @@
       "screen": "Launcher lab · current",
       "name": "current · one-off (T3 unpaired) · inner",
       "link": "/#current/{\"base\":\"demo\",\"name\":\"t3-unpaired\",\"t3\":{\"status\":\"NOT_PAIRED\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · gestures",
+      "name": "gestures · demo · cover",
+      "link": "/#gestures/demo"
+    },
+    {
+      "screen": "Launcher lab · gestures",
+      "name": "gestures · demo · inner",
+      "link": "/#gestures/demo/inner"
+    },
+    {
+      "screen": "Launcher lab · gestures",
+      "name": "gestures · demo · inner landscape",
+      "link": "/#gestures/demo/inner/dark/landscape"
     }
   ]
 }

@@ -24,6 +24,9 @@
   #json-text { box-sizing: border-box; width: 100%; height: 60vh; font: 12px ui-monospace, monospace; color: var(--txt); background: #0c0d12; border: 1px solid #3a3634; }
   .json-bar { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
   .json-bar #json-close { margin-left: auto; }
+  .keys { display: flex; gap: 6px; }
+  /* A finger on the screen, as Android's "Show taps" draws it: for people and for recordings. */
+  .finger { position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; background: rgb(255 255 255 / 35%); border: 1px solid rgb(255 255 255 / 70%); pointer-events: none; z-index: 2; }
   /* A JSON file held over the page: it opens as a one-off state when dropped. */
   body.dropping main { outline: 2px dashed var(--or); outline-offset: -8px; }
 </style>
@@ -32,7 +35,13 @@
 <header>
   <label>Version <select id="version"></select></label>
   <label>State <select id="state"></select></label>
-  <button id="fold" type="button">Unfold</button>
+  <span class="keys">
+    <button id="home" type="button" title="Home: the state drawn afresh (H)">Home</button>
+    <button id="back" type="button" title="Back, as the phone's back sends it (Escape or B)">Back</button>
+    <button id="fold" type="button">Unfold</button>
+    <button id="rotate" type="button" title="Turn the phone on its side (R)">Rotate</button>
+    <button id="speed" type="button" title="Animation speed: full, a quarter, or none (S)">Speed 1×</button>
+  </span>
   <label>Wallpaper <select id="wallpaper"></select></label>
   <button id="json" type="button" title="This state's JSON: edit it, then drop the file on the page or put it in the link">JSON</button>
   <span id="problem" hidden></span>
@@ -47,6 +56,102 @@
   </div>
 </dialog>
 <main><div class="bezel"><div id="phone"></div></div></main>
+<script>
+/*
+ * Two things Compose must find in place before it starts (homecore.js), so it comes first.
+ *
+ * The animation clock. Compose times its animations by the timestamps requestAnimationFrame hands
+ * its callbacks; this hands them a clock that runs at the speed the Speed button sets (1, 0.25, or
+ * 0 for none, where every animation ends on the next frame). Pointer events keep their own real
+ * timestamps, so a fling's speed and a long press's timeout are the same at every speed.
+ *
+ * The mouse as a finger. Compose for the web scrolls nothing on a mouse drag (only on the wheel),
+ * so a press of the main button on the screen is sent on as a touch: a drag is a swipe and a held
+ * press a long press, with the moves and the release followed outside the screen too. Hover is
+ * dropped there, as a phone has none. The wheel goes through as itself.
+ */
+(() => {
+  const raf = window.requestAnimationFrame.bind(window);
+  let speed = 1, realAt = performance.now(), virtualAt = realAt;
+  // Speed 0 runs the clock a thousand times fast: a frame is then minutes long, so whatever starts ends.
+  const virtual = t => virtualAt + (t - realAt) * (speed || 1000);
+  window.labSetSpeed = s => { const now = performance.now(); virtualAt = virtual(now); realAt = now; speed = s; };
+  window.requestAnimationFrame = cb => raf(t => cb(virtual(t)));
+
+  // Compose's own listeners on its canvas never hear the mouse as a pointer. Chrome sends a
+  // pointerenter straight to the element entered, past any listener on window, and one let through
+  // leaves Compose a hovering mouse beside the finger, which cancels the finger's tap.
+  const add = EventTarget.prototype.addEventListener, remove = EventTarget.prototype.removeEventListener;
+  const wrapped = new WeakMap();
+  HTMLCanvasElement.prototype.addEventListener = function (type, listener, options) {
+    if (!type.startsWith("pointer") || !listener) return add.call(this, type, listener, options);
+    if (!wrapped.has(listener)) {
+      wrapped.set(listener, function (e) {
+        if (e.isTrusted && e.pointerType === "mouse") return;
+        return typeof listener === "function" ? listener.call(this, e) : listener.handleEvent(e);
+      });
+    }
+    return add.call(this, type, wrapped.get(listener), options);
+  };
+  HTMLCanvasElement.prototype.removeEventListener = function (type, listener, options) {
+    return remove.call(this, type, (listener && wrapped.get(listener)) ?? listener, options);
+  };
+
+  let canvas = null;
+  let pressing = false; // from a press on the screen until its click has gone by
+  const onPhone = e => {
+    const r = document.getElementById("phone")?.getBoundingClientRect();
+    return Boolean(r) && e.clientX >= r.left && e.clientX < r.right && e.clientY >= r.top && e.clientY < r.bottom;
+  };
+  const forward = (type, e) => canvas.dispatchEvent(new PointerEvent(type, {
+    bubbles: true, cancelable: true, composed: true, pointerId: 1000, pointerType: "touch", isPrimary: true,
+    clientX: e.clientX, clientY: e.clientY, screenX: e.screenX, screenY: e.screenY,
+    button: type === "pointermove" ? -1 : 0, buttons: type === "pointerup" || type === "pointercancel" ? 0 : 1,
+    pressure: type === "pointerup" ? 0 : 0.5, width: 1, height: 1,
+  }));
+  for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "pointerover", "pointerout", "pointerenter", "pointerleave"]) {
+    window.addEventListener(type, e => {
+      if (!e.isTrusted || e.pointerType !== "mouse") return;
+      if (canvas) {
+        e.stopImmediatePropagation();
+        if (type === "pointermove" || type === "pointerup" || type === "pointercancel") forward(type, e);
+        if (type === "pointerup" || type === "pointercancel") { canvas = null; setTimeout(() => { pressing = false; }); }
+        return;
+      }
+      if (!onPhone(e)) return;
+      e.stopImmediatePropagation();
+      const target = e.composedPath()[0];
+      if (type === "pointerdown" && e.button === 0 && target.tagName === "CANVAS") {
+        e.preventDefault();
+        canvas = target;
+        pressing = true;
+        forward("pointerdown", e);
+      }
+    }, true);
+  }
+
+  // The mouse events the browser still sends for a mouse press (down, up, click, moves) would
+  // reach Compose as a second, mouse pointer and cancel the finger's tap, so on the screen, and
+  // while a press is being followed, they stop here.
+  for (const type of ["mousedown", "mouseup", "mousemove", "click", "dblclick", "contextmenu"]) {
+    window.addEventListener(type, e => { if (e.isTrusted && (canvas || pressing || onPhone(e))) { e.stopImmediatePropagation(); if (type === "contextmenu") e.preventDefault(); } }, true);
+  }
+
+  // A dot under each finger on the screen, whether it came from a touch screen, a script or the mouse.
+  const dots = new Map();
+  const dot = e => {
+    const phone = document.getElementById("phone");
+    if (!dots.has(e.pointerId)) { const d = document.createElement("div"); d.className = "finger"; phone.append(d); dots.set(e.pointerId, d); }
+    const r = phone.getBoundingClientRect(), d = dots.get(e.pointerId);
+    d.style.left = (e.clientX - r.left) + "px"; d.style.top = (e.clientY - r.top) + "px";
+  };
+  const lift = e => { dots.get(e.pointerId)?.remove(); dots.delete(e.pointerId); };
+  window.addEventListener("pointerdown", e => { if (e.pointerType === "touch" && onPhone(e)) dot(e); }, true);
+  window.addEventListener("pointermove", e => { if (e.pointerType === "touch" && dots.has(e.pointerId)) dot(e); }, true);
+  window.addEventListener("pointerup", lift, true);
+  window.addEventListener("pointercancel", lift, true);
+})();
+</script>
 <script src="homecore.js"></script>
 </body>
 </html>
