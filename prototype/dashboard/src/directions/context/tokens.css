@@ -1,0 +1,103 @@
+/* Context's tokens. Every size, space, colour, radius, shadow and duration on its screens comes
+   from here; styles.css uses no other literal values for these. */
+@import "@fontsource/saira/latin-400.css";
+@import "@fontsource/saira/latin-500.css";
+@import "@fontsource/saira/latin-600.css";
+@import "@fontsource/saira-condensed/latin-500.css";
+@import "@fontsource/saira-condensed/latin-600.css";
+
+:root[data-version="context"] {
+  /* Type: one legible sans, five sizes with one job each; condensed numerals for the timer. */
+  --font: "Saira", system-ui, sans-serif;
+  --font-num: "Saira Condensed", "Saira", sans-serif;
+  --t-meta: 13px;   /* labels, region titles, times, counts, chips */
+  --t-body: 15px;   /* rows, notes, buttons, page text */
+  --t-title: 17px;  /* the next task, a card's title, a person's name in a list */
+  --t-head: 20px;   /* page titles, sheet titles, the next context's event */
+  --t-ctx: 30px;    /* the context's title and its running clock: what leads */
+  --lh-tight: 1.2;
+  --lh-body: 1.5;
+  --w-med: 500;
+  --w-bold: 600;
+  --track-label: 0.06em;
+
+  /* Space. 26 between a context's regions, so each reads as its own group; the rest in 4s. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-region: 26px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  /* Radii: rounded everywhere, rounder the larger and the nearer it is. */
+  --r-chip: 8px;
+  --r-ctl: 10px;
+  --r-row: 12px;
+  --r-region: 16px;
+  --r-float: 20px;
+  --r-surface: 24px;
+  --r-pill: 999px;
+
+  /* Ground and tones. The current context is one raised surface; each region inside it sits on
+     its own tone; everything beside it is flat on the ground. */
+  --ground: #0b0e14;
+  --ground-2: #0f131b;        /* flat cards beside the context */
+  --surface: #151a24;         /* the current context */
+  --surface-edge: rgb(255 255 255 / 0.07);
+  --region: rgb(255 255 255 / 0.028);   /* a region inside the surface */
+  --region-2: rgb(255 255 255 / 0.05);  /* a hovered row, a control's face */
+  --region-3: rgb(255 255 255 / 0.085); /* pressed, a chip that is on */
+  --float: rgb(23 28 39 / 0.82);        /* popovers, sheets, the notice */
+  --float-hi: rgb(21 26 36 / 0.96);     /* search results: they open inside the blurred bar, where a second blur cannot reach */
+  --bar: rgb(11 14 20 / 0.72);
+  --blur: blur(24px) saturate(160%);
+  --scrim: rgb(5 7 11 / 0.55);
+  --line: rgb(255 255 255 / 0.06);
+  --line-2: rgb(255 255 255 / 0.11);
+
+  --text: #edf1f7;
+  --text-2: #aab4c3;
+  --text-3: #7c8697;
+  --text-4: #5b6474;
+
+  /* Colour jobs. Amber: the current context's timer and selection. Cyan: the next fixed event and
+     the agent's work. Red: late, and errors. Green: done. */
+  --amber: #f2a446;
+  --amber-hi: #ffbd6b;
+  --amber-ink: #211203;
+  --amber-soft: rgb(242 164 70 / 0.14);
+  --amber-faint: rgb(242 164 70 / 0.07);
+  --amber-line: rgb(242 164 70 / 0.5);
+  --cyan: #6fc8e8;
+  --cyan-ink: #04161d;
+  --cyan-soft: rgb(111 200 232 / 0.11);
+  --cyan-faint: rgb(111 200 232 / 0.05);
+  --cyan-line: rgb(111 200 232 / 0.4);
+  --red: #f07a6c;
+  --red-soft: rgb(240 122 108 / 0.11);
+  --red-line: rgb(240 122 108 / 0.38);
+  --green: #7fd1a3;
+  --green-soft: rgb(127 209 163 / 0.12);
+  --focus: 0 0 0 2px var(--ground), 0 0 0 4px rgb(242 164 70 / 0.8);
+
+  /* Depth: three levels. Flat on the ground; the raised context surface; floating (with blur). */
+  --sh-raise: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 24px 48px -12px rgb(0 0 0 / 0.55), 0 4px 12px rgb(0 0 0 / 0.3);
+  --sh-float: 0 1px 0 rgb(255 255 255 / 0.07) inset, 0 32px 72px rgb(0 0 0 / 0.55), 0 8px 20px rgb(0 0 0 / 0.38);
+
+  /* Motion: short, and only to say what changed. */
+  --dur: 180ms;
+  --dur-slow: 240ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Geometry. */
+  --page-max: 1360px;
+  --side-w: 360px;
+  --bar-h: 64px;
+  --tabs-h: 48px;
+  --row-h: 44px;
+  --check: 22px;
+  /* The notice sits above the prototype's Version chip (bottom right, 12px in, about 40px tall). */
+  --notice-bottom: 64px;
+}

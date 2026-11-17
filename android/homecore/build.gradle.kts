@@ -40,6 +40,9 @@ kotlin {
             implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
             implementation("org.jetbrains.compose.ui:ui:$composeVersion")
             implementation("org.jetbrains.compose.material3:material3:1.9.0")
+            // Back as Compose's common code hears it (NavigationBackHandler); the lab's Back button
+            // and gesture.mjs's back() send it through a DirectNavigationEventInput.
+            implementation("org.jetbrains.androidx.navigationevent:navigationevent-compose:1.1.0")
             // api: the app's debug fixture entry reads a fixture's JSON parts too.
             api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
         }

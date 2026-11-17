@@ -21,8 +21,11 @@ enum class Wallpaper(val id: String, val label: String) {
     Mixed("mixed", "Mixed"),
 }
 
-/** What a version is asked to draw: the state's fixture, on one screen. */
-class LabScene(val fixture: Fixture, val screen: LabScreen)
+/** What a version is asked to draw: the state's fixture, on one screen, upright or turned on its side. */
+class LabScene(val fixture: Fixture, val screen: LabScreen, val landscape: Boolean = false) {
+    val widthDp: Int get() = if (landscape) screen.heightDp else screen.widthDp
+    val heightDp: Int get() = if (landscape) screen.widthDp else screen.heightDp
+}
 
 /** A version of the launcher and app: a name in the dropdown and the composable tree it draws. */
 class Version(val name: String, val about: String, val draw: @Composable (LabScene) -> Unit)
@@ -35,6 +38,7 @@ object Lab {
      */
     val versions: List<Version> = listOf(
         Version("current", "The app as it is: its tabs and Home settings, and the kit sheet of its look for the rest") { if (!AppScreen(it)) KitSheet(it) },
+        Version("gestures", "Not a launcher: the surface scripts/lab/run.mjs is proven on (a pager, a list, a tile with a menu, two panes)") { GestureSurface(it) },
     )
 
     val states: List<Fixture> get() = Fixtures.all
@@ -54,29 +58,33 @@ object Lab {
 }
 
 /**
- * One screen of the lab, as the URL hash names it: `#version/state/screen/wallpaper`, for example
- * `#current/demo/inner/pale`. The screen and the wallpaper may be left off for the cover
- * screen on the dark wallpaper (`#current/demo`); the wallpaper alone for the dark one. The state
- * is a name, or a one-off as a JSON object (`#current/{"base":"demo","t3":{"status":"NOT_PAIRED"}}/inner`),
- * which may hold `/`.
+ * One screen of the lab, as the URL hash names it: `#version/state/screen/wallpaper/orientation`,
+ * for example `#current/demo/inner/pale`. What is left off at the end is the default: the cover
+ * screen, the dark wallpaper, upright (`#current/demo`). `landscape` as the fifth part turns the
+ * phone on its side. The state is a name, or a one-off as a JSON object
+ * (`#current/{"base":"demo","t3":{"status":"NOT_PAIRED"}}/inner`), which may hold `/`.
  */
 data class LabLink(
     val version: String,
     val state: String,
     val screen: LabScreen = LabScreen.Cover,
     val wallpaper: Wallpaper = Wallpaper.Dark,
+    val landscape: Boolean = false,
 ) {
     /** The hash for this link, without `#`, leaving off what is the default at the end. */
     val hash: String
         get() = buildList {
             add(version); add(if (Lab.isOneOff(state)) encodeOneOff(state) else state)
-            if (screen != LabScreen.Cover || wallpaper != Wallpaper.Dark) add(screen.id)
-            if (wallpaper != Wallpaper.Dark) add(wallpaper.id)
+            if (screen != LabScreen.Cover || wallpaper != Wallpaper.Dark || landscape) add(screen.id)
+            if (wallpaper != Wallpaper.Dark || landscape) add(wallpaper.id)
+            if (landscape) add(LANDSCAPE)
         }.joinToString("/")
 
     companion object {
         /** The link the page opens on with no hash: the first version and the first state. */
         fun first() = LabLink(Lab.versions.first().name, Lab.states.first().name)
+
+        const val LANDSCAPE = "landscape"
     }
 }
 
@@ -100,8 +108,9 @@ fun parseHash(raw: String, versions: List<String> = Lab.versions.map { it.name }
     val state = parts.getOrNull(1)?.takeIf { Lab.isOneOff(it) } ?: pick(1, "state", states, { it }, states.first())
     val screen = pick(2, "screen", LabScreen.entries, { it.id }, LabScreen.Cover)
     val wallpaper = pick(3, "wallpaper", Wallpaper.entries, { it.id }, Wallpaper.Dark)
-    if (parts.size > 4) problems += "Too many parts: ${parts.drop(4).joinToString("/")}"
-    return Parsed(LabLink(version, state, screen, wallpaper), problems.takeIf { it.isNotEmpty() }?.joinToString("; "))
+    val landscape = pick(4, "orientation", listOf(false, true), { if (it) LabLink.LANDSCAPE else "portrait" }, false)
+    if (parts.size > 5) problems += "Too many parts: ${parts.drop(5).joinToString("/")}"
+    return Parsed(LabLink(version, state, screen, wallpaper, landscape), problems.takeIf { it.isNotEmpty() }?.joinToString("; "))
 }
 
 /** Splits a decoded hash on `/`, except inside a JSON object in the state's place. */
