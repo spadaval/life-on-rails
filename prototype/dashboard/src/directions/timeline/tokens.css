@@ -1,0 +1,82 @@
+/* Timeline's tokens. Every size, space, colour, radius, shadow and duration on its screens
+   comes from here; styles.css uses no other literal values for these. */
+:root[data-version="timeline"] {
+  /* Type: Saira Condensed for times and readouts (tabular), Saira for everything else.
+     Five sizes, one job each. */
+  --font: "Saira", system-ui, sans-serif;
+  --font-num: "Saira Condensed", "Saira", sans-serif;
+  --t-meta: 12px;    /* labels, kickers, times on the route, counts */
+  --t-body: 14px;    /* rows, notes, buttons, body text */
+  --t-title: 16px;   /* a row or card's title, a block's name */
+  --t-head: 20px;    /* page and popover titles, the day's date */
+  --t-readout: 48px; /* the running clock: the one number that leads */
+  --lh-tight: 1.2;
+  --lh-body: 1.45;
+
+  /* Space: 8, 12, 16, 24 for everything; 4 inside a control, 32 and 48 for page gutters. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  /* Radii: rounded everywhere, larger the further it floats. */
+  --r-chip: 8px;
+  --r-row: 10px;
+  --r-card: 14px;
+  --r-float: 18px;
+
+  /* Ground and layers: separation by tone and depth, not by identical frames. */
+  --ground: #0a0b10;
+  --ground-rail: #0d0e14;
+  --layer-1: #13141b; /* cards and rows that hold something */
+  --layer-2: #1a1c25; /* hover, a selected row, a control's face */
+  --layer-3: #23252f; /* pressed, a chip that is on */
+  --float: rgb(22 24 32 / 0.8); /* popovers, the sheet, search results, the notice */
+  --blur: blur(22px) saturate(150%);
+  --line: rgb(255 255 255 / 0.06);
+  --line-2: rgb(255 255 255 / 0.11);
+
+  --text: #efe9df;
+  --text-2: #b7ad9f;
+  --text-3: #8a8174;
+
+  /* Colour jobs. Amber: time tracked, what is live, the main action. Cyan: what is planned.
+     Neutral: time nobody has named. Red: late, and errors. */
+  --amber: #f49b3f;
+  --amber-hi: #ffb867;
+  --amber-ink: #1e1004;
+  --amber-soft: rgb(244 155 63 / 0.15);
+  --amber-faint: rgb(244 155 63 / 0.07);
+  --amber-line: rgb(244 155 63 / 0.55);
+  --cyan: #74c9ee;
+  --cyan-soft: rgb(116 201 238 / 0.09);
+  --cyan-line: rgb(116 201 238 / 0.45);
+  --unl: #6d707c;
+  --unl-soft: rgb(255 255 255 / 0.03);
+  --unl-line: rgb(255 255 255 / 0.13);
+  --red: #f0766a;
+  --red-soft: rgb(240 118 106 / 0.1);
+  --red-line: rgb(240 118 106 / 0.35);
+  --focus: 0 0 0 2px var(--ground), 0 0 0 4px rgb(244 155 63 / 0.75);
+
+  /* Depth: three levels. Flat on the ground; lifted (a selected block, a card on hover);
+     floating (popovers, sheets, results), always with blur behind. */
+  --sh-lift: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 8px 22px rgb(0 0 0 / 0.42), 0 2px 6px rgb(0 0 0 / 0.3);
+  --sh-float: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 28px 64px rgb(0 0 0 / 0.55), 0 6px 16px rgb(0 0 0 / 0.38);
+
+  /* Motion: short, and only to say what changed. */
+  --dur: 180ms;
+  --dur-slow: 240ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* The route's geometry. */
+  --gutter: 64px;
+  --spine-x: 76px;
+  --blk-x: 92px;
+  --rail-w: 216px;
+  --untimed-w: 360px;
+  --top-h: 72px;
+}
