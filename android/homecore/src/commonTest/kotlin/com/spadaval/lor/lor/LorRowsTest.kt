@@ -114,13 +114,15 @@ class LorRowsTest {
 
     private fun read(text: String) = Json.parseToJsonElement(text).jsonObject
 
-    /** The app's test replies (`app/src/test/resources/lor/`), which DeviceListsTest reads with the app's parser. */
-    private val TASKS = """
-{"now":"2026-10-14T19:00:00.000Z","timezone":"America/Los_Angeles","today":"2026-10-14","open":5,"tasks":[{"id":"01a1ba01-9913-7b6e-b631-344c5891162f","title":"Pay rent","due":"2026-10-12","overdue":true,"waiting_on":null,"parent":null,"flagged":true,"agent":true,"google":false},{"id":"01a1ba01-9916-73f1-9cc3-5889cf50c25c","title":"Hear back on the lease","due":"2026-10-16","overdue":false,"waiting_on":"Priya","parent":null,"flagged":false,"agent":false,"google":false},{"id":"01a1ba01-990e-736c-b5e5-44fcb7f5c912","title":"Order boxes","due":"2026-10-20","overdue":false,"waiting_on":null,"parent":null,"flagged":false,"agent":false,"google":false},{"id":"01a1ba01-990a-706b-9997-6edd78fefa2b","title":"Pack books","due":"2026-10-20","overdue":false,"waiting_on":null,"parent":"House move","flagged":false,"agent":false,"google":false},{"id":"01a1ba01-9906-76fa-833d-e8ababb62f62","title":"Undated","due":null,"overdue":false,"waiting_on":null,"parent":null,"flagged":false,"agent":false,"google":false}],"done_today":[]}"""
+    companion object {
+        /** The app's test replies (`app/src/test/resources/lor/`), which DeviceListsTest reads with the app's parser. */
+        private val TASKS = """
+    {"now":"2026-10-14T19:00:00.000Z","timezone":"America/Los_Angeles","today":"2026-10-14","open":5,"tasks":[{"id":"01a1ba01-9913-7b6e-b631-344c5891162f","title":"Pay rent","due":"2026-10-12","overdue":true,"waiting_on":null,"parent":null,"flagged":true,"agent":true,"google":false},{"id":"01a1ba01-9916-73f1-9cc3-5889cf50c25c","title":"Hear back on the lease","due":"2026-10-16","overdue":false,"waiting_on":"Priya","parent":null,"flagged":false,"agent":false,"google":false},{"id":"01a1ba01-990e-736c-b5e5-44fcb7f5c912","title":"Order boxes","due":"2026-10-20","overdue":false,"waiting_on":null,"parent":null,"flagged":false,"agent":false,"google":false},{"id":"01a1ba01-990a-706b-9997-6edd78fefa2b","title":"Pack books","due":"2026-10-20","overdue":false,"waiting_on":null,"parent":"House move","flagged":false,"agent":false,"google":false},{"id":"01a1ba01-9906-76fa-833d-e8ababb62f62","title":"Undated","due":null,"overdue":false,"waiting_on":null,"parent":null,"flagged":false,"agent":false,"google":false}],"done_today":[]}"""
 
-    private val TASKS_DONE = """
-{"now":"2026-11-08T07:13:49.441Z","timezone":"America/Los_Angeles","today":"2026-11-07","open":1,"tasks":[{"id":"01a1ba01-9972-7a6f-a589-7d3d6f49f581","title":"Pack books","due":null,"overdue":false,"waiting_on":null,"parent":null,"flagged":false,"agent":false,"google":false}],"done_today":[{"id":"01a1ba01-9969-7471-b301-e4f4cbf145bc","title":"Post the notice","due":null,"overdue":false,"waiting_on":null,"parent":null,"flagged":false,"agent":false,"google":false}]}"""
+        private val TASKS_DONE = """
+    {"now":"2026-11-08T07:13:49.441Z","timezone":"America/Los_Angeles","today":"2026-11-07","open":1,"tasks":[{"id":"01a1ba01-9972-7a6f-a589-7d3d6f49f581","title":"Pack books","due":null,"overdue":false,"waiting_on":null,"parent":null,"flagged":false,"agent":false,"google":false}],"done_today":[{"id":"01a1ba01-9969-7471-b301-e4f4cbf145bc","title":"Post the notice","due":null,"overdue":false,"waiting_on":null,"parent":null,"flagged":false,"agent":false,"google":false}]}"""
 
-    private val PEOPLE = """
-{"today":"2026-11-07","overdue":[{"id":"01a1ba01-9b3a-7196-9359-941d67249edd","name":"Priya","kind":"person","last_at":"2026-09-28T19:00:00.000Z","last_via":"phone","overdue_by":10,"keep_in_touch_days":30,"birthday_in":null,"turning":null}],"birthdays":[{"id":"01a1ba01-9b4b-7825-a80a-0358f7c5a16b","name":"Sam","kind":"person","last_at":null,"last_via":null,"overdue_by":null,"keep_in_touch_days":null,"birthday_in":5,"turning":36}]}"""
+        private val PEOPLE = """
+    {"today":"2026-11-07","overdue":[{"id":"01a1ba01-9b3a-7196-9359-941d67249edd","name":"Priya","kind":"person","last_at":"2026-09-28T19:00:00.000Z","last_via":"phone","overdue_by":10,"keep_in_touch_days":30,"birthday_in":null,"turning":null}],"birthdays":[{"id":"01a1ba01-9b4b-7825-a80a-0358f7c5a16b","name":"Sam","kind":"person","last_at":null,"last_via":null,"overdue_by":null,"keep_in_touch_days":null,"birthday_in":5,"turning":36}]}"""
+    }
 }
