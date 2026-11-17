@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-vbfd
 title: 'The launcher lab: the app''s Compose code running in a browser phone frame, with version and state in the URL'
-status: changes_requested
+status: in_review
 mission: lor-2803
 labels:
 - design-lab
@@ -144,3 +144,8 @@ Each time below runs from the file write until the open page had reloaded and dr
 - `wasmJsNodeTest` cannot run homecore's tests: Compose's Skia (`skiko.mjs`) fails to load under Node. The common tests therefore run on the JVM as Android host tests on boat. The init.d guard still allows `wasmJsNodeTest`, which is harmless.
 - `tsc --noEmit` in this worktree reports errors in `src/routes/tasks.tsx` and `src/routes/trmnl/$.ts`. This item does not touch them. I did not run `pnpm`; I symlinked `node_modules` from the main checkout, as other worktrees do, to run `scripts/shots.mjs` and vitest.
 - The verify skill's Evidence section names `atelier evidence record`, which this Atelier does not have. That is worth a backlog item.
+
+### Responses
+
+- 1-7fl5.1: fixed in b5e1cd7: the five alpha samples sit straight on the wallpaper, with only their labels on a panel. `/tmp/lor-verify/lor-vbfd/round2/glazes-{dark,pale,mixed}.png` show them change with the wallpaper.
+- 1-7fl5.2: fixed in b5e1cd7: the marker is keyed on the hash as written. In `round2.mjs`, `#current/home-full` → `#current/home-full/cover/dark` → `#concept-x/home-full` each set `data-drawn` to the new hash.
