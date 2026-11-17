@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { doneOn, isOpen, taskRow, type TaskRow } from "../../../data/derive.js";
 import { setDone, today as todayOf, useStore } from "../../../data/store.js";
-import { setParams, type Route } from "../../../shell/nav.js";
+import { setParams } from "../lib/nav.js";
+import type { Route } from "../../../shell/nav.js";
 import { Check, Icon } from "../components/bits.js";
 import { Popover } from "../components/Popover.js";
 import { TaskEditor } from "../components/TaskEditor.js";
@@ -85,7 +86,7 @@ export function Tasks({ route }: { route: Route }) {
           </button>
         </div>
       </header>
-      <div className="tl-list" data-pop-root>
+      <div className="tl-list">
         {groups
           .filter((g) => g.rows.length)
           .map((g) => (

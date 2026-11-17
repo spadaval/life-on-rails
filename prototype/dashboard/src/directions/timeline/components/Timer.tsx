@@ -1,7 +1,7 @@
 // The timer away from Today: a chip in the top bar on every other page (and at phone width),
 // with Stop and Switch, so a timer never has to be chased back to the route to end it.
 import { running, startTimer, stopTimer, useNow, useStore } from "../../../data/store.js";
-import { setParams } from "../../../shell/nav.js";
+import { setParams } from "../lib/nav.js";
 import { useMode } from "../lib/ctx.js";
 import { clock } from "../lib/time.js";
 import { oneWay } from "../lib/ui.js";

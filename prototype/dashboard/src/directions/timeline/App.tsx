@@ -4,7 +4,8 @@
 // waiting) are this direction's own; the scenes come from the shell.
 import { useEffect, useRef } from "react";
 import { useStore } from "../../data/store.js";
-import { href, type Route } from "../../shell/nav.js";
+import { href } from "./lib/nav.js";
+import type { Route } from "../../shell/nav.js";
 import { Icon, NoticeBar } from "./components/bits.js";
 import { Search, type SearchHandle } from "./components/Search.js";
 import { TimerChip } from "./components/Timer.js";
@@ -80,7 +81,7 @@ export function App({ route }: { route: Route }) {
           </ul>
         </nav>
         <div className="tl-body">
-          <div className="tl-top" data-pop-root>
+          <div className="tl-top">
             <Search key={`${p.q ?? ""}|${p.add ?? ""}`} ref={search} initial={p.add ?? p.q ?? ""} initialMode={p.add !== undefined ? "add" : "find"} />
             {page.path !== "/" ? <TimerChip params={p} /> : null}
           </div>

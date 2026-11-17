@@ -4,7 +4,8 @@
 import { type CSSProperties, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { doneOn, isOpen, taskRow } from "../../../data/derive.js";
 import { answerProposal, running, setDone, startTimer, stopTimer, today as todayOf, unflag, useNow, useStore } from "../../../data/store.js";
-import { setParams, type Route } from "../../../shell/nav.js";
+import { setParams } from "../lib/nav.js";
+import type { Route } from "../../../shell/nav.js";
 import { BlockEditor } from "../components/BlockEditor.js";
 import { Check, Icon, Prose, useNarrow } from "../components/bits.js";
 import { LabelPicker } from "../components/LabelPicker.js";
@@ -159,7 +160,13 @@ function RouteView({ model, now, narrow, params, running: isRunning }: { model: 
     if (v !== null && v >= shift && Math.abs(t - now) >= 25 * 60_000 && Math.abs(y(v) - y(model.nowY)) > 22 && (!prev || y(v) - prev.y >= 24)) hours.push({ t, y: y(v) });
   }
 
-  const blockAt = params.block ? spans.find((sp) => sp.block && sp.start <= at(todayOf(), params.block!) && at(todayOf(), params.block!) < Math.max(sp.end, sp.start + 60_000)) : undefined;
+  // `block=HH:MM` names the block that starts in that minute (the newest, if a timer was switched
+  // twice in it), else the one the minute falls inside. A minute alone would pick the block
+  // before a timer started at 15:00:30, so starting minute wins over containment.
+  const blockAt = params.block
+    ? (spans.filter((sp) => sp.block && hm(sp.start) === params.block).at(-1) ??
+      spans.find((sp) => sp.block && sp.start <= at(todayOf(), params.block!) && at(todayOf(), params.block!) < Math.max(sp.end, sp.start + 60_000)))
+    : undefined;
   const gapAt = params.gap ? spans.find((sp) => sp.kind === "free" && hm(sp.start) === params.gap) : undefined;
   const toFold = folded.filter((sp) => sp.block);
   const foldAsk = toFold.filter((sp) => toneOf(sp.block!) !== "tracked").length;
@@ -167,7 +174,7 @@ function RouteView({ model, now, narrow, params, running: isRunning }: { model: 
   return (
     <section className="tl-routewrap" aria-label="The day">
       <div className="tl-route-scroll" ref={scroller}>
-        <div className="tl-route" data-pop-root style={{ height: y(model.height) + 24 }}>
+        <div className="tl-route" style={{ height: y(model.height) + 24 }}>
           {hours.map((h) => (
             <span key={h.t} className="tl-hour" style={{ top: h.y }}>
               <span className="tl-num">{hm(h.t)}</span>
@@ -189,7 +196,7 @@ function RouteView({ model, now, narrow, params, running: isRunning }: { model: 
             </button>
           ) : null}
           {spans.map((sp) => (
-            <SpanView key={sp.key} sp={{ ...sp, top: y(sp.top) }} now={now} params={params} off={off} empty={s.blocks.length === 0} />
+            <SpanView key={sp.key} sp={{ ...sp, top: y(sp.top) }} now={now} params={params} off={off} empty={s.blocks.length === 0} selected={blockAt?.key === sp.key} />
           ))}
           <NowLine top={y(model.nowY)} now={now} running={isRunning} params={params} off={off} />
           {blockAt?.block ? (
@@ -208,7 +215,7 @@ function RouteView({ model, now, narrow, params, running: isRunning }: { model: 
   );
 }
 
-function SpanView({ sp, now, params, off, empty }: { sp: Span; now: number; params: Record<string, string>; off: boolean; empty: boolean }) {
+function SpanView({ sp, now, params, off, empty, selected }: { sp: Span; now: number; params: Record<string, string>; off: boolean; empty: boolean; selected: boolean }) {
   const { staleSince } = useMode();
   const [over, setOver] = useState(false);
   const style = { top: sp.top, height: sp.height };
@@ -266,7 +273,7 @@ function SpanView({ sp, now, params, off, empty }: { sp: Span; now: number; para
               <span className="tl-num">{hm(sp.start)}–{hm(sp.end)}</span> · planned by you
             </span>
           </span>
-          <button type="button" className="tl-btn tl-btn-quiet tl-btn-sm" onClick={() => unplan(pl.taskId)}>
+          <button type="button" className="tl-btn tl-btn-quiet tl-btn-sm" disabled={off} onClick={() => unplan(pl.taskId)}>
             Take off
           </button>
         </div>
@@ -317,8 +324,7 @@ function SpanView({ sp, now, params, off, empty }: { sp: Span; now: number; para
   // A recorded block, or the running one.
   const b = sp.block!;
   const tone = toneOf(b);
-  const open = () => setParams({ block: params.block === hm(b.t_start) ? undefined : hm(b.t_start) });
-  const selected = params.block !== undefined && sp.start <= at(todayOf(), params.block) && at(todayOf(), params.block) < Math.max(sp.end, sp.start + 60_000);
+  const open = () => setParams({ block: selected ? undefined : hm(b.t_start) });
   if (sp.kind === "running") {
     return (
       <>
@@ -410,6 +416,7 @@ function NowLine({ top, now, running: isRunning, params, off }: { top: number; n
 
 function GapPlanner({ start, end, onDone }: { start: number; end: number; onDone: () => void }) {
   const s = useStore();
+  const { staleSince } = useMode();
   const today = todayOf();
   const plans = usePlans();
   const taken = new Set(plans.map((x) => x.taskId));
@@ -423,7 +430,11 @@ function GapPlanner({ start, end, onDone }: { start: number; end: number; onDone
         {hm(start)} to {hm(end)} · {dur(end - start)} free
       </p>
       <h2 className="tl-editor-title">Plan something here</h2>
-      <p className="tl-muted">Nothing goes on the route unless you put it there.</p>
+      {staleSince !== null ? (
+        <p className="tl-note">LoR can’t be reached, so planning waits until it answers.</p>
+      ) : (
+        <p className="tl-muted">Nothing goes on the route unless you put it there.</p>
+      )}
       <ul className="tl-planlist">
         {cands.map((n) => {
           const minutes = Math.min(Math.round((n.estimate_hours ?? 0.5) * 60), Math.round((end - start) / 60_000));
@@ -431,6 +442,7 @@ function GapPlanner({ start, end, onDone }: { start: number; end: number; onDone
             <li key={n.id}>
               <button
                 type="button"
+                disabled={staleSince !== null}
                 onClick={() => {
                   plan(n.id, n.title, start, minutes);
                   onDone();
@@ -474,7 +486,7 @@ function Untimed({ waiting, due, done, today, now, brief, morning, next, narrow,
   const quiet = waiting.length === 0 && due.length === 0;
 
   return (
-    <aside className="tl-untimed" data-pop-root aria-label="No time yet">
+    <aside className="tl-untimed" aria-label="No time yet">
       {brief ? (
         <section className="tl-card tl-brief" data-open={showBrief || undefined}>
           <button type="button" className="tl-brief-head" aria-expanded={showBrief} onClick={() => setShowBrief((v) => !v)}>

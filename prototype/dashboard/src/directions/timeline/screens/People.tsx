@@ -3,7 +3,8 @@
 import { PEOPLE_FILTERS, peopleIn } from "../../../data/derive.js";
 import { setPerson, useNow, useStore } from "../../../data/store.js";
 import type { Person } from "../../../data/types.js";
-import { href, setParams, type Route } from "../../../shell/nav.js";
+import { href, setParams } from "../lib/nav.js";
+import type { Route } from "../../../shell/nav.js";
 import { Icon, Prose } from "../components/bits.js";
 import { useMode } from "../lib/ctx.js";
 import { ago, hm, shortDate, ymd } from "../lib/time.js";

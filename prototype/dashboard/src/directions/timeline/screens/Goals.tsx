@@ -3,7 +3,8 @@
 import { habitDoneOn, isOpen, taskRow } from "../../../data/derive.js";
 import { running, setDone, startTimer, today as todayOf, useStore } from "../../../data/store.js";
 import type { Node } from "../../../data/types.js";
-import { href, type Route } from "../../../shell/nav.js";
+import { href } from "../lib/nav.js";
+import type { Route } from "../../../shell/nav.js";
 import { Check, Icon, Prose } from "../components/bits.js";
 import { useMode } from "../lib/ctx.js";
 import { dueWords } from "../lib/time.js";

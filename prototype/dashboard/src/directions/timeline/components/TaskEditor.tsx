@@ -1,7 +1,7 @@
 // A task, opened: tick it, its flag, its due date, and planning it onto today's route.
 // The same body in a popover on the desktop and a sheet at phone width.
 import { setDone, today as todayOf, unflag, updateIntent, useNow, useStore } from "../../../data/store.js";
-import { href } from "../../../shell/nav.js";
+import { href } from "../lib/nav.js";
 import { useMode } from "../lib/ctx.js";
 import { addDays, dueWords, dur, hm, shortDate, weekday } from "../lib/time.js";
 import { plan, reversible, unplan, usePlans } from "../lib/ui.js";
@@ -95,13 +95,13 @@ export function TaskEditor({ id, gaps, showOpen }: { id: string; gaps?: { start:
             <span className="tl-label-v">{planned ? `planned ${hm(planned.start)} to ${hm(planned.start + planned.minutes * 60_000)}` : "not planned"}</span>
           </h3>
           {planned ? (
-            <button type="button" className="tl-btn" onClick={() => unplan(id)}>
+            <button type="button" className="tl-btn" disabled={off} onClick={() => unplan(id)}>
               Take it off the route
             </button>
           ) : gaps.length ? (
             <div className="tl-chips">
               {gaps.slice(0, 4).map((g) => (
-                <button key={g.start} type="button" className="tl-chip tl-chip-plan" onClick={() => plan(id, n.title, Math.max(g.start, now), Math.min(minutes, Math.round((g.end - Math.max(g.start, now)) / 60_000)))}>
+                <button key={g.start} type="button" className="tl-chip tl-chip-plan" disabled={off} onClick={() => plan(id, n.title, Math.max(g.start, now), Math.min(minutes, Math.round((g.end - Math.max(g.start, now)) / 60_000)))}>
                   {hm(Math.max(g.start, now))} <small>{dur(g.end - Math.max(g.start, now))} free</small>
                 </button>
               ))}

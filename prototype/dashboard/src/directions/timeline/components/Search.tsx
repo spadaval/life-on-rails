@@ -5,7 +5,7 @@ import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "reac
 import { type Hit, search } from "../../../data/derive.js";
 import { addIntent, askAgent, today as todayOf, useStore } from "../../../data/store.js";
 import type { State } from "../../../data/store.js";
-import { navigate } from "../../../shell/nav.js";
+import { navigate } from "../lib/nav.js";
 import { useMode } from "../lib/ctx.js";
 import { dueWords, readDate, shortDate } from "../lib/time.js";
 import { reversible, sendLater } from "../lib/ui.js";

@@ -1,7 +1,8 @@
 // Notes: LoR's pages, newest first, and one page to read. No direction changes how Notes is
 // organised (the brief), so this is the plain version in this direction's look.
 import { useStore } from "../../../data/store.js";
-import { href, type Route } from "../../../shell/nav.js";
+import { href } from "../lib/nav.js";
+import type { Route } from "../../../shell/nav.js";
 import { Icon, Prose } from "../components/bits.js";
 import { shortDate, ymd } from "../lib/time.js";
 

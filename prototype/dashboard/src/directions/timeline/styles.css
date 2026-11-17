@@ -645,7 +645,8 @@ a.tl-tag:hover {
 /* ---- popover and sheet ---- */
 
 .tl-pop {
-  position: absolute;
+  position: fixed;
+  overflow: auto;
   z-index: 40;
   padding: var(--s-5);
   border-radius: var(--r-float);
