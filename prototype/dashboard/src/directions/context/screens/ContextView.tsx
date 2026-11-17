@@ -105,6 +105,7 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
             <TaskRow node={lead} open={taskParam === lead.title} lead />
           </ul>
           {why === "one" && lead.title === ONE_THING.title ? <p className="cx-lead-why">{ONE_THING.why}</p> : null}
+          {ctx.kind === "loose" && SUGGEST[lead.title] ? <Suggest node={lead} goal={SUGGEST[lead.title]!} /> : null}
         </section>
       ) : ctx.kind !== "unnamed" && ctx.kind !== "slot" && ctx.kind !== "label" ? (
         <section className="cx-lead cx-lead-empty">
@@ -178,7 +179,7 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
           <Region title="Given to the agent" count={agent.length} tone="cyan">
             <ul className="cx-agent">
               {agent.map((n) => (
-                <li key={n.id}>
+                <li key={n.id} data-suggest={(ctx.kind === "loose" && SUGGEST[n.title]) || undefined}>
                   <span className="cx-agent-dot" aria-hidden="true" />
                   <span className="cx-agent-text">
                     <span className="cx-agent-title">{n.title}</span>
@@ -189,6 +190,7 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
                       Thread in T3 <Icon name="out" size={14} />
                     </a>
                   ) : null}
+                  {ctx.kind === "loose" && SUGGEST[n.title] ? <Suggest node={n} goal={SUGGEST[n.title]!} /> : null}
                 </li>
               ))}
             </ul>

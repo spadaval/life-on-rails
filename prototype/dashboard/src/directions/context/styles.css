@@ -2530,3 +2530,15 @@ button.cx-wikilink:hover {
 .cx-side {
   scroll-margin-top: calc(var(--bar-h) + var(--tabs-h) + var(--s-3));
 }
+/* An agent's row under Loose ends carries its suggested link on a line of its own. */
+.cx-agent li[data-suggest] {
+  flex-wrap: wrap;
+  padding-bottom: var(--s-2);
+}
+.cx-agent li[data-suggest] .cx-suggest {
+  flex-basis: 100%;
+  margin: 0 0 0 var(--s-6);
+}
+.cx-lead .cx-suggest {
+  margin: 0;
+}
