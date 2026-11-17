@@ -62,7 +62,10 @@ function NextCard({ here }: { here: Ctx }) {
     );
   }
   const e = nx.event;
-  const fits = fitsBefore(s, here, nx.gapMs);
+  // Free time starts when what is on now ends, not now: the countdown to the event stays separate.
+  const freeFrom = during && Date.parse(during.t_end) < Date.parse(e.t_start) ? Math.max(now, Date.parse(during.t_end)) : now;
+  const freeMs = Math.max(0, Date.parse(e.t_start) - freeFrom);
+  const fits = fitsBefore(s, here, freeMs);
   const isHere = here.kind === "slot" && here.key === e.event_id;
   return (
     <section className="cx-card cx-next" data-here={isHere || undefined}>
@@ -83,7 +86,7 @@ function NextCard({ here }: { here: Ctx }) {
         </p>
       ) : null}
       <p className="cx-next-free">
-        <span className="cx-num">{dur(nx.gapMs)}</span> free before it. Nothing is put there unasked.
+        <span className="cx-num">{dur(freeMs)}</span> free before it{freeFrom > now ? `, from ${hm(freeFrom)}` : ""}. Nothing is put there unasked.
       </p>
       {fits.length ? (
         <div className="cx-next-fits">

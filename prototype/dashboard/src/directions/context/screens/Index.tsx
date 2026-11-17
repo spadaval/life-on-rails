@@ -162,8 +162,12 @@ export function PeopleIndex({ route }: { route: Route }) {
                   {p.keep_in_touch_days ? ` · every ${p.keep_in_touch_days} days` : ""}
                 </span>
               </span>
-              {p.overdue_by !== null && p.overdue_by > 0 ? <span className="cx-chip" data-late>{p.overdue_by} days over</span> : null}
-              {p.birthday_in !== null && p.birthday_in <= 30 ? <span className="cx-chip cx-chip-amber">Birthday in {p.birthday_in} days</span> : null}
+              {(p.overdue_by !== null && p.overdue_by > 0) || (p.birthday_in !== null && p.birthday_in <= 30) ? (
+                <span className="cx-prow-badges">
+                  {p.overdue_by !== null && p.overdue_by > 0 ? <span className="cx-chip" data-late>{p.overdue_by} days over</span> : null}
+                  {p.birthday_in !== null && p.birthday_in <= 30 ? <span className="cx-chip cx-chip-amber">Birthday in {p.birthday_in} days</span> : null}
+                </span>
+              ) : null}
               <Icon name="chevron" size={16} />
             </a>
           </li>

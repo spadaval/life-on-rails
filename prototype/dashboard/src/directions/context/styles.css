@@ -882,23 +882,6 @@ html[data-version="context"] body {
   gap: var(--s-region);
   min-width: 0;
 }
-.cx-surface::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 3px;
-  border-radius: var(--r-surface) var(--r-surface) 0 0;
-  background: linear-gradient(90deg, var(--amber), transparent 60%);
-  opacity: 0.8;
-}
-.cx-surface[data-kind="person"]::before,
-.cx-surface[data-kind="slot"]::before {
-  background: linear-gradient(90deg, var(--cyan), transparent 60%);
-}
-.cx-surface[data-kind="loose"]::before,
-.cx-surface[data-kind="unnamed"]::before {
-  background: linear-gradient(90deg, var(--text-3), transparent 60%);
-}
 /* The signature: a new context arrives as a whole, its regions just behind its title. */
 .cx:not([data-still]) .cx-surface {
   animation: cx-turn var(--dur-slow) var(--ease);
@@ -2202,6 +2185,12 @@ button.cx-wikilink:hover {
 .cx-prow-meta {
   font-size: var(--t-meta);
 }
+.cx-prow-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-1);
+}
 .cx-notes {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
@@ -2433,6 +2422,24 @@ button.cx-wikilink:hover {
   }
   .cx-groups {
     columns: 1;
+  }
+  /* The badges go under the name, so the name and its line keep the row's width. */
+  .cx-prow {
+    flex-wrap: wrap;
+    row-gap: var(--s-1);
+  }
+  .cx-prow-text {
+    flex: 1 1 0;
+  }
+  .cx-prow-badges {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    padding-left: 48px;
+  }
+  /* The sheet's rows end above the prototype's Version chip, which sits over everything. */
+  .cx-layer[data-phone] .cx-float {
+    padding-bottom: var(--notice-bottom);
   }
   .cx-group {
     padding: var(--s-2) var(--s-3);
