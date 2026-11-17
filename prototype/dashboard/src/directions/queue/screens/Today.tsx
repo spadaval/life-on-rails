@@ -22,7 +22,7 @@ export function Today({ route }: { route: Route }) {
   const l = useLocal();
   const mode = modeOf(route.params);
   const stale = mode === "stale";
-  const items = queue(s, mode, l);
+  const items = queue(s, mode, l, now);
   const [lead, ...rest] = items;
   const openId = route.params.id ?? null;
   const isOpen = (it: Item) => openId === it.title;

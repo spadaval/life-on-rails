@@ -103,8 +103,10 @@ fieldset {
   background: var(--wash-2);
 }
 .q-bar__right {
-  margin-left: auto;
+  flex: 1;
+  min-width: 0;
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--s3);
 }
@@ -113,7 +115,8 @@ fieldset {
 
 .q-omni {
   position: relative;
-  width: 340px;
+  flex: 0 1 340px;
+  min-width: 200px;
 }
 .q-omni__field {
   display: flex;
@@ -290,6 +293,8 @@ fieldset {
   border: 1px solid var(--amber-edge);
   border-radius: var(--r-md);
   background: var(--amber-glow);
+  flex: 0 1 auto;
+  min-width: 0;
   max-width: 340px;
 }
 .q-tchip__label {
@@ -1862,12 +1867,42 @@ fieldset {
 
 /* ---- narrower: the editors still open in place, never below the list ---- */
 
-@media (max-width: 1099px) {
+@media (max-width: 959px) {
   .q-bar__in {
     gap: var(--s5);
   }
-  .q-omni {
-    width: 280px;
+  .q-tchip {
+    flex-shrink: 0;
+  }
+  .q-tchip__label {
+    display: none;
+  }
+}
+
+/* Below 900 the pages and the field no longer fit one row: the field and the timer on top, the
+   pages under them, as at phone width. */
+@media (max-width: 899px) {
+  .q-bar__in {
+    height: auto;
+    padding: var(--s2) var(--s4) 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "mark right" "nav nav";
+    gap: var(--s2) var(--s3);
+  }
+  .q-mark {
+    grid-area: mark;
+  }
+  .q-bar__right {
+    grid-area: right;
+    margin: 0;
+  }
+  .q-nav {
+    grid-area: nav;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 calc(var(--s4) * -1);
+    padding: 0 var(--s3) var(--s2);
   }
 }
 

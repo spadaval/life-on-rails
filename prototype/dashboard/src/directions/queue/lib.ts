@@ -2,7 +2,7 @@
 // the one thing, the two states the store has no scene for, and the toast that offers Undo only
 // where the brief allows it. Imports nothing from another direction.
 import { useSyncExternalStore } from "react";
-import { localHm } from "../../../../../src/shared/localTime.js";
+import { localHm, localTimeOnDay } from "../../../../../src/shared/localTime.js";
 import { isOpen, needsYou } from "../../data/derive.js";
 import { dayAfter, getState, subscribe, TZ, undo, type State } from "../../data/store.js";
 import type { Node } from "../../data/types.js";
@@ -80,7 +80,9 @@ export function ago(iso: string | null, nowMs: number): string {
  */
 const ONE_THING = {
   title: "Draft the offline maps spec",
-  why: "The brief leads with it: the design review needs it, and Lena is waiting on the icon sizes.",
+  why: "The brief leads with it: finish it before the design review at 14:00. Lena is waiting on the icon sizes.",
+  /** Local time it is for. After it, the card steps aside rather than accusing; the task stays on Tasks. */
+  until: "14:00",
 };
 
 // ---- the queue ----
@@ -133,10 +135,11 @@ export function useLocal(): Local {
  * oldest first, then his tasks due today or before, by due time. T3's cards are not here: they
  * stay on the phone.
  */
-export function queue(s: State, mode: Mode, l: Local): Item[] {
+export function queue(s: State, mode: Mode, l: Local, nowMs: number): Item[] {
   const out: Item[] = [];
   const taken = new Set<string>();
-  const one = s.scene === "quiet" || l.aside ? null : s.nodes.find((n) => n.title === ONE_THING.title && n.type === "task" && isOpen(n));
+  const passed = nowMs >= localTimeOnDay(TZ, s.day.date, ONE_THING.until).getTime();
+  const one = s.scene === "quiet" || l.aside || passed ? null : s.nodes.find((n) => n.title === ONE_THING.title && n.type === "task" && isOpen(n));
   if (one) {
     out.push({ kind: "one", id: one.id, title: one.title, why: ONE_THING.why, node: one });
     taken.add(one.id);
