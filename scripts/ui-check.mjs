@@ -35,6 +35,39 @@ const lor = (args, input) =>
   execFileSync("node", ["cli/lor.mjs", ...args], { encoding: "utf8", input, env: { ...process.env, LOR_PORT: new URL(BASE).port, LOR_THREAD: "ui-check-thread" } });
 
 const flows = {
+  // The test server's fixed clock (src/server/clock.ts): Today drawn at 09:00 by link stays at
+  // 09:00 past the page's 20-second tick, keeps the time across a link, and at 00:05 the whole waking day is ahead.
+  // Changes no rows; meant for the demo set (pnpm demo:test).
+  async clock() {
+    await page.setViewportSize({ width: 1500, height: 950 });
+    const stamp = () => page.locator("aside p").first().innerText();
+    await page.goto(`${BASE}/?at=09:00`);
+    await settle();
+    // The hero, the minutes to the next event and the sidebar's clock: any of them moves with a running clock.
+    const read = async () => {
+      const text = await page.locator("main").innerText();
+      return { hero: text.match(/\d+h( \d+m)?(?=\s*remaining)/i)?.[0], next: text.match(/next [^\n]*/)?.[0], stamp: await stamp() };
+    };
+    const before = await read();
+    await shot("clock-1-0900");
+    await page.waitForTimeout(21_000);
+    const after = await read();
+    await shot("clock-2-0900-after-tick");
+    console.log("09:00 before tick:", JSON.stringify(before), "after:", JSON.stringify(after));
+    if (!before.hero || JSON.stringify(before) !== JSON.stringify(after) || !/09:00/.test(before.stamp) || !/in 30m/.test(before.next ?? "")) throw new Error("the clock moved, or is not 09:00");
+    await page.getByRole("link", { name: "Tasks" }).first().click();
+    await settle();
+    console.log("after a link:", page.url(), "stamp", await stamp());
+    if (!/at=09%3A00|at=09:00/.test(page.url()) || !/09:00/.test(await stamp())) throw new Error("the link dropped the tab's clock");
+    await page.goto(`${BASE}/?at=00:05`);
+    await settle();
+    const early = { text: await page.locator("main").innerText(), stamp: await stamp() };
+    await shot("clock-3-0005");
+    // Before the waking day starts (08:00), all of it remains, and the next event is hours away.
+    console.log("00:05:", early.stamp, early.text.match(/\d+h( \d+m)?(?=\s*remaining)/i)?.[0], early.text.match(/next [^\n]*/)?.[0]);
+    if (!/00:05/.test(early.stamp) || !/14h\s*remaining/i.test(early.text)) throw new Error("00:05 did not draw the whole waking day ahead");
+  },
+
   async tasks() {
     psql(`DELETE FROM intent_link; DELETE FROM proposal; UPDATE time_block SET commitment_id = NULL; DELETE FROM commitment; DELETE FROM time_block_observation; DELETE FROM time_block; DELETE FROM attribution_rule; DELETE FROM intent WHERE NOT system; DELETE FROM entity_identifier; DELETE FROM entity;`);
     const id = (s) => JSON.parse(s).id;

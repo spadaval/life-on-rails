@@ -1,0 +1,218 @@
+{
+  "about": "A made-up life for the test server. Times are local (LOR_TZ): \"d0 09:30\" is 09:30 on the clock's day, \"d-2 18:00\" two days before; a bare \"d+3\" is a date. Names, numbers and addresses are invented; phones are in the 555-01xx range and mail is at example domains.",
+  "device": "demo-phone",
+  "places": [
+    { "key": "home", "name": "Home", "lat": 37.76012, "lon": -122.42371, "radius": 80 },
+    { "key": "studio", "name": "Studio", "lat": 37.77641, "lon": -122.41698, "radius": 60, "goal": "fieldguide" },
+    { "key": "track", "name": "Kezar track", "lat": 37.76693, "lon": -122.45732, "radius": 120, "goal": "health" }
+  ],
+  "goals": [
+    {
+      "key": "fieldguide", "title": "Ship the Field Guide app", "short": "Field Guide", "weight": 3, "hours": 15,
+      "projects": [
+        { "key": "offline", "title": "Offline maps", "hours": 6 },
+        { "key": "beta", "title": "Public beta" }
+      ],
+      "habits": [{ "key": "deepwork", "title": "Two hours of deep work", "frequency": 5, "horizon": "week", "done": ["d-1", "d-2", "d-3", "d-6"] }]
+    },
+    {
+      "key": "health", "title": "Run a half marathon in March", "short": "Half marathon", "weight": 2, "hours": 5,
+      "projects": [{ "key": "block2", "title": "Training block two" }],
+      "habits": [
+        { "key": "run", "title": "Run", "frequency": 3, "horizon": "week", "done": ["d-1", "d-3", "d-5"] },
+        { "key": "stretch", "title": "Stretch", "frequency": 1, "horizon": "day", "done": ["d-1", "d-2", "d-4", "d-5", "d-6"] }
+      ]
+    },
+    {
+      "key": "portuguese", "title": "Hold a conversation in Portuguese", "short": "Portuguese", "weight": 1.5, "hours": 3,
+      "projects": [{ "key": "lisbon", "title": "Lisbon trip in April" }],
+      "habits": [{ "key": "lesson", "title": "Portuguese lesson", "frequency": 1, "horizon": "day", "done": ["d0", "d-1", "d-2", "d-3", "d-5"] }]
+    },
+    {
+      "key": "house", "title": "Keep the house running", "short": "House", "weight": 1,
+      "projects": [{ "key": "repaint", "title": "Repaint the kitchen" }],
+      "habits": [{ "key": "tidy", "title": "Ten-minute tidy", "frequency": 1, "horizon": "day", "done": ["d-2", "d-3"] }]
+    },
+    {
+      "key": "friends", "title": "Be a good friend", "short": "Friends", "weight": 1.5,
+      "projects": [],
+      "habits": [{ "key": "call", "title": "Call someone you miss", "frequency": 1, "horizon": "week", "done": [] }]
+    },
+    {
+      "key": "money", "title": "Get the finances in order", "short": "Finances", "weight": 1,
+      "projects": [{ "key": "taxes", "title": "2026 taxes" }],
+      "habits": [{ "key": "budget", "title": "Review the budget", "frequency": 1, "horizon": "week", "done": [] }]
+    },
+    {
+      "key": "cabin", "title": "Build the cabin bookshelf", "short": "Bookshelf", "weight": 0.5, "hours": 2,
+      "projects": [{ "key": "shelf", "title": "Walnut bookshelf" }],
+      "habits": []
+    }
+  ],
+  "metrics": [
+    { "title": "Energy", "goal": "health", "values": { "d-1": 4, "d-2": 3, "d-3": 4 } }
+  ],
+  "tasks": [
+    { "title": "Draft the offline maps spec", "parent": "offline", "due": "d+1", "created": "d-6 10:00" },
+    { "title": "Benchmark tile cache sizes", "parent": "offline", "due": "d+3", "created": "d-5 11:00", "agent": true, "queued": "d0 07:40" },
+    { "title": "Pick a vector tile provider", "parent": "offline", "created": "d-4 16:20", "agent": true, "thread": "demo-thread-tiles" },
+    { "title": "Write release notes for beta 0.4", "parent": "beta", "due": "d0", "created": "d-3 09:15" },
+    { "title": "Invite twenty beta testers", "parent": "beta", "due": "d+5", "created": "d-6 14:00" },
+    { "title": "Fix the crash on rotate in the map view", "parent": "beta", "due": "d-2", "created": "d-8 12:00" },
+    { "title": "Reply to the App Store review notes", "parent": "beta", "created": "d-2 17:30", "flag": "Apple asked two questions about location use; your answers are in the draft.", "flagged": "d0 08:10" },
+    { "title": "Send Lena the icon sizes", "parent": "fieldguide", "status": "waiting", "waiting": "lena", "created": "d-4 10:00", "waiting_since": "d-4 10:05" },
+    { "title": "Renew the developer account", "parent": "fieldguide", "due": "d+12", "created": "d-10 09:00" },
+    { "title": "Book a sports massage", "parent": "health", "due": "d+2", "created": "d-3 19:00" },
+    { "title": "Buy new running shoes", "parent": "block2", "created": "d-5 20:00", "done": "d0 08:40" },
+    { "title": "Plan the long run route for Sunday", "parent": "block2", "due": "d+4", "created": "d-2 08:00", "agent": true, "queued": "d0 07:45" },
+    { "title": "Sign up for the Presidio 10k", "parent": "health", "status": "later", "created": "d-14 18:00" },
+    { "title": "Find a physio for the left knee", "parent": "health", "created": "d-1 21:10", "flag": "Two physios near the studio take your insurance; pick one and I'll book.", "flagged": "d0 07:55" },
+    { "title": "Book flights to Lisbon", "parent": "lisbon", "due": "d+9", "created": "d-7 13:00" },
+    { "title": "Find an apartment in Alfama for six nights", "parent": "lisbon", "created": "d-7 13:05", "agent": true },
+    { "title": "Finish unit 8 of the course", "parent": "portuguese", "due": "d-1", "created": "d-9 08:00" },
+    { "title": "Ask Inês for a weekly conversation slot", "parent": "portuguese", "status": "waiting", "waiting": "ines", "created": "d-3 18:20", "waiting_since": "d-3 18:20" },
+    { "title": "Choose the kitchen paint colour", "parent": "repaint", "due": "d+6", "created": "d-5 09:30" },
+    { "title": "Get three quotes for the repaint", "parent": "repaint", "created": "d-5 09:35", "status": "later" },
+    { "title": "Fix the dripping bathroom tap", "parent": "house", "due": "d-4", "created": "d-12 10:00" },
+    { "title": "Call the landlord about the heating", "parent": "house", "created": "d-1 08:15", "done": "d0 10:05" },
+    { "title": "Take the recycling out", "parent": "house", "created": "d-1 20:00", "done": "d0 07:20" },
+    { "title": "Replace the hallway bulb", "parent": "house", "created": "d-2 22:00" },
+    { "title": "Organise Sam's birthday dinner", "parent": "friends", "due": "d+3", "created": "d-6 19:00", "flag": "Sam's birthday is Friday and the table for eight isn't booked yet.", "flagged": "d-1 18:30" },
+    { "title": "Send Noor the photos from the hike", "parent": "friends", "created": "d-2 21:00" },
+    { "title": "Write to Grandpa Joe", "parent": "friends", "status": "later", "created": "d-20 11:00" },
+    { "title": "Gather 1099s and receipts", "parent": "taxes", "due": "d+20", "created": "d-12 09:00" },
+    { "title": "Move the emergency fund to the high-yield account", "parent": "money", "due": "d-3", "created": "d-11 21:00" },
+    { "title": "Cancel the unused streaming subscription", "parent": "money", "created": "d-3 22:30", "agent": true, "thread": "demo-thread-subs" },
+    { "title": "Check the credit card statement", "parent": "money", "created": "d-1 09:00", "done": "d0 09:15" },
+    { "title": "Waiting on the accountant's engagement letter", "parent": "taxes", "status": "waiting", "waiting": "northwind", "created": "d-8 14:00", "waiting_since": "d-8 14:00" },
+    { "title": "Cut the walnut boards to length", "parent": "shelf", "created": "d-9 15:00" },
+    { "title": "Order shelf pins and brackets", "parent": "shelf", "created": "d-9 15:10", "status": "later" },
+    { "title": "Sketch the joinery for the corners", "parent": "shelf", "created": "d-15 15:00", "done": "d-6 16:00" },
+    { "title": "Look into a standing desk", "created": "d-4 23:10" },
+    { "title": "Read the essay Daniel sent", "created": "d-2 12:30" },
+    { "title": "Back up the laptop", "created": "d-1 22:40", "agent": true, "queued": "d0 07:50" },
+    { "title": "Return the library books", "due": "d0", "created": "d-6 18:00" }
+  ],
+  "google_tasks": [
+    { "id": "demo-gt-1", "title": "Pick up dry cleaning", "due": "d+1", "notes": "Ticket 4471" },
+    { "id": "demo-gt-2", "title": "Buy a birthday card for Sam", "due": "d+2" },
+    { "id": "demo-gt-3", "title": "Renew the parking permit", "due": "d-1" }
+  ],
+  "people": [
+    { "key": "maya", "name": "Maya Okafor", "emails": ["maya.okafor@example.com"], "phones": ["+1 415 555 0101"], "cadence": 7, "priority": true, "page": true },
+    { "key": "daniel", "name": "Daniel Reyes", "emails": ["daniel@reyes.example.org"], "phones": ["+1 415 555 0102"], "cadence": 14, "page": true },
+    { "key": "lena", "name": "Lena Brandt", "emails": ["lena@pixelfold.example.com"], "cadence": 30 },
+    { "key": "ines", "name": "Inês Carvalho", "emails": ["ines.carvalho@example.pt"], "phones": ["+351 912 555 013"], "cadence": 14 },
+    { "key": "sam", "name": "Sam Whitfield", "phones": ["+1 415 555 0105"], "birthday_in": 3, "born": 1992, "cadence": 21, "page": true },
+    { "key": "noor", "name": "Noor Haddad", "phones": ["+1 415 555 0106"], "emails": ["noor@example.com"], "cadence": 10 },
+    { "key": "theo", "name": "Theo Lindqvist", "emails": ["theo@example.se"], "birthday_in": 12 },
+    { "key": "priya", "name": "Priya Raman", "emails": ["priya.raman@example.com"], "phones": ["+1 415 555 0108"], "cadence": 30, "birthday_in": 26, "born": 1989 },
+    { "key": "marcus", "name": "Marcus Bell", "emails": ["marcus@example.org"], "cadence": 60 },
+    { "key": "jo", "name": "Grandpa Joe", "phones": ["+1 503 555 0110"], "cadence": 14, "birthday_in": 41, "born": 1944, "page": true },
+    { "key": "mum", "name": "Mum", "phones": ["+1 503 555 0111"], "cadence": 7, "priority": true },
+    { "key": "yuki", "name": "Yuki Tanaka", "emails": ["yuki@example.jp"] },
+    { "key": "aisha", "name": "Aisha Mensah", "emails": ["aisha.mensah@example.com"], "phones": ["+1 415 555 0113"], "cadence": 45 },
+    { "key": "ben", "name": "Ben Okoro", "phones": ["+1 415 555 0114"] },
+    { "key": "clara", "name": "Clara Novak", "emails": ["clara@example.cz"], "birthday_in": 18 },
+    { "key": "omar", "name": "Omar Farouk", "emails": ["omar@pixelfold.example.com"] },
+    { "key": "rosa", "name": "Rosa Delgado", "phones": ["+1 415 555 0117"], "cadence": 30 },
+    { "key": "kenji", "name": "Kenji Mori", "emails": ["kenji@example.org"] },
+    { "key": "fatima", "name": "Fatima Zahra", "emails": ["fatima@example.com"] },
+    { "key": "coach", "name": "Coach Dana", "emails": ["dana@runclub.example.org"], "phones": ["+1 415 555 0120"] }
+  ],
+  "orgs": [
+    { "key": "northwind", "name": "Northwind Accounting", "emails": ["hello@northwind.example.com"], "domains": ["northwind.example.com"] },
+    { "key": "pixelfold", "name": "Pixelfold Studio", "domains": ["pixelfold.example.com"] }
+  ],
+  "short_codes": [
+    { "name": "Bay Credit Union alerts", "phone": "22395" },
+    { "name": "Parcel tracking", "phone": "38772" },
+    { "name": "Clinic reminders", "phone": "47211" }
+  ],
+  "groups": [
+    { "key": "runclub", "name": "Saturday Run Club", "chat": "120363000000000001@g.us", "members": ["coach", "noor", "ben", "rosa"] }
+  ],
+  "events": [
+    { "id": "demo-recycling", "title": "Recycling day", "all_day": "d0" },
+    { "id": "demo-standup", "title": "Field Guide standup", "start": "d0 09:30", "end": "d0 09:45", "attendees": ["lena", "omar"] },
+    { "id": "demo-lunch", "title": "Lunch with Priya", "start": "d0 12:30", "end": "d0 13:30", "attendees": ["priya"] },
+    { "id": "demo-review", "title": "Beta design review", "start": "d0 14:00", "end": "d0 15:00", "attendees": ["lena", "omar", "kenji"] },
+    { "id": "demo-dentist", "title": "Dentist", "start": "d0 16:30", "end": "d0 17:15" },
+    { "id": "demo-tutor", "title": "Portuguese with Inês", "start": "d0 18:00", "end": "d0 18:45", "attendees": ["ines"] },
+    { "id": "demo-focus", "title": "Focus time", "start": "d0 19:30", "end": "d0 21:00", "transparent": true },
+    { "id": "demo-standup-y", "title": "Field Guide standup", "start": "d-1 09:30", "end": "d-1 09:45", "attendees": ["lena", "omar"] },
+    { "id": "demo-coffee", "title": "Coffee with Daniel", "start": "d-2 08:30", "end": "d-2 09:15", "attendees": ["daniel"] },
+    { "id": "demo-accountant", "title": "Call with Northwind", "start": "d-3 15:00", "end": "d-3 15:30", "attendees": ["northwind"] },
+    { "id": "demo-standup-t", "title": "Field Guide standup", "start": "d+1 09:30", "end": "d+1 09:45", "attendees": ["lena", "omar"] },
+    { "id": "demo-run-club", "title": "Saturday Run Club", "start": "d+4 08:00", "end": "d+4 09:30" }
+  ],
+  "timers": [
+    { "intent": "Draft the offline maps spec", "start": "d0 07:00", "end": "d0 07:35" },
+    { "intent": "lesson", "start": "d0 07:35", "end": "d0 07:55" },
+    { "intent": "offline", "start": "d0 10:15", "end": "d0 12:05" },
+    { "intent": "beta", "start": "d0 13:40", "end": "d0 13:58" },
+    { "intent": "offline", "start": "d-1 09:50", "end": "d-1 12:30" },
+    { "intent": "run", "start": "d-1 18:00", "end": "d-1 18:55" },
+    { "intent": "beta", "start": "d-1 13:30", "end": "d-1 16:10" },
+    { "intent": "lesson", "start": "d-1 20:00", "end": "d-1 20:30" },
+    { "intent": "offline", "start": "d-2 10:00", "end": "d-2 13:00" },
+    { "intent": "shelf", "start": "d-2 16:00", "end": "d-2 17:20" },
+    { "intent": "run", "start": "d-3 07:00", "end": "d-3 07:50" },
+    { "intent": "fieldguide", "start": "d-3 10:00", "end": "d-3 12:40" },
+    { "intent": "lesson", "start": "d-3 20:00", "end": "d-3 20:40" },
+    { "intent": "beta", "start": "d-4 09:30", "end": "d-4 12:00" },
+    { "intent": "run", "start": "d-5 07:00", "end": "d-5 08:05" },
+    { "intent": "offline", "start": "d-6 13:00", "end": "d-6 15:30" }
+  ],
+  "apps": [
+    { "name": "Instagram", "pkg": "com.instagram.android", "start": "d0 07:58", "end": "d0 08:12" },
+    { "name": "Duolingo", "pkg": "com.duolingo", "start": "d0 08:15", "end": "d0 08:25", "goal": "portuguese" },
+    { "name": "Slack", "pkg": "com.Slack", "start": "d0 09:10", "end": "d0 09:24" },
+    { "name": "YouTube", "pkg": "com.google.android.youtube", "start": "d0 15:05", "end": "d0 15:35" },
+    { "name": "Maps", "pkg": "com.google.android.apps.maps", "start": "d0 15:40", "end": "d0 15:48" },
+    { "name": "Reddit", "pkg": "com.reddit.frontpage", "start": "d-1 22:10", "end": "d-1 22:45" }
+  ],
+  "fixes": [
+    { "place": "home", "from": "d0 06:30", "to": "d0 09:00" },
+    { "place": "studio", "from": "d0 09:20", "to": "d0 12:15" },
+    { "place": "studio", "from": "d0 13:35", "to": "d0 15:00" },
+    { "place": "home", "from": "d0 15:50", "to": "d0 16:15" },
+    { "place": "home", "from": "d-1 06:40", "to": "d-1 09:30" },
+    { "place": "track", "from": "d-1 18:00", "to": "d-1 19:00" }
+  ],
+  "proposal": { "app": "YouTube", "intent": "lesson", "reason": "a Portuguese listening video, by its title" },
+  "messages": [
+    { "person": "maya", "at": "d-3 19:02", "kind": "sms", "direction": "in", "text": "Are we still on for climbing Thursday?" },
+    { "person": "maya", "at": "d-3 19:10", "kind": "sms", "direction": "out", "text": "Yes! 6:30 at the gym, I'll bring the spare harness" },
+    { "person": "maya", "at": "d-1 21:40", "kind": "whatsapp", "direction": "in", "text": "Sent you the photos from Point Reyes, the elephant seals came out great" },
+    { "person": "maya", "at": "d0 08:05", "kind": "whatsapp", "direction": "in", "text": "Coffee before your standup? I'm near the studio" },
+    { "person": "daniel", "at": "d-2 12:20", "kind": "sms", "direction": "in", "text": "That essay on maps and memory I mentioned: sending the link by mail" },
+    { "person": "daniel", "at": "d-2 12:31", "kind": "sms", "direction": "out", "text": "Thanks, will read it this week" },
+    { "person": "mum", "at": "d-4 18:00", "kind": "call", "direction": "in", "duration_s": 1260 },
+    { "group": "runclub", "from": "coach", "at": "d-1 07:30", "kind": "whatsapp", "direction": "in", "text": "Saturday: 8am at the track, 10 miles easy, coffee after" },
+    { "short_code": "22395", "at": "d-1 14:02", "kind": "sms", "direction": "in", "text": "Bay CU: a card purchase of $64.20 at GREEN GROCER was approved." },
+    { "short_code": "38772", "at": "d0 11:12", "kind": "sms", "direction": "in", "text": "Your parcel is out for delivery and arrives by 8pm." },
+    { "short_code": "47211", "at": "d-1 10:00", "kind": "sms", "direction": "in", "text": "Reminder: dentist appointment tomorrow at 4:30pm. Reply C to confirm." }
+  ],
+  "mail": [
+    { "id": "demo-m1", "thread": "demo-t1", "person": "daniel", "from": "Daniel Reyes <daniel@reyes.example.org>", "subject": "The essay on maps and memory", "at": "d-2 12:45", "direction": "in" },
+    { "id": "demo-m2", "thread": "demo-t1", "to": "Daniel Reyes <daniel@reyes.example.org>", "subject": "Re: The essay on maps and memory", "at": "d-2 20:15", "direction": "sent" },
+    { "id": "demo-m3", "thread": "demo-t2", "person": "daniel", "from": "Daniel Reyes <daniel@reyes.example.org>", "subject": "Hike on the 30th?", "at": "d0 07:12", "direction": "in" },
+    { "id": "demo-m4", "thread": "demo-t3", "person": "maya", "from": "Maya Okafor <maya.okafor@example.com>", "subject": "Point Reyes photos", "at": "d-1 21:38", "direction": "in" },
+    { "id": "demo-m5", "thread": "demo-t4", "to": "Maya Okafor <maya.okafor@example.com>", "subject": "Climbing gym membership", "at": "d-5 10:02", "direction": "sent" },
+    { "id": "demo-m6", "thread": "demo-t5", "from": "Northwind Accounting <hello@northwind.example.com>", "subject": "Your 2026 tax organiser", "at": "d-3 09:00", "direction": "in" },
+    { "id": "demo-m7", "thread": "demo-t6", "from": "Field Notes Weekly <news@fieldnotes.example.net>", "subject": "Issue 112: tiles, trails and offline-first", "at": "d0 06:00", "direction": "in", "bulk": true }
+  ],
+  "pinned": ["agent", "messaging-rules"],
+  "versioned": {
+    "slug": "topics/lisbon-trip",
+    "title": "Lisbon trip",
+    "versions": [
+      { "via": "ui", "at": "d-6 21:00", "file": "lisbon-1.md" },
+      { "via": "agent", "at": "d-5 07:30", "note": "Added flight options from the search", "file": "lisbon-2.md" },
+      { "via": "ui", "at": "d-4 22:10", "file": "lisbon-3.md" },
+      { "via": "agent", "at": "d-2 07:30", "note": "Apartments shortlisted; budget updated", "file": "lisbon-4.md" },
+      { "via": "ui", "at": "d-1 21:45", "file": "lisbon-5.md" }
+    ]
+  }
+}

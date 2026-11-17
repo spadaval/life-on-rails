@@ -69,9 +69,18 @@ touches. Exit 0 only when every surface is ready.
 ```
 node $V up                 # copy, build in the copy, migrate the test database, start :3857
 node $V seed admin         # optional: a graph seed from seeds/ (admin, deep-work, health)
+node $V demo               # or: empty the test database and load the full demo set (pnpm demo:test)
 node $V build              # launcher only: the debug APK, on boat (2 to 5 min warm)
 node $V install            # launcher only: install on the emulator, server_url = http://10.0.2.2:3857
 ```
+
+**Demo data and a fixed clock.** `demo` loads `seeds/demo/`, a made-up life that fills
+every screen, in about two seconds. Its dates follow `LOR_FAKE_NOW` when set, and so does
+the test server's clock: `LOR_FAKE_NOW=2026-11-17T15:00 node $V up`, then the same for
+`demo`. On any page, `?at=09:00` fixes that tab's clock and `?data=running` (or `paused`,
+`noflags`, `failing`, `base`) picks a variant; both work on the test database only.
+`seeds/demo/README.md` says which link draws which state. `screen clock <dir>` checks the
+fixed clock in a browser.
 
 `up` rebuilds the copy from your working tree each time, so run it again after
 every change. Its build output goes to `/tmp/lor-verify/<checkout>/up.log`, the

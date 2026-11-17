@@ -22,10 +22,12 @@ const HELP = `verify-lor <command> [options]      (node .claude/skills/verify-lo
                                and start the throwaway server on :3857
   down [--keep-copy] [--dry-run]   stop the throwaway server and delete the copy (never the evidence)
   seed <name> [--dry-run]      load seeds/<name>.json into the test database
+  demo [--dry-run]             empty the test database and load the demo set (seeds/demo/), dated from
+                               LOR_FAKE_NOW when set, else now; pnpm demo:test runs this
   api <METHOD> <path> [--body '<json>'|-] [--out <file>] [--port N] [--dry-run]
                                call /api/v1<path> on the throwaway server; prints {status, body}
   screen <flow|/path> <out-dir> [--port N] [--dry-run]
-                               a flow of scripts/ui-check.mjs (tasks, goals, people, notes, today),
+                               a flow of scripts/ui-check.mjs (tasks, goals, people, notes, today, clock),
                                or one screenshot of a path such as /goals
   build [--dry-run]            build the debug APK on boat (android/boat-build.sh), never Gradle here
   install [--apk <file>] [--serial emulator-N] [--port N] [--dry-run]
@@ -37,7 +39,7 @@ const HELP = `verify-lor <command> [options]      (node .claude/skills/verify-lo
   mac (the default) is the M2 MacBook Air; boat (lor-android-build) is the fallback.
   evidence <dir>               list the files in an evidence directory with sizes and sha256
 
-Environment (all optional): LOR_ENV_FILE, LOR_VERIFY_DATABASE_URL, LOR_VERIFY_COPY, LOR_VERIFY_OUT,
+Environment (all optional): LOR_FAKE_NOW (the test server's and the demo set's clock), LOR_ENV_FILE, LOR_VERIFY_DATABASE_URL, LOR_VERIFY_COPY, LOR_VERIFY_OUT,
 LOR_VERIFY_AVD, LOR_VERIFY_HOST (mac|boat), LOR_VERIFY_ADB (adb's path on the host),
 LOR_VERIFY_SSH (the ssh binary).
 Exit codes: 0 ok, 1 failed, 2 usage, 3 refused.
@@ -67,7 +69,7 @@ const SSH = process.env.LOR_VERIFY_SSH ?? "ssh";
 let HOST = "mac"; // set from --host or LOR_VERIFY_HOST in main()
 const APP = "com.spadaval.lor";
 const SERVER_LOG = "/tmp/lor-ui-server.log"; // written by scripts/ui-server.sh
-const FLOWS = ["tasks", "goals", "people", "notes", "today"];
+const FLOWS = ["tasks", "goals", "people", "notes", "today", "clock"];
 
 class Usage extends Error {}
 class Refused extends Error {}
@@ -431,6 +433,18 @@ const commands = {
     if (flags["dry-run"]) return plan([{ cwd: ROOT, env: { DATABASE_URL: url }, cmd: cmd.join(" ") }]);
     const r = must(cmd[0], cmd.slice(1), { env: { DATABASE_URL: url } });
     print({ ok: true, seed: file, database: url, output: r.stdout.trim().split("\n").slice(-5) });
+    return 0;
+  },
+
+  demo(_, flags) {
+    const url = guardDb();
+    const cmd = ["node_modules/.bin/tsx", "scripts/demo.ts"];
+    const env = { DATABASE_URL: url };
+    const clock = process.env.LOR_FAKE_NOW ? `LOR_FAKE_NOW=${process.env.LOR_FAKE_NOW}` : "now (LOR_FAKE_NOW unset)";
+    if (flags["dry-run"]) return plan([{ cwd: ROOT, env, cmd: cmd.join(" "), note: `empties ${TEST_DB}, then loads seeds/demo/ dated from ${clock}` }]);
+    const r = must(cmd[0], cmd.slice(1), { env });
+    const last = r.stdout.trim().split("\n").pop() ?? "{}";
+    print({ ...JSON.parse(last), database: url, clock });
     return 0;
   },
 
