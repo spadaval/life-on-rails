@@ -1,6 +1,5 @@
 package com.spadaval.lor.home
 
-import com.spadaval.lor.lab.LabAnchors
 import com.spadaval.lor.ui.*
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -195,8 +194,8 @@ fun WithAppMenu(app: HomeApp, at: At, home: HomeContext, spot: From.At? = null, 
     // Picking the app up closes its menu (launcher polish 4.3).
     val held = home.drag.held
     LaunchedEffect(held) { if (held != null) open = false }
-    // A named state's menu (lor-xdoi): only on the lab page, so the phone's tiles carry no such effect.
-    if (LabAnchors.on) LaunchedEffect(home.ui.menuRequest) {
+    // A named state's menu (lor-xdoi): only in a lab, so the phone's tiles carry no such effect.
+    if (home.ui.fixtureRequests) LaunchedEffect(home.ui.menuRequest) {
         if (home.ui.menuRequest == app.key) {
             home.ui.menuRequest = null
             open = true

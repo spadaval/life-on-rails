@@ -273,6 +273,15 @@ export async function rotate() {
   await mark("rotate", () => press("rotate", true));
 }
 
+/** Changes the wallpaper (the toolbar's Wallpaper), which keeps the surface's place: `dark`, `pale` or `mixed`. */
+export async function wallpaper(id) {
+  await mark("wallpaper", async () => {
+    const before = await page.evaluate(() => document.body.getAttribute("data-drawn"));
+    await page.selectOption("#wallpaper", id);
+    await page.waitForFunction((b) => document.body.getAttribute("data-drawn") === location.hash && location.hash !== b, before);
+  });
+}
+
 /** The toolbar's Home: the state drawn afresh. */
 export async function home() {
   await mark("home", () => press("home", false));

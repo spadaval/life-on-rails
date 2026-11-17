@@ -171,7 +171,13 @@ internal val labelStyle: TextStyle
     @Composable get() = LocalWallInk.current.let { TextStyle(fontFamily = Saira, color = it.text, fontSize = LocalHomeLook.current.labelSize.sp, shadow = it.shadow, textMotion = TextMotion.Animated) }
 
 /** What the activity can reset on a home press. */
-class HomeUi {
+class HomeUi(
+    /**
+     * Whether a named state's requests ([menuRequest], [scrollRequest]) are acted on: only a lab's
+     * home sets it (the browser's and the debug app's `lab_state` entry), never the phone's.
+     */
+    val fixtureRequests: Boolean = false,
+) {
     /**
      * Where home is on the grid of panels and the move under way (lor-qdmy). A finger moves it;
      * otherwise [HomeScreen]'s [SettleGrid] finishes the move. The drawer is one of its cells.

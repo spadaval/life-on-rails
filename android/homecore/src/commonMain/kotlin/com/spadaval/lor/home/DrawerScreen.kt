@@ -1,6 +1,5 @@
 package com.spadaval.lor.home
 
-import com.spadaval.lor.lab.LabAnchors
 import androidx.compose.ui.graphics.RectangleShape
 import com.spadaval.lor.ui.*
 import androidx.compose.foundation.background
@@ -131,7 +130,7 @@ internal class Built(val entries: List<Entry>, val letters: List<Pair<String, In
 /** What quick dial shows besides the app list: its card and people, read in [Drawer]. */
 internal class QuickParts(val opens: AppOpens, val card: QuickCard?, val people: List<SearchShortcut>)
 
-private fun build(tab: DrawerTab, apps: List<HomeApp>, file: LayoutFile?, stats: LaunchStats, quick: QuickParts, now: Long): Built {
+private fun build(tab: DrawerTab, apps: List<HomeApp>, file: LayoutFile?, stats: LaunchStats, quick: QuickParts, now: Long, zone: TimeZone): Built {
     val launched = stats.entries
     // New, and not opened since it was installed: from the launcher, or anywhere usage events saw.
     // Main-profile apps only: a work-profile app's install time can't be read (see HomeApp.firstInstalled).
@@ -146,7 +145,6 @@ private fun build(tab: DrawerTab, apps: List<HomeApp>, file: LayoutFile?, stats:
         // Quick dial (lor-2imw): the card, the apps for now, the people, the new installs.
         TabKind.QUICK -> {
             quick.card?.let { out.add(Entry.Card(it)) }
-            val zone = TimeZone.currentSystemDefault()
             header("Now", HourSlot.of(Instant.fromEpochMilliseconds(now), zone).words(Instant.fromEpochMilliseconds(now), zone))
             val ranked = rankForNow(apps, { it.id }, quick.opens, now, zone)
             if (ranked.isEmpty()) note("The apps you open at this time of day will show here.")
@@ -329,10 +327,10 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
         val columns = LocalHomeLook.current.columnsFor(maxWidth.value).drawer
         val goKey = if (focused && fresh) results.go?.key else null
         val tab = tabs[current]
-        val built = remember(tab, apps, home.file, stats, searching, results, goKey, quick.opens, quick.card, quick.people, ui.drawer) {
+        val built = remember(tab, apps, home.file, stats, searching, results, goKey, quick.opens, quick.card, quick.people, ui.drawer, home.actions.zone) {
             if (searching) searchEntries(results, goKey)
             // Now is read again each time the drawer opens, so quick dial ranks for the hour it opens in.
-            else build(tab, apps, home.file, stats, quick, home.actions.now())
+            else build(tab, apps, home.file, stats, quick, home.actions.now(), home.actions.zone)
         }
         // A tab's place and the results' are kept apart, so clearing a search goes back to where the tab was.
         val browse = rememberLazyGridState()
@@ -341,7 +339,7 @@ internal fun Drawer(apps: List<HomeApp>, stats: LaunchStats, sources: SearchSour
         LaunchedEffect(current) { browse.scrollToItem(0) }
         // A named state's scroll (only the lab asks, lor-xdoi), once the tab is on screen.
         val scrollDensity = LocalDensity.current.density
-        if (LabAnchors.on) LaunchedEffect(ui.scrollRequest, current) {
+        if (ui.fixtureRequests) LaunchedEffect(ui.scrollRequest, current) {
             val dp = ui.scrollRequest
             if (dp > 0) {
                 ui.scrollRequest = 0

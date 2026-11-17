@@ -248,7 +248,10 @@ internal class JSONStringer(indentSpaces: Int) {
  * strings, unquoted words (a bare word is a string), `//`, `/* */` and `#` comments, `=` or `=>` for
  * `:`, and `;` for `,`.
  */
-class JSONTokener(private val text: String) {
+class JSONTokener(text: String) {
+    /** The text, without the optional byte-order mark Android's reader also skips. */
+    private val text: String = text.removePrefix("\uFEFF")
+
     private var pos = 0
     private var depth = 0
 

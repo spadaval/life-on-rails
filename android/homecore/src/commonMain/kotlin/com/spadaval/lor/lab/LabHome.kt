@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import com.spadaval.lor.home.AppOpens
@@ -137,13 +138,12 @@ fun Fixture.lorRead(): LorRead {
  * phone's store changes the file; a press that would leave home (open an app, a settings page)
  * says in home's bar what the phone would have done.
  */
-class LabPlatform(fixture: Fixture, apps: List<HomeApp>, wallpaper: Wallpaper, private val ui: HomeUi, start: LayoutState) : PlaceholderPlatform(
+class LabPlatform(fixture: Fixture, apps: List<HomeApp>, private val ink: MutableStateFlow<Ink>, private val ui: HomeUi, start: LayoutState) : PlaceholderPlatform(
     zone = TimeZone.of(fixture.clock.zone),
     clock = { Instant.parse(fixture.clock.now) },
     lorRead = fixture.lorRead(),
     dots = MutableStateFlow(apps.filter { fixture.phone.dots.getOrElse(it.packageName) { 0 } > 0 }.map { "${it.packageName}#${it.profile}" }.toSet()),
-    // The pale wallpaper is light, so home's text takes dark ink over it, as the phone reads its hints.
-    wallpaperInk = MutableStateFlow(if (wallpaper == Wallpaper.Pale) Ink.DARK else Ink.LIGHT),
+    wallpaperInk = ink,
     opens = MutableStateFlow(fixture.appOpens(apps, TimeZone.of(fixture.clock.zone))),
 ) {
     /** The layout home draws: the fixture's, then as edits leave it. */
@@ -222,6 +222,9 @@ class LabPlatform(fixture: Fixture, apps: List<HomeApp>, wallpaper: Wallpaper, p
     }
 }
 
+/** The pale wallpaper is light, so home's text takes dark ink over it, as the phone reads its hints. */
+private fun inkOver(w: Wallpaper): Ink = if (w == Wallpaper.Pale) Ink.DARK else Ink.LIGHT
+
 /** Home, drawn from [scene]'s fixture. */
 @Composable
 fun LabHome(scene: LabScene) {
@@ -234,8 +237,11 @@ fun LabHome(scene: LabScene) {
     }
     val stats = remember(f, apps) { f.launchStats(apps) }
     val search = remember(f, apps) { f.searchSources(apps) }
-    val ui = remember(f) { HomeUi() }
-    val platform = remember(f, apps, scene.wallpaper) { LabPlatform(f, apps, scene.wallpaper, ui, f.layoutState()) }
+    val ui = remember(f) { HomeUi(fixtureRequests = true) }
+    // A new wallpaper changes only the ink: the layout, its edits and Undo stay, as the phone keeps them.
+    val ink = remember(f) { MutableStateFlow(inkOver(scene.wallpaper)) }
+    SideEffect { ink.value = inkOver(scene.wallpaper) }
+    val platform = remember(f, apps) { LabPlatform(f, apps, ink, ui, f.layoutState()) }
     val layout = platform.layout
     LaunchedEffect(ui) {
         // After the first frame, as on the phone, where the first layout puts home on its start.
