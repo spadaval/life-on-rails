@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-5fk6
 title: 'The launcher and app in the lab per direction: home, drawer, search, panels, a menu, settings and the timer'
-status: in_review
+status: approved
 mission: lor-2803
 labels:
 - design-lab
