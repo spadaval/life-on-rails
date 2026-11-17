@@ -1,15 +1,15 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Direction 1: Queue</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Saira+Condensed:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Saira+Condensed:wght@500;600&display=swap">
 <link rel="stylesheet" href="frames.css">
 <style>
 :root { --bg: #0d0e13; --txt: #ece8e1; --mute: #a59d92; --dim: #8f887e; --line: #22242c; --or: #f08a2c; --cy: #6cc6ec;
-  --sans: "Geist", system-ui, sans-serif; --cond: "Saira Condensed", sans-serif; --icon-r: 28%; }
+  --sans: "Public Sans", system-ui, sans-serif; --cond: "Saira Condensed", sans-serif; --icon-r: 28%; }
 .top { height: 60px; display: flex; align-items: center; gap: 28px; padding: 0 40px; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--mute); }
 .top b { font: 600 17px/1 var(--cond); letter-spacing: .12em; color: var(--or); margin-right: 16px; }
 .top .on { color: var(--txt); font-weight: 600; }
 .top .srch { margin-left: auto; width: 280px; height: 36px; border-radius: 10px; background: #16171e; color: var(--dim); display: flex; align-items: center; padding: 0 14px; font-size: 14px; }
-.col { width: 720px; margin: 28px auto 0; display: flex; flex-direction: column; gap: 14px; }
+.col { width: 720px; margin: 20px auto 0; display: flex; flex-direction: column; gap: 14px; }
 .timer { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-radius: 14px; background: #15161d; font-size: 15px; }
 .timer i { width: 8px; height: 8px; border-radius: 50%; background: var(--or); }
 .timer .t { font: 600 22px/1 var(--cond); color: var(--or); letter-spacing: .04em; }
@@ -40,7 +40,7 @@
 .qcard p { margin: 0; color: var(--mute); font-size: 14px; }
 .qcard .acts { display: flex; gap: 8px; margin-top: 14px; }
 .qcard .more { position: absolute; right: 18px; top: 18px; color: var(--dim); font-size: 13px; }
-.home-apps { position: absolute; left: 10px; right: 10px; bottom: 120px; z-index: 2; }
+.home-apps { position: absolute; left: 10px; right: 10px; bottom: 140px; z-index: 2; }
 .swipe { position: absolute; bottom: 70px; left: 0; right: 0; text-align: center; color: rgb(255 255 255 / .7); font-size: 12px; z-index: 2; }
 .veil { position: absolute; inset: 0; background: rgb(13 14 19 / .82); backdrop-filter: blur(30px); padding: 56px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
 .ph { display: flex; justify-content: space-between; align-items: baseline; padding: 0 6px; }
@@ -64,8 +64,10 @@
   <div class="top"><b>LoR</b><span class="on">Today</span><span>Tasks</span><span>Goals</span><span>People</span><span>Notes</span><span class="srch">Search or add · /</span></div>
   <div class="col">
     <div class="timer"><i></i>Draft the offline maps spec <span style="color:var(--dim)">· Ship the Field Guide app</span><span class="t">47:12</span><span class="b">Switch</span><span class="b">Stop</span></div>
+    <div style="position:relative;height:44px;border-radius:12px;background:#15161d;overflow:hidden"><i style="position:absolute;left:0;top:10px;bottom:10px;width:20%;background:rgb(240 138 44 / .5);border-radius:4px"></i><i style="position:absolute;left:21%;top:10px;bottom:10px;width:6%;border:1px dashed #5a5c66;border-radius:4px;outline:2px solid var(--or)"></i><i style="position:absolute;left:28%;top:10px;bottom:10px;width:16%;background:rgb(240 138 44 / .5);border-radius:4px"></i><i style="position:absolute;left:44%;top:6px;bottom:6px;width:2px;background:var(--or)"></i><i style="position:absolute;left:60%;top:10px;bottom:10px;width:5%;background:rgb(108 198 236 / .35);border-radius:4px"></i><i style="position:absolute;left:72%;top:10px;bottom:10px;width:7%;background:rgb(108 198 236 / .35);border-radius:4px"></i></div>
+    <div style="position:absolute;left:520px;top:170px;z-index:4;width:300px;padding:14px;border-radius:14px;background:rgb(30 31 40 / .92);backdrop-filter:blur(20px);box-shadow:0 18px 40px rgb(0 0 0 / .55);font-size:14px"><div style="color:var(--dim);font-size:13px">13:10 to 13:45 · unlabelled · YouTube, Slack</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><span class="btn" style="padding:6px 10px;font-size:13px;background:var(--or);color:#1a0d02">Leisure</span><span class="btn" style="padding:6px 10px;font-size:13px">Field Guide</span><span class="btn" style="padding:6px 10px;font-size:13px">Life admin</span></div></div>
     <div class="lead"><div class="ret"></div><div class="k">The one thing · 7h of the day left</div>
-      <h1>Finish the offline maps spec before the design review at 14:00</h1>
+      <h1>Finish the offline maps spec for tomorrow’s design review</h1>
       <p>Lena is waiting on the icon sizes. Next on the calendar: 16:30 Dentist.</p>
       <div class="acts"><span class="btn pri">Done</span><span class="btn">Not today</span><span class="btn">Open</span></div></div>
     <div class="sec">Then · 6</div>
@@ -73,21 +75,19 @@
     <div class="row"><span class="ag">●</span>Find a physio for the left knee<span class="m">two options, pick one</span><span class="a">Open</span></div>
     <div class="row"><span class="ck"></span>Fix the dripping bathroom tap<span class="m">due 13 Nov · Keep the house running</span></div>
     <div class="row"><span class="ck"></span>Return the library books<span class="m">due today</span></div>
-    <div class="row"><span class="ck"></span>Renew the parking permit<span class="m">due 16 Nov</span></div>
-    <div class="sec">This week · Ship the Field Guide app 18.7 of 15h · Portuguese 1.5 of 3h · Marathon 2.8 of 5h</div>
+        <div class="sec">This week · Ship the Field Guide app 18.7 of 15h · Portuguese 1.5 of 3h · Marathon 2.8 of 5h</div>
   </div>
 </section>
 
 <section class="frame" id="home">
   <div class="wall"></div><div class="status"><span>15:02</span><span>5G ▮</span></div>
   <div class="clock"><b>15:02</b><span>Tue 17 Nov · 12° Rain after 17:00</span></div>
-  <div class="qcard"><span class="more">1 of 6 ›</span><div class="k">THE ONE THING</div><h2>Finish the offline maps spec before 14:00</h2><p>Timer running · 47 min</p>
-    <div class="acts"><span class="btn pri">Done</span><span class="btn">Stop timer</span></div></div>
+  <div class="qcard" style="top:170px;padding:14px 16px;border-radius:18px"><div style="display:flex;align-items:center;gap:12px"><span style="width:10px;height:10px;border-radius:50%;background:var(--or)"></span><div style="flex:1"><div style="font-size:15px">Maps spec · 47 min</div><div style="font-size:13px;color:var(--mute)">Queue: 1 approval, 1 question, 2 flags ›</div></div><span class="btn" style="padding:9px 14px">Stop</span></div></div>
   <div class="home-apps apps">
     <div class="app"><i class="icon c1"></i><span>Phone</span></div><div class="app"><i class="icon c2"></i><span>Messages</span></div><div class="app"><i class="icon c3"></i><span>Chrome</span></div><div class="app"><i class="icon c4"></i><span>Camera</span></div>
     <div class="app"><i class="icon c5"></i><span>Gmail</span></div><div class="app"><i class="icon c6"></i><span>Maps</span></div><div class="app"><i class="icon c7"></i><span>Photos</span></div><div class="app"><i class="icon c8"></i><span>T3 Code</span></div>
   </div>
-  <div class="swipe">Swipe up for apps and search</div><div class="gesture"></div>
+  <div style="position:absolute;left:14px;right:14px;bottom:60px;height:50px;z-index:2;border-radius:16px;background:rgb(22 23 30 / .75);backdrop-filter:blur(20px);display:flex;align-items:center;padding:0 18px;color:var(--mute);font-size:15px">Search apps, people, or ask</div><div class="gesture"></div>
 </section>
 
 <section class="frame" id="agent">
