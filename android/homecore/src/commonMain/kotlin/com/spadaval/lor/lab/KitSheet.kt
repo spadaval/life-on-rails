@@ -109,11 +109,8 @@ fun KitSheet(scene: LabScene) {
             }
             Section("Colours") {
                 Swatches(solids)
-                Spacer(Modifier.height(12.dp))
-                Text("WITH ALPHA, OVER THE WALLPAPER", style = Type.label)
-                Spacer(Modifier.height(6.dp))
-                Swatches(glazes)
             }
+            Glazes()
             Section("Type") {
                 for ((name, style) in steps) {
                     Text(name.uppercase(), style = Type.label)
@@ -175,6 +172,27 @@ private fun Swatches(list: List<Swatch>) {
                 Box(Modifier.fillMaxWidth().height(40.dp).background(s.color).border(1.dp, Edge))
                 Text(s.name, style = Type.bodySmall.copy(color = Txt))
                 if (s.argb != null) Text("#" + (s.argb and 0xFFFFFF).toString(16).padStart(6, '0').uppercase(), style = Type.label)
+            }
+        }
+    }
+}
+
+/**
+ * The colours drawn with alpha, each sample straight on the wallpaper (no panel under it), so the
+ * wallpaper picker shows how each one reads; only the labels sit on a panel.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Glazes() {
+    Column(Modifier.fillMaxWidth()) {
+        Text("WITH ALPHA, OVER THE WALLPAPER", style = Type.title, modifier = Modifier.background(StateFill).padding(horizontal = 6.dp, vertical = 2.dp))
+        Spacer(Modifier.height(8.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (s in glazes) {
+                Column(Modifier.width(96.dp)) {
+                    Box(Modifier.fillMaxWidth().height(56.dp).background(s.color).border(1.dp, Edge))
+                    Text(s.name, style = Type.bodySmall.copy(color = Txt), modifier = Modifier.fillMaxWidth().background(PanelFace).padding(4.dp))
+                }
             }
         }
     }

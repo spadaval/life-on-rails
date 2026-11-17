@@ -69,9 +69,10 @@ fun main() {
         )
         val wallpapers = Wallpaper.entries.associateWith { image(bundled("wallpapers/${it.id}.png")) }
 
-        var parsed by mutableStateOf(parseHash(window.location.hash))
+        var hash by mutableStateOf(window.location.hash)
         val controls = Controls { link -> window.location.hash = link.hash }
         fun show() {
+            val parsed = parseHash(hash)
             controls.show(parsed)
             val phone = el("phone")
             phone.style.width = "${parsed.link.screen.widthDp}px"
@@ -80,13 +81,13 @@ fun main() {
             window.dispatchEvent(Event("resize"))
         }
         show()
-        window.addEventListener("hashchange", { parsed = parseHash(window.location.hash); show() })
-        ComposeViewport(el("phone")) { Frame(parsed, wallpapers) }
+        window.addEventListener("hashchange", { hash = window.location.hash; show() })
+        ComposeViewport(el("phone")) { Frame(hash, parseHash(hash), wallpapers) }
     }
 }
 
 @Composable
-private fun Frame(parsed: Parsed, wallpapers: Map<Wallpaper, ImageBitmap>) {
+private fun Frame(hash: String, parsed: Parsed, wallpapers: Map<Wallpaper, ImageBitmap>) {
     val link = parsed.link
     Box(Modifier.fillMaxSize()) {
         Image(wallpapers.getValue(link.wallpaper), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -94,11 +95,13 @@ private fun Frame(parsed: Parsed, wallpapers: Map<Wallpaper, ImageBitmap>) {
             Lab.version(link.version)!!.draw(LabScene(Lab.state(link.state)!!, link.screen))
         }
     }
-    LaunchedEffect(link) {
+    // Keyed on the hash as written, not the link: two hashes can name one link, and the marker
+    // must name the one now in the address bar.
+    LaunchedEffect(hash) {
         // Two frames: the first lays the tree out, the second has drawn it.
         withFrameNanos {}
         withFrameNanos {}
-        document.body?.setAttribute("data-drawn", window.location.hash)
+        document.body?.setAttribute("data-drawn", hash)
     }
 }
 
