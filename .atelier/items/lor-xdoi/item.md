@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-xdoi
 title: 'One home, two platforms: home''s drawing in a shared Kotlin module'
-status: changes_requested
+status: in_review
 mission: lor-ncpw
 labels:
 - launcher
