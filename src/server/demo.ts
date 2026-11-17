@@ -24,6 +24,7 @@ const RUNNING_MIN = 47;
 const PAUSED_MIN = 12;
 
 const STATE = "demo_variant";
+let queue: Promise<unknown> = Promise.resolve();
 
 interface State {
   name: DemoVariant;
@@ -101,10 +102,9 @@ export async function setDemoVariant(name: string, db: Sql = defaultSql): Promis
   if (!isVariant(name)) throw new Error(`unknown demo variant ${name}; have: ${DEMO_VARIANTS.join(", ")}`);
   const now = clockNow();
   const at = fixedNow() ?? "live";
-  // One request at a time moves the variant: a page and its calls can ask together.
-  const conn = await db.reserve();
-  try {
-    await conn`SELECT pg_advisory_lock(hashtext(${STATE}))`;
+  // One request at a time moves the variant: a page and its calls can ask together. The test
+  // server is one process, so a queue here is enough, and holds no connection while it waits.
+  const turn = queue.then(async (): Promise<DemoVariant> => {
     const state = await readState(db);
     if (state?.name === name && state.at === at) return name;
     if (!state && name === "base") return name;
@@ -112,10 +112,9 @@ export async function setDemoVariant(name: string, db: Sql = defaultSql): Promis
     const undone = await apply(db, name, now);
     await writeState(db, name === "base" ? null : { name, at, undo: undone });
     return name;
-  } finally {
-    await conn`SELECT pg_advisory_unlock(hashtext(${STATE}))`;
-    conn.release();
-  }
+  });
+  queue = turn.catch(() => undefined);
+  return turn;
 }
 
 /** The variant a page load asks for with `data=`, on the test database only. */
