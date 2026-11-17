@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import { DayArc } from "../components/DayArc.js";
+import { useNow } from "../components/clock.js";
 import { duration, pct, shortDate } from "../components/format.js";
 import { TaskCheck } from "../components/IntentEditor.js";
 import { IntentPicker, type PickIntent } from "../components/IntentPicker.js";
@@ -29,16 +30,6 @@ const isBare = (b: Block) => (b.origin === "auto_activity" || b.origin === "plac
 const blockName = (b: Block) => b.intent ?? (b.origin === "auto_activity" ? "Phone" : b.origin === "place" ? (b.title ?? "Somewhere") : "Unlabelled");
 const fromWhere = (origin: string) =>
   origin === "calendar" ? "from the calendar" : origin === "auto_activity" ? "from your phone" : origin === "place" ? "from where you were" : "timer";
-
-function useNow(everyMs: number, initial: string): number {
-  const [now, setNow] = useState(() => new Date(initial).getTime());
-  useEffect(() => {
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), everyMs);
-    return () => clearInterval(id);
-  }, [everyMs]);
-  return now;
-}
 
 function Today() {
   const data = Route.useLoaderData();

@@ -8,6 +8,7 @@ import { env } from "../env.js";
 import { BadInput, NotFound, Refused } from "../errors.js";
 import { recordObservation } from "../observations.js";
 import { type LastContact, lastContacts } from "../people.js";
+import { clockNow } from "../clock.js";
 
 export const ENTITY_KINDS = ["person", "org", "place", "thing", "group"] as const;
 export type EntityKind = (typeof ENTITY_KINDS)[number];
@@ -210,7 +211,7 @@ export async function upsertEntity(db: Sql, input: UpsertEntityInput): Promise<E
       for (const a of [...found.aliases, ...aliases]) merged.set(a.toLowerCase(), a);
       if (found.name.toLowerCase() !== name.toLowerCase()) merged.set(found.name.toLowerCase(), found.name);
       merged.delete(name.toLowerCase());
-      await tx`UPDATE entity SET name = ${name}, aliases = ${[...merged.values()]}, updated_at = now() WHERE id = ${id}`;
+      await tx`UPDATE entity SET name = ${name}, aliases = ${[...merged.values()]}, updated_at = ${clockNow()} WHERE id = ${id}`;
     }
     for (const i of identifiers) {
       await tx`INSERT INTO entity_identifier (entity_id, kind, value) VALUES (${id}, ${i.kind}, ${i.value})
@@ -308,7 +309,7 @@ export async function updateEntity(db: Tx, id: string, patch: EntityPatch): Prom
       priority = ${patch.priority ?? e.priority},
       keep_in_touch_days = ${patch.keepInTouchDays === undefined ? e.keep_in_touch_days : patch.keepInTouchDays},
       birthday_month = ${month}, birthday_day = ${day}, birthday_year = ${year},
-      updated_at = now()
+      updated_at = ${clockNow()}
     WHERE id = ${id}`;
   return viewOf(db, (await db<EntityRow[]>`SELECT * FROM entity WHERE id = ${id}`)[0]!);
 }
@@ -374,9 +375,9 @@ export async function mergeEntities(db: Sql, keepId: string, fromId: string, thr
         keep_in_touch_days = ${keep.keep_in_touch_days ?? from.keep_in_touch_days},
         birthday_month = ${bday.birthday_month}, birthday_day = ${bday.birthday_day}, birthday_year = ${bday.birthday_year},
         lat = ${keep.lat ?? from.lat}, lon = ${keep.lon ?? from.lon}, radius_m = ${keep.radius_m ?? from.radius_m},
-        updated_at = now()
+        updated_at = ${clockNow()}
       WHERE id = ${keepId}`;
-    const now = new Date();
+    const now = clockNow();
     await recordObservation(tx, {
       tStart: now,
       tEnd: now,

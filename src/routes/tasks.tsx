@@ -1,7 +1,8 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
-import { ago, dueLabel, longDate } from "../components/format.js";
+import { Ago } from "../components/Ago.js";
+import { dueLabel, longDate } from "../components/format.js";
 import { type GraphNode, TaskCheck, parentChoices } from "../components/IntentEditor.js";
 import { Key, QuickAdd, type QuickAddOptions, typing } from "../components/QuickAdd.js";
 import { Empty, Notice, PageHead, Panel, Star } from "../components/ui.js";
@@ -521,7 +522,7 @@ function TaskPanel({ node: n, parents, entities, today, act, onClose }: {
       {n.flagged_at ? (
         <div className="mt-3 border-l-2 border-or bg-or/5 px-3 py-2 text-[14px]">
           <p className="mb-1 flex items-center gap-1.5 text-[12.5px] text-or">
-            <Star size={9} /> The agent flagged this for you <span className="text-dim">· {ago(n.flagged_at)}</span>
+            <Star size={9} /> The agent flagged this for you <span className="text-dim">· <Ago iso={n.flagged_at} /></span>
           </p>
           {n.flag_note ? <p className="text-mute">{n.flag_note}</p> : null}
           <button className="btn btn-sm mt-2" onClick={() => act(() => unflagFn({ data: { id: n.id } }), "Marked seen.")}>
@@ -634,10 +635,10 @@ function TaskPanel({ node: n, parents, entities, today, act, onClose }: {
 
       <ul className="mt-4 space-y-0.5 border-t border-line pt-3 text-[13px] text-dim">
         <li>
-          {madeBy(n)} · {ago(n.created_at)}
+          {madeBy(n)} · <Ago iso={n.created_at} />
         </li>
-        {n.updated_at !== n.created_at ? <li>Last changed {ago(n.updated_at)}</li> : null}
-        {n.status === "waiting" && n.waiting_since ? <li>Waiting since {ago(n.waiting_since)}</li> : null}
+        {n.updated_at !== n.created_at ? <li>Last changed <Ago iso={n.updated_at} /></li> : null}
+        {n.status === "waiting" && n.waiting_since ? <li>Waiting since <Ago iso={n.waiting_since} /></li> : null}
         {n.thread_ref ? <li>Worked on in thread {n.thread_ref}</li> : null}
       </ul>
 

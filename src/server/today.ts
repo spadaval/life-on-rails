@@ -7,6 +7,7 @@ import { type PhoneStats, phoneStats } from "./attribution/activity.js";
 import { FILLS_ACTUAL_SQL } from "./attribution/fill.js";
 import { type Span, attributionCoverage, calendarConfirmRate, normalize, subtractSpans } from "./attribution/intervals.js";
 import { env } from "./env.js";
+import { clockNow } from "./clock.js";
 
 export interface PlannedEvent {
   calendar_id: string;
@@ -206,7 +207,7 @@ export async function trailingConfirmRate(db: Tx, now: Date): Promise<number | n
 
 const MIN_GAP_MIN = 15;
 
-export async function getToday(db: Tx, date: Ymd, now = new Date()): Promise<TodayView> {
+export async function getToday(db: Tx, date: Ymd, now = clockNow()): Promise<TodayView> {
   const tz = env.LOR_TZ;
   const { start, end } = localDayBounds(tz, date);
   const wake = wakeWindow(date);

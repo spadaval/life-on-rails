@@ -37,6 +37,7 @@ import {
 import { getPin, type WallPin } from "./pin.js";
 import { grayPng2 } from "./png.js";
 import { frameFonts, renderFrames } from "./render.js";
+import { clockNow } from "../clock.js";
 
 const REFRESH_S = 900;
 /** How long a screen stepped to stays up before Today comes back. */
@@ -254,7 +255,7 @@ export async function trmnlDisplay(request: Request): Promise<Response> {
   log("info", "trmnl display", { screen, also: others, source: h("update-source"), browsing: h("browsing"), special: h("special_function"), battery: h("percent-charged") ?? h("battery-voltage"), usb: h("usb-connected"), rssi: h("rssi"), fw });
   const alerts = Number.isFinite(pct) && pct > 0 && pct < LOW_BATTERY_PCT && !charging ? [`Battery ${Math.round(pct)}%`] : [];
   try {
-    const now = new Date();
+    const now = clockNow();
     const shell = await shellInput(now, alerts);
     const screens = [screen, ...others];
     const pngs = await renderFrames(await Promise.all(screens.map((s) => screenHtml(s, shell))));

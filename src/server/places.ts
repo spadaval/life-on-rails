@@ -10,12 +10,13 @@ import { loadFixes, loadPlaces, lockBlocks, syncFill } from "./attribution/fill.
 import { globMatch, validateTitleRegex } from "./attribution/suggest.js";
 import { BadInput, NotFound } from "./errors.js";
 import { scheduleRecompute } from "./scoring/recompute.js";
+import { clockNow } from "./clock.js";
 
 /** How far back a new place or rule relabels blocks. */
 const RELABEL_DAYS = 14;
 
 async function relabel(db: Sql): Promise<void> {
-  const now = new Date();
+  const now = clockNow();
   const { from, to } = fillWindow(now, new Date(now.getTime() - RELABEL_DAYS * 86_400_000));
   await db.begin(async (tx) => {
     await lockBlocks(tx);
@@ -33,7 +34,7 @@ export interface PlaceView {
   intent: { id: string; title: string } | null;
 }
 
-export async function listPlaces(db: Sql, now = new Date()): Promise<{ places: PlaceView[]; unknown: UnknownPlace[] }> {
+export async function listPlaces(db: Sql, now = clockNow()): Promise<{ places: PlaceView[]; unknown: UnknownPlace[] }> {
   const places = await loadPlaces(db);
   const rules = await db<{ match_place: string; intent_id: string; title: string }[]>`
     SELECT r.match_place, r.intent_id, i.title FROM attribution_rule r JOIN intent i ON i.id = r.intent_id WHERE r.match_place IS NOT NULL`;
@@ -57,7 +58,7 @@ export async function addPlace(db: Sql, input: { name: string; lat: number; lon:
     const existing = await tx<{ id: string }[]>`SELECT id FROM entity WHERE kind = 'place' AND lower(name) = lower(${name}) LIMIT 1`;
     id = existing[0]?.id ?? uuidv7();
     if (existing[0]) {
-      await tx`UPDATE entity SET lat = ${input.lat}, lon = ${input.lon}, radius_m = ${radius}, updated_at = now() WHERE id = ${id}`;
+      await tx`UPDATE entity SET lat = ${input.lat}, lon = ${input.lon}, radius_m = ${radius}, updated_at = ${clockNow()} WHERE id = ${id}`;
     } else {
       await tx`INSERT INTO entity (id, kind, name, lat, lon, radius_m) VALUES (${id}, 'place', ${name}, ${input.lat}, ${input.lon}, ${radius})`;
     }
@@ -134,7 +135,7 @@ export interface AppUse {
 }
 
 /** Which apps took the phone's time lately, and what each is labelled as. */
-export async function listApps(db: Sql, days = 14, now = new Date()): Promise<AppUse[]> {
+export async function listApps(db: Sql, days = 14, now = clockNow()): Promise<AppUse[]> {
   const rows = await db<{ app: string; name: string; hours: number; sessions: number }[]>`
     SELECT app, max(title) AS name, round((sum(extract(epoch FROM t_end - t_start)) / 3600)::numeric, 1)::float8 AS hours, count(*)::int AS sessions
     FROM observation

@@ -6,6 +6,7 @@ import { diffLines, renderDiff } from "../../shared/diff.js";
 import { type Author, blame, takeBack } from "../../shared/merge.js";
 import { uuidv7 } from "../../shared/ids.js";
 import { BadInput, NotFound, Refused } from "../errors.js";
+import { clockNow } from "../clock.js";
 
 const SLUG = /^[a-z0-9][a-z0-9/-]*$/;
 
@@ -147,10 +148,11 @@ async function createInTx(tx: Tx, input: CreatePageInput): Promise<PageView> {
       throw new Refused("page-exists", `${reason}: update ${taken[0].slug} instead`, { existing: taken[0].slug });
     }
     const id = uuidv7();
-    await tx`INSERT INTO page (id, slug, title, entity_id, intent_id, head_version, body)
-      VALUES (${id}, ${input.slug}, ${input.title}, ${input.entityId ?? null}, ${input.intentId ?? null}, 1, ${input.body})`;
-    await tx`INSERT INTO page_version (page_id, version, title, body, via, source_ref, note)
-      VALUES (${id}, 1, ${input.title}, ${input.body}, ${input.via}, ${input.sourceRef ?? null}, ${input.note ?? null})`;
+    const at = clockNow();
+    await tx`INSERT INTO page (id, slug, title, entity_id, intent_id, head_version, body, created_at, updated_at)
+      VALUES (${id}, ${input.slug}, ${input.title}, ${input.entityId ?? null}, ${input.intentId ?? null}, 1, ${input.body}, ${at}, ${at})`;
+    await tx`INSERT INTO page_version (page_id, version, title, body, via, source_ref, note, created_at)
+      VALUES (${id}, 1, ${input.title}, ${input.body}, ${input.via}, ${input.sourceRef ?? null}, ${input.note ?? null}, ${at})`;
     const page = await loadPage(tx, input.slug);
     return view(page, await loadVersion(tx, id, 1));
   }
@@ -201,6 +203,8 @@ export function footnoteWarnings(body: string): string[] {
 
 /** Saves from the owner's editor this close to the last one fold into it. */
 const AMEND_WINDOW_MS = 10 * 60_000;
+// A head written "after" now (a fixed test clock set earlier than it) is never amended.
+const amendable = (ageMs: number) => ageMs >= 0 && ageMs < AMEND_WINDOW_MS;
 
 const LIST_LINE = /^\s*(?:[-*+]\s|\d+\.\s)/;
 const FOOTNOTE_LINE = /^\[\^[^\]\s]+\]:/;
@@ -265,15 +269,15 @@ export async function updatePage(db: Sql, input: UpdatePageInput): Promise<Updat
     const next = page.head_version + 1;
     // The owner's editor saves as they type. A run of that typing is one version: the head is
     // rewritten and renumbered, so a reader holding the old number is still refused as stale.
-    const amend = input.via === "ui" && input.body !== undefined && !input.note && head.via === "ui" && !head.note && Date.now() - head.created_at.getTime() < AMEND_WINDOW_MS;
+    const amend = input.via === "ui" && input.body !== undefined && !input.note && head.via === "ui" && !head.note && amendable(clockNow().getTime() - head.created_at.getTime());
     if (amend) {
-      await tx`UPDATE page_version SET version = ${next}, title = ${title}, body = ${body}, created_at = now()
+      await tx`UPDATE page_version SET version = ${next}, title = ${title}, body = ${body}, created_at = ${clockNow()}
         WHERE page_id = ${page.id} AND version = ${page.head_version}`;
     } else {
-      await tx`INSERT INTO page_version (page_id, version, title, body, via, source_ref, note)
-        VALUES (${page.id}, ${next}, ${title}, ${body}, ${input.via}, ${input.sourceRef ?? null}, ${input.note ?? null})`;
+      await tx`INSERT INTO page_version (page_id, version, title, body, via, source_ref, note, created_at)
+        VALUES (${page.id}, ${next}, ${title}, ${body}, ${input.via}, ${input.sourceRef ?? null}, ${input.note ?? null}, ${clockNow()})`;
     }
-    await tx`UPDATE page SET title = ${title}, body = ${body}, head_version = ${next}, updated_at = now()
+    await tx`UPDATE page SET title = ${title}, body = ${body}, head_version = ${next}, updated_at = ${clockNow()}
       WHERE id = ${page.id}`;
     const fresh = await loadPage(tx, page.slug);
     return { page: view(fresh, await loadVersion(tx, page.id, next)), changed: true, dry_run: false, diff, warnings };

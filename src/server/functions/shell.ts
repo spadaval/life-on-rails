@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { sql } from "../../db/client.js";
+import { fixedNow } from "../clock.js";
 import { jobStatuses } from "../status.js";
 
-/** What every screen's frame shows: the running timer, open tasks, and whether the jobs are healthy. */
+/** What every screen's frame shows: the running timer, open tasks, whether the jobs are healthy, and the clock. */
 export const getShellFn = createServerFn({ method: "GET" }).handler(async () => {
   const [running] = await sql<{ id: string; t_start: Date; paused_at: Date | null; title: string | null; intent: string | null }[]>`
     SELECT b.id, b.t_start, b.paused_at, b.title, i.title AS intent
@@ -17,5 +18,7 @@ export const getShellFn = createServerFn({ method: "GET" }).handler(async () => 
       : null,
     openTasks: tasks?.n ?? 0,
     unwell,
+    /** The fixed time the page reads instead of its own clock (the test database only), or null. */
+    clock: fixedNow(),
   };
 });

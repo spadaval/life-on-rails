@@ -2,6 +2,7 @@
 // it), not event time, so something recorded late is not missed. The caller
 // remembers its own last run time.
 import type { Tx } from "../../db/client.js";
+import { clockNow } from "../clock.js";
 
 export interface ChangeItem {
   id: string;
@@ -40,7 +41,7 @@ function group(kind: string, rows: { id: string; summary: string | null; at: Dat
 }
 
 export async function getChanges(db: Tx, since: Date): Promise<Changes> {
-  const until = new Date();
+  const until = clockNow();
   const results: ChangeGroup[] = [];
 
   // Observations, one group per source (mail arrivals, agent log entries, ...).

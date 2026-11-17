@@ -20,6 +20,7 @@ import {
   metricRaw,
   projectScore,
 } from "./formulas.js";
+import { clockNow } from "../clock.js";
 
 interface IntentRow {
   id: string;
@@ -299,7 +300,7 @@ export function setConfirmRateProvider(fn: (db: Tx, now: Date) => Promise<number
   confirmRateProvider = fn;
 }
 
-export async function recomputeScores(db: Tx = defaultSql, now = new Date()): Promise<{ intents: number; as_of: string }> {
+export async function recomputeScores(db: Tx = defaultSql, now = clockNow()): Promise<{ intents: number; as_of: string }> {
   const intents = await db<IntentRow[]>`
     SELECT id, type, title, status, weight, weekly_hour_target, frequency, frequency_horizon, completion_weight,
            goal_mix, metric_min, metric_max, estimate_hours, created_at

@@ -10,6 +10,7 @@ import { showEntity, updateEntity } from "../memory/entities.js";
 import { PEOPLE_FILTERS, type PeopleFilter, listPeople } from "../people.js";
 import { createPage, listPages, pageAuthors, pageHistory, readPage, revertPage, setInDigest, takeBackVersion, updatePage } from "../memory/pages.js";
 import { search } from "../memory/search.js";
+import { clockNow } from "../clock.js";
 
 const ui = { via: "ui" as const };
 
@@ -78,7 +79,7 @@ export const getPersonFn = createServerFn({ method: "GET" })
       person: person ?? null,
       page: page ? { slug: page.slug, title: page.title, body: page.body, via: page.via, written_at: page.written_at } : null,
       waiting: waiting.map((w) => ({ id: w.id, title: w.title, status: w.status, due: w.due_at ? localYmd(timezone, w.due_at) : null })),
-      today: localYmd(timezone, new Date()),
+      today: localYmd(timezone, clockNow()),
       timezone,
     };
   });

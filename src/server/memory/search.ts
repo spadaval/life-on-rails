@@ -1,6 +1,7 @@
 // One lexical search over everything the agent can look up. Returns ids and
 // snippets, never full bodies; the caller follows up with a read.
 import type { Tx } from "../../db/client.js";
+import { clockNow } from "../clock.js";
 
 export const SEARCH_KINDS = ["page", "entity", "intent", "obs"] as const;
 export type SearchKind = (typeof SEARCH_KINDS)[number];
@@ -48,7 +49,7 @@ export async function search(db: Tx, input: SearchInput): Promise<SearchHit[]> {
   const from = input.from ?? null;
   const to = input.to ?? null;
   const like = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
-  const now = Date.now();
+  const now = clockNow().getTime();
   const hits: SearchHit[] = [];
   const add = (kind: SearchKind, rows: Row[]) => {
     for (const r of rows) {

@@ -4,6 +4,7 @@
 import type { Tx } from "../../db/client.js";
 import { localHm, localYmd } from "../../shared/localTime.js";
 import { env } from "../env.js";
+import { clockNow } from "../clock.js";
 
 export interface DigestPage {
   slug: string;
@@ -74,12 +75,12 @@ function render(ctx: Omit<Context, "markdown">): string {
 }
 
 export async function getContext(db: Tx): Promise<Context> {
-  const now = new Date();
+  const now = clockNow();
   const pages = await digestPages(db);
   const recent = await db<(Omit<RecentPage, "updated_at"> & { updated_at: Date })[]>`
     SELECT p.slug, p.title, p.head_version AS version, p.updated_at, v.via AS last_via
     FROM page p JOIN page_version v ON v.page_id = p.id AND v.version = p.head_version
-    WHERE NOT p.in_digest AND p.updated_at > now() - interval '7 days'
+    WHERE NOT p.in_digest AND p.updated_at > ${clockNow()}::timestamptz - interval '7 days'
     ORDER BY p.updated_at DESC LIMIT 15`;
   const pending = await db<{ n: number }[]>`SELECT count(*)::int AS n FROM proposal WHERE status = 'pending'`;
   const sections: { title: string; markdown: string }[] = [];

@@ -1,5 +1,6 @@
-import { type ReactNode, useEffect, useState } from "react";
-import { Link, Outlet, createRootRoute, HeadContent, Scripts, useNavigate, useRouter } from "@tanstack/react-router";
+import { type ReactNode, useState } from "react";
+import { Link, Outlet, createRootRoute, HeadContent, Scripts, retainSearchParams, useNavigate, useRouter } from "@tanstack/react-router";
+import { FixedClockProvider, useNow } from "../components/clock.js";
 import { duration } from "../components/format.js";
 import { Key, QuickAddDialog, openQuickAdd } from "../components/QuickAdd.js";
 import { getShellFn } from "../server/functions/shell.js";
@@ -19,6 +20,12 @@ export const Route = createRootRoute({
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
     ],
   }),
+  // The test server's demo controls (src/server/clock.ts, src/server/demo.ts): kept across links, so a tab stays on its clock.
+  validateSearch: (search: Record<string, unknown>): { at?: string; data?: string } => ({
+    ...(typeof search.at === "string" ? { at: search.at } : {}),
+    ...(typeof search.data === "string" ? { data: search.data } : {}),
+  }),
+  search: { middlewares: [retainSearchParams(["at", "data"])] },
   loader: () => getShellFn(),
   component: RootComponent,
   notFoundComponent: () => <p className="p-6 text-mute">Nothing here.</p>,
@@ -36,17 +43,16 @@ const NAV = [
 
 function RootComponent() {
   const shell = Route.useLoaderData();
-  const stamp = useStamp();
 
   return (
-    <RootDocument>
+    <RootDocument clock={shell.clock}>
       <div className="min-h-dvh md:grid md:grid-cols-[208px_1fr]">
         <aside className="hidden border-r border-frame md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:py-5">
           <Link to="/" className="cond mx-[22px] text-[19px] font-semibold tracking-[0.1em] text-or">
             Life on Rails
           </Link>
           <p className="mx-[22px] mb-6 text-[13px] text-mute" suppressHydrationWarning>
-            {stamp}
+            <Stamp />
           </p>
           <nav className="flex flex-col gap-[3px]" aria-label="Main">
             {NAV.map((n) => (
@@ -92,14 +98,9 @@ function RootComponent() {
   );
 }
 
-function useStamp(): string {
-  const fmt = () => new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date()).replace(",", " ·");
-  const [s, setS] = useState(fmt);
-  useEffect(() => {
-    const id = setInterval(() => setS(fmt()), 20_000);
-    return () => clearInterval(id);
-  }, []);
-  return s;
+function Stamp() {
+  const now = useNow(20_000);
+  return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(now)).replace(",", " ·");
 }
 
 function Health({ unwell, className }: { unwell: Shell["unwell"]; className: string }) {
@@ -119,7 +120,7 @@ export function GlobalActions() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
-  const now = useTick(shell.running ? 20_000 : null);
+  const now = useNow(shell.running ? 20_000 : null);
   const run = shell.running;
 
   return (
@@ -162,25 +163,14 @@ export function GlobalActions() {
   );
 }
 
-function useTick(everyMs: number | null): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (everyMs === null) return;
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), everyMs);
-    return () => clearInterval(id);
-  }, [everyMs]);
-  return now;
-}
-
-function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+function RootDocument({ children, clock }: Readonly<{ children: ReactNode; clock: string | null }>) {
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body>
-        {children}
+        <FixedClockProvider value={clock}>{children}</FixedClockProvider>
         <Scripts />
       </body>
     </html>
