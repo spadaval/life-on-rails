@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-vujy
 title: 'The Context direction on the dashboard prototype: every required screen, state and interaction'
-status: in_review
+status: approved
 mission: lor-2803
 labels:
 - dashboard
