@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-sghw
 title: 'Text stops shimmering when it scales: TextMotion.Animated everywhere'
-status: building
+status: in_review
 mission: lor-ncpw
 labels:
 - launcher
