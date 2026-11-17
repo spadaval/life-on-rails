@@ -204,6 +204,7 @@ private fun act(store: ConceptStore, ui: QueueUi, u: Understood) {
 
 @Composable
 private fun Results(store: ConceptStore, ui: QueueUi, q: String, close: () -> Unit) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val h = hits(store, q)
     val u = understand(q, store.today)
     LazyColumn(Modifier.fillMaxSize().labAnchor("results"), contentPadding = PaddingValues(start = Q.gutter, end = Q.gutter, bottom = 24.dp)) {
@@ -233,7 +234,9 @@ private fun Results(store: ConceptStore, ui: QueueUi, q: String, close: () -> Un
             item(key = "tasks-label") { SectionLabel("Tasks") }
             items(h.tasks, key = { "t:${it.id}" }) { t ->
                 ResultRow(Glyph.Task, t.title, t.due?.let { "Due ${dayWords(it, store.today)}" } ?: "No date", Q.text2, anchor = "task:${t.title}") {
+                    // On the cover it opens in a sheet over the drawer; unfolded, in the queue's right pane.
                     store.open = "task:${t.id}"; ui.sheet = Sheet.Item("task:${t.id}")
+                    if (ui.wide) { close(); ui.later(scope) { shell.goTo(QueueUi.QUEUE) } }
                 }
             }
         }
@@ -241,7 +244,11 @@ private fun Results(store: ConceptStore, ui: QueueUi, q: String, close: () -> Un
             item(key = "settings-label") { SectionLabel("Settings") }
             items(h.settings, key = { "s:${it.first}" }) { (title, detail) ->
                 ResultRow(Glyph.Settings, title, detail, Q.text2, anchor = "setting:$title") {
-                    if (detail.startsWith("Android")) store.toast("Opens Android's $title settings") else ui.sheet = Sheet.Settings(title.lowercase())
+                    when {
+                        detail.startsWith("Android") -> store.toast("Opens Android's $title settings")
+                        title == "Timer" -> ui.sheet = Sheet.Timer
+                        else -> ui.sheet = Sheet.Settings(title.lowercase())
+                    }
                 }
             }
         }

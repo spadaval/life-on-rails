@@ -61,12 +61,10 @@ fun Sheets(store: ConceptStore, ui: QueueUi, wide: Boolean) {
     if (sheet != null) shown = sheet
     val close = { focusManager.clearFocus(); ui.sheet = null }
     LaunchedEffect(sheet) { if (sheet == null) focusManager.clearFocus() }
-    // An item cleared while open (approved, Done, Seen) closes its sheet; an open thread stays.
-    val keys = store.items().map { it.key }
-    LaunchedEffect(sheet, keys) {
-        val s = sheet
-        if (s is Sheet.Item && !s.key.startsWith("thread:") && s.key !in keys) ui.sheet = null
-    }
+    // An item cleared while open (approved, Done, Seen) closes its sheet; an open thread, or a
+    // task opened from search, stays while it exists.
+    val gone = (sheet as? Sheet.Item)?.key?.let { k -> !k.startsWith("thread:") && store.item(k) == null } == true
+    LaunchedEffect(sheet, gone) { if (gone) ui.sheet = null }
     Box(Modifier.fillMaxSize().padding(bottom = if (ui.keyboard) KeyboardHeight else 0.dp)) {
         when (val s = shown) {
             is Sheet.Item -> KitSheet(sheet is Sheet.Item && !wide, close, "sheet:item", detents = listOf(0.7f, 0.94f)) {
@@ -118,7 +116,7 @@ private fun TimerSheet(store: ConceptStore, ui: QueueUi) {
             Spacer(Modifier.height(Q.s2))
             BasicText(running.label ?: "No label", style = Q.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(Q.s2))
-            BasicText(readout(now - running.start), style = Q.readout.copy(fontSize = 56.sp, lineHeight = 60.sp), modifier = Modifier.labAnchor("timer:readout"))
+            BasicText(readout(now - running.start), style = Q.readout.copy(fontSize = 56.sp, lineHeight = 60.sp), modifier = Modifier.labAnchor("timer:readout").labAnchor("timer:at:${(now - running.start).inWholeSeconds}"))
             Spacer(Modifier.height(Q.s5))
             Row(horizontalArrangement = Arrangement.spacedBy(Q.s2)) {
                 QButton("Stop", { store.stop(); ui.sheet = null }, kind = Kind.PRIMARY, glyph = Glyph.Stop, anchor = "timer:stop", enabled = store.timerReachable)
@@ -184,14 +182,16 @@ private fun QuickSend(store: ConceptStore, ui: QueueUi) {
 @Composable
 private fun Settings(store: ConceptStore, ui: QueueUi, section: String?) {
     val list = store.list("settings")
+    // The list's items, in order, by name, so a section is found by its name, not a counted index.
+    val order = listOf("title", "sync", "connections", "home", "sensors")
     LaunchedEffect(section) {
-        val at = when (section) { "connections", "server address", "t3 pairing", "t3" -> 1; "home" -> 2; "sensors" -> 3; else -> 0 }
-        if (at > 0) list.scrollToItem(at)
+        val name = when (section) { "connections", "server address", "t3 pairing", "t3" -> "connections"; "home" -> "home"; "sensors" -> "sensors"; else -> null }
+        if (name != null) list.scrollToItem(order.indexOf(name))
     }
     LazyColumn(Modifier.fillMaxSize().labAnchor("settings"), state = list, contentPadding = PaddingValues(bottom = 32.dp)) {
-        item { SheetTitle("Settings", "LoR on this phone") }
-        item { Group("This phone's sync") { SyncRows(store) } }
-        item {
+        item(key = "title") { SheetTitle("Settings", "LoR on this phone") }
+        item(key = "sync") { Group("This phone's sync") { SyncRows(store) } }
+        item(key = "connections") {
             Group("Connections") {
                 Row2("LoR", store.fixture.settings.serverUrl.ifEmpty { "No address set" }, if (store.lorLive) "Reached" else store.homeError ?: "Not reached", if (store.lorLive) Q.text3 else Q.red)
                 Hairline()
@@ -204,7 +204,7 @@ private fun Settings(store: ConceptStore, ui: QueueUi, section: String?) {
                 }
             }
         }
-        item {
+        item(key = "home") {
             Group("Home") {
                 var labels by remember { mutableStateOf(true) }
                 Row2("Icon pack", null, store.fixture.settings.iconPack ?: "Apps' own")
@@ -214,7 +214,7 @@ private fun Settings(store: ConceptStore, ui: QueueUi, section: String?) {
                 Row2("Hidden apps", null, "${store.hidden.size}")
             }
         }
-        item {
+        item(key = "sensors") {
             Group("Sensors") {
                 store.sensors.forEachIndexed { i, s ->
                     if (i > 0) Hairline()

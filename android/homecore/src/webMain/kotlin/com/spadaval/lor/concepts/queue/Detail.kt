@@ -97,7 +97,7 @@ fun Field(
  */
 @Composable
 fun Detail(store: ConceptStore, ui: QueueUi, key: String, pane: Boolean) {
-    val item = store.items().firstOrNull { it.key == key }
+    val item = store.item(key)
     val thread = when {
         item is Item.Card -> item.card.thread
         key.startsWith("thread:") -> store.threads.firstOrNull { it.id == key.removePrefix("thread:") }

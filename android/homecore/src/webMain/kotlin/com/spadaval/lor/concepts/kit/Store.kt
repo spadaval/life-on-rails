@@ -52,7 +52,15 @@ import kotlin.time.Instant
  */
 class ConceptStore(val fixture: Fixture, private val scope: CoroutineScope) {
     val zone: String = fixture.clock.zone
+    /** The fixture's moment: what the state is drawn at. */
     val now: Instant = Instant.parse(fixture.clock.now)
+    private val opened = kotlin.time.TimeSource.Monotonic.markNow()
+
+    /**
+     * The state's clock moving on with the wall clock since it opened: what a timer starts at and
+     * every readout shows, so all of them agree.
+     */
+    fun clock(): Instant = now + opened.elapsedNow()
 
     // ---- LoR ----
 
@@ -218,7 +226,8 @@ class ConceptStore(val fixture: Fixture, private val scope: CoroutineScope) {
 
     fun start(label: String?) {
         val before = timer
-        undoable(if (label == null) "Timer started" else "Started $label", { timer = Running(label, now) }, { timer = before })
+        val at = clock()
+        undoable(if (label == null) "Timer started" else "Started $label", { timer = Running(label, at) }, { timer = before })
     }
 
     fun stop() {
@@ -229,7 +238,8 @@ class ConceptStore(val fixture: Fixture, private val scope: CoroutineScope) {
     /** Ends the running block and starts one under [label] from now. */
     fun switch(label: String?) {
         val before = timer
-        undoable("Switched to ${label ?: "no label"}", { timer = Running(label, now) }, { timer = before })
+        val at = clock()
+        undoable("Switched to ${label ?: "no label"}", { timer = Running(label, at) }, { timer = before })
     }
 
     // ---- The phone: apps, home's icons, sync ----

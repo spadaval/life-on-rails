@@ -129,6 +129,13 @@ fun ConceptStore.items(): List<Item> {
     return cards.map { Item.Card(it) } + flags.map { Item.Flag(it) } + due.map { Item.Due(it) }
 }
 
+/**
+ * The item a key opens: one in the queue, or any open task by `task:<id>` (search finds tasks that
+ * aren't due, so not in the queue); null once it has gone.
+ */
+fun ConceptStore.item(key: String): Item? = items().firstOrNull { it.key == key }
+    ?: key.removePrefix("task:").takeIf { key.startsWith("task:") }?.let { id -> tasks.firstOrNull { it.id == id } }?.let { Item.Due(it) }
+
 /** How many things want him: what the queue holds less what is ticked. */
 fun ConceptStore.waiting(): Int = items().count { it !is Item.Due || done[it.task.id] != true }
 
@@ -193,15 +200,14 @@ private suspend fun QueueUi.openWhere(scene: LabScene) {
 
 // ---- Time, as Queue writes it ----
 
-/** The fixture's moment, moving on with the wall clock, so a running timer counts. */
+/** The store's clock ([ConceptStore.clock]), read again every second, so every readout of the timer agrees. */
 @Composable
 fun liveNow(store: ConceptStore): Instant {
-    var now by remember { mutableStateOf(store.now) }
+    var now by remember { mutableStateOf(store.clock()) }
     LaunchedEffect(Unit) {
-        val start = withFrameMillis { it }
         while (true) {
             kotlinx.coroutines.delay(1000)
-            withFrameMillis { now = store.now + (it - start).milliseconds }
+            withFrameMillis { now = store.clock() }
         }
     }
     return now

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
@@ -120,8 +121,9 @@ private fun Glance(store: ConceptStore, ink: Ink) {
 }
 
 /**
- * The one line: the running timer with Stop (or Start), and what waits, which opens the queue. A
- * failed sync takes the second half of the line, because it makes what LoR shows untrue.
+ * The one line: the running timer with Stop (or Start) on the left, and on the right what waits,
+ * which opens the queue. Two targets side by side, each the line's full height. When something
+ * makes LoR's view untrue (a failed sync, LoR not answering, no server set), it takes the right.
  */
 @Composable
 fun OneLine(store: ConceptStore, ui: QueueUi, modifier: Modifier = Modifier) {
@@ -131,35 +133,51 @@ fun OneLine(store: ConceptStore, ui: QueueUi, modifier: Modifier = Modifier) {
     val waiting = store.waiting()
     val shape = Q.rLg
     Row(
-        modifier.fillMaxWidth().clip(shape).background(Q.float).border(1.dp, Q.line2, shape)
-            .heightIn(min = 64.dp).padding(start = 6.dp, end = 8.dp).labAnchor("home:line"),
+        modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min).clip(shape).background(Q.float).border(1.dp, Q.line2, shape)
+            .heightIn(min = 64.dp).labAnchor("home:line"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
-            Modifier.weight(1f).clip(Q.rMd).clickable { ui.sheet = Sheet.Timer }.padding(horizontal = 10.dp, vertical = 10.dp).labAnchor("home:timer"),
+            Modifier.weight(1f).fillMaxHeight().clickable { ui.sheet = Sheet.Timer }.padding(start = 16.dp, end = 4.dp).labAnchor("home:timer"),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.size(10.dp).clip(CircleShape).background(if (running != null) Q.amber else Q.text3))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                val head = if (running != null) "${running.label ?: "No label"}  ·  ${spoken(now - running.start)}" else "No timer running"
-                BasicText(head, style = Q.body.copy(fontWeight = FontWeight.Medium, color = if (running != null) Q.text1 else Q.text2), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                when {
-                    store.syncFailed -> BasicText("Phone sync failed · Fix", Modifier.clickable { ui.sheet = Sheet.Settings("sync") }.labAnchor("home:sync"), style = Q.label.copy(color = Q.red))
-                    !store.lorLive && store.homeLoad != com.spadaval.lor.lab.Load.LOADING -> BasicText("LoR isn't answering · as of ${store.homeReadAt?.let { LocalClock.time(it, store.zone) } ?: "never"}", style = Q.label.copy(color = Q.red))
-                    store.homeLoad == com.spadaval.lor.lab.Load.LOADING -> BasicText("Reading LoR…", style = Q.label)
-                    else -> BasicText(
-                        when { waiting > 0 -> "$waiting waiting in the queue ›"; store.knows() -> "Nothing waiting"; else -> "T3 isn't connected · Queue ›" },
-                        Modifier.clickable { ui.later(scope) { shell.goTo(QueueUi.QUEUE) } }.labAnchor("home:waiting"),
-                        style = Q.label.copy(color = if (waiting > 0 && store.cards.isNotEmpty()) Q.cyan else Q.text2),
-                    )
-                }
+                BasicText(
+                    running?.let { it.label ?: "No label" } ?: "No timer running",
+                    style = Q.body.copy(fontWeight = FontWeight.Medium, color = if (running != null) Q.text1 else Q.text2), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                if (running != null) BasicText(spoken(now - running.start), Modifier.labAnchor("home:at:${(now - running.start).inWholeSeconds}"), style = Q.label.copy(color = Q.amber))
             }
+            if (running != null) QButton("Stop", { store.stop() }, kind = Kind.PLAIN, glyph = Glyph.Stop, height = 40.dp, anchor = "home:stop", enabled = store.timerReachable)
+            else QButton("Start", { ui.sheet = Sheet.Timer }, kind = Kind.QUIET, glyph = Glyph.Play, height = 40.dp, anchor = "home:start", enabled = store.timerReachable)
         }
-        if (running != null) QButton("Stop", { store.stop() }, kind = Kind.PLAIN, glyph = Glyph.Stop, height = 40.dp, anchor = "home:stop", enabled = store.timerReachable)
-        else QButton("Start", { ui.sheet = Sheet.Timer }, kind = Kind.QUIET, glyph = Glyph.Play, height = 40.dp, anchor = "home:start", enabled = store.timerReachable)
+        Box(Modifier.width(1.dp).fillMaxHeight().padding(vertical = 14.dp).background(Q.line2))
+        val toQueue = { ui.later(scope) { shell.goTo(QueueUi.QUEUE) } }
+        val load = store.homeLoad
+        val (top, bottom, tone, act) = when {
+            store.syncFailed -> Quad("Sync failed", "Fix \u203A", Q.red) { ui.sheet = Sheet.Settings("sync") }
+            store.fixture.settings.serverUrl.isEmpty() -> Quad("Not set up", "Set up \u203A", Q.amber) { ui.sheet = Sheet.Settings("connections") }
+            load == com.spadaval.lor.lab.Load.LOADING -> Quad("Reading", "LoR\u2026", Q.text2, toQueue)
+            load == com.spadaval.lor.lab.Load.STALE -> Quad("LoR stale", "as of ${store.homeReadAt?.let { LocalClock.time(it, store.zone) }}", Q.red, toQueue)
+            load == com.spadaval.lor.lab.Load.FAILED -> Quad("No LoR", "Settings \u203A", Q.red) { ui.sheet = Sheet.Settings("connections") }
+            waiting > 0 -> Quad("$waiting", "waiting \u203A", if (store.cards.isNotEmpty()) Q.cyan else Q.text1, toQueue)
+            store.knows() -> Quad("Clear", "queue \u203A", Q.text2, toQueue)
+            else -> Quad("T3 away", "queue \u203A", Q.text2, toQueue)
+        }
+        val anchor = when { store.syncFailed -> "home:sync"; store.fixture.settings.serverUrl.isEmpty() -> "home:setup"; else -> "home:waiting" }
+        Column(
+            Modifier.fillMaxHeight().widthIn(min = 92.dp).clickable { act() }.padding(horizontal = 14.dp).labAnchor(anchor),
+            verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.End,
+        ) {
+            BasicText(top, style = Q.body.copy(fontWeight = FontWeight.SemiBold, color = tone), maxLines = 1)
+            BasicText(bottom, style = Q.label, maxLines = 1)
+        }
     }
 }
+
+private data class Quad(val top: String, val bottom: String, val tone: Color, val act: () -> Unit)
 
 /**
  * The start page's icons. A tap opens the app (the lab says so); a long press opens its menu, and
@@ -323,7 +341,7 @@ fun Shade(shell: com.spadaval.lor.concepts.kit.ShellState) {
     com.spadaval.lor.home.BackHandler(shell.shade) { shell.shade = false }
 }
 
-/** While the app list is read: the start page's shape in faint tiles, so that home doesn't jump when the icons arrive. */
+/** While the app list is read: the start page's shape in faint tiles, so home doesn't jump when the icons arrive. */
 @Composable
 private fun LoadingIcons(columns: Int) {
     Column(Modifier.fillMaxWidth().labAnchor("home:loading"), verticalArrangement = Arrangement.spacedBy(36.dp)) {
