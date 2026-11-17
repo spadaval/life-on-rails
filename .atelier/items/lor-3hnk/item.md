@@ -3,14 +3,15 @@ schema: atelier.item
 schema_version: 3
 id: lor-3hnk
 title: The app builds on Kotlin 2.3.20, ready for the shared module
-status: ready
+status: building
 mission: lor-ncpw
 labels:
 - launcher
 - feature
 priority: medium
 blocked_by: []
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A336528d8-568a-46be-80e7-fa243e638044%3Adelegate-task%3A6d975590-ea31-4811-8a80-d5126f0e49e2
 ready:
   by: conversion
   at: 2026-11-08T16:36:19.068813128Z
