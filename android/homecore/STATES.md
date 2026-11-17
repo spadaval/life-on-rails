@@ -13,7 +13,7 @@ states are made of, and `Fixtures.kt` the states. `FixtureCatalogueTest` keeps t
 - A one-off: JSON in the state's place. With `base`, it starts from that named state and changes
   what it names, objects key by key: `#current/{"base":"demo","t3":{"status":"NOT_PAIRED"}}/inner`.
   Without `base`, it is the whole fixture, and what it leaves out takes the defaults. Or drop a
-  `.json` file on the page. Copy JSON puts the open state's full JSON on the clipboard to start from.
+  `.json` file on the page. The JSON button shows the open state's full JSON to start from.
 - On a device, in the debug build:
   `adb shell am start -n com.spadaval.lor/.home.HomeActivity --es lab_state overfull`
   (`--es lab_version <name>` for a version other than `current`). It draws in its own process
