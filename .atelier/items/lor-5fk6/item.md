@@ -45,3 +45,15 @@ Sumeet can use each direction's phone in the browser: swipe to the drawer, searc
 ## Context
 
 - Concept code is rough on purpose, as the dashboard prototype's is. What is worth keeping moves to common code when a direction is chosen, in a later mission.
+
+## Report
+
+### The launcher loop before Queue (2026-11-17, main at 5f869fe)
+
+Home, the panels and the app screens are all in the module. Timed with `android/web-dev.sh` (the 4 GB, 512 MB-swap scope, unchanged), on this host with no other Gradle build or emulator running:
+
+- **First build:** 68 s (31 s on a restart with the libraries' link cache warm).
+- **A one-line edit to common code** (`home/Undo.kt`'s bar), six times: 21.7 s cold, then 15.3, 14.0, 13.9, 13.2 and 13.2 s from save to served. lor-xdoi measured 8.9 to 9.3 s for the same edit, so warm edits have grown by about 5 s since home's move, and the cold one is past xdoi's 15 s line.
+- **A one-line edit to wasm-only code:** 12.8 s (`ui/Fonts.wasmJs.kt`), 9.1 to 9.9 s (`ui/LocalClock.wasmJs.kt`).
+- **Memory:** the scope's peak was 3,866 MB of its 4,096 MB cap (anon about 3,300 MB of it; the rest is page cache). No swap was used, `memory.events` shows no `max` or OOM, and the log shows no `OutOfMemoryError`.
+- **A bug found:** any edit to `lab/Main.kt` crashes the incremental wasm compiler (`ArrayIndexOutOfBoundsException` in `WasmIrFileMetadata.fromByteArray`, from `WasmKlibCheckers`), and every build after it fails the same way until web-dev.sh restarts. Edits to the other wasm files don't. `Main.kt` is the one file with `fun main()`.
