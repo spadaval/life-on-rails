@@ -8,6 +8,8 @@
     "dev": "vite dev --port 3847 --host 127.0.0.1",
     "ui:dev": "scripts/ui-dev.sh",
     "shots": "node scripts/shots.mjs",
+    "proto:dev": "vite --config prototype/dashboard/vite.config.ts",
+    "proto:build": "vite build --config prototype/dashboard/vite.config.ts",
     "build": "vite build",
     "start": "node scripts/serve.mjs",
     "test": "vitest run",
