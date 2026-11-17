@@ -3,14 +3,15 @@ schema: atelier.item
 schema_version: 3
 id: lor-zj7x
 title: A demo dataset fills every dashboard screen and the phone's panels on the test server
-status: ready
+status: building
 mission: lor-2803
 labels:
 - design-lab
 - tool
 priority: medium
 blocked_by: []
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A336528d8-568a-46be-80e7-fa243e638044%3Adelegate-task%3Ae823df1c-214b-4cf4-8a65-48a59f8cc549
 ready:
   by: lead, on the plan agreed in round 7
   at: 2026-11-17T06:57:12.926382409Z
