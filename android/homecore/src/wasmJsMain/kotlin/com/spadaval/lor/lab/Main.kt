@@ -74,6 +74,15 @@ import kotlinx.serialization.json.add
  * the speed switch (index.html's clock). Each is a button and a key; Fold and Rotate change the link.
  */
 
+/** The page fills the viewport (index.html's `fill`, on a phone): the screen then follows the viewport's width. */
+private val fill: Boolean get() = document.body?.classList?.contains("fill") == true
+
+/** In fill, whether the viewport is wide enough for the inner screen; a resize (a real fold) changes it. */
+private val viewportWide = mutableStateOf(false)
+
+/** The screen to draw: the link's, or in fill the one the viewport is (cover under 600 px wide). */
+private fun screenOf(link: LabLink): LabScreen = if (!fill) link.screen else if (viewportWide.value) LabScreen.Inner else LabScreen.Cover
+
 /** Home presses: the scene is keyed on them, so Home draws the state afresh. */
 private val homes = mutableIntStateOf(0)
 
@@ -109,7 +118,7 @@ fun main() {
             val parsed = parseHash(hash)
             controls.show(parsed)
             val phone = el("phone")
-            val scene = LabScene(Fixtures.all.first(), parsed.link.screen, parsed.link.landscape)
+            val scene = LabScene(Fixtures.all.first(), screenOf(parsed.link), parsed.link.landscape)
             phone.style.width = "${scene.widthDp}px"
             phone.style.height = "${scene.heightDp}px"
             // ComposeViewport sizes its canvas on the window's resize, not its container's.
@@ -117,6 +126,8 @@ fun main() {
         }
         show()
         window.addEventListener("hashchange", { hash = window.location.hash; show() })
+        viewportWide.value = window.innerWidth >= 600
+        window.addEventListener("resize", { viewportWide.value = window.innerWidth >= 600 })
         dropOneOffs(controls)
         predictiveBack()
         ComposeViewport(el("phone")) { Frame(hash, parseHash(hash), wallpapers) }
@@ -163,7 +174,7 @@ private fun Frame(hash: String, parsed: Parsed, wallpapers: Map<Wallpaper, Image
             // Keyed on what the scene is, not where it is drawn: a fold, a turn or a new wallpaper keeps
             // the surface's place, as the phone does. Home starts it again.
             key(link.version, link.state, homes.intValue) {
-                Lab.version(link.version)!!.draw(LabScene(fixture, link.screen, link.landscape, link.wallpaper))
+                Lab.version(link.version)!!.draw(LabScene(fixture, screenOf(link), link.landscape, link.wallpaper))
             }
         }
     }
