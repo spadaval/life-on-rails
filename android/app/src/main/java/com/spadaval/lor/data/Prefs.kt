@@ -4,17 +4,6 @@ import android.content.Context
 import android.os.Build
 import androidx.core.content.edit
 
-/** The sensors, each of which the owner can switch off. */
-enum class Sensor(val key: String, val label: String, val unit: String, val description: String, val defaultOn: Boolean) {
-    APPS("apps", "App usage", "app sessions", "Which app was on screen, and for how long.", true),
-    CALLS("calls", "Calls", "calls", "Who you called or who called you, and for how long. Never audio.", true),
-    TEXTS("texts", "Texts", "texts", "Every text, who and when and what was said, back to the oldest on the phone. RCS chats are not visible to other apps.", true),
-    HEALTH("health", "Sleep, exercise, steps", "health records", "Read from Health Connect.", true),
-    LAUNCHES("launches", "Launches", "launches", "How each app was opened from this launcher: home, a folder, the drawer, search (with what was typed), or an agent card.", true),
-    LOCATION("location", "Location", "locations", "Where the phone was, every 15 minutes or so.", false),
-    WHATSAPP("whatsapp", "WhatsApp", "backups", "Uploads WhatsApp's nightly backup, still encrypted, over Wi-Fi. LoR reads every message with your 64-digit backup key.", false),
-}
-
 /** Settings and sync state. Small, so SharedPreferences. */
 class Prefs(context: Context) {
     private val p = context.getSharedPreferences("lor", Context.MODE_PRIVATE)

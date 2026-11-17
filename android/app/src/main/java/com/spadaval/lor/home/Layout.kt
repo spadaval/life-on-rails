@@ -801,9 +801,6 @@ data class Drawer(
     }
 }
 
-/** What a drawer tab shows: quick dial, a list of apps, or All (A–Z). */
-enum class TabKind(val id: String) { QUICK("quick"), LIST("list"), ALL("all") }
-
 /**
  * A drawer tab: its [name], the [icon] its button draws (a name from [TabIcon]; an unknown one
  * draws the name's first letter), and for a [TabKind.LIST] tab the [apps] it shows, in order (a

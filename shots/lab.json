@@ -89,6 +89,156 @@
       "screen": "Launcher lab · gestures",
       "name": "gestures · demo · inner landscape",
       "link": "/#gestures/demo/inner/dark/landscape"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Timer · idle · cover",
+      "link": "/#current/{\"base\":\"demo\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Timer · idle · inner",
+      "link": "/#current/{\"base\":\"demo\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Timer · running · cover",
+      "link": "/#current/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Timer · running · inner",
+      "link": "/#current/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Timer · paused · cover",
+      "link": "/#current/{\"base\":\"demo\",\"timer\":{\"state\":\"PAUSED\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\",\"pausedAt\":\"2026-11-17T19:47:00Z\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Timer · paused · inner",
+      "link": "/#current/{\"base\":\"demo\",\"timer\":{\"state\":\"PAUSED\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\",\"pausedAt\":\"2026-11-17T19:47:00Z\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Timer · unreachable · cover",
+      "link": "/#current/{\"base\":\"demo\",\"timer\":{\"state\":\"UNREACHABLE\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Timer · unreachable · inner",
+      "link": "/#current/{\"base\":\"demo\",\"timer\":{\"state\":\"UNREACHABLE\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Sensors · all allowed · cover",
+      "link": "/#current/{\"base\":\"demo\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"sensors\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Sensors · all allowed · inner",
+      "link": "/#current/{\"base\":\"demo\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"sensors\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Sensors · some not allowed · cover",
+      "link": "/#current/{\"base\":\"sensors-failed\",\"phone\":{\"sync\":{\"uploaded\":72,\"pending\":0,\"errors\":[]}}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Sensors · some not allowed · inner",
+      "link": "/#current/{\"base\":\"sensors-failed\",\"phone\":{\"sync\":{\"uploaded\":72,\"pending\":0,\"errors\":[]}}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Sensors · failed sync · cover",
+      "link": "/#current/sensors-failed"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Sensors · failed sync · inner",
+      "link": "/#current/sensors-failed/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Settings · saved · cover",
+      "link": "/#current/{\"base\":\"demo\",\"settings\":{\"result\":\"Saved.\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Settings · saved · inner",
+      "link": "/#current/{\"base\":\"demo\",\"settings\":{\"result\":\"Saved.\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Settings · testing · cover",
+      "link": "/#current/{\"base\":\"demo\",\"settings\":{\"result\":\"Checking…\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Settings · testing · inner",
+      "link": "/#current/{\"base\":\"demo\",\"settings\":{\"result\":\"Checking…\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Settings · failed · cover",
+      "link": "/#current/{\"base\":\"demo\",\"settings\":{\"result\":\"Cannot connect: failed to connect to /10.0.2.2 (port 3857) after 10000ms\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Settings · failed · inner",
+      "link": "/#current/{\"base\":\"demo\",\"settings\":{\"result\":\"Cannot connect: failed to connect to /10.0.2.2 (port 3857) after 10000ms\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Home settings · hidden apps, four tabs, icon packs · cover",
+      "link": "/#current/home-settings-tabs"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Home settings · hidden apps, four tabs, icon packs · inner",
+      "link": "/#current/home-settings-tabs/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Home settings · broken layout · cover",
+      "link": "/#current/{\"base\":\"failed\",\"where\":{\"open\":\"HOME_SETTINGS\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Home settings · broken layout · inner",
+      "link": "/#current/{\"base\":\"failed\",\"where\":{\"open\":\"HOME_SETTINGS\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Home settings · first run · cover",
+      "link": "/#current/{\"base\":\"empty\",\"where\":{\"open\":\"HOME_SETTINGS\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · Home settings · first run · inner",
+      "link": "/#current/{\"base\":\"empty\",\"where\":{\"open\":\"HOME_SETTINGS\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · T3 debug · paired · cover",
+      "link": "/#current/{\"base\":\"demo\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"t3\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · T3 debug · paired · inner",
+      "link": "/#current/{\"base\":\"demo\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"t3\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · T3 debug · not paired · cover",
+      "link": "/#current/{\"base\":\"empty\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"t3\"}}"
+    },
+    {
+      "screen": "Launcher lab · current · app",
+      "name": "current · T3 debug · not paired · inner",
+      "link": "/#current/{\"base\":\"empty\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"t3\"}}/inner"
     }
   ]
 }
