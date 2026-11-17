@@ -24,6 +24,7 @@ object Fixtures {
         apps = Apps(Load.OK, Parts.demoApps),
         lor = Parts.demoLor,
         t3 = Parts.demoT3,
+        timer = Parts.demoTimer,
         phone = Parts.demoPhone,
         settings = Parts.demoSettings,
         search = Parts.demoSearch,
@@ -94,8 +95,22 @@ object Fixtures {
         where = Where(open = Opened.APP_MENU, target = Parts.demoApps.first { it.label == "WhatsApp" }.ref),
     )
 
+    /** The Sensors tab on the demo day after `failed`'s sync: two errors, two permissions missing, WhatsApp off. */
+    val sensorsFailed = demo.copy(
+        name = "sensors-failed", about = "Sensors after a failed sync with two permissions missing",
+        phone = Parts.failedPhone,
+        where = Where(open = Opened.APP_TAB, target = "sensors"),
+    )
+
+    /** Home settings over the demo's file, with two more hidden apps than the demo hides. */
+    val homeSettingsTabs = demo.copy(
+        name = "home-settings-tabs", about = "Home settings with hidden apps and four drawer tabs",
+        layout = Parts.demoLayout.with("hidden", Parts.hidden("Play Store", "Duolingo", "Kindle")),
+        where = Where(open = Opened.HOME_SETTINGS),
+    )
+
     /** The State dropdown, in order; the first is what a link without a state opens. */
-    val all: List<Fixture> = listOf(demo, empty, loading, stale, failed, overfull, homeFull, firstRun, drawerAllScrolled, searchMixed, appMenu)
+    val all: List<Fixture> = listOf(demo, empty, loading, stale, failed, overfull, homeFull, firstRun, drawerAllScrolled, searchMixed, appMenu, sensorsFailed, homeSettingsTabs)
 
     fun named(name: String): Fixture? = all.firstOrNull { it.name == name }
 

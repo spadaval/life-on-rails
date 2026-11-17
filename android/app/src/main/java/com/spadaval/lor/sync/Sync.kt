@@ -11,6 +11,7 @@ import com.spadaval.lor.collect.WhatsAppBackup
 import com.spadaval.lor.data.Prefs
 import com.spadaval.lor.data.Queue
 import com.spadaval.lor.data.Sensor
+import com.spadaval.lor.data.syncSummary
 import com.spadaval.lor.net.LorClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -101,13 +102,7 @@ object Sync {
         val pending = queue.count()
         prefs.lastSyncAt = now
         prefs.uploadedTotal = prefs.uploadedTotal + uploaded
-        prefs.lastSyncSummary = buildString {
-            append(if (collected.isEmpty()) "Nothing collected" else "Collected " + collected.entries.joinToString(", ") { "${it.value} ${it.key.unit}" })
-            append("; $uploaded new on the server")
-            if (pending > 0) append("; $pending waiting to upload")
-            if (whatsapp != null) append("; $whatsapp")
-            append('.')
-        }
+        prefs.lastSyncSummary = syncSummary(collected, uploaded, pending, whatsapp)
         prefs.lastSyncErrors = errors.joinToString("\n")
         return SyncReport(collected, uploaded, pending, errors)
     }

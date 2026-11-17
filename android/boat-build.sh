@@ -71,6 +71,14 @@ if [ "$EXIT" != 0 ]; then
   exit 1
 fi
 grep -E 'BUILD SUCCESSFUL' "$OUT/build.log" || tail -1 "$OUT/build.log"
-boat scp "$B:/home/user/out-$RUN.tgz" "$OUT/out.tgz" >/dev/null 2>&1 \
-  || { echo "boat-build: the build produced no APK, test results or lab to fetch" >&2; exit 1; }
+# Fetching can fail on this side too (a full disk or quota), so say why rather than guess.
+if ! SCP=$(boat scp "$B:/home/user/out-$RUN.tgz" "$OUT/out.tgz" 2>&1); then
+  rm -f "$OUT/out.tgz"
+  if boat exec "$B" -- "test -s ~/out-$RUN.tgz" >/dev/null 2>&1; then
+    echo "boat-build: could not copy the outputs into $OUT:" >&2; echo "$SCP" | grep -v '^.\[' | tail -3 >&2
+  else
+    echo "boat-build: the build produced no APK, test results or lab to fetch" >&2
+  fi
+  exit 1
+fi
 tar xzf "$OUT/out.tgz" -C "$OUT" && rm "$OUT/out.tgz"
