@@ -11,6 +11,7 @@ labels:
 priority: medium
 blocked_by:
 - lor-pmzz
+- lor-xdoi
 implementers: []
 ready:
   by: conversion
