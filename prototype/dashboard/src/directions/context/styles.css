@@ -691,9 +691,7 @@ html[data-version="context"] body {
   z-index: 40;
   padding: var(--s-2);
   border-radius: var(--r-float);
-  background: var(--float);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
+  background: var(--float-hi);
   border: 1px solid var(--line-2);
   box-shadow: var(--sh-float);
   max-height: min(70vh, 560px);
@@ -960,6 +958,12 @@ html[data-version="context"] body {
   color: var(--text);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+.cx-kicker-part {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  white-space: nowrap;
 }
 .cx-why {
   color: var(--amber);
@@ -2461,4 +2465,19 @@ button.cx-wikilink:hover {
 }
 .cx-btn-quiet:hover:not(:disabled) {
   background: var(--amber-soft);
+}
+.cx-startchip {
+  min-height: 42px;
+  border: 1px solid var(--line-2);
+}
+.cx-nolabel {
+  align-self: flex-start;
+}
+@media (max-width: 759.98px) {
+  .cx-startchip {
+    padding: 0 var(--s-3);
+  }
+  .cx-startchip span {
+    display: none;
+  }
 }

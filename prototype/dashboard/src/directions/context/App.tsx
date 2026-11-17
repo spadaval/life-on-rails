@@ -121,7 +121,7 @@ export function App({ route }: { route: Route }) {
               <span className="cx-brand-name">Life on Rails</span>
             </a>
             <Search key={`${p.q ?? ""}|${p.add ?? ""}`} ref={search} here={searchHere} initial={p.add ?? p.q ?? ""} initialMode={p.add !== undefined ? "add" : "find"} />
-            <div className="cx-bar-end">{chip ? <TimerChip onOpen={() => navigate("/")} /> : null}</div>
+            <div className="cx-bar-end">{chip || !r ? <TimerChip onOpen={() => navigate("/")} /> : null}</div>
           </div>
           <nav className="cx-tabs" aria-label="Contexts">
             <a className="cx-tab cx-tab-now" href={href("/")} aria-current={page === "now" || (shown?.isNow && page === "ctx") ? "page" : undefined}>
@@ -182,7 +182,7 @@ export function App({ route }: { route: Route }) {
           )}
         </div>
 
-        {p.timer ? <TimerLayer mode={p.timer} onDone={() => (page === "now" ? undefined : undefined)} /> : null}
+        {p.timer ? <TimerLayer mode={p.timer} onDone={() => undefined} /> : null}
         {layerBlock ? <BlockLayer blockId={layerBlock} /> : null}
         <NoticeBar />
       </main>

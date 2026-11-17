@@ -28,7 +28,6 @@ export function Layer({ title, onClose, children, width = 400, label }: { title:
       const m = 12;
       let left = a ? a.left : (vw - width) / 2;
       let top = a ? a.bottom + 8 : 120;
-      if (a && a.right + width + m < vw && a.width < 260) left = a.left;
       left = Math.min(Math.max(m, left), vw - width - m);
       const maxH = vh - 2 * m;
       if (a && top + Math.min(h, maxH) > vh - m) top = Math.max(m, a.top - 8 - Math.min(h, maxH));
@@ -47,7 +46,9 @@ export function Layer({ title, onClose, children, width = 400, label }: { title:
 
   useEffect(() => {
     const back = document.activeElement as HTMLElement | null;
-    const first = box.current?.querySelector<HTMLElement>("[data-autofocus], input, button:not([disabled]), [href]");
+    // The field marked for it, else the first thing in the body (not the head's Close).
+    const body = box.current?.querySelector(".cx-float-body");
+    const first = box.current?.querySelector<HTMLElement>("[data-autofocus]") ?? body?.querySelector<HTMLElement>("input, button:not([disabled]), [href]");
     first?.focus({ preventScroll: true });
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") {

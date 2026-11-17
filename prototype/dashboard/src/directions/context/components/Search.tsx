@@ -52,6 +52,10 @@ function parse(text: string, nodes: Node[], today: string, fallback: Node | null
   return { title: title ? title[0]!.toUpperCase() + title.slice(1) : "", due, parent: parent ?? fallback, tagged: parent !== null };
 }
 
+/** A line of a page as words: [[slug|label]] as its label, table pipes and markdown marks dropped. */
+const plain = (s: string) =>
+  s.replace(/\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g, (_m, slug: string, label?: string) => label ?? slug.split("/").pop()!.replace(/-/g, " ")).replace(/[|*#]/g, " ").replace(/\s+/g, " ").trim();
+
 type Row =
   | { kind: "add"; p: Parsed }
   | { kind: "hit"; hit: ReturnType<typeof search>[number] }
@@ -88,7 +92,6 @@ export const Search = forwardRef<SearchHandle, { here: Ctx; initial?: string; in
     const looksLikeTask = mode === "add" || p.due !== null || p.tagged;
     if (looksLikeTask && p.title) out.push({ kind: "add", p });
     if (mode === "find") for (const hit of search(s, text, 7)) out.push({ kind: "hit", hit });
-    if (mode === "find" && !looksLikeTask && p.title) out.push({ kind: "add", p: { ...p, parent: hereNode } });
     if (mode === "find") out.push({ kind: "ask", text });
     return out;
   }, [q, s, today, mode, hereNode]);
@@ -253,7 +256,7 @@ export const Search = forwardRef<SearchHandle, { here: Ctx; initial?: string; in
                   <span className="cx-result-text">
                     <span className="cx-result-kicker">{row.hit.kind === "page" ? "Note" : row.hit.kind[0]!.toUpperCase() + row.hit.kind.slice(1)}</span>
                     <span className="cx-result-title">{row.hit.title}</span>
-                    {row.hit.detail ? <span className="cx-result-detail">{row.hit.detail}</span> : null}
+                    {row.hit.detail ? <span className="cx-result-detail">{plain(row.hit.detail)}</span> : null}
                   </span>
                 </>
               )}

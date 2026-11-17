@@ -33,7 +33,21 @@ export function TimerChip({ onOpen }: { onOpen: () => void }) {
   const off = useOff();
   const elapsed = useElapsed();
   const r = runningBlock(s);
-  if (!r) return null;
+  if (!r)
+    return (
+      <button
+        type="button"
+        className="cx-btn cx-btn-ghost cx-startchip"
+        aria-label="Start a timer"
+        disabled={off}
+        onClick={(e) => {
+          anchorFrom(e);
+          setParams({ timer: "start" });
+        }}
+      >
+        <Icon name="play" size={15} /> <span>Start a timer</span>
+      </button>
+    );
   const c = blockCtx(s, r);
   return (
     <div className="cx-timerchip" role="group" aria-label="Running timer">
@@ -86,6 +100,20 @@ export function TimerLayer({ mode, onDone }: { mode: string; onDone: (intentId: 
       }
     >
       {switching ? <p className="cx-float-note">The block on {runningLabel(r)} ends now and the new one starts from {hm(now)}.</p> : null}
+      {!switching ? (
+        <button
+          type="button"
+          className="cx-btn cx-btn-sm cx-btn-ghost cx-nolabel"
+          disabled={off}
+          onClick={() => {
+            close();
+            oneWay("Timer started with no label. Name it on Now when you know what it is.", () => startTimer({}));
+            onDone("");
+          }}
+        >
+          <Icon name="play" size={14} /> Start without a label
+        </button>
+      ) : null}
       <Picker
         current={r?.intent_id ?? null}
         disabled={off}

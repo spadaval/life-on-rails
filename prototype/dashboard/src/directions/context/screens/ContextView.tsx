@@ -63,18 +63,18 @@ export function ContextView({ ctx, why, focus, route, isNow }: { ctx: Ctx; why?:
               {ctx.kind === "project" ? "Project" : ctx.kind === "goal" ? "Goal" : ctx.kind === "person" ? "Person" : ctx.kind === "slot" ? "Next fixed event" : ctx.kind === "loose" ? "Under nothing yet" : "Timer"}
             </span>
             {parent ? (
-              <>
+              <span className="cx-kicker-part">
                 <span className="cx-sep" aria-hidden="true">·</span>
                 <a className="cx-kicker-link" href={href("/goals", { id: parent.title })}>
                   {parent.title}
                 </a>
-              </>
+              </span>
             ) : null}
             {isNow && why ? (
-              <>
+              <span className="cx-kicker-part">
                 <span className="cx-sep" aria-hidden="true">·</span>
                 <span className="cx-why" data-why={why}>{WHY[why]}</span>
-              </>
+              </span>
             ) : null}
           </p>
           <h1 id="cx-ctx-title" className="cx-title">{ctx.title}</h1>
