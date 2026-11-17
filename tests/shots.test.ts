@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error a plain .mjs script, no types
-import { groupsOf, refuseRealData, slug } from "../scripts/shots.mjs";
+import { checkoutCommit, groupsOf, refuseRealData, slug } from "../scripts/shots.mjs";
 
 const base = "http://127.0.0.1:3858";
 
@@ -18,6 +18,11 @@ describe("shots.mjs", () => {
     expect(refuseRealData("http://127.0.0.1:3848", [{ link: "/lab/a.html" }], {})).toBeNull();
     expect(refuseRealData("http://127.0.0.1:4000", [{ link: "/" }], { LOR_PORT: "4000" })).toMatch(/real data/);
     expect(refuseRealData(base, [{ link: "/" }], {})).toBeNull();
+  });
+
+  it("stamps a gallery with the checkout's commit, for the lab's index", () => {
+    expect(checkoutCommit()).toMatch(/^[0-9a-f]{7,}( \(uncommitted changes\))?$/);
+    expect(checkoutCommit(tmpdir())).toBe("unknown");
   });
 
   it("runs shots with another data= or at= apart", () => {

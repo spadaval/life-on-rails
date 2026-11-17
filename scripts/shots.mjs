@@ -15,8 +15,10 @@
 // pause after both; a shot's own `wait` is used with the catalogue's. A shot is just its link, opened
 // and captured: nothing is clicked or typed, so the same link opened by hand draws the same state.
 //
-// Writes <out>/<shot>@<width>.png, moving the one there to <out>/previous/, and <out>/index.html.
+// Writes <out>/<shot>@<width>.png, moving the one there to <out>/previous/, <out>/index.html, and
+// <out>/.lor-stamp with this checkout's commit and the time, for the lab's index.
 // <out> defaults to ~/.local/state/lor-shots/<catalogue name>.
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -57,6 +59,17 @@ function readEnvFile() {
     if (m && !line.trim().startsWith("#")) env[m[1]] = m[2].replace(/^(['"])(.*)\1$/, "$2");
   }
   return env;
+}
+
+/** This checkout's commit, marked when it has uncommitted changes. */
+export function checkoutCommit(cwd = ROOT) {
+  const git = (...a) => execFileSync("git", ["-C", cwd, ...a], { encoding: "utf8" }).trim();
+  try {
+    const sha = git("rev-parse", "--short", "HEAD");
+    return git("status", "--porcelain") ? `${sha} (uncommitted changes)` : sha;
+  } catch {
+    return "unknown";
+  }
 }
 
 /** A file name for a shot: its name, lower case, with anything but letters and digits as dashes. */
@@ -174,6 +187,8 @@ async function main() {
   }
 
   writeFileSync(path.join(out, "index.html"), gallery({ cat, base, all, widths, out }));
+  // What made this gallery, for the lab's index (scripts/lab/publish.sh).
+  writeFileSync(path.join(out, ".lor-stamp"), `commit=${checkoutCommit()}\ntime=${new Date().toISOString()}\n`);
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   console.log(JSON.stringify({ shots: shots.length, widths, images: shots.length * widths.length, seconds: Number(seconds), out, gallery: path.join(out, "index.html"), problems }, null, 2));
   if (problems.length) process.exitCode = 1;

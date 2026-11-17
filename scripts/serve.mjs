@@ -7,6 +7,7 @@
 //   127.0.0.1:LOR_SERVE_PORT UI and /ingest for the owner's other devices,
 //                            published by `tailscale serve`. Every request must
 //                            carry the owner's Tailscale login. /api/ is not routed.
+//   Both serve LOR_LAB_DIR read-only at /lab/ when it is set (scripts/lab/serve.mjs).
 //   LOR_TRMNL_BIND:LOR_TRMNL_PORT  the TRMNL X on the home network, when set: only
 //                            the firmware's three calls and its image, keyed.
 import { existsSync } from "node:fs";
@@ -15,6 +16,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "srvx";
 import { serveStatic } from "srvx/static";
+import { labStatic } from "./lab/serve.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const envFile = process.env.LOR_ENV_FILE ?? path.join(homedir(), ".config/life-on-rails/env");
@@ -43,6 +45,7 @@ const owner = (process.env.LOR_OWNER_LOGIN || "").trim().toLowerCase();
 for (const sig of ["SIGTERM", "SIGINT"]) process.on(sig, () => process.exit(0));
 
 const assets = serveStatic({ dir: path.join(root, "dist/client") });
+const lab = labStatic((process.env.LOR_LAB_DIR || "").trim() || null);
 const fetch = (request) => app.fetch(request);
 
 // /api/ is for processes on this box. The listener binds loopback by default;
@@ -55,7 +58,7 @@ const apiFromLoopbackOnly = (request, next) => {
   return next();
 };
 
-serve({ hostname, port, fetch, middleware: [apiFromLoopbackOnly, assets], silent: true, gracefulShutdown: false });
+serve({ hostname, port, fetch, middleware: [apiFromLoopbackOnly, lab, assets], silent: true, gracefulShutdown: false });
 console.log(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: "listening", hostname, port }));
 
 if (owner) {
@@ -65,7 +68,7 @@ if (owner) {
     if (new URL(request.url).pathname.startsWith("/api/")) return new Response("not found\n", { status: 404 });
     return next();
   };
-  serve({ hostname: "127.0.0.1", port: servePort, fetch, middleware: [ownerOnly, assets], silent: true, gracefulShutdown: false });
+  serve({ hostname: "127.0.0.1", port: servePort, fetch, middleware: [ownerOnly, lab, assets], silent: true, gracefulShutdown: false });
   console.log(JSON.stringify({ ts: new Date().toISOString(), level: "info", msg: "listening (owner only)", hostname: "127.0.0.1", port: servePort }));
 }
 
