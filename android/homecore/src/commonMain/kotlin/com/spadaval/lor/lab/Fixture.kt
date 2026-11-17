@@ -1,5 +1,6 @@
 package com.spadaval.lor.lab
 
+import com.spadaval.lor.data.Sensor
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
@@ -153,6 +154,10 @@ data class T3(
     val questions: Map<String, List<Question>> = emptyMap(),
     /** By thread id: its transcript, oldest first. */
     val messages: Map<String, List<Message>> = emptyMap(),
+    /** The server paired with (`T3Store.lastServer`); empty before any pairing. */
+    val server: String = "",
+    /** The server's projects a thread can launch in: id to title. */
+    val projects: Map<String, String> = emptyMap(),
 )
 
 // ---- The timer ----
@@ -161,14 +166,37 @@ data class T3(
 @Serializable
 enum class TimerState { IDLE, RUNNING, PAUSED, UNREACHABLE }
 
+/** An intent the Timer tab offers (`/device/state`'s `recent` and `intents`): its id, title and type. */
 @Serializable
-data class Timer(val state: TimerState = TimerState.IDLE, val title: String? = null, val start: String? = null)
+data class TimerIntent(val id: String, val title: String, val type: String = "task")
+
+/**
+ * LoR's timer: running or paused under [intent] (its title, null for none) with its own [title],
+ * from [start] (ISO), paused at [pausedAt] (ISO; the clock's time when left out); the intents the
+ * tab offers to start under; who LoR says is signed in; and, while [TimerState.UNREACHABLE], why.
+ */
+@Serializable
+data class Timer(
+    val state: TimerState = TimerState.IDLE,
+    val title: String? = null,
+    val start: String? = null,
+    val intent: String? = null,
+    val pausedAt: String? = null,
+    val recent: List<TimerIntent> = emptyList(),
+    val intents: List<TimerIntent> = emptyList(),
+    val login: String = "owner",
+    val error: String = "connect timed out",
+)
 
 // ---- The phone: sensors and sync ----
 
-/** A sensor's row on the Sensors tab: its key (`Sensor.key`), whether it is on, and whether Android allows it. */
+/**
+ * A sensor's row on the Sensors tab: its key (`Sensor.key`), whether it is on, and whether Android
+ * allows it. [status] and [action] are the row's words and button as the app writes them; left out,
+ * an allowed sensor says "Allowed." and one that isn't "Needs permission." with Allow.
+ */
 @Serializable
-data class SensorRow(val key: String, val on: Boolean = true, val allowed: Boolean = true)
+data class SensorRow(val key: String, val on: Boolean = true, val allowed: Boolean = true, val status: String? = null, val action: String? = null)
 
 /** The last sync (`Prefs.lastSync*`, `SyncReport`): when, what it collected and sent, what waits, and its errors. */
 @Serializable
@@ -191,7 +219,7 @@ data class Phone(
 ) {
     companion object {
         /** `Sensor`'s keys, in the app's order. */
-        val SENSORS = listOf("apps", "calls", "texts", "health", "launches", "location", "whatsapp")
+        val SENSORS = Sensor.entries.map { it.key }
     }
 }
 
@@ -207,6 +235,8 @@ data class Settings(
     /** Icon packs installed, by label; [iconPack] is the one in use, null for the apps' own. */
     val iconPacks: List<String> = emptyList(),
     val iconPack: String? = null,
+    /** The Settings tab's line under Save and Test connection: "Saved.", "Checking…", or what the test found; null before either. */
+    val result: String? = null,
 )
 
 // ---- Search, the drawer and quick dial ----
@@ -237,7 +267,11 @@ data class SearchSources(
 
 // ---- Where the screen is ----
 
-/** What is open over the cell. [target] names what it points at: an app ref, a folder's name, a widget id, a thread id, a tab's name. */
+/**
+ * What is open over the cell. [target] names what it points at: an app ref, a folder's name, a
+ * widget id, a thread id, a tab's name. [APP_TAB] is the LoR app on one of its tabs, by [target]:
+ * `timer`, `sensors`, `settings`, or `t3` (Settings' T3 debug view).
+ */
 @Serializable
 enum class Opened { NOTHING, FOLDER, APP_MENU, HOME_MENU, WIDGET_MENU, DRAWER, SEARCH, THREAD, MINIMAP, QUICK_SEND, HOME_SETTINGS, APP_TAB }
 

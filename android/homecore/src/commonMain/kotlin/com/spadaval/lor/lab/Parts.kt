@@ -116,6 +116,9 @@ object Parts {
         """,
     )
 
+    /** `hidden` naming the demo apps [labels], then a package that isn't installed, which Home settings lists by its name. */
+    fun hidden(vararg labels: String): JsonArray = JsonArray(labels.map { JsonPrimitive(ref(it)) } + JsonPrimitive("com.example.oldreader"))
+
     /** A file home can't read (`version` 3), so home shows its banner over the last good layout. */
     val brokenLayout: JsonObject = demoLayout.with("version", JsonPrimitive(3))
 
@@ -187,7 +190,11 @@ object Parts {
         ),
     )
 
-    val demoT3 = T3(T3Status.LIVE, seenAt = demoClock.now, threads = demoThreads, messages = demoMessages)
+    val demoT3 = T3(
+        T3Status.LIVE, seenAt = demoClock.now, threads = demoThreads, messages = demoMessages,
+        server = "http://10.0.2.2:16021",
+        projects = mapOf("p-lor" to "life-on-rails", "p-field" to "field-guide", "p-assistant" to "assistant"),
+    )
     val unpairedT3 = T3(T3Status.NOT_PAIRED)
     val connectingT3 = T3(T3Status.CONNECTING)
 
@@ -216,6 +223,18 @@ object Parts {
         return demoT3.copy(threads = threads + demoThreads.drop(1), questions = questions)
     }
 
+    // ---- The timer ----
+
+    /** The demo's timer, idle: the intents worked on lately first, then every one LoR has. */
+    val demoTimer = Timer(
+        recent = listOf(TimerIntent("i-spec", "Offline maps spec"), TimerIntent("i-run", "Morning run", "habit"), TimerIntent("i-inbox", "Inbox zero")),
+        intents = listOf(
+            TimerIntent("i-spec", "Offline maps spec"), TimerIntent("i-run", "Morning run", "habit"), TimerIntent("i-inbox", "Inbox zero"),
+            TimerIntent("i-guide", "Field guide", "project"), TimerIntent("i-spanish", "Spanish", "goal"), TimerIntent("i-taxes", "File the taxes"),
+        ),
+        login = "demo",
+    )
+
     // ---- The phone ----
 
     val demoPhone = Phone(
@@ -226,7 +245,13 @@ object Parts {
 
     /** The last sync failed twice and two sensors lost their permission. */
     val failedPhone = demoPhone.copy(
-        sensors = Phone.SENSORS.map { SensorRow(it, allowed = it != "calls" && it != "location", on = it != "whatsapp") },
+        sensors = Phone.SENSORS.map { SensorRow(it, allowed = it != "calls" && it != "location", on = it != "whatsapp") }.map {
+            when (it.key) {
+                "calls" -> it.copy(status = "Needs permission to read the call log.", action = "Allow")
+                "location" -> it.copy(status = "Needs location permission.", action = "Allow")
+                else -> it
+            }
+        },
         sync = SyncStatus("2026-11-17T19:52:00Z", mapOf("apps" to 41), uploaded = 0, pending = 312, errors = listOf("POST /api/v1/ingest: 502 Bad Gateway", "Health Connect: permission revoked")),
         permissions = mapOf("home" to true, "usage" to false, "notifications" to true, "contacts" to false),
     )

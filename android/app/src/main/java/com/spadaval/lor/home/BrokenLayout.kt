@@ -1,31 +1,8 @@
 package com.spadaval.lor.home
 
-import androidx.compose.ui.graphics.RectangleShape
-import com.spadaval.lor.ui.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 
 /*
  * A broken layout file (launcher polish 3.1): home keeps drawing the last good layout, and a
@@ -50,51 +27,21 @@ internal fun leftOutLine(left: List<AppRef>): String =
         "${if (left.size == 1) "it" else "them"} and nothing is written. Make room on home in layout.json, or take " +
         "${if (left.size == 1) "it" else "them"} out of its \"dock\"."
 
-/**
- * The banner: a coral status dot, one line in [style], and "Details", at least 48 dp tall; a tap
- * opens [BrokenLayoutDialog].
- * [appsLoaded] says whether the default layout can be made, for a file with no last good layout.
- */
-@Composable
-internal fun BrokenBanner(state: LayoutState.Broken, appsLoaded: Boolean, style: TextStyle, modifier: Modifier = Modifier, restore: () -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Row(
-        modifier.clickable(onClickLabel = "Show the error") { open = true }.heightIn(min = 48.dp).padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Spacer(Modifier.size(6.dp).background(Bad, CircleShape))
-        Spacer(Modifier.width(8.dp))
-        Text(brokenLine(state), style = style, modifier = Modifier.weight(1f))
-        Text("Details", style = style.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.padding(start = 12.dp))
-    }
-    if (open) BrokenLayoutDialog(state, appsLoaded, { open = false; restore() }) { open = false }
-}
-
-@Composable
-private fun BrokenLayoutDialog(state: LayoutState.Broken, appsLoaded: Boolean, restore: () -> Unit, close: () -> Unit) {
-    val action = when {
+/** What [BrokenBanner] says for [state]; [appsLoaded] says whether the default layout can be made, for a file with no last good layout. */
+internal fun brokenUi(state: LayoutState.Broken, appsLoaded: Boolean) = BrokenUi(
+    line = brokenLine(state),
+    message = state.message,
+    leftOut = state.left.takeIf { it.isNotEmpty() }?.let(::leftOutLine),
+    action = when {
         // Shown without apps that didn't fit, it isn't written over anything.
         state.left.isNotEmpty() -> null
         state.lastGood != null -> "Use the last good layout"
         appsLoaded -> "Start from the default layout"
         else -> null
-    }
-    AlertDialog(
-        onDismissRequest = close,
-        title = { Text("layout.json has an error") },
-        text = {
-            Column {
-                Text(state.message)
-                if (state.left.isNotEmpty()) Text(leftOutLine(state.left), modifier = Modifier.padding(top = 12.dp))
-                if (action != null) {
-                    Text(
-                        "$action sets the broken file aside as layout.json.broken.",
-                        modifier = Modifier.padding(top = 12.dp),
-                    )
-                }
-            }
-        },
-        confirmButton = { if (action != null) TextButton(shape = androidx.compose.ui.graphics.RectangleShape, onClick = restore) { Text(action) } },
-        dismissButton = { TextButton(shape = androidx.compose.ui.graphics.RectangleShape, colors = DismissColors, onClick = close) { Text("Close") } },
-    )
-}
+    },
+)
+
+/** The banner for [state] (the shared module draws it), whose dialog offers to put the file right. */
+@Composable
+internal fun BrokenBanner(state: LayoutState.Broken, appsLoaded: Boolean, style: TextStyle, modifier: Modifier = Modifier, restore: () -> Unit) =
+    BrokenBanner(brokenUi(state, appsLoaded), style, modifier, restore)

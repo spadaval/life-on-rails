@@ -10,20 +10,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -31,11 +17,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.spadaval.lor.ui.AppShell
+import com.spadaval.lor.ui.AppTabs
 import com.spadaval.lor.ui.DashboardScreen
 import com.spadaval.lor.ui.LorTheme
 import com.spadaval.lor.ui.SensorsScreen
@@ -52,30 +37,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             LorTheme {
                 var tab by rememberSaveable { mutableIntStateOf(start) }
-                Scaffold(
-                    topBar = {
-                        Column(Modifier.statusBarsPadding()) {
-                            HomeRoleStrip()
-                            PrimaryTabRow(selectedTabIndex = tab) {
-                                TABS.forEachIndexed { i, label ->
-                                    Tab(
-                                        selected = tab == i, onClick = { tab = i }, text = { Text(label) },
-                                        // DESIGN.md: the active one amber, the rest Dust.
-                                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        }
-                    },
-                ) { padding ->
-                    Box(Modifier.fillMaxSize().padding(padding)) {
-                        when (tab) {
-                            0 -> TimerScreen()
-                            1 -> SensorsScreen()
-                            2 -> SettingsScreen()
-                            else -> DashboardScreen()
-                        }
+                val home = rememberHomeRole()
+                AppShell(tab, { tab = it }, home.held, home.ask) {
+                    when (it) {
+                        AppTabs.TIMER -> TimerScreen()
+                        AppTabs.SENSORS -> SensorsScreen()
+                        AppTabs.SETTINGS -> SettingsScreen()
+                        else -> DashboardScreen()
                     }
                 }
             }
@@ -84,8 +52,8 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val EXTRA_TAB = "tab"
-        private val TABS = listOf("Timer", "Sensors", "Settings", "Dashboard")
-        const val SETTINGS = 2
+        private val TABS = AppTabs.names
+        const val SETTINGS = AppTabs.SETTINGS
 
         /** The LoR app in its own task, on [tab] (the Settings tab for home's set-up card). */
         fun open(context: Context, tab: Int) = context.startActivity(
@@ -107,12 +75,15 @@ fun rememberAskForHome(onResult: () -> Unit): () -> Unit {
     return { launcher.launch(context.getSystemService(RoleManager::class.java).createRequestRoleIntent(RoleManager.ROLE_HOME)) }
 }
 
+/** Whether LoR holds the home role, read on each resume, and the system's question that asks for it. */
+private class HomeRole(val held: Boolean, val ask: () -> Unit)
+
 /**
- * The first run's first step (launcher polish 3.5): while LoR isn't the home app, a strip above the
- * tabs offers to make it so. Checked on each resume, so it goes once the role is held.
+ * The first run's first step (launcher polish 3.5): while LoR isn't the home app, [AppShell]'s
+ * strip above the tabs offers to make it so. Checked on each resume, so it goes once the role is held.
  */
 @Composable
-private fun HomeRoleStrip() {
+private fun rememberHomeRole(): HomeRole {
     val context = LocalContext.current
     var home by remember { mutableStateOf(true) }
     LifecycleResumeEffect(Unit) {
@@ -120,11 +91,5 @@ private fun HomeRoleStrip() {
         onPauseOrDispose {}
     }
     val ask = rememberAskForHome { home = isHome(context) }
-    if (home) return
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Use LoR as your home screen", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            Button(shape = androidx.compose.ui.graphics.RectangleShape, onClick = ask) { Text("Set as home") }
-        }
-    }
+    return HomeRole(home, ask)
 }

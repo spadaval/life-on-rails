@@ -10,19 +10,6 @@ import org.json.JSONObject
  */
 
 /**
- * The icons a tab's button draws (TabBar.kt), by the name `drawer.tabs[].icon` gives, after the
- * launcher-use mocks. layout-v2.md lists them.
- */
-enum class TabIcon(val id: String) {
-    BOLT("bolt"), STAR("star"), BRIEF("brief"), CHAT("chat"), PLAY("play"), COMPASS("compass"), WALLET("wallet"), ALL("all");
-
-    companion object {
-        /** The icon named [id]; null for a name the phone doesn't draw, which draws the tab name's first letter. */
-        fun of(id: String): TabIcon? = entries.firstOrNull { it.id == id }
-    }
-}
-
-/**
  * The floating bar's sizes in dp (TabBar.kt), kept here so [tabWidth] is tested on the JVM: the
  * search button (square, as tall as the bar), the gap before it and the bar's own padding.
  */
@@ -41,9 +28,6 @@ object BarSize {
  */
 fun tabWidth(room: Float, tabs: Int): Float =
     minOf(BarSize.TAB, (room - BarSize.SEARCH - BarSize.GAP - BarSize.PADDING) / tabs.coerceAtLeast(1))
-
-/** What a tab's button draws when its icon is unknown: its name's first letter or digit, upper case. */
-fun tabLetter(name: String): String = name.firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "?"
 
 /**
  * How often and how lately each app was opened from the launcher, keyed by [HomeApp.key]

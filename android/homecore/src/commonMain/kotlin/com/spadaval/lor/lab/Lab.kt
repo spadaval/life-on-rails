@@ -29,11 +29,12 @@ class Version(val name: String, val about: String, val draw: @Composable (LabSce
 
 object Lab {
     /**
-     * Every version, `current` first. A concept is one more line here. Until the screens move into
-     * this module (lor-xdoi, lor-rgx4, lor-t8lq), `current` draws the kit sheet.
+     * Every version, `current` first. A concept is one more line here. `current` draws the app's
+     * tabs and Home settings when the state opens one (`where.open`); until home and the agent
+     * page move into this module (lor-xdoi, lor-rgx4), it draws the kit sheet for the rest.
      */
     val versions: List<Version> = listOf(
-        Version("current", "The app as it is: for now the kit sheet of its look") { KitSheet(it) },
+        Version("current", "The app as it is: its tabs and Home settings, and the kit sheet of its look for the rest") { if (!AppScreen(it)) KitSheet(it) },
     )
 
     val states: List<Fixture> get() = Fixtures.all
