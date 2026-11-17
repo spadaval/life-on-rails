@@ -1,7 +1,5 @@
 package com.spadaval.lor.quicksend
 
-import androidx.compose.ui.graphics.RectangleShape
-import com.spadaval.lor.ui.*
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color as AndroidColor
@@ -11,51 +9,15 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.spadaval.lor.agent.link
 import com.spadaval.lor.t3.T3Connection
 import com.spadaval.lor.ui.LorTheme
 
@@ -119,8 +81,7 @@ class QuickSendActivity : ComponentActivity() {
     }
 }
 
-private val Small = Type.bodySmall.copy(fontSize = 12.sp)
-
+/** The sheet's state from the connection, the send under way and the assistant's capture; its drawing is homecore's (`SheetView.kt`). */
 @Composable
 private fun Sheet(connection: T3Connection, from: QuickSend.From, initial: String, opened: Int, close: () -> Unit) {
     val context = LocalContext.current.applicationContext
@@ -129,161 +90,30 @@ private fun Sheet(connection: T3Connection, from: QuickSend.From, initial: Strin
     val sending by QuickSend.sending.collectAsState()
     val captured by Capture.current.collectAsState()
     val capture = if (from == QuickSend.From.ASSIST) captured else null
-    // Saved, so a fold, unfold or rotation keeps a half-typed prompt; a new opening starts over.
-    var text by rememberSaveable(opened) { mutableStateOf(initial) }
-    var picked by rememberSaveable(opened) { mutableStateOf<String?>(null) }
-    var attach by rememberSaveable(opened) { mutableStateOf(true) }
-    var failure by rememberSaveable(opened) { mutableStateOf<String?>(null) }
-    val live = status == T3Connection.Status.Live
-
+    val jpeg = capture?.jpeg
+    val bitmap = remember(jpeg) { jpeg?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
     val threads = remember(shell) { shell.threads.associate { it.id to it.projectId } }
-    val choice = Destination.choose(text, shell.projects, threads, capture?.screen, picked)
-    val target = choice.projectId
-    val jpeg = capture?.jpeg?.takeIf { attach }
-    val dismiss = { if (!sending) close() }
-    BackHandler { dismiss() }
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Scrim)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = dismiss),
-    ) {
-        Column(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .imePadding()
-                .navigationBarsPadding()
-                .padding(8.dp)
-                .widthIn(max = 560.dp)
-                .fillMaxWidth()
-                .framedPanel(PanelFace)
-                // Taps on the sheet itself don't reach the scrim.
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            // Unpaired, there are no projects to read; the connection line says what to do.
-            val paired = status !is T3Connection.Status.NotPaired && status !is T3Connection.Status.Rejected
-            // Retrying, the connection line already says T3 is down; "Reading…" would contradict it (6.8).
-            if (paired && !(status is T3Connection.Status.Retrying && !shell.loaded)) Text(
-                when {
-                    !shell.loaded -> "Reading T3's projects…"
-                    target == null -> "No project named \"${Destination.INBOX}\" on this T3 server. Pick one."
-                    else -> "To ${shell.projects[target]} · ${choice.why.label} · a new thread"
-                },
-                style = Small.copy(color = if (target == null && shell.loaded) Or else Mute),
-            )
-            Projects(shell.projects, target) { picked = it }
-            if (capture != null) Shot(capture, attach) { attach = !attach }
-            Field(text, opened) { text = it; failure = null }
-            failure?.let { Text("Not sent: $it", style = Small.copy(color = Bad)) }
-            connectionLine(status)?.let { Text(it, style = Small) }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                Pill("Close", enabled = !sending) { close() }
-                Pill(
-                    if (sending) "Sending…" else "Send",
-                    primary = true,
-                    enabled = live && !sending && target != null && choice.text.isNotBlank(),
-                ) {
-                    val image = jpeg?.let { T3Connection.Image(imageName(capture.appLabel), "image/jpeg", it) }
-                    QuickSend.send(context, target!!, shell.projects[target] ?: target, choice.text, image) { error ->
-                        if (error == null) close() else failure = error
-                    }
-                }
-            }
-        }
-    }
+    BackHandler { if (!sending) close() }
+    QuickSendSheet(
+        SheetUi(
+            link = status.link(),
+            loaded = shell.loaded,
+            projects = shell.projects,
+            threads = threads,
+            sending = sending,
+            shot = capture?.let { Shot(bitmap, it.shotDone, it.appLabel, it.screen.uris) },
+            initial = initial,
+            opened = opened,
+        ),
+        SheetActions(
+            close = close,
+            send = { projectId, title, text, attach, done ->
+                val image = capture?.jpeg?.takeIf { attach }?.let { T3Connection.Image(imageName(capture.appLabel), "image/jpeg", it) }
+                QuickSend.send(context, projectId, title, text, image, done)
+            },
+        ),
+    )
 }
 
 private fun imageName(appLabel: String?): String =
     ("Screen" + (appLabel?.replace(Regex("[^A-Za-z0-9 _-]"), "")?.trim()?.takeIf { it.isNotEmpty() }?.let { " - $it" } ?: "") + ".jpg").take(120)
-
-private fun connectionLine(status: T3Connection.Status): String? = when (status) {
-    T3Connection.Status.Live -> null
-    T3Connection.Status.NotPaired -> "T3 isn't paired. Pair it on the agent page, left of home."
-    is T3Connection.Status.Rejected -> "T3 refused this phone. Pair again on the agent page, left of home."
-    is T3Connection.Status.Retrying -> "T3 is disconnected; trying again. Send is off until it's back."
-    T3Connection.Status.Connecting, T3Connection.Status.Stopped -> "Connecting to T3…"
-}
-
-/** Every project as a chip, the Inbox first; the chosen one is filled. One tap picks another. */
-@Composable
-private fun Projects(projects: Map<String, String>, chosen: String?, pick: (String) -> Unit) {
-    if (projects.isEmpty()) return
-    val ordered = projects.entries.sortedWith(
-        compareBy<Map.Entry<String, String>> { !it.value.equals(Destination.INBOX, ignoreCase = true) }.thenBy { it.value.lowercase() },
-    )
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        ordered.forEach { (id, title) -> Pill(title, primary = id == chosen) { pick(id) } }
-    }
-}
-
-/** The screenshot the assistant took, small, with a tap to leave it out or put it back. */
-@Composable
-private fun Shot(capture: Capture, attach: Boolean, toggle: () -> Unit) {
-    val jpeg = capture.jpeg
-    val bitmap = remember(jpeg) { jpeg?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        when {
-            bitmap != null && attach -> Image(
-                bitmap,
-                contentDescription = "Screenshot",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.height(72.dp).widthIn(max = 40.dp).clip(RectangleShape).border(1.dp, Edge, RectangleShape),
-            )
-            bitmap != null -> {}
-            !capture.shotDone -> Text("Taking the screenshot…", style = Small)
-            else -> Text("No screenshot: this app doesn't allow one, or it's off in the assistant's settings.", style = Small)
-        }
-        if (bitmap != null) {
-            Column(Modifier.padding(end = 4.dp)) {
-                Text(if (attach) "The screen goes with it" else "The screen stays here", style = Small.copy(color = Txt))
-                capture.appLabel?.let { Text(it, style = Small) }
-            }
-            Pill(if (attach) "Remove" else "Attach") { toggle() }
-        }
-    }
-}
-
-@Composable
-private fun Field(value: String, opened: Int, onChange: (String) -> Unit) {
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(opened) { runCatching { focus.requestFocus() } }
-    OutlinedTextField(
-        value,
-        onChange,
-        Modifier.fillMaxWidth().focusRequester(focus),
-        placeholder = { Text("Ask an agent… (@project to name one)", color = Dim) },
-        textStyle = Type.body.copy(color = Txt, fontSize = 14.sp),
-        shape = RectangleShape,
-        maxLines = 6,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Txt, unfocusedTextColor = Txt, cursorColor = Or,
-            focusedBorderColor = Or.copy(alpha = 0.7f), unfocusedBorderColor = Edge,
-        ),
-    )
-}
-
-@Composable
-private fun Pill(text: String, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
-    val shape = RectangleShape
-    val base = if (primary) Modifier.background(Or, shape) else Modifier.border(1.dp, if (enabled) Edge else Line, shape)
-    Text(
-        text,
-        style = Type.button.copy(
-            color = when {
-                primary -> OnOr
-                enabled -> Txt
-                else -> Dim
-            },
-            fontSize = 12.sp,
-            fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Normal,
-        ),
-        maxLines = 1,
-        // DESIGN.md: a disabled button is the same button at 45%.
-        modifier = (if (enabled) base else base.alpha(0.45f))
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 11.dp, vertical = 6.dp),
-    )
-}

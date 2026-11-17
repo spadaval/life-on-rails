@@ -1,41 +1,36 @@
 package com.spadaval.lor.agent
 
-import com.spadaval.lor.ui.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.spadaval.lor.t3.PairScan
-import com.spadaval.lor.t3.Pairing
-import com.spadaval.lor.t3.T3Connection
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.spadaval.lor.ui.BodyText
+import com.spadaval.lor.ui.Failed
+import com.spadaval.lor.ui.Field
+import com.spadaval.lor.ui.Pill
+import com.spadaval.lor.ui.SmallText
+import com.spadaval.lor.ui.StateFill
+import com.spadaval.lor.ui.framedPanel
 
 /**
  * Pairing with T3 where it's needed (launcher polish 3.3): on the agent page while T3 isn't paired
- * or refused this phone, and in home's set-up card. Scan T3's QR code ([PairScan]) or paste its
- * pairing link; either pairs at once, and the card goes when the connection does. A link only: a
- * bare token needs a server address, which the debug screen in LoR's Settings still takes.
+ * or refused this phone, and in home's set-up card. Scan T3's QR code or paste its pairing link;
+ * either pairs at once, and the card goes when the connection does. A link only: a bare token needs
+ * a server address, which the debug screen in LoR's Settings still takes.
  */
 @Composable
-fun PairCard(connection: T3Connection, status: T3Connection.Status, modifier: Modifier = Modifier) {
+fun PairCard(t3: T3Ui, calls: PairCalls, modifier: Modifier = Modifier) {
     Column(
         modifier
             .fillMaxWidth()
@@ -44,11 +39,11 @@ fun PairCard(connection: T3Connection, status: T3Connection.Status, modifier: Mo
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            if (status is T3Connection.Status.Rejected) "T3 refused this phone: ${status.error}. Pair again." else "Pair with T3",
-            style = Body.copy(fontSize = 14.sp),
+            if (t3.link == T3Link.REJECTED) "T3 refused this phone: ${t3.error}. Pair again." else "Pair with T3",
+            style = BodyText.copy(fontSize = 14.sp),
         )
-        Text("Scan the code in T3's Connections settings, or paste its pairing link.", style = Small)
-        PairActions(connection)
+        Text("Scan the code in T3's Connections settings, or paste its pairing link.", style = SmallText)
+        PairActions(calls)
     }
 }
 
@@ -57,9 +52,7 @@ fun PairCard(connection: T3Connection, status: T3Connection.Status, modifier: Mo
  * actions, also in home's set-up card. [primary] is false where another action is the screen's one.
  */
 @Composable
-fun PairActions(connection: T3Connection, primary: Boolean = true) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+fun PairActions(calls: PairCalls, primary: Boolean = true) {
     var pasting by rememberSaveable { mutableStateOf(false) }
     var link by rememberSaveable { mutableStateOf("") }
     var pairing by remember { mutableStateOf(false) }
@@ -71,10 +64,14 @@ fun PairActions(connection: T3Connection, primary: Boolean = true) {
         }
         pairing = true
         failure = null
-        scope.launch {
-            val result = withContext(Dispatchers.IO) { runCatching { connection.pair(Pairing.parse("", code)) } }
+        calls.pair(code) { failed ->
             pairing = false
-            result.fold({ link = ""; pasting = false }, { failure = "Can't pair: ${T3Connection.describe(it)}" })
+            if (failed == null) {
+                link = ""
+                pasting = false
+            } else {
+                failure = failed
+            }
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -82,7 +79,7 @@ fun PairActions(connection: T3Connection, primary: Boolean = true) {
             // While the link's field is open, Pair is the one primary action.
             Pill(if (pairing) "Pairing…" else "Scan code", primary = primary && !pasting, enabled = !pairing) {
                 failure = null
-                PairScan.scan(context, { found, _ -> pair(found) }, { failure = "$it Paste a link instead." })
+                calls.scan({ pair(it) }, { failure = "$it Paste a link instead." })
             }
             Pill(if (pasting) "Hide" else "Paste a link", enabled = !pairing) { pasting = !pasting }
         }

@@ -34,6 +34,9 @@ kotlin {
         binaries.executable()
     }
 
+    // kotlin.time.Instant, which the panels' state carries.
+    compilerOptions { optIn.add("kotlin.time.ExperimentalTime") }
+
     sourceSets {
         commonMain.dependencies {
             implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
@@ -45,6 +48,10 @@ kotlin {
             implementation("org.jetbrains.androidx.navigationevent:navigationevent-compose:1.1.0")
             // api: the app's debug fixture entry reads a fixture's JSON parts too.
             api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+            // Local days and clock times for the panels' rows (lor-rgx4); already in the wasm build
+            // through Compose. Named zones come from the platform (LocalClock.kt), not from a zone
+            // database: the browser build would need @js-joda/timezone for that.
+            api("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

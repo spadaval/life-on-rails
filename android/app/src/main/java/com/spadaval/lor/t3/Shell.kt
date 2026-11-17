@@ -2,36 +2,6 @@ package com.spadaval.lor.t3
 
 import org.json.JSONObject
 
-enum class ThreadState(val label: String) {
-    WAITING_APPROVAL("Waiting for approval"),
-    WAITING_ANSWER("Waiting for an answer"),
-    RUNNING("Running"),
-    FAILED("Failed"),
-    IDLE("Idle"),
-}
-
-/** A request a thread is blocked on. 2.2 approves or answers it by [threadId] and [requestId]. */
-data class PendingRequest(val threadId: String, val requestId: String, val kind: String) {
-    val isQuestion: Boolean get() = kind == "user_input"
-}
-
-data class T3Thread(
-    val id: String,
-    val title: String,
-    val projectId: String,
-    val projectTitle: String,
-    val state: ThreadState,
-    /** ISO time, as the server sent it. */
-    val updatedAt: String,
-    val lastError: String?,
-    /** What this thread waits on Sumeet for: its own request, then those of its hidden subagents and side chats. */
-    val requests: List<PendingRequest>,
-    /** Whether its own run is under way (a request can outlive a cancelled run). */
-    val runLive: Boolean = state == ThreadState.RUNNING,
-    /** ISO time the live run started (`activityRunStartedAt`), or null when no run is live. */
-    val runStartedAt: String? = null,
-)
-
 /**
  * The thread list from `orchestration.subscribeShell` items (T3's `OrchestrationV2ShellStreamItem`).
  * Immutable: [apply] returns the next state. Archived and deleted threads are dropped. Subagents and

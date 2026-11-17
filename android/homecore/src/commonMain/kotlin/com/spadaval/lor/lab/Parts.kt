@@ -195,6 +195,40 @@ object Parts {
     val staleT3 = demoT3.copy(status = T3Status.RETRYING, error = "connection reset", seenAt = "2026-11-17T19:20:00Z")
     val rejectedT3 = T3(T3Status.REJECTED, error = "The pairing was revoked on the server")
 
+    /** A question with three options, asked by the field-guide thread. */
+    private val tileQuestion = Question(
+        "q1", "Tiles", "Which vector tile provider should the offline maps use?",
+        listOf(Question.Option("MapTiler", "Free tier covers the beta"), Question.Option("Stadia", "Cheaper at scale"), Question.Option("Self-host", "Most work, no bill")),
+    )
+
+    /**
+     * What waits on Sumeet on the agent page: the demo's approval, a question with options and a
+     * turn that failed, beside the running turn and the idle threads.
+     */
+    val waitingT3 = demoT3.copy(
+        threads = listOf(
+            demoThreads[0],
+            Thread("t-question", "Pick the offline tile provider", project = "field-guide", state = ThreadState.WAITING_ANSWER, updatedAt = "2026-11-17T19:50:00Z", requests = listOf(Request("r-question", "user_input"))),
+            Thread("t-nightly", "Nightly: file the receipts", project = "assistant", state = ThreadState.FAILED, updatedAt = "2026-11-17T19:45:00Z", lastError = "The provider returned 529 Overloaded three times"),
+        ) + demoThreads.drop(1),
+        questions = mapOf("r-question" to listOf(tileQuestion)),
+    )
+
+    /** The approval's thread with a long back-and-forth: forty messages, some long, the last one still being written. */
+    val longT3 = demoT3.copy(
+        messages = demoMessages + ("t-approve" to List(40) { i ->
+            val user = i % 2 == 0
+            val minute = (i * 2).toString().padStart(2, '0')
+            Message(
+                fromUser = user,
+                text = if (user) "Step ${i / 2 + 1}: what does the migration touch next?"
+                else "Step ${i / 2 + 1}: the next table is `event_${i / 2}`. " + "It adds one nullable column and an index, with no backfill, so it runs in well under a second on the test database. ".repeat(1 + i % 3),
+                at = "2026-11-17T19:${minute}:00Z",
+                streaming = i == 39,
+            )
+        }),
+    )
+
     /** [n] cards: approvals, questions with options, and failed turns in turn, with long titles among them. */
     fun cards(n: Int): T3 {
         val threads = List(n) { i ->
@@ -205,14 +239,7 @@ object Parts {
                 else -> Thread(id, "Failed ${i + 1}: the nightly run", state = ThreadState.FAILED, updatedAt = AT, lastError = "The provider returned 529 Overloaded three times")
             }
         }
-        val questions = threads.filter { it.state == ThreadState.WAITING_ANSWER }.associate { t ->
-            "r-${t.id}" to listOf(
-                Question(
-                    "q1", "Tiles", "Which vector tile provider should the offline maps use?",
-                    listOf(Question.Option("MapTiler", "Free tier covers the beta"), Question.Option("Stadia", "Cheaper at scale"), Question.Option("Self-host", "Most work, no bill")),
-                ),
-            )
-        }
+        val questions = threads.filter { it.state == ThreadState.WAITING_ANSWER }.associate { t -> "r-${t.id}" to listOf(tileQuestion) }
         return demoT3.copy(threads = threads + demoThreads.drop(1), questions = questions)
     }
 

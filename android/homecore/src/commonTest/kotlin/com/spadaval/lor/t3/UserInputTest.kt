@@ -1,11 +1,11 @@
 package com.spadaval.lor.t3
 
 import com.spadaval.lor.t3.UserInput.Draft
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.test.Test
 
 /** Cases from T3's `pendingUserInput.test.ts` and `resolvePendingUserInputAnswer`'s rules. */
 class UserInputTest {

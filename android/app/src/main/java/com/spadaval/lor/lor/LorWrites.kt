@@ -73,6 +73,9 @@ class LorWrites(
     /** Whether a row of `/device/tasks` is done: as the reply has it ([wasDone]), unless a write it doesn't have changed that. */
     fun done(id: String, wasDone: Boolean): Boolean = tasksHeld()[id]?.done ?: wasDone
 
+    /** [done] for every row a write it doesn't have changed: by id, whether it is done now. */
+    fun doneHeld(): Map<String, Boolean> = tasksHeld().mapNotNull { (id, h) -> h.done?.let { id to it } }.toMap()
+
     private fun tasksHeld(): Map<String, Held> {
         val read = reads.tasks.goodRead
         return held.filterValues { it.over(read) }
@@ -206,6 +209,6 @@ class LorWrites(
 
     companion object {
         /** The timer's key in [busy] and [failures]. */
-        const val TIMER = "timer"
+        const val TIMER = com.spadaval.lor.agent.LorUi.TIMER
     }
 }
