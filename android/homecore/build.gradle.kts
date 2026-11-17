@@ -19,8 +19,7 @@ kotlin {
         minSdk = 31
         // The Saira fonts in androidMain/res/font, read as com.spadaval.lor.homecore.R.font.
         androidResources { enable = true }
-        // commonTest runs here, on the JVM (boat: :homecore:testAndroidHostTest). Under Node the
-        // browser's tests can't start: Compose's Skia (skiko.mjs) fails to load there.
+        // commonTest runs here, on the JVM (boat: :homecore:testAndroidHostTest), and under Node below.
         withHostTest {}
     }
 
@@ -30,6 +29,13 @@ kotlin {
         browser {
             commonWebpackConfig { outputFileName = "homecore.js" }
             testTask { enabled = false }
+        }
+        // The common tests also run under Node (wasmJsNodeTest), so boat needs no headless Chrome. The
+        // hook hands Skia's browser-only loader its wasm, which it cannot read under Node otherwise.
+        nodejs {
+            testTask {
+                nodeJsArgs += listOf("--import", file("node/skiko-under-node.mjs").toURI().toString())
+            }
         }
         binaries.executable()
     }
