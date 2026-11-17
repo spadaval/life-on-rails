@@ -40,12 +40,24 @@ object Lab {
 
     fun version(name: String): Version? = versions.firstOrNull { it.name == name }
     fun state(name: String): Fixture? = states.firstOrNull { it.name == name }
+
+    /**
+     * The fixture a link's state part stands for: a registered name, or a one-off's JSON
+     * ([Fixtures.fromJson]). A one-off that doesn't read draws the default, and the problem says why.
+     */
+    fun fixture(state: String): Pair<Fixture, String?> =
+        if (isOneOff(state)) Fixtures.fromJson(state).fold({ it to null }, { states.first() to "The one-off state: ${it.message}" })
+        else (state(state) ?: states.first()) to null
+
+    fun isOneOff(state: String) = state.startsWith("{")
 }
 
 /**
  * One screen of the lab, as the URL hash names it: `#version/state/screen/wallpaper`, for example
- * `#current/home-full/inner/pale`. The screen and the wallpaper may be left off for the cover
- * screen on the dark wallpaper (`#current/home-full`); the wallpaper alone for the dark one.
+ * `#current/demo/inner/pale`. The screen and the wallpaper may be left off for the cover
+ * screen on the dark wallpaper (`#current/demo`); the wallpaper alone for the dark one. The state
+ * is a name, or a one-off as a JSON object (`#current/{"base":"demo","t3":{"status":"NOT_PAIRED"}}/inner`),
+ * which may hold `/`.
  */
 data class LabLink(
     val version: String,
@@ -56,7 +68,7 @@ data class LabLink(
     /** The hash for this link, without `#`, leaving off what is the default at the end. */
     val hash: String
         get() = buildList {
-            add(version); add(state)
+            add(version); add(if (Lab.isOneOff(state)) encodeOneOff(state) else state)
             if (screen != LabScreen.Cover || wallpaper != Wallpaper.Dark) add(screen.id)
             if (wallpaper != Wallpaper.Dark) add(wallpaper.id)
         }.joinToString("/")
@@ -73,21 +85,62 @@ data class Parsed(val link: LabLink, val problem: String?)
 /**
  * Reads a hash (with or without `#`). An empty hash is [LabLink.first]. A name that is not
  * registered is kept out of the link, which falls back to the first or the default, and named in
- * [Parsed.problem], so a mistyped link says so instead of quietly drawing something else.
+ * [Parsed.problem], so a mistyped link says so instead of quietly drawing something else. A state
+ * that starts with `{` is a one-off's JSON, kept whole to its closing brace; [Lab.fixture] reads it.
  */
 fun parseHash(raw: String, versions: List<String> = Lab.versions.map { it.name }, states: List<String> = Lab.states.map { it.name }): Parsed {
-    val parts = raw.removePrefix("#").split("/").map { decode(it) }.filter { it.isNotEmpty() }
+    val parts = split(decode(raw.removePrefix("#"))).filter { it.isNotEmpty() }
     val problems = mutableListOf<String>()
     fun <T> pick(i: Int, what: String, known: List<T>, id: (T) -> String, default: T): T {
         val name = parts.getOrNull(i) ?: return default
         return known.firstOrNull { id(it) == name } ?: default.also { problems += "No $what \"$name\"" }
     }
     val version = pick(0, "version", versions, { it }, versions.first())
-    val state = pick(1, "state", states, { it }, states.first())
+    val state = parts.getOrNull(1)?.takeIf { Lab.isOneOff(it) } ?: pick(1, "state", states, { it }, states.first())
     val screen = pick(2, "screen", LabScreen.entries, { it.id }, LabScreen.Cover)
     val wallpaper = pick(3, "wallpaper", Wallpaper.entries, { it.id }, Wallpaper.Dark)
     if (parts.size > 4) problems += "Too many parts: ${parts.drop(4).joinToString("/")}"
     return Parsed(LabLink(version, state, screen, wallpaper), problems.takeIf { it.isNotEmpty() }?.joinToString("; "))
+}
+
+/** Splits a decoded hash on `/`, except inside a JSON object in the state's place. */
+private fun split(s: String): List<String> {
+    val parts = mutableListOf<String>()
+    var i = 0
+    while (i <= s.length) {
+        val end = if (parts.size == 1 && s.startsWith("{", i)) jsonEnd(s, i) else s.indexOf('/', i).let { if (it < 0) s.length else it }
+        parts += s.substring(i, end)
+        i = end + 1
+        if (end == s.length) break
+        if (s.getOrNull(end) != '/') i = end // a JSON object followed by something other than `/`: the next part starts there
+    }
+    return parts
+}
+
+/** Where the JSON object starting at [from] ends (one past its closing brace), or the string's end when it doesn't close. */
+private fun jsonEnd(s: String, from: Int): Int {
+    var depth = 0
+    var inString = false
+    var i = from
+    while (i < s.length) {
+        val c = s[i]
+        when {
+            inString && c == '\\' -> i++
+            c == '"' -> inString = !inString
+            !inString && (c == '{' || c == '[') -> depth++
+            !inString && (c == '}' || c == ']') -> if (--depth == 0) return i + 1
+        }
+        i++
+    }
+    return s.length
+}
+
+/** A one-off's JSON as the hash writes it: compact, with what a hash can't hold as is percent-encoded. */
+private fun encodeOneOff(json: String): String = buildString {
+    for (c in json) when (c) {
+        '%' -> append("%25"); '#' -> append("%23"); ' ' -> append("%20"); '"' -> append("%22")
+        else -> append(c)
+    }
 }
 
 /** Undoes the browser's percent-encoding of a hash part (a space typed as %20). */

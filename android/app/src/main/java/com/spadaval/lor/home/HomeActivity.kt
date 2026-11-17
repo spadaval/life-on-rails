@@ -30,6 +30,7 @@ import com.spadaval.lor.LorApp
 import com.spadaval.lor.MainActivity
 import com.spadaval.lor.collect.Launch
 import com.spadaval.lor.collect.LaunchFrom
+import com.spadaval.lor.lab.LabStates
 import com.spadaval.lor.collect.Launches
 import com.spadaval.lor.quicksend.QuickSend
 import com.spadaval.lor.ui.LorTheme
@@ -67,8 +68,17 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
+    /** This start only handed a named state to the debug build's fixture screen (lor-oech), and set nothing up. */
+    private var handedOff = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Before anything is read: a fixture reads no layout file, server or T3 (release: never).
+        if (LabStates.open(this, intent)) {
+            handedOff = true
+            finish()
+            return
+        }
         config = Configuration(resources.configuration)
         Log.i(TAG, "HomeActivity created (${describe(config)})")
         // Light system bar icons to start; HomeScreen turns them dark over a light wallpaper (6's review, R1).
@@ -114,11 +124,13 @@ class HomeActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (handedOff) return
         unregisterReceiver(screen)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (LabStates.open(this, intent)) return
         // Home settings' Panels (lor-6get): home comes to the front with the minimap open.
         if (intent.getBooleanExtra(EXTRA_MINIMAP, false)) {
             Log.i(TAG, "the minimap opens from Home settings")
