@@ -3,7 +3,7 @@
 import { localYmd } from "../../../../src/shared/localTime.js";
 import { TZ } from "./store.js";
 import type { State } from "./store.js";
-import type { BlockView, Node } from "./types.js";
+import type { BlockView, Node, Person } from "./types.js";
 
 /** A task as Today's Due soon lists it (src/server/graph.ts taskRow). */
 export interface TaskRow {
@@ -116,4 +116,35 @@ export function search(s: State, q: string, limit = 40): Hit[] {
     }
   }
   return hits.sort((a, b) => a.rank - b.rank || a.title.localeCompare(b.title)).slice(0, limit).map(({ rank: _r, ...h }) => h);
+}
+
+// ---- people: the lists People filters by, from the people as they are now ----
+
+export const PEOPLE_FILTERS = ["important", "all", "keep-in-touch", "overdue", "birthdays", "groups"] as const;
+export type PeopleFilter = (typeof PEOPLE_FILTERS)[number];
+
+/** People who matter: a page, a cadence, priority, made by the agent, or in touch within 90 days. */
+const important = (p: Person) => Boolean(p.page) || p.keep_in_touch_days !== null || p.priority || !p.from_google || (p.days_since !== null && p.days_since <= 90);
+
+/** One People list, as src/server/people.ts listPeople builds it (birthdays within 30 days). */
+export function peopleIn(s: State, filter: string = "important", q = ""): Person[] {
+  const needle = q.trim().toLowerCase();
+  const shown = [...s.people]
+    .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+    .filter((p) => {
+      if (needle && !(p.name.toLowerCase().includes(needle) || p.identifiers.some((i) => i.value.includes(needle)))) return false;
+      if (p.kind === "group" && !needle && (filter === "important" || filter === "all")) return false;
+      switch (filter) {
+        case "groups": return p.kind === "group";
+        case "all": return true;
+        case "keep-in-touch": return p.keep_in_touch_days !== null;
+        case "overdue": return p.overdue_by !== null && p.overdue_by > 0;
+        case "birthdays": return p.birthday_in !== null && p.birthday_in <= 30;
+        default: return needle ? true : important(p);
+      }
+    });
+  if (filter === "overdue") shown.sort((a, b) => (b.overdue_by ?? 0) - (a.overdue_by ?? 0));
+  if (filter === "birthdays") shown.sort((a, b) => (a.birthday_in ?? 0) - (b.birthday_in ?? 0));
+  if (filter === "groups") shown.sort((a, b) => (b.last.at ?? "").localeCompare(a.last.at ?? ""));
+  return shown;
 }

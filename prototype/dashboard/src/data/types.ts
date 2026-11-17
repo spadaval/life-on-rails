@@ -41,6 +41,7 @@ export interface Snapshot {
   system: { id: string; title: string }[];
   entities: { id: string; name: string }[];
   people: Person[];
+  /** Each People filter's ids at the snapshot. Not read: the lists follow edits (src/data/derive.ts peopleIn). */
   peopleLists: Record<string, string[]>;
   hubs: Record<string, Hub>;
   pages: Page[];

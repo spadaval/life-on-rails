@@ -501,7 +501,6 @@ function BlockPanel({ block: b, data, busy, act, clock, onClose }: {
   block: Block; data: Data; busy: boolean; act: Act; clock: (iso: string) => string; onClose: () => void;
 }) {
   const date = data.today.date;
-  const [remember, setRemember] = useState(false);
   const [start, setStart] = useState(clock(b.t_start));
   const [end, setEnd] = useState(b.t_end ? clock(b.t_end) : "");
   const [splitAt, setSplitAt] = useState("");
@@ -561,18 +560,9 @@ function BlockPanel({ block: b, data, busy, act, clock, onClose }: {
             inputId="relabel-search"
             intents={data.intents}
             recent={data.recent}
-            onPick={(i: PickIntent) => act(() => recategorizeFn({ data: { blockId: b.id, intentId: i.id, rememberTitle: calendar && remember, remember: !calendar && remember } })).then(onClose)}
+            onPick={(i: PickIntent) => act(() => recategorizeFn({ data: { blockId: b.id, intentId: i.id, rememberTitle: false, remember: false } })).then(onClose)}
           />
-          {(calendar && b.title) || b.origin === "auto_activity" || b.origin === "place" ? (
-            <label className="flex items-center gap-2 text-[14px] text-mute">
-              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-              {calendar
-                ? `Label every “${b.title}” this way from now on`
-                : b.origin === "place"
-                  ? `Label time ${b.title ? b.title.replace(/^At /, "at ") : "here"} this way from now on`
-                  : "Label this app this way from now on"}
-            </label>
-          ) : null}
+          {/* "Label this way from now on" is left out: the prototype has no later sync to apply it. */}
         </div>
 
         {closed ? (

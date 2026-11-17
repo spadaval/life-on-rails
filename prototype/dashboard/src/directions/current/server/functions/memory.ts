@@ -1,19 +1,12 @@
 // Stand-ins for src/server/functions/memory.ts (People and search) over the in-memory store.
-import { search } from "../../../../data/derive.js";
+import { peopleIn, search } from "../../../../data/derive.js";
 import * as store from "../../../../data/store.js";
 import { getState, today, TZ } from "../../../../data/store.js";
 
 type Data<T> = { data: T };
 
 export function getPeopleFn({ data }: Data<{ filter?: string; q?: string }>) {
-  const s = getState();
-  const filter = data.filter ?? "important";
-  const ids = s.peopleLists[filter] ?? s.peopleLists.all ?? [];
-  const q = data.q?.trim().toLowerCase() ?? "";
-  const people = ids
-    .map((id) => s.people.find((p) => p.id === id))
-    .filter((p): p is NonNullable<typeof p> => !!p)
-    .filter((p) => !q || `${p.name} ${p.identifiers.map((i) => i.value).join(" ")}`.toLowerCase().includes(q));
+  const people = peopleIn(getState(), data.filter ?? "important", data.q ?? "");
   return { people, total: people.length, shown: people.length };
 }
 

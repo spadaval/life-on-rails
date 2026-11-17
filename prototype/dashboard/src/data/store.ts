@@ -40,7 +40,6 @@ export interface State {
   system: { id: string; title: string }[];
   entities: { id: string; name: string }[];
   people: Person[];
-  peopleLists: Record<string, string[]>;
   hubs: Record<string, Hub>;
   pages: Page[];
   /** What was sent to the agent from the dashboard. It goes nowhere. */
@@ -81,7 +80,6 @@ function sceneState(id: SceneId): State {
     system: clone(snapshot.system),
     entities: clone(snapshot.entities),
     people: clone(snapshot.people),
-    peopleLists: clone(snapshot.peopleLists),
     hubs: clone(snapshot.hubs),
     pages: clone(snapshot.pages),
     sent: [],
@@ -185,7 +183,17 @@ function refresh(s: State, at: number): void {
   }
 }
 
-const uuid = () => crypto.randomUUID();
+/**
+ * A v4 uuid. Not crypto.randomUUID(): browsers offer it only in a secure context, and the lab is
+ * opened over plain http (http://buildbot:3847/lab/), where it is undefined. getRandomValues works there.
+ */
+function uuid(): string {
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6]! & 0x0f) | 0x40;
+  b[8] = (b[8]! & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
 const find = (s: State, id: string) => {
   const n = s.nodes.find((x) => x.id === id);
   if (!n) throw new Error(`nothing with id ${id}`);
@@ -560,11 +568,10 @@ export function setPerson(id: string, patch: { priority?: boolean; keepInTouchDa
       const d = patch.keepInTouchDays;
       if (p) {
         p.keep_in_touch_days = d;
-        p.overdue_by = d !== null && p.days_since !== null ? p.days_since - d : null;
+        // As src/server/people.ts: never in touch counts as overdue by the whole cadence.
+        p.overdue_by = d === null ? null : p.days_since === null ? d : p.days_since - d;
       }
       if (hub) hub.entity.keep_in_touch_days = d;
-      const kit = (s.peopleLists["keep-in-touch"] ??= []);
-      s.peopleLists["keep-in-touch"] = d === null ? kit.filter((x) => x !== id) : kit.includes(id) ? kit : [...kit, id];
     }
   });
 }

@@ -12,8 +12,14 @@ const loaded = new Map<string, Direction>();
 /** A stylesheet's path, without Vite's `?t=` cache-buster: a hot update re-links the same sheet. */
 const sheetPath = (href: string) => new URL(href, location.href).pathname;
 
-/** Link a direction's stylesheets, wait for them, then drop every other direction's. */
-async function linkSheets(id: string, urls: string[]): Promise<void> {
+/** The version last asked for. A load or sheet that finishes for any other changes nothing. */
+let wanted: string | null = null;
+
+/**
+ * Link a direction's stylesheets, wait for them, then drop every other direction's. Returns
+ * false, having removed nothing, when another version was picked while they loaded.
+ */
+async function linkSheets(id: string, urls: string[]): Promise<boolean> {
   const head = document.head;
   const mine = [...head.querySelectorAll<HTMLLinkElement>(`link[data-direction="${id}"]`)].map((l) => sheetPath(l.href));
   const waits = urls.map((url) => {
@@ -30,10 +36,12 @@ async function linkSheets(id: string, urls: string[]): Promise<void> {
     return done;
   });
   await Promise.all(waits);
+  if (wanted !== id) return false;
   for (const el of head.querySelectorAll<HTMLLinkElement>("link[data-direction]")) {
     if (el.dataset.direction !== id) el.remove();
   }
   document.documentElement.dataset.version = id;
+  return true;
 }
 
 export function Shell() {
@@ -59,10 +67,14 @@ export function Shell() {
   useEffect(() => {
     if (!known) return;
     let live = true;
-    const show = (d: Direction) =>
-      void linkSheets(known.id, d.css).then(() => {
-        if (live) setDirection({ id: known.id, d });
+    wanted = known.id;
+    const show = (d: Direction) => {
+      // An import that finishes after the user picked another version links nothing.
+      if (!live) return;
+      void linkSheets(known.id, d.css).then((current) => {
+        if (live && current) setDirection({ id: known.id, d });
       });
+    };
     const have = loaded.get(known.id);
     if (have) show(have);
     else
