@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-t8lq
 title: Home settings and the app's Timer, Sensors, Settings and T3 debug screens draw from plain state in the shared module
-status: ready
+status: building
 mission: lor-2803
 labels:
 - design-lab
@@ -12,7 +12,8 @@ labels:
 priority: medium
 blocked_by:
 - lor-oech
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A275230a9-0f8b-446e-b3b1-4303d9895adf%3Adelegate-task%3A52fe8a64-36b7-4c9f-89fa-40be61702cb0
 ready:
   by: lead, on the plan agreed in round 7
   at: 2026-11-17T06:57:12.926382409Z
