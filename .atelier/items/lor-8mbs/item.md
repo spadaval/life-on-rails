@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-8mbs
 title: 'The Timeline direction on the dashboard prototype: every required screen, state and interaction'
-status: changes_requested
+status: in_review
 mission: lor-2803
 labels:
 - dashboard
@@ -134,3 +134,9 @@ After one press only the 4 "Name it" blocks ask, and the route reads as a day. T
 - Clicking a calendar event (it is read-only and opens nothing).
 - People's mail routing.
 
+### Responses
+
+1-86sj.1: fixed in f023afa
+1-86sj.2: fixed in f023afa
+1-86sj.3: fixed in f023afa
+1-86sj.4: fixed in f023afa
