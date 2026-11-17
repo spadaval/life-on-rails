@@ -7,6 +7,7 @@ import kotlin.test.assertNull
 class LabLinkTest {
     private val versions = listOf("current", "astral")
     private val states = listOf("home-full", "first-run")
+    // Made-up names: parseHash takes the lists it checks against, so these tests hold whatever the registry holds.
     private fun parse(h: String) = parseHash(h, versions, states)
 
     @Test
@@ -57,8 +58,37 @@ class LabLinkTest {
     }
 
     @Test
-    fun theRegistryStartsWithCurrent() {
+    fun theRegistryStartsWithCurrentAndTheDemoDay() {
         assertEquals("current", Lab.versions.first().name)
-        assertEquals("home-full", Lab.states.first().name)
+        assertEquals("demo", Lab.states.first().name)
+    }
+
+    @Test
+    fun aOneOffIsKeptWholeThoughItHoldsSlashes() {
+        val json = """{"base":"demo","clock":{"zone":"America/New_York"},"where":{"typed":"a/b \"q\" #1"}}"""
+        val p = parse("#current/$json/inner/pale")
+        assertEquals(LabLink("current", json, LabScreen.Inner, Wallpaper.Pale), p.link)
+        assertNull(p.problem)
+    }
+
+    @Test
+    fun aOneOffReadsBackFromItsHash() {
+        val json = """{"base":"empty","where":{"typed":"50% off / #2 \"now\""}}"""
+        for (sc in LabScreen.entries) for (w in Wallpaper.entries) {
+            val link = LabLink("current", json, sc, w)
+            assertEquals(Parsed(link, null), parse("#" + link.hash))
+        }
+    }
+
+    @Test
+    fun aOneOffAsTheBrowserEncodesItReadsTheSame() {
+        val json = """{"base":"demo","t3":{"status":"NOT_PAIRED"}}"""
+        val encoded = json.replace("\"", "%22").replace("{", "%7B").replace("}", "%7D")
+        assertEquals(json, parse("#current/$encoded").link.state)
+    }
+
+    @Test
+    fun aOneOffThatDoesNotCloseRunsToTheEnd() {
+        assertEquals("""{"base":"demo"/inner""", parse("""#current/{"base":"demo"/inner""").link.state)
     }
 }
