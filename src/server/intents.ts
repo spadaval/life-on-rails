@@ -141,6 +141,7 @@ export async function createIntent(db: Sql, input: IntentInput, who: Provenance)
   const id = uuidv7();
   const waiting = Boolean(input.waitingOnEntityId);
   const status = input.status ?? (waiting ? "waiting" : "active");
+  const at = clockNow();
   await db.begin(async (tx) => {
     await tx`
       INSERT INTO intent (id, type, title, description, status, weight, weekly_hour_target, frequency,
@@ -151,8 +152,8 @@ export async function createIntent(db: Sql, input: IntentInput, who: Provenance)
         ${input.frequencyHorizon ?? "day"}, ${input.completionWeight ?? 0.7}, ${input.goalMix ?? 0.7},
         ${input.metricKind ?? (input.type === "metric" ? "five_point" : null)}, ${input.metricMin ?? null},
         ${input.metricMax ?? null}, ${input.estimateHours ?? null}, ${input.dueAt ?? null},
-        ${input.waitingOnEntityId ?? null}, ${status === "waiting" ? clockNow() : null},
-        ${input.assignee ?? "owner"}, ${input.threadRef ?? null}, ${who.via}, ${who.sourceRef ?? null}, ${clockNow()}, ${clockNow()})`;
+        ${input.waitingOnEntityId ?? null}, ${status === "waiting" ? at : null},
+        ${input.assignee ?? "owner"}, ${input.threadRef ?? null}, ${who.via}, ${who.sourceRef ?? null}, ${at}, ${at})`;
     if (input.parentId) await linkInTx(tx, { fromId: id, toId: input.parentId, kind: "measures" }, who);
   });
   scheduleRecompute();

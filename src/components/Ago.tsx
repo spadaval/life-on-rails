@@ -1,4 +1,4 @@
-import { useNow } from "./clock.js";
+import { useRenderNow } from "./clock.js";
 import { ago } from "./format.js";
 
 /**
@@ -6,6 +6,6 @@ import { ago } from "./format.js";
  * may differ by a second at hydration; that is expected, not an error.
  */
 export function Ago({ iso }: { iso: string | null }) {
-  const now = useNow(null);
+  const now = useRenderNow();
   return <span suppressHydrationWarning>{ago(iso, now)}</span>;
 }
