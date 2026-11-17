@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-vbfd
 title: 'The launcher lab: the app''s Compose code running in a browser phone frame, with version and state in the URL'
-status: draft
+status: ready
 mission: lor-2803
 labels:
 - design-lab
@@ -15,7 +15,9 @@ blocked_by:
 - lor-sghw
 - lor-nde9
 implementers: []
-ready: null
+ready:
+  by: lead, on the plan agreed in round 7
+  at: 2026-11-17T06:57:12.926382409Z
 trivial: null
 caused_by: null
 created_at: 2026-11-17T05:57:53.903336399Z
