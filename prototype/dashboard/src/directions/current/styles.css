@@ -99,7 +99,7 @@ a {
   .link {
     @apply text-txt underline decoration-dim hover:decoration-or;
   }
-  
+
   /* A framed panel with 6px chamfers: the frame is the outer element, the face the inner. */
   .panel {
     --c: 6px;
@@ -110,14 +110,14 @@ a {
     @apply h-full bg-panel;
     clip-path: inherit;
   }
-  
+
   .chip {
     @apply inline-flex items-center gap-1 border border-edge px-1.5 text-[12px] leading-5 whitespace-nowrap text-mute;
   }
   .tag-agent {
     @apply inline-flex items-center gap-1.5 text-[12px] leading-5 whitespace-nowrap text-cy/85;
   }
-  
+
   .input {
     @apply w-full border border-edge bg-well px-2.5 py-1.5 text-[14px] text-txt placeholder:text-dim;
   }
@@ -127,7 +127,7 @@ a {
   select.input {
     @apply pr-7;
   }
-  
+
   /* The date and time pickers' glyphs, in the frame's orange-brown instead of the browser's black. */
 ::-webkit-calendar-picker-indicator {
   filter: invert(55%) sepia(40%) saturate(500%) hue-rotate(345deg);
@@ -137,7 +137,7 @@ a {
 input[type="checkbox"] {
     accent-color: var(--color-or);
   }
-  
+
   /* A selectable row: a quiet orange tint and edge, never a solid bar. */
   .row-sel {
     background: rgb(240 138 44 / 0.08);
