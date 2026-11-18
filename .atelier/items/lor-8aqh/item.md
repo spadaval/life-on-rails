@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-8aqh
 title: 'The Context direction on the phone in the lab: every required screen, state and interaction'
-status: ready
+status: building
 mission: lor-2803
 labels:
 - launcher
@@ -11,7 +11,8 @@ labels:
 priority: medium
 blocked_by:
 - lor-fdtk
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Aae8749f6-c727-4b2d-9797-edfd1194eb7e%3Adelegate-task%3A3dfae4c0-64dd-4679-9b09-920fbfc01191
 ready:
   by: lead of lor-2803, after the brief (lor-npa6)
   at: 2026-11-17T15:10:01.509020153Z
