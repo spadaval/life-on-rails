@@ -1629,6 +1629,436 @@
       "screen": "Launcher lab · panes",
       "name": "panes · demo · Today · cover · mixed",
       "link": "/#panes/{\"base\":\"demo\",\"where\":{\"cell\":[3,0]}}/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · demo · cover",
+      "link": "/#context/demo"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · demo · inner",
+      "link": "/#context/demo/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · empty · cover",
+      "link": "/#context/empty"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · empty · inner",
+      "link": "/#context/empty/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · loading · cover",
+      "link": "/#context/loading"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · loading · inner",
+      "link": "/#context/loading/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · stale · cover",
+      "link": "/#context/stale"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · stale · inner",
+      "link": "/#context/stale/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · failed · cover",
+      "link": "/#context/failed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · failed · inner",
+      "link": "/#context/failed/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · overfull · cover",
+      "link": "/#context/overfull"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · overfull · inner",
+      "link": "/#context/overfull/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · quiet · cover",
+      "link": "/#context/quiet"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · quiet · inner",
+      "link": "/#context/quiet/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · empty-day · cover",
+      "link": "/#context/empty-day"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · empty-day · inner",
+      "link": "/#context/empty-day/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · sync-failed · cover",
+      "link": "/#context/sync-failed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · sync-failed · inner",
+      "link": "/#context/sync-failed/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · large-text · cover",
+      "link": "/#context/large-text"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · large-text · inner",
+      "link": "/#context/large-text/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · agent-waiting · cover",
+      "link": "/#context/agent-waiting"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · agent-waiting · inner",
+      "link": "/#context/agent-waiting/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · agent-t3-stale · cover",
+      "link": "/#context/agent-t3-stale"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · agent-t3-stale · inner",
+      "link": "/#context/agent-t3-stale/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · thread-long · cover",
+      "link": "/#context/thread-long"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · thread-long · inner",
+      "link": "/#context/thread-long/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · search-mixed · cover",
+      "link": "/#context/search-mixed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · search-mixed · inner",
+      "link": "/#context/search-mixed/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · app-menu · cover",
+      "link": "/#context/app-menu"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · app-menu · inner",
+      "link": "/#context/app-menu/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · drawer-all-scrolled · cover",
+      "link": "/#context/drawer-all-scrolled"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · drawer-all-scrolled · inner",
+      "link": "/#context/drawer-all-scrolled/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · home-settings-tabs · cover",
+      "link": "/#context/home-settings-tabs"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · home-settings-tabs · inner",
+      "link": "/#context/home-settings-tabs/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · sensors-failed · cover",
+      "link": "/#context/sensors-failed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · sensors-failed · inner",
+      "link": "/#context/sensors-failed/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · demo · Now · cover",
+      "link": "/#context/{\"base\":\"demo\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · demo · Now · inner",
+      "link": "/#context/{\"base\":\"demo\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · quiet · Now · cover",
+      "link": "/#context/{\"base\":\"quiet\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · quiet · Now · inner",
+      "link": "/#context/{\"base\":\"quiet\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · empty-day · Now · cover",
+      "link": "/#context/{\"base\":\"empty-day\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · empty-day · Now · inner",
+      "link": "/#context/{\"base\":\"empty-day\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · stale · Now · cover",
+      "link": "/#context/{\"base\":\"stale\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · stale · Now · inner",
+      "link": "/#context/{\"base\":\"stale\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · failed · Now · cover",
+      "link": "/#context/{\"base\":\"failed\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · failed · Now · inner",
+      "link": "/#context/{\"base\":\"failed\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · overfull · Now · cover",
+      "link": "/#context/{\"base\":\"overfull\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · overfull · Now · inner",
+      "link": "/#context/{\"base\":\"overfull\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · sync-failed · Now · cover",
+      "link": "/#context/{\"base\":\"sync-failed\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · sync-failed · Now · inner",
+      "link": "/#context/{\"base\":\"sync-failed\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · large-text · Now · cover",
+      "link": "/#context/{\"base\":\"large-text\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · large-text · Now · inner",
+      "link": "/#context/{\"base\":\"large-text\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · timer · cover",
+      "link": "/#context/{\"base\":\"demo\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · timer running · cover",
+      "link": "/#context/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · quick send · cover",
+      "link": "/#context/{\"base\":\"demo\",\"where\":{\"open\":\"QUICK_SEND\"}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · settings · cover",
+      "link": "/#context/{\"base\":\"sync-failed\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · settings · inner",
+      "link": "/#context/{\"base\":\"sync-failed\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · a question with descriptions · cover",
+      "link": "/#context/{\"base\":\"agent-waiting\",\"where\":{\"open\":\"THREAD\",\"target\":\"t-question\"}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · a question with descriptions · inner",
+      "link": "/#context/{\"base\":\"agent-waiting\",\"where\":{\"open\":\"THREAD\",\"target\":\"t-question\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · a question taking several answers · cover",
+      "link": "/#context/{\"base\":\"agent-waiting\",\"t3\":{\"questions\":{\"r-question\":[{\"id\":\"q1\",\"header\":\"Tiles\",\"question\":\"Which tile providers should the offline maps try first?\",\"options\":[{\"label\":\"MapTiler\",\"description\":\"Free tier covers the beta\"},{\"label\":\"Stadia\",\"description\":\"Cheaper at scale\"},{\"label\":\"Self-host\",\"description\":\"Most work, no bill\"}],\"multiSelect\":true}]}},\"where\":{\"open\":\"THREAD\",\"target\":\"t-question\"}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · a question taking several answers · inner",
+      "link": "/#context/{\"base\":\"agent-waiting\",\"t3\":{\"questions\":{\"r-question\":[{\"id\":\"q1\",\"header\":\"Tiles\",\"question\":\"Which tile providers should the offline maps try first?\",\"options\":[{\"label\":\"MapTiler\",\"description\":\"Free tier covers the beta\"},{\"label\":\"Stadia\",\"description\":\"Cheaper at scale\"},{\"label\":\"Self-host\",\"description\":\"Most work, no bill\"}],\"multiSelect\":true}]}},\"where\":{\"open\":\"THREAD\",\"target\":\"t-question\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · the approval thread at half height · cover",
+      "link": "/#context/{\"base\":\"demo\",\"where\":{\"open\":\"THREAD\",\"target\":\"t-approve\"}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · demo · cover · pale",
+      "link": "/#context/demo/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · demo · inner · pale",
+      "link": "/#context/demo/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · agent-waiting · cover · pale",
+      "link": "/#context/agent-waiting/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · agent-waiting · inner · pale",
+      "link": "/#context/agent-waiting/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · search-mixed · cover · pale",
+      "link": "/#context/search-mixed/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · search-mixed · inner · pale",
+      "link": "/#context/search-mixed/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · app-menu · cover · pale",
+      "link": "/#context/app-menu/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · app-menu · inner · pale",
+      "link": "/#context/app-menu/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · demo · cover · mixed",
+      "link": "/#context/demo/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · demo · inner · mixed",
+      "link": "/#context/demo/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · agent-waiting · cover · mixed",
+      "link": "/#context/agent-waiting/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · agent-waiting · inner · mixed",
+      "link": "/#context/agent-waiting/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · search-mixed · cover · mixed",
+      "link": "/#context/search-mixed/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · search-mixed · inner · mixed",
+      "link": "/#context/search-mixed/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · app-menu · cover · mixed",
+      "link": "/#context/app-menu/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · app-menu · inner · mixed",
+      "link": "/#context/app-menu/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · Now with a timer running · cover",
+      "link": "/#context/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · Now with a timer running · inner",
+      "link": "/#context/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · home with a timer running · cover",
+      "link": "/#context/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · an unnamed timer (no context) · cover",
+      "link": "/#context/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"start\":\"2026-11-17T19:40:00Z\"},\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · a timer label linked to nothing · cover",
+      "link": "/#context/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Inbox zero\",\"title\":\"Inbox zero\",\"start\":\"2026-11-17T19:40:00Z\"},\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · home with a timer label linked to nothing · cover",
+      "link": "/#context/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Inbox zero\",\"title\":\"Inbox zero\",\"start\":\"2026-11-17T19:40:00Z\"}}"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · Now with a timer running · cover · pale",
+      "link": "/#context/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"cell\":[0,0]}}/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · context",
+      "name": "context · Now · cover · mixed",
+      "link": "/#context/{\"base\":\"demo\",\"where\":{\"cell\":[0,0]}}/cover/mixed"
     }
   ]
 }
