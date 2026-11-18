@@ -7,7 +7,7 @@ export const CRITICS = {
   "grok-4.6": { name: "Grok 4.6" },
   "kimi-k3": {
     name: "Kimi K3",
-    open: "It was asked for the read from a model made outside the US. OpenCode Go's usage limit and OpenCode's balance both refused it on 17 and 18 November 2026, so that read is still owed.",
+    open: "It was asked for the read from a model made outside the US, and it is still owed. On 17 November OpenCode Go's 5-hour usage limit stopped it partway, with nothing written, and OpenCode's pay-as-you-go balance refused it; on 18 November, after the 5-hour window reset, Go's weekly limit stopped it again."
   },
 };
 
@@ -15,8 +15,8 @@ export const PAGE = {
   title: "Pick a direction",
   intro: [
     "Four ways to organise the dashboard, the launcher and the app, each built on the same made-up day: Tuesday 17 November at 15:00, a timer 47 minutes in, one T3 approval, one question and two flags. **Use them in the viewers before you read the critics.**",
-    "Three models from three labs, none of which built any of them, used each one and wrote what it gets right, what would annoy, what it makes harder than today, and the one idea worth stealing. Their words are quoted as written; their full notes are under each concept.",
-    "Pick one, or a mix, in item `lor-dinh`. The rounded corners, transparency, separation by depth and the type scale are common ground, so they are not what to choose between.",
+    "Two models from two labs, neither of which built any of them, used each one and wrote what it gets right, what would annoy, what it makes harder than today, and the one idea worth stealing. Their words are quoted as written; their full notes are under each concept.",
+    "A third seat, Kimi K3's, is open; the read from a model made outside the US is still owed. Pick one, or a mix, in item `lor-dinh`. The rounded corners, transparency, separation by depth and the type scale are common ground, so they are not what to choose between.",
   ],
   defects: [
     "The critics were asked for any defect that breaks one of the interactions the brief requires. Astra found none in what it used. Grok 4.6 reported one: on the inner screen in Timeline, Panes and Context, the Approve bar seemed to cover the start of a long thread.",
