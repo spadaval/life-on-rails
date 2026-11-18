@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
  * Line icons drawn on a 24-unit grid with round ends, so a concept needs no icon font. Each is a
  * few strokes; [Glyph] names them by what they mean, not by what they look like.
  */
-enum class Glyph { Search, More, Check, Close, Play, Stop, Swap, Chevron, ChevronDown, Back, Gear, Send, Warning, Sync, Plus, Agent, Clock, Calendar, Person, Task, Settings, Grid, Undo, Phone, Wifi, Battery }
+enum class Glyph { Search, More, Check, Close, Play, Stop, Swap, Chevron, ChevronDown, Back, Gear, Send, Warning, Sync, Plus, Agent, Clock, Calendar, Person, Task, Settings, Grid, Undo, Phone, Wifi, Battery, ChevronUp, Flag }
 
 @Composable
 fun Icon(glyph: Glyph, color: Color, modifier: Modifier = Modifier, size: Dp = 20.dp, weight: Float = 1.7f) {
@@ -52,6 +52,8 @@ private fun DrawScope.draw(g: Glyph, c: Color, u: Float, s: Stroke) {
         Glyph.Swap -> { path(4f to 9f, 18f to 9f); path(14f to 5f, 18f to 9f, 14f to 13f); path(20f to 15f, 6f to 15f); path(10f to 11f, 6f to 15f, 10f to 19f) }
         Glyph.Chevron -> path(9.5f to 6f, 15.5f to 12f, 9.5f to 18f)
         Glyph.ChevronDown -> path(6f to 9.5f, 12f to 15.5f, 18f to 9.5f)
+        Glyph.ChevronUp -> path(6f to 14.5f, 12f to 8.5f, 18f to 14.5f)
+        Glyph.Flag -> { line(6f, 4f, 6f, 20.5f); path(6f to 4.5f, 18.5f to 4.5f, 15.5f to 9f, 18.5f to 13.5f, 6f to 13.5f) }
         Glyph.Back -> { path(10f to 6f, 4f to 12f, 10f to 18f); line(4.5f, 12f, 20f, 12f) }
         Glyph.Gear, Glyph.Settings -> { ring(12f, 12f, 3.2f); for (i in 0 until 8) { val a = i * kotlin.math.PI / 4; val x1 = 12f + 6.2f * kotlin.math.cos(a).toFloat(); val y1 = 12f + 6.2f * kotlin.math.sin(a).toFloat(); val x2 = 12f + 8.6f * kotlin.math.cos(a).toFloat(); val y2 = 12f + 8.6f * kotlin.math.sin(a).toFloat(); line(x1, y1, x2, y2) }; ring(12f, 12f, 6.2f) }
         Glyph.Send -> { path(4f to 11.5f, 20f to 4f, 13f to 20f, 11f to 13f, close = true); line(11f, 13f, 20f, 4f) }

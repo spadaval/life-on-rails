@@ -110,6 +110,7 @@ fun main() {
             Font("saira-condensed-medium", bundled("fonts/saira_condensed_medium.ttf"), FontWeight.Medium),
             Font("saira-condensed-semibold", bundled("fonts/saira_condensed_semibold.ttf"), FontWeight.SemiBold),
         )
+        ConceptFonts.hanken = FontFamily(listOf(400, 500, 600).map { w -> Font("hanken-grotesk-$w", bundled("fonts/hanken-grotesk-$w.ttf"), FontWeight(w)) })
         val wallpapers = Wallpaper.entries.associateWith { image(bundled("wallpapers/${it.id}.png")) }
 
         var hash by mutableStateOf(window.location.hash)
