@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-j1fe
 title: 'The Timeline direction on the phone in the lab: every required screen, state and interaction'
-status: in_review
+status: changes_requested
 mission: lor-2803
 labels:
 - launcher
