@@ -150,7 +150,7 @@ fun DayStrip(store: ConceptStore, ui: TimelineUi, modifier: Modifier = Modifier)
                 )
                 val left = day?.wakeEnd?.let { it - now }?.takeIf { it.isPositive() }
                 BasicText(
-                    listOfNotNull(next?.takeIf { it.start > now }?.let { "in ${spoken(it.start - now)}" }, left?.let { if (it.inWholeMinutes >= 60) "${it.inWholeHours} h of the day left" else "${it.inWholeMinutes} min of the day left" })
+                    listOfNotNull(next?.takeIf { it.start > now }?.let { "in ${spoken(it.start - now)}" }, left?.let { leftWords(it) })
                         .joinToString(" \u00B7 "),
                     style = T.label, maxLines = 1,
                 )

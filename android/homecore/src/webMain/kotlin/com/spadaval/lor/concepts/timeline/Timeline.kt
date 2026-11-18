@@ -246,6 +246,9 @@ fun spoken(d: Duration): String {
     return if (m < 60) "$m min" else "${m / 60} h${if (m % 60 > 0) " ${m % 60} min" else ""}"
 }
 
+/** What is left of the waking day, to the nearest ten minutes: "7 h left", "2 h 30 min left". */
+fun leftWords(d: Duration): String = spoken(with(Duration) { ((d.inWholeMinutes + 5) / 10 * 10).minutes }) + " left"
+
 /** "47m", "1h 12m": a length on the route, where room is short. */
 fun short(d: Duration): String {
     val m = d.inWholeMinutes.coerceAtLeast(0)

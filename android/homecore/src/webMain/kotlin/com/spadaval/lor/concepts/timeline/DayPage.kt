@@ -101,7 +101,7 @@ fun DayHead(store: ConceptStore, ui: TimelineUi, modifier: Modifier = Modifier) 
             val next = day?.events?.firstOrNull { it.start > now }
             val left = day?.wakeEnd?.let { (it - now).takeIf { d -> d.isPositive() } }
             val words = listOfNotNull(
-                left?.let { "${it.inWholeHours} h ${it.inWholeMinutes % 60} min left" },
+                left?.let { leftWords(it) },
                 next?.let { "next ${it.title} at ${LocalClock.time(it.start, store.zone)}" },
             ).joinToString(" · ").ifEmpty { if (store.home == null) "LoR hasn't sent the day" else "" }
             BasicText(words, style = T.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
