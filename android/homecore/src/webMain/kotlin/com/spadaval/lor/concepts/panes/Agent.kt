@@ -24,6 +24,7 @@ import com.spadaval.lor.agent.T3Card
 import com.spadaval.lor.concepts.kit.ConceptStore
 import com.spadaval.lor.concepts.kit.Glyph
 import com.spadaval.lor.concepts.kit.Icon
+import com.spadaval.lor.lab.Load
 import com.spadaval.lor.lab.T3Status
 import com.spadaval.lor.lab.labAnchor
 import com.spadaval.lor.t3.T3Thread
@@ -81,6 +82,12 @@ private fun t3Line(store: ConceptStore): String = when (store.t3Status) {
 fun AgentNotes(store: ConceptStore, ui: PanesUi) {
     Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(P.s2)) {
         if (store.syncFailed) SyncNote(store, ui)
+        // The flags below are LoR's: say when they are what it last sent.
+        when (store.homeLoad) {
+            Load.STALE -> Note("LoR isn't answering", "Its flags are as of ${ago(store.homeReadAt, store.now)}. Changes wait until it's back.", P.red, Glyph.Sync, anchor = "note:lor")
+            Load.FAILED -> Note("Can't reach LoR", store.homeError ?: "No answer", P.red, Glyph.Warning, action = "Settings", onAction = { ui.sheet = Sheet.Settings("connections") }, anchor = "note:lor")
+            else -> {}
+        }
         when (store.t3Status) {
             T3Status.RETRYING -> Note("T3 is reconnecting", "These are its cards as of ${ago(store.t3SeenAt, store.now)}. Answers wait until it's back.", P.red, Glyph.Sync, anchor = "note:t3")
             T3Status.CONNECTING, T3Status.STOPPED -> Note("Connecting to T3…", null, P.text2, Glyph.Sync, anchor = "note:t3")
