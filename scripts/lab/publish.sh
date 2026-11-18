@@ -14,8 +14,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # What the lab serves: source | folder under /lab/ | name in the index. A relative source
 # is in this checkout. A source that does not exist is left out. A line goes where its
-# link belongs in the index: lor-glev puts docs/design/lab/compare|compare first.
+# link belongs in the index.
 SOURCES=(
+  "docs/design/lab/compare|compare|Pick a direction: the four concepts compared, with the critics' notes"
   "$HOME/.local/state/lor-shots|shots|Screenshot galleries"
   "prototype/dashboard/dist|dashboard|Dashboard prototype"
   "android/homecore/build/dist/wasmJs/developmentExecutable|phone|Phone lab: the launcher and app, current and each design concept"
