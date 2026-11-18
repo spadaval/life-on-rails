@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-glev
 title: Three outside critiques of every concept, and one page that compares them
-status: in_review
+status: changes_requested
 mission: lor-2803
 labels:
 - design-lab
