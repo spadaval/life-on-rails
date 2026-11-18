@@ -69,6 +69,10 @@ fun Sheet(
     }
     if (!open && shown.value == 0f) return
     val scope = rememberCoroutineScope()
+    val stillOpen by androidx.compose.runtime.rememberUpdatedState(open)
+    // The drag handlers below are keyed on the height only, so they read the latest dismissal
+    // through this rather than the one they were made with.
+    val dismiss by androidx.compose.runtime.rememberUpdatedState(onDismiss)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val height = with(LocalDensity.current) { maxHeight.toPx() }
         val fade = { (shown.value / detents.first()).coerceIn(0f, 1f) }
@@ -79,11 +83,18 @@ fun Sheet(
                 velocity < -900f -> detents.last()
                 else -> detents.minBy { kotlin.math.abs(it - at) }
             }
-            if (target == 0f) onDismiss() else { rest = target; shown.animateTo(target, tween(look.motionMs - 40)) }
+            if (target == 0f) {
+                dismiss()
+                // An owner may take the dismissal as a step back instead (a settings section back to
+                // its list) and keep the sheet open: then it returns to where it rested, not stranded
+                // where the finger left it.
+                androidx.compose.runtime.withFrameMillis { }
+                if (stillOpen) shown.animateTo(rest, tween(look.motionMs - 40))
+            } else { rest = target; shown.animateTo(target, tween(look.motionMs - 40)) }
         }
         Box(
             Modifier.fillMaxSize().graphicsLayer { alpha = fade() }.background(look.scrim).labAnchor("$anchor-scrim")
-                .clickable(remember { MutableInteractionSource() }, indication = null) { onDismiss() },
+                .clickable(remember { MutableInteractionSource() }, indication = null) { dismiss() },
         )
         val connection = remember(height) {
             object : NestedScrollConnection {
