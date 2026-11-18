@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-glev
 title: Three outside critiques of every concept, and one page that compares them
-status: ready
+status: building
 mission: lor-2803
 labels:
 - design-lab
@@ -22,7 +22,8 @@ blocked_by:
 - lor-j1fe
 - lor-fdtk
 - lor-8aqh
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A72dbaf48-e8ee-4fbd-8aa8-e27338960591%3Adelegate-task%3A5b5cbc56-db63-4c06-b8dc-c933fc360968
 ready:
   by: lead, on the plan agreed in round 7
   at: 2026-11-17T06:57:12.926382409Z
