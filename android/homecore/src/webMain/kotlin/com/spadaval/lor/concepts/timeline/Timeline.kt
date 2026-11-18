@@ -108,6 +108,8 @@ class TimelineUi(val store: ConceptStore) {
     /** A named field's state, kept here so what is typed survives a fold. */
     fun field(name: String): TextFieldState = fields.getOrPut(name) { TextFieldState() }
     var sent: ConceptStore.SendResult? by mutableStateOf(null)
+    /** The field's words when [sent] was set: the result shows until they change, then Send is back. */
+    var sentFor by mutableStateOf("")
     var project by mutableStateOf(store.projects.firstOrNull() ?: "life-on-rails")
 
     /** Picked options of a multi-answer question, by card key. */

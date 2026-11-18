@@ -212,9 +212,10 @@ private fun BlockCard(store: ConceptStore, ui: TimelineUi, s: Span) {
             }
         }
         when (b.tone) {
-            DayBlock.Tone.PROPOSED -> Row(Modifier.fillMaxHeight().padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            DayBlock.Tone.PROPOSED -> Row(Modifier.fillMaxHeight().padding(end = if (store.lorLive) 4.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 BasicText("${b.label}?", Modifier.widthIn(max = 150.dp), style = T.label.copy(color = T.amber, textAlign = TextAlign.End), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                IconButton(Glyph.Check, "Yes, ${b.label}", { ui.confirm(b.id) }, tint = T.amber, anchor = "confirm:${b.id}", size = 40.dp)
+                // While LoR isn't answering a yes can't be saved, so there is no tick to press.
+                if (store.lorLive) IconButton(Glyph.Check, "Yes, ${b.label}", { ui.confirm(b.id) }, tint = T.amber, anchor = "confirm:${b.id}", size = 40.dp)
             }
             DayBlock.Tone.BARE -> Box(Modifier.fillMaxHeight().padding(end = 12.dp), contentAlignment = Alignment.Center) {
                 BasicText("Name it", style = T.label.copy(color = T.text3))
@@ -257,7 +258,7 @@ private fun RunningCard(store: ConceptStore, ui: TimelineUi, s: Span, now: Insta
         }
         Row(horizontalArrangement = Arrangement.spacedBy(T.s2)) {
             TButton("Switch", { ui.sheet = Sheet.Timer }, glyph = Glyph.Swap, height = 36.dp, anchor = "route:switch", enabled = store.timerReachable)
-            TButton("Stop", { store.stop() }, glyph = Glyph.Stop, height = 36.dp, anchor = "route:stop", enabled = store.timerReachable)
+            TButton("Stop", { ui.stopTimer() }, glyph = Glyph.Stop, height = 36.dp, anchor = "route:stop", enabled = store.timerReachable)
         }
     }
 }
@@ -290,7 +291,7 @@ private fun NowLine(store: ConceptStore, ui: TimelineUi, now: Instant) {
             ) {
                 TButton("Start", { ui.sheet = Sheet.Timer }, kind = Kind.PRIMARY, glyph = Glyph.Play, height = 40.dp, anchor = "route:start", enabled = store.timerReachable)
                 store.labels.take(3).forEach { l ->
-                    TButton(l, { store.start(l) }, height = 40.dp, anchor = "route:start:$l", enabled = store.timerReachable)
+                    TButton(l, { ui.startTimer(l) }, height = 40.dp, anchor = "route:start:$l", enabled = store.timerReachable)
                 }
             }
         }
@@ -338,7 +339,7 @@ private fun Planned(store: ConceptStore, s: Span, title: String, kind: String, u
     val compact = s.height < 60.dp
     Row(
         Modifier.fillMaxSize().clip(T.rMd).background(T.cyanSoft).dashedBorder(T.cyanLine)
-            .then(if (s.plan != null && ui != null) Modifier.clickable { ui.plans.remove(s.plan); store.toast("Unplanned. It's back with the untimed tasks.") } else Modifier)
+            .then(if (s.plan != null && ui != null) Modifier.clickable { ui.unplan(s.plan) } else Modifier)
             .padding(horizontal = 12.dp).labAnchor("${kind.lowercase()}:$title"),
         verticalAlignment = if (compact) Alignment.CenterVertically else Alignment.Top,
     ) {

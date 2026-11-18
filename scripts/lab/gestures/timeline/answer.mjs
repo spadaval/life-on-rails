@@ -15,7 +15,7 @@ export default async function () {
   await tap("answer-field");
   await type("MapTiler for now");
   await tap("answer:send");
-  await expect("going, with Cancel", (a, s) => shown(a, "cancel:r-question", s));
+  await expect("going, with Cancel", (a, s) => shown(a, "detail:cancel:r-question", s));
   await wait(3600);
   await expect("the question cleared, its sheet closed", (a, s) => !("answer:r-question" in a) && !shown(a, "sheet:item", s), 3000);
 }

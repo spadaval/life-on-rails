@@ -96,8 +96,16 @@ fun ConceptStore.seenUntil(): Instant = if (homeLoad == Load.STALE) homeReadAt ?
 fun TimelineUi.labelChoices(): List<String> =
     (store.labels + blocks.mapNotNull { it.label }).distinct()
 
+/** Whether a label can be saved: LoR answers. Every write to the day checks it, whichever control asked. */
+private fun TimelineUi.canSave(): Boolean {
+    if (store.lorLive) return true
+    store.toast("LoR isn't answering, so that can't be saved yet")
+    return false
+}
+
 /** Counts a block toward [label] (or a gap, as a new block), with Undo. */
 fun TimelineUi.relabel(id: String, label: String) {
+    if (!canSave()) return
     val before = blocks
     val gap = parseGap(id)
     val after = if (gap != null) (before + DayBlock("m${before.size}-${gap.first.epochSeconds}", gap.first, gap.second, Origin.TIMER, null, label, true)).sortedBy { it.start }
@@ -113,6 +121,7 @@ fun TimelineUi.confirm(id: String) {
 
 /** Says yes to every proposal at once, with one Undo. */
 fun TimelineUi.confirmAll() {
+    if (!canSave()) return
     val before = blocks
     val n = before.count { it.tone == DayBlock.Tone.PROPOSED }
     if (n == 0) return
@@ -121,9 +130,40 @@ fun TimelineUi.confirmAll() {
 
 /** Plans [taskId] into a free gap from [start], for 30 minutes or the gap if shorter, with Undo. */
 fun TimelineUi.plan(taskId: String, title: String, start: Instant, gapEnd: Instant) {
+    if (!canSave()) return
     val p = Plan(taskId, title, start, minOf(start + 30.minutes, gapEnd))
     store.undoable("Planned at ${com.spadaval.lor.ui.LocalClock.time(start, store.zone)}: ${title.take(36)}", { plans.add(p) }, { plans.remove(p) })
 }
+
+/** Takes a planned task off the route, back to the untimed tasks, with Undo. */
+fun TimelineUi.unplan(p: Plan) {
+    if (!canSave()) return
+    store.undoable("Unplanned: ${p.title.take(36)}", { plans.remove(p) }, { plans.add(p) })
+}
+
+// ---- The timer, as the route keeps it ----
+// The store owns the one timer; the route owns the day's blocks. Stopping or switching ends the
+// running block, so it stays on the route as recorded time, and one Undo takes back both.
+
+/** The running timer's time so far, as a recorded block (counted when it has a label). */
+private fun TimelineUi.ended(t: ConceptStore.Running, at: Instant) =
+    DayBlock("t${t.start.epochSeconds}", t.start, maxOf(at, t.start.plus(1.minutes)), Origin.TIMER, null, t.label, counted = t.label != null)
+
+/** Runs a store timer change and adds the block it ended, under one Undo with the store's words. */
+private fun TimelineUi.endAnd(change: () -> Unit) {
+    val t = store.timer
+    val at = store.clock()
+    change()
+    if (t == null) return
+    val inner = store.toast
+    val before = blocks
+    store.undoable(inner?.text ?: "Stopped", { blocks = (before + ended(t, at)).sortedBy { it.start } }, { inner?.undo?.invoke(); blocks = before })
+}
+
+fun TimelineUi.stopTimer() = endAnd { store.stop() }
+fun TimelineUi.switchTimer(label: String?) = endAnd { store.switch(label) }
+/** Starts a timer; with one running, that is a switch, so its time is kept. */
+fun TimelineUi.startTimer(label: String?) = if (store.timer != null) switchTimer(label) else store.start(label)
 
 /** A gap with nothing recorded, as a sheet's id: `gap:<start>:<end>` in epoch seconds. */
 fun gapId(start: Instant, end: Instant) = "gap:${start.epochSeconds}:${end.epochSeconds}"

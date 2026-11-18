@@ -256,7 +256,7 @@ private fun TimerRow(store: ConceptStore, ui: TimelineUi, now: kotlin.time.Insta
         if (running != null) {
             BasicText(readout(now - running.start), Modifier.labAnchor("home:readout").labAnchor("home:at:${(now - running.start).inWholeSeconds}"), style = T.timeLg)
             Spacer(Modifier.width(4.dp))
-            IconButton(Glyph.Stop, "Stop", { store.stop() }, anchor = "home:stop", tint = T.text1)
+            IconButton(Glyph.Stop, "Stop", { ui.stopTimer() }, anchor = "home:stop", tint = T.text1)
         } else TButton("Start", { ui.sheet = Sheet.Timer }, kind = Kind.QUIET, glyph = Glyph.Play, height = 40.dp, anchor = "home:start", enabled = store.timerReachable)
     }
 }

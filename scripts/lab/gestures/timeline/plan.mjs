@@ -19,6 +19,9 @@ export default async function () {
   await tap(task);
   await wait(500);
   await expect(`${title} planned on the route`, (a, sc) => shown(a, `planned:${title}`, sc) && shown(a, "toast:undo", sc));
+  await wait(4500);
+  await tap(`planned:${title}`);
+  await expect("a tap on it unplans it, with Undo", (a, sc) => !(`planned:${title}` in a) && shown(a, "toast:undo", sc));
   await tap("toast:undo");
-  await expect("Undo: the gap is free again", (a) => !(`planned:${title}` in a));
+  await expect("Undo: planned there again", (a, sc) => shown(a, `planned:${title}`, sc));
 }

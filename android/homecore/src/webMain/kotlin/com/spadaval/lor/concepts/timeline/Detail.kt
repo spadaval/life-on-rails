@@ -210,14 +210,14 @@ fun MenuFor(store: ConceptStore, ui: TimelineUi, menu: Menu) {
                     is Item.Card -> {
                         add(com.spadaval.lor.concepts.kit.MenuItem("Open in T3", Glyph.Agent) { close(); store.launch("T3 Code: ${item.card.thread.title}") })
                         if (item.card.kind == T3Card.Kind.FAILED) add(com.spadaval.lor.concepts.kit.MenuItem("Dismiss", Glyph.Close) { close(); store.dismiss(item.card) })
-                        else add(com.spadaval.lor.concepts.kit.MenuItem("Start a timer on it", Glyph.Play) { close(); store.start(item.card.thread.title) })
+                        else add(com.spadaval.lor.concepts.kit.MenuItem("Start a timer on it", Glyph.Play) { close(); ui.startTimer(item.card.thread.title) })
                     }
                     is Item.Flag -> {
-                        add(com.spadaval.lor.concepts.kit.MenuItem("Start a timer on it", Glyph.Play) { close(); store.start(item.need.title) })
+                        add(com.spadaval.lor.concepts.kit.MenuItem("Start a timer on it", Glyph.Play) { close(); ui.startTimer(item.need.title) })
                         add(com.spadaval.lor.concepts.kit.MenuItem("Due tomorrow", Glyph.Calendar) { close(); store.setDue(item.need.id, store.today.plus(DatePeriod(days = 1))) })
                     }
                     is Item.Due -> {
-                        add(com.spadaval.lor.concepts.kit.MenuItem("Start a timer on it", Glyph.Play) { close(); store.start(item.task.title) })
+                        add(com.spadaval.lor.concepts.kit.MenuItem("Start a timer on it", Glyph.Play) { close(); ui.startTimer(item.task.title) })
                         ui.route(store.clock()).firstOrNull { it.kind == SpanKind.FREE }?.let { gap ->
                             add(com.spadaval.lor.concepts.kit.MenuItem("Plan at ${LocalClock.time(gap.start, store.zone)}", Glyph.Clock) { close(); ui.plan(item.task.id, item.task.title, gap.start, gap.end) })
                         }
@@ -233,7 +233,7 @@ fun MenuFor(store: ConceptStore, ui: TimelineUi, menu: Menu) {
             menu.at,
             header = { MenuHeader("The day", "What isn't needed every day") },
             items = listOfNotNull(
-                if (ui.blocks.any { it.tone == DayBlock.Tone.PROPOSED }) com.spadaval.lor.concepts.kit.MenuItem("Say yes to every guess (${ui.blocks.count { it.tone == DayBlock.Tone.PROPOSED }})", Glyph.Check) { close(); ui.confirmAll() } else null,
+                if (store.lorLive && ui.blocks.any { it.tone == DayBlock.Tone.PROPOSED }) com.spadaval.lor.concepts.kit.MenuItem("Say yes to every guess (${ui.blocks.count { it.tone == DayBlock.Tone.PROPOSED }})", Glyph.Check) { close(); ui.confirmAll() } else null,
                 com.spadaval.lor.concepts.kit.MenuItem("Start a thread in a project", Glyph.Agent) { close(); ui.sheet = Sheet.QuickSend },
                 com.spadaval.lor.concepts.kit.MenuItem("People to get back to (${store.people?.overdue?.size ?: 0})", Glyph.Person) { close(); store.toast("Opens People in LoR") },
                 com.spadaval.lor.concepts.kit.MenuItem("This phone's sync", Glyph.Sync) { close(); ui.sheet = Sheet.Settings("sync") },

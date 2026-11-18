@@ -123,14 +123,14 @@ private fun TimerSheet(store: ConceptStore, ui: TimelineUi) {
             BasicText(readout(now - running.start), style = T.readout.copy(fontSize = 56.sp, lineHeight = 60.sp), modifier = Modifier.labAnchor("timer:readout").labAnchor("timer:at:${(now - running.start).inWholeSeconds}"))
             Spacer(Modifier.height(T.s5))
             Row(horizontalArrangement = Arrangement.spacedBy(T.s2)) {
-                TButton("Stop", { store.stop(); ui.sheet = null }, kind = Kind.PRIMARY, glyph = Glyph.Stop, anchor = "timer:stop", enabled = store.timerReachable)
+                TButton("Stop", { ui.stopTimer(); ui.sheet = null }, kind = Kind.PRIMARY, glyph = Glyph.Stop, anchor = "timer:stop", enabled = store.timerReachable)
                 TButton("Switch to…", { switching = true }, glyph = Glyph.Swap, anchor = "timer:switch", enabled = store.timerReachable)
             }
         } else {
             BasicText(if (switching) "Switch to" else "Start a timer", style = T.title.copy(fontWeight = FontWeight.SemiBold))
             BasicText(if (switching) "The running block ends now; the new one starts now." else "Pick what it counts toward, or start with no label and name it later.", style = T.label)
             Spacer(Modifier.height(T.s4))
-            val go = { label: String? -> if (switching) store.switch(label) else store.start(label); switching = false; ui.sheet = null }
+            val go = { label: String? -> if (switching) ui.switchTimer(label) else ui.startTimer(label); switching = false; ui.sheet = null }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(T.s2), verticalArrangement = Arrangement.spacedBy(T.s2)) {
                 store.labels.filter { it != running?.label }.forEach { l -> Chip(l, selected = false, onClick = { go(l) }, anchor = "label:$l", enabled = store.timerReachable) }
                 Chip("No label", selected = false, onClick = { go(null) }, anchor = "label:none", enabled = store.timerReachable)
@@ -162,16 +162,20 @@ private fun QuickSend(store: ConceptStore, ui: TimelineUi) {
             store.projects.forEach { p -> Chip(p, selected = p == ui.project, onClick = { ui.project = p }, anchor = "project:$p") }
         }
         Spacer(Modifier.height(T.s4))
-        when (val r = ui.sent) {
+        // A result shows until the words change; then Send is back for the next message.
+        when (val r = ui.sent?.takeIf { ui.quick.text.toString() == ui.sentFor }) {
             is ConceptStore.SendResult.Sent -> Note("Sent to ${r.project}", "The agent starts a thread; it shows on the day page if it needs you.", T.cyan, Glyph.Check, anchor = "quick:sent")
             is ConceptStore.SendResult.Failed -> Note("Not sent", "${r.why} Your words are kept here.", T.red, Glyph.Warning, action = "Try again", onAction = {
                 ui.sent = store.quickSend(ui.quick.text.toString(), ui.project)
+                if (ui.sent is ConceptStore.SendResult.Sent) ui.quick.edit { replace(0, length, "") }
+                ui.sentFor = ui.quick.text.toString()
             }, anchor = "quick:failed")
             null -> Row(verticalAlignment = Alignment.CenterVertically) {
                 BasicText(if (store.t3Status == T3Status.LIVE) "T3 is connected" else "T3 isn't connected", Modifier.weight(1f), style = T.label.copy(color = if (store.t3Live) T.text3 else T.red))
                 TButton("Send", {
                     ui.sent = store.quickSend(ui.quick.text.toString(), ui.project)
                     if (ui.sent is ConceptStore.SendResult.Sent) ui.quick.edit { replace(0, length, "") }
+                    ui.sentFor = ui.quick.text.toString()
                 }, kind = Kind.PRIMARY, glyph = Glyph.Send, enabled = ui.quick.text.isNotBlank(), anchor = "quick:send")
             }
         }

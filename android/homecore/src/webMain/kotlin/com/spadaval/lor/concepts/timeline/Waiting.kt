@@ -156,7 +156,7 @@ fun ItemBody(store: ConceptStore, ui: TimelineUi, item: Item, lead: Boolean, wid
         if (!inDetail) MoreButton(store, ui, item.key)
     }
     Spacer(Modifier.height(T.s3))
-    if (pending != null) Sending(store, item.key, pending)
+    if (pending != null) Sending(store, item.key, pending, if (inDetail) "detail:" else "")
     else Actions(store, ui, item, lead, wide, compact)
 }
 
@@ -235,7 +235,9 @@ fun Answers(store: ConceptStore, ui: TimelineUi, c: T3Card, lead: Boolean) {
     }
     val typed = field.text.toString().trim()
     val words = (picked.toList() + listOfNotNull(typed.ifEmpty { null }.takeIf { other })).joinToString(", ")
-    val send = { store.answer(c, words); ui.picked.remove(c.key); field.edit { replace(0, length, "") } }
+    // The choices and words stay until the answer has gone: Cancel in its window leaves them to revise.
+    // Once it is sent the card leaves, and them with it.
+    val send = { store.answer(c, words) }
     if (other) {
         Spacer(Modifier.height(T.s2))
         Field(ui, field, "Your answer, in your words", anchor = "answer-field", onEnter = { if (words.isNotEmpty()) send() })
@@ -249,7 +251,8 @@ fun Answers(store: ConceptStore, ui: TimelineUi, c: T3Card, lead: Boolean) {
 
 /** A call on its way to T3: what it does, a bar running down, and Cancel. No Undo comes after. */
 @Composable
-private fun Sending(store: ConceptStore, key: String, p: ConceptStore.Pending) {
+/** [prefix] tells an open card's controls from the same card's pinned ones, which a sheet may cover. */
+private fun Sending(store: ConceptStore, key: String, p: ConceptStore.Pending, prefix: String = "") {
     var left by remember(p) { mutableStateOf(1f) }
     LaunchedEffect(p) {
         while (true) {
@@ -258,7 +261,7 @@ private fun Sending(store: ConceptStore, key: String, p: ConceptStore.Pending) {
             if (left == 0f) break
         }
     }
-    Row(Modifier.fillMaxWidth().labAnchor("sending:$key"), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().labAnchor("${prefix}sending:$key"), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             BasicText("${p.verb}…", style = T.body.copy(fontWeight = FontWeight.Medium))
             Spacer(Modifier.height(6.dp))
@@ -267,7 +270,7 @@ private fun Sending(store: ConceptStore, key: String, p: ConceptStore.Pending) {
             }
         }
         Spacer(Modifier.width(T.s3))
-        TButton("Cancel", { store.cancelSend(key) }, anchor = "cancel:$key")
+        TButton("Cancel", { store.cancelSend(key) }, anchor = "${prefix}cancel:$key")
     }
 }
 

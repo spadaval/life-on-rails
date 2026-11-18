@@ -15,4 +15,11 @@ export default async function () {
   await type("Find a physio near the studio for Thursday");
   await tap("quick:send");
   await expect("an answer: sent or not", (a, s) => shown(a, "quick:sent", s) || shown(a, "quick:failed", s));
+  if (!("quick:sent" in (await anchors()))) return;
+  // Sent: the field is empty again, and typing the next message brings Send back.
+  await tap("quick:field");
+  await type("And book it for 9:00");
+  await expect("Send again for the second message", (a, s) => shown(a, "quick:send", s) && !shown(a, "quick:sent", s));
+  await tap("quick:send");
+  await expect("the second one sent", (a, s) => shown(a, "quick:sent", s));
 }

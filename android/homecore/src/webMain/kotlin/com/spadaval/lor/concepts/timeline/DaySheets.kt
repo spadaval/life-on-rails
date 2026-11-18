@@ -65,7 +65,7 @@ fun BlockSheet(store: ConceptStore, ui: TimelineUi, id: String) {
                 BasicText(words, style = T.body.copy(color = tone, fontWeight = FontWeight.Medium))
                 if (b?.tone == DayBlock.Tone.PROPOSED) {
                     Spacer(Modifier.height(T.s3))
-                    TButton("Yes, ${b.label}", { ui.confirm(b.id); close() }, kind = Kind.PRIMARY, glyph = Glyph.Check, anchor = "sheet:confirm")
+                    TButton("Yes, ${b.label}", { ui.confirm(b.id); close() }, kind = Kind.PRIMARY, glyph = Glyph.Check, anchor = "sheet:confirm", enabled = store.lorLive)
                 }
                 Spacer(Modifier.height(T.s2))
             }
