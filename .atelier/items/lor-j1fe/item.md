@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-j1fe
 title: 'The Timeline direction on the phone in the lab: every required screen, state and interaction'
-status: changes_requested
+status: in_review
 mission: lor-2803
 labels:
 - launcher
@@ -47,7 +47,7 @@ Sumeet can use the Timeline direction's phone in the lab: pick it in the Version
 
 ## Report
 
-Timeline's phone is in the lab as version `timeline`. All fifteen of its gesture scripts pass: they cover the brief's eleven phone interactions, the menu, fold from both screens, relabelling and planning. To make room for it, the lab's development build now compiles one concept at a time (`android/web-dev.sh --only timeline`). With Timeline in it fits under the 4 GB cap, but only at the edge. A fresh session peaked at 3,511 to 3,863 MB. My forty-edit working session reached 4,078 MB with its 512 MB of swap full, and nothing was killed. The cap is still Sumeet's call (lor-0v68). The next concept will fit the same way, because each one builds alone.
+Timeline's phone is in the lab as version `timeline`. All seventeen of its gesture scripts pass: they cover the brief's eleven phone interactions, the menu, fold from both screens, relabelling, planning, and two checks from review (a cancelled answer, and confirmations while LoR is stale). To make room for it, the lab's development build now compiles one concept at a time (`android/web-dev.sh --only timeline`). With Timeline in it fits under the 4 GB cap, but only at the edge. A fresh session peaked at 3,511 to 3,863 MB. My forty-edit working session reached 4,078 MB with its 512 MB of swap full, and nothing was killed. The cap is still Sumeet's call (lor-0v68). The next concept will fit the same way, because each one builds alone.
 
 ### Read this first
 
@@ -92,7 +92,7 @@ The organisation is the brief's. Times are the demo's, in New York.
 
 ### Interactions, by script
 
-These are in `scripts/lab/gestures/timeline/`, each run with `node scripts/lab/run.mjs <script> --version timeline --state <s> --out <dir>`. Each one checks by anchors that the gesture did what it says. All fifteen pass on the final build. Recordings, strips and final frames are in `~/.local/state/lor-evidence/lor-j1fe/gestures/`.
+These are in `scripts/lab/gestures/timeline/`, each run with `node scripts/lab/run.mjs <script> --version timeline --state <s> --out <dir>`. Each one checks by anchors that the gesture did what it says. All seventeen pass on the final build (round 1 added `answer-cancel` and `stale`). Recordings, strips and final frames are in `~/.local/state/lor-evidence/lor-j1fe/gestures/`.
 
 1. `drawer` (demo, and on the inner screen): a swipe up raises the drawer with the finger, and a swipe down closes it. **Recorded.**
 2. `search` (demo): the field at the thumb opens search with the keyboard up, "spo" finds Spotify, and a tap opens it.
@@ -120,3 +120,12 @@ It showed up. On the demo afternoon, the 16 blocks before 15:00 are 4 counted, 9
 - **boat:** `android/boat-build.sh` with its default tasks (the app, `testDebugUnitTest`, `testReleaseUnitTest`, `:homecore:allTests` and the lab's production bundle, every concept in) passed in 4 minutes on 06057ca7: 940 tests and 0 failures. Its bundle draws both `#queue/demo` and `#timeline/demo`.
 - **The scratch publish:** boat's bundle went into the folder `publish.sh` copies, then `LOR_LAB_DIR=~/.cache/lor-j1fe/lab-scratch scripts/lab/publish.sh` put it at `phone/` and listed it in the index. Afterwards I removed the copy, so this checkout's `build/dist` is as it was. Served through `labStatic` (lor-web's `/lab/` handler, with its Content-Security-Policy), `/lab/phone/#timeline/demo` loaded and drew in 1.3 s on loopback, 9.0 MB, with no console errors (`published-timeline-demo.png`). I did not publish to the real lab; the lead publishes from main.
 - `pnpm test` passes (206). I didn't run `pnpm typecheck`: this change touches no TypeScript, and in a fresh checkout it fails on the route tree (lor-iurl). Queue's own scripts can't run on a `--only timeline` build; boat's bundle has Queue unchanged, and nothing under `queue/` changed. web-dev.sh is stopped.
+
+### Responses
+
+1-fbke.1: fixed in d58f2335: Stop, Switch and Start over a running timer end its block onto the route under one Undo; `timer.mjs` checks the stopped and switched blocks and the Undo.
+1-fbke.2: fixed in d58f2335: a tap on a planned task unplans it with Undo; `plan.mjs` checks both.
+1-fbke.3: fixed in d58f2335: while LoR isn't answering the route has no ticks, the menu no "Say yes to every guess", the sheet's Yes is disabled, and the writes refuse at the source; `stale.mjs` checks it.
+1-fbke.4: fixed in d58f2335: choices and words stay until the answer has gone; `answer-cancel.mjs` cancels, finds the words, and sends.
+1-fbke.5: fixed in d58f2335: the result shows until the words change, then Send is back; `quick-send.mjs` sends two messages without closing the sheet.
+1-fbke.6: fixed in d58f2335: an open card's Sending and Cancel are `detail:sending:` and `detail:cancel:`, apart from the pinned card's.
