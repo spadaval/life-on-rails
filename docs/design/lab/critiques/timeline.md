@@ -1,0 +1,101 @@
+# Timeline: the critics' notes
+
+Item lor-glev, 17 and 18 November 2026. Each critic read docs/design/lab/brief.md, the galleries and recordings, and where it could the live viewers, without seeing the others' notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them.
+
+<!-- critic: gpt-6-astra -->
+
+## GPT-6 Astra (Codex, gpt-6-astra, reasoning effort high)
+
+Timeline is the most convincing expression of Life on Rails as a day, rather than a task manager. I would keep its view of the future more readily than its interrogation of the past.
+
+**Dashboard, what works.** Today/afternoon at 1500 makes the transition from working now to Dentist at 16:30 immediately legible. The 1h 30m gap is useful space, not just empty pixels. Solid past blocks, a bright now line and outlined future events form a coherent visual language. I used Stop in the live viewer and the running control cleared. This is a more actionable version of current's attractive but comparatively remote arc.
+
+**Dashboard, daily irritation.** “8 to confirm · 4 unlabelled” and “Confirm all 8” sit near the page title. The report's worry is visible: an automatic account of the day starts to resemble homework. Bulk acceptance makes the clicking cheaper; it does not make the guesses more trustworthy. The amber used for both suggestions and the active timer also gives uncertain history quite a lot of authority.
+
+**Dashboard, harder than current.** Getting an overview without navigating a long route. Current compresses past and future into an arc and strips. Timeline improves readability by spending height. At 412, the brief and two waiting cards push the running timer far below the opening screen. The very concept about “now” makes me scroll to now. Its 1100 Tasks still also trades current's full editor for a compact popover, good for a date but less suited to sustained editing.
+
+**Dashboard, steal.** Give Context Timeline's explicit free intervals. “1h 30m free” between two named commitments explains the suggestion to do something far better than a ranked backlog does.
+
+**Phone, what works.** Home/demo is my favourite glance at the day: next event, time until it, remaining day and timer share one calm card. The strip is appropriately a summary here, with a detailed day page behind it. In agent-waiting, approvals still come first, so the organizing metaphor has not displaced urgent action entirely.
+
+**Phone, daily irritation.** That same agent-waiting still shows two cards, “3 more waiting”, “7 due, no time” and “12 to name”, then the route. It is a lot of categories to interpret before doing anything. In thread-long/inner, the migration conversation sits beside guesses about studio time and lunch. Those are two simultaneous activities with little relationship to each other.
+
+**Phone, harder than current.** Scanning all pending cards. Current's agent-waiting still exposes all five compact cards together, albeit below too much introductory material; Timeline shows two and folds the other three away. The route gains room at the cost of queue visibility. Home also loses current's written list of later events: the future strip is suggestive, not readable event detail.
+
+**Phone, steal.** Give Queue Timeline's home summary of time remaining and the next fixed event. It would make Queue's home about available life as well as outstanding work.
+
+Evidence: I used dashboard Stop in the afternoon viewer. Dashboard Today at 1500/412, Tasks at 1100 and Maya at 1500 were stills. Phone home/demo, agent-waiting, search-mixed and thread-long/inner were stills only. These notes do not assess touch or animation quality.
+
+GPT-6 Astra
+
+<!-- critic: grok-4.6 -->
+
+## Grok 4.6 (Grok, grok-4.6, reasoning effort high)
+
+# Timeline
+
+This is the one that looks designed. The vertical route, the now line, Confirm all 8, the colour jobs: tracked amber, planned cyan, unlabelled faint. It is also the one that bets your afternoon is a time-correction job. On the demo data, that bet is loud.
+
+I used the dashboard live at 1280 (`#/timeline/?scene=afternoon`): Confirm all 8 (toast "Confirmed 8 suggestions", header became "4 unlabelled"), then the relabel popover on Portuguese with Inês. Phone: stills for demo cover, day page, agent-waiting, quiet day page, inner thread. I did not drive the phone mock live beyond opening the lab tab.
+
+## Dashboard
+
+### What it gets right
+
+Afternoon at 1500 is a picture of 17 November. Now is a fixed line at 15:00. The running block is 47:00 on the maps spec, Switch and Stop on the block. Lunch, At Studio, Public beta, Beta design review sit above it. Dentist, Portuguese, Focus time sit below as dashed cyan. Gaps say "1h 30m free" and "Plan a task here". Current's arc is the same information as jewellery. This is the same information as a page.
+
+Confirm all 8, used live, is the signature. One click, the route tells instead of asking. Undo on the toast. Relabel, used live on Portuguese: chips for Draft the offline maps spec, Public beta, Ship the Field Guide, Offline maps, Hold a conversation in Portuguese, Meetings, Something else. Split / change times / delete are collapsed. That is how uncommon stays accessible.
+
+Waiting on you is a right column of two flag cards with Done / Seen. Due, no time yet, is seven rows you can drag onto a gap. The morning brief is a card, not a wall.
+
+Empty day at 1500, 09:00 still: now line, "Nothing recorded yet", Start a timer here, calendar still drawn, flags still in the column. The page has a subject when the past is blank.
+
+At 412 the composition is Timeline at its best. Waiting first (physio, App Store), Due collapsed, morning folded as "Earlier, 06:00–12:30 · 12 blocks · 9 want a label", then the route from lunch through now. Phone-width dashboard is a vertical day, which is what this direction is.
+
+### What would annoy in daily use
+
+Until you hit Confirm all, the route is a questionnaire. Afternoon still: every past block wears a guess (Meetings?, Ship the Field Guide app?). Eight to confirm, four unlabelled, 12 to name somewhere. The brief's own risk is the one I felt: on a day that is mostly unlabelled, the route asks more than it tells.
+
+The right column at 1500 is two jobs stacked: flags you must do, and seven overdue tasks. The overdue list truncates titles ("Move the emergency fund to the hig…"). You came to see now and you are reading four-days-late copy in the gutter.
+
+Confirm all is a gift once. It is also a confession that the default state is nagging.
+
+### What it makes harder than current
+
+Ticking a due task from Today. Current buries Needs you, and the rows are not even links, so this is still a gain on paper. In Timeline the seven due items are a secondary column, and at 412 they collapse to a chip. Current at least listed them as tasks (once you scrolled). Here the day is the page and the tap is a chore off to the side.
+
+Finding a person or a goal is a rail click, same as Queue. The cost is attention: the spine is time, so LoR's other objects wait.
+
+### Steal
+
+Confirm all 8, into Queue and into Context. Queue's afternoon strip has "12 to label" as a chip that opens a popover one block at a time. Context's afternoon still has "TIME IN NO CONTEXT · 1h 53 unnamed in 4 stretches · 8 guesses to confirm". Timeline lets you accept the afternoon in one gesture.
+
+## Phone
+
+### What it gets right
+
+Demo cover still: clock, Dentist at 16:30, 7 h left, a day strip with now, 4 waiting, nothing running, icons, search. This is a glance. Current's cover spent the same pixels on a novel.
+
+The day page (demo still) is the actual concept, and it is rich: WAITING ON YOU 4 as two cards, "2 more waiting", "7 due, no time", "12 to name", then the route with Start / Offline maps spec / Morning run on the now line. Quiet day page still: "Nothing waits on you", 0 due, 12 to name, the route still there. A clear queue does not erase the day. I like that.
+
+Inner thread-long still: route on the left, thread on the right. Now stays visible while you read. That is the Fold used as a Fold.
+
+### What would annoy in daily use
+
+The day page on a cover screen is a dashboard. Two waiting cards, then three chips that hide the rest, then a route whose morning is already off the top. Agent-waiting cover still: WAITING ON YOU 5, two cards, "3 more waiting", 7 due, 12 to name, then the route. An approval is never mid-scroll, which is correct. The cover is still a lot of LoR for a phone you unlock to open Gmail.
+
+The question on agent-waiting is an Answer button. The options are a sheet away. Queue put them on the card.
+
+Search follows Queue: field at the top. Fine for reading results. A reach for the thumb.
+
+### What it makes harder than current
+
+Launching is easier than current (icons live). Ticking a due task is a trip into the day page and then into "7 due, no time". Current's widget at least put NEXT from the brief on home, badly. Timeline's 4 waiting is the right count. Getting to the bathroom tap is more taps than Queue's one list.
+
+Inner-screen reading: the Approve / Deny / Open bar sits on the first lines of the transcript. Step 18's start is clipped. Reply is at the bottom and works. Reading the beginning of the thread does not. Queue's inner does this; Timeline's does not. Listed as a defect.
+
+### Steal
+
+The 412 dashboard composition (waiting, then folded morning, then now) into Queue's phone queue page. Queue's queue is one ranked column and the day vanishes. Timeline's cover day page already knows the day is the spine. Steal the fold of "earlier" so a cover queue can still show now.
+
+Grok 4.6
