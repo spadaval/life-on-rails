@@ -224,9 +224,8 @@ private fun act(store: ConceptStore, ui: CtxUi, u: Understood) {
             // The #goal it previewed is where the task goes; one that names no context is not added (the row says so).
             val goal = u.goal?.let { ui.model.goalNamed(it) ?: return }
             if (!ui.saves()) return
-            val id = "new-${store.tasks.size}"
-            store.addTask(u.title, u.due)
-            goal?.let { ui.links[id] = it.title }
+            // The link to its context is part of the add: one Undo takes back both.
+            store.addTask(u.title, u.due, also = { id -> goal?.let { ui.links[id] = it.title } }, unAlso = { id -> ui.links.remove(id) })
             ui.search.edit { replace(0, length, "") }
         }
         is Understood.Ask -> { ui.quick.edit { replace(0, length, u.text) }; ui.sent = null; ui.sheet = Sheet.QuickSend }
