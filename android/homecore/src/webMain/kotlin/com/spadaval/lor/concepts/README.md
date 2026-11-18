@@ -1,8 +1,9 @@
 # Design concepts in the lab
 
 Each direction in `docs/design/lab/brief.md` is one version of the launcher lab, next to `current`
-in the Version dropdown. Queue (`queue/`) is the first and Timeline (`timeline/`, lor-j1fe) the
-second. Panes and Context (lor-fdtk, lor-8aqh) come next and reuse the pieces in `kit/`.
+in the Version dropdown. Queue (`queue/`) is the first, Timeline (`timeline/`, lor-j1fe) the
+second and Panes (`panes/`, lor-fdtk) the third. Context (lor-8aqh) comes next and reuses the pieces
+in `kit/`.
 
 The code lives in `webMain`, not `wasmJsMain`. The app never compiles either, so a concept never
 ships. `webMain` is used because Kotlin 2.3.20 crashes on an incremental compile whose changed files
@@ -55,6 +56,7 @@ direction's colours, so Timeline can use the sheet without looking like Queue.
 | `ToastHost` | `Toast.kt` | The store's notice at the foot of the screen, with Undo when there is one. |
 | `StandInKeyboard` | `Keyboard.kt` | A drawn keyboard (236 dp) under the focused field, so "with the keyboard up" can be judged. It types into a `TextFieldState`, as does the computer's keyboard. |
 | `Icon`, `Glyph` | `Icons.kt` | Line icons drawn on a 24-unit grid, no icon font. |
+| `ConceptFonts` | `lab/LabConcepts.kt` | Faces beyond the app's Saira, loaded by the lab page from `fonts/` (`wasmJsMain/resources/fonts/`): Hanken Grotesk, the Panes dashboard's sans, converted from the prototype's woff2 to TTF. |
 | `AppIcon`, `FolderIcon` | `AppIcon.kt` | The same placeholder app icons for every direction, so icons don't tell concepts apart. |
 
 ## Rules the scripts depend on

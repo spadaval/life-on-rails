@@ -1139,6 +1139,496 @@
       "screen": "Launcher lab · timeline",
       "name": "timeline · the day with a timer running · inner",
       "link": "/#timeline/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · cover",
+      "link": "/#panes/demo"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · inner",
+      "link": "/#panes/demo/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · empty · cover",
+      "link": "/#panes/empty"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · empty · inner",
+      "link": "/#panes/empty/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · loading · cover",
+      "link": "/#panes/loading"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · loading · inner",
+      "link": "/#panes/loading/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · stale · cover",
+      "link": "/#panes/stale"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · stale · inner",
+      "link": "/#panes/stale/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · failed · cover",
+      "link": "/#panes/failed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · failed · inner",
+      "link": "/#panes/failed/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · overfull · cover",
+      "link": "/#panes/overfull"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · overfull · inner",
+      "link": "/#panes/overfull/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · quiet · cover",
+      "link": "/#panes/quiet"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · quiet · inner",
+      "link": "/#panes/quiet/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · empty-day · cover",
+      "link": "/#panes/empty-day"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · empty-day · inner",
+      "link": "/#panes/empty-day/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · sync-failed · cover",
+      "link": "/#panes/sync-failed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · sync-failed · inner",
+      "link": "/#panes/sync-failed/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · large-text · cover",
+      "link": "/#panes/large-text"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · large-text · inner",
+      "link": "/#panes/large-text/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · agent-waiting · cover",
+      "link": "/#panes/agent-waiting"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · agent-waiting · inner",
+      "link": "/#panes/agent-waiting/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · agent-t3-stale · cover",
+      "link": "/#panes/agent-t3-stale"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · agent-t3-stale · inner",
+      "link": "/#panes/agent-t3-stale/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · thread-long · cover",
+      "link": "/#panes/thread-long"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · thread-long · inner",
+      "link": "/#panes/thread-long/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · search-mixed · cover",
+      "link": "/#panes/search-mixed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · search-mixed · inner",
+      "link": "/#panes/search-mixed/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · app-menu · cover",
+      "link": "/#panes/app-menu"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · app-menu · inner",
+      "link": "/#panes/app-menu/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · drawer-all-scrolled · cover",
+      "link": "/#panes/drawer-all-scrolled"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · drawer-all-scrolled · inner",
+      "link": "/#panes/drawer-all-scrolled/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · home-settings-tabs · cover",
+      "link": "/#panes/home-settings-tabs"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · home-settings-tabs · inner",
+      "link": "/#panes/home-settings-tabs/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · sensors-failed · cover",
+      "link": "/#panes/sensors-failed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · sensors-failed · inner",
+      "link": "/#panes/sensors-failed/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · agent page · cover",
+      "link": "/#panes/{\"base\":\"demo\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · agent page · inner",
+      "link": "/#panes/{\"base\":\"demo\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · quiet · agent page · cover",
+      "link": "/#panes/{\"base\":\"quiet\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · quiet · agent page · inner",
+      "link": "/#panes/{\"base\":\"quiet\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · empty-day · agent page · cover",
+      "link": "/#panes/{\"base\":\"empty-day\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · empty-day · agent page · inner",
+      "link": "/#panes/{\"base\":\"empty-day\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · stale · agent page · cover",
+      "link": "/#panes/{\"base\":\"stale\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · stale · agent page · inner",
+      "link": "/#panes/{\"base\":\"stale\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · failed · agent page · cover",
+      "link": "/#panes/{\"base\":\"failed\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · failed · agent page · inner",
+      "link": "/#panes/{\"base\":\"failed\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · overfull · agent page · cover",
+      "link": "/#panes/{\"base\":\"overfull\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · overfull · agent page · inner",
+      "link": "/#panes/{\"base\":\"overfull\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · sync-failed · agent page · cover",
+      "link": "/#panes/{\"base\":\"sync-failed\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · sync-failed · agent page · inner",
+      "link": "/#panes/{\"base\":\"sync-failed\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · large-text · agent page · cover",
+      "link": "/#panes/{\"base\":\"large-text\",\"where\":{\"cell\":[0,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · large-text · agent page · inner",
+      "link": "/#panes/{\"base\":\"large-text\",\"where\":{\"cell\":[0,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · Today · cover",
+      "link": "/#panes/{\"base\":\"demo\",\"where\":{\"cell\":[3,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · Today · inner",
+      "link": "/#panes/{\"base\":\"demo\",\"where\":{\"cell\":[3,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · quiet · Today · cover",
+      "link": "/#panes/{\"base\":\"quiet\",\"where\":{\"cell\":[3,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · quiet · Today · inner",
+      "link": "/#panes/{\"base\":\"quiet\",\"where\":{\"cell\":[3,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · empty-day · Today · cover",
+      "link": "/#panes/{\"base\":\"empty-day\",\"where\":{\"cell\":[3,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · empty-day · Today · inner",
+      "link": "/#panes/{\"base\":\"empty-day\",\"where\":{\"cell\":[3,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · stale · Today · cover",
+      "link": "/#panes/{\"base\":\"stale\",\"where\":{\"cell\":[3,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · stale · Today · inner",
+      "link": "/#panes/{\"base\":\"stale\",\"where\":{\"cell\":[3,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · failed · Today · cover",
+      "link": "/#panes/{\"base\":\"failed\",\"where\":{\"cell\":[3,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · failed · Today · inner",
+      "link": "/#panes/{\"base\":\"failed\",\"where\":{\"cell\":[3,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · overfull · Today · cover",
+      "link": "/#panes/{\"base\":\"overfull\",\"where\":{\"cell\":[3,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · overfull · Today · inner",
+      "link": "/#panes/{\"base\":\"overfull\",\"where\":{\"cell\":[3,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · sync-failed · Today · cover",
+      "link": "/#panes/{\"base\":\"sync-failed\",\"where\":{\"cell\":[3,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · sync-failed · Today · inner",
+      "link": "/#panes/{\"base\":\"sync-failed\",\"where\":{\"cell\":[3,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · large-text · Today · cover",
+      "link": "/#panes/{\"base\":\"large-text\",\"where\":{\"cell\":[3,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · large-text · Today · inner",
+      "link": "/#panes/{\"base\":\"large-text\",\"where\":{\"cell\":[3,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · timer · cover",
+      "link": "/#panes/{\"base\":\"demo\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · timer running · cover",
+      "link": "/#panes/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"open\":\"APP_TAB\",\"target\":\"timer\"}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · Today with a timer running · cover",
+      "link": "/#panes/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"cell\":[3,0]}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · Today with a timer running · inner",
+      "link": "/#panes/{\"base\":\"demo\",\"timer\":{\"state\":\"RUNNING\",\"intent\":\"Offline maps spec\",\"title\":\"Tile sources\",\"start\":\"2026-11-17T19:12:00Z\"},\"where\":{\"cell\":[3,0]}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · quick send · cover",
+      "link": "/#panes/{\"base\":\"demo\",\"where\":{\"open\":\"QUICK_SEND\"}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · settings · cover",
+      "link": "/#panes/{\"base\":\"sync-failed\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · settings · inner",
+      "link": "/#panes/{\"base\":\"sync-failed\",\"where\":{\"open\":\"APP_TAB\",\"target\":\"settings\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · a question with descriptions · cover",
+      "link": "/#panes/{\"base\":\"agent-waiting\",\"where\":{\"open\":\"THREAD\",\"target\":\"t-question\"}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · a question with descriptions · inner",
+      "link": "/#panes/{\"base\":\"agent-waiting\",\"where\":{\"open\":\"THREAD\",\"target\":\"t-question\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · a question taking several answers · cover",
+      "link": "/#panes/{\"base\":\"agent-waiting\",\"t3\":{\"questions\":{\"r-question\":[{\"id\":\"q1\",\"header\":\"Tiles\",\"question\":\"Which tile providers should the offline maps try first?\",\"options\":[{\"label\":\"MapTiler\",\"description\":\"Free tier covers the beta\"},{\"label\":\"Stadia\",\"description\":\"Cheaper at scale\"},{\"label\":\"Self-host\",\"description\":\"Most work, no bill\"}],\"multiSelect\":true}]}},\"where\":{\"open\":\"THREAD\",\"target\":\"t-question\"}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · a question taking several answers · inner",
+      "link": "/#panes/{\"base\":\"agent-waiting\",\"t3\":{\"questions\":{\"r-question\":[{\"id\":\"q1\",\"header\":\"Tiles\",\"question\":\"Which tile providers should the offline maps try first?\",\"options\":[{\"label\":\"MapTiler\",\"description\":\"Free tier covers the beta\"},{\"label\":\"Stadia\",\"description\":\"Cheaper at scale\"},{\"label\":\"Self-host\",\"description\":\"Most work, no bill\"}],\"multiSelect\":true}]}},\"where\":{\"open\":\"THREAD\",\"target\":\"t-question\"}}/inner"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · the approval thread at half height · cover",
+      "link": "/#panes/{\"base\":\"demo\",\"where\":{\"open\":\"THREAD\",\"target\":\"t-approve\"}}"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · cover · pale",
+      "link": "/#panes/demo/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · inner · pale",
+      "link": "/#panes/demo/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · agent-waiting · cover · pale",
+      "link": "/#panes/agent-waiting/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · agent-waiting · inner · pale",
+      "link": "/#panes/agent-waiting/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · search-mixed · cover · pale",
+      "link": "/#panes/search-mixed/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · search-mixed · inner · pale",
+      "link": "/#panes/search-mixed/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · app-menu · cover · pale",
+      "link": "/#panes/app-menu/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · app-menu · inner · pale",
+      "link": "/#panes/app-menu/inner/pale"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · cover · mixed",
+      "link": "/#panes/demo/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · inner · mixed",
+      "link": "/#panes/demo/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · agent-waiting · cover · mixed",
+      "link": "/#panes/agent-waiting/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · agent-waiting · inner · mixed",
+      "link": "/#panes/agent-waiting/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · search-mixed · cover · mixed",
+      "link": "/#panes/search-mixed/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · search-mixed · inner · mixed",
+      "link": "/#panes/search-mixed/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · app-menu · cover · mixed",
+      "link": "/#panes/app-menu/cover/mixed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · app-menu · inner · mixed",
+      "link": "/#panes/app-menu/inner/mixed"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · Today · cover · pale",
+      "link": "/#panes/{\"base\":\"demo\",\"where\":{\"cell\":[3,0]}}/cover/pale"
+    },
+    {
+      "screen": "Launcher lab · panes",
+      "name": "panes · demo · Today · cover · mixed",
+      "link": "/#panes/{\"base\":\"demo\",\"where\":{\"cell\":[3,0]}}/cover/mixed"
     }
   ]
 }
