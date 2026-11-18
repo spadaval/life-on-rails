@@ -8,6 +8,7 @@ import com.spadaval.lor.lab.Load
 import com.spadaval.lor.lor.LorHome
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 /*
@@ -145,9 +146,13 @@ fun TimelineUi.unplan(p: Plan) {
 // The store owns the one timer; the route owns the day's blocks. Stopping or switching ends the
 // running block, so it stays on the route as recorded time, and one Undo takes back both.
 
-/** The running timer's time so far, as a recorded block (counted when it has a label). */
+/**
+ * The running timer's time so far, as a recorded block (counted when it has a label), ending at the
+ * exact moment it stopped, so the next timer starts where it ended. Only the route's drawing gives
+ * a short block room.
+ */
 private fun TimelineUi.ended(t: ConceptStore.Running, at: Instant) =
-    DayBlock("t${t.start.epochSeconds}", t.start, maxOf(at, t.start.plus(1.minutes)), Origin.TIMER, null, t.label, counted = t.label != null)
+    DayBlock("t${t.start.toEpochMilliseconds()}", t.start, maxOf(at, t.start), Origin.TIMER, null, t.label, counted = t.label != null)
 
 /** Runs a store timer change and adds the block it ended, under one Undo with the store's words. */
 private fun TimelineUi.endAnd(change: () -> Unit) {
@@ -226,7 +231,8 @@ fun TimelineUi.route(now: Instant): List<Span> {
         if (b.start >= seen || (runFrom != null && b.start >= runFrom)) continue
         val z = minOf(b.end, seen, runFrom ?: b.end)
         if (b.start > cursor) add(SpanKind.UNTRACKED, gapId(cursor, b.start), cursor, b.start)
-        add(SpanKind.BLOCK, b.id, b.start, maxOf(z, b.start.plus(1.minutes)), block = b)
+        // A block of a few seconds still needs a span to draw; its height has a minimum anyway.
+        add(SpanKind.BLOCK, b.id, b.start, maxOf(z, b.start.plus(1.seconds)), block = b)
         cursor = maxOf(cursor, z)
     }
     when {

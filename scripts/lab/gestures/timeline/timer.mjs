@@ -2,7 +2,7 @@
 // strip stops it, with Undo, and its time stays on the route as a block. Then on the day page, a
 // recent label under the now line starts one that grows from the line; Switch ends it as a block
 // and starts another; Stop on the route ends that one too. Run with --state demo.
-import { expect, swipe, tap, wait } from "../../gesture.mjs";
+import { anchors, expect, swipe, tap, wait } from "../../gesture.mjs";
 import { shown } from "./shown.mjs";
 
 export const link = { screen: "cover" };
@@ -34,6 +34,13 @@ export default async function () {
   await wait(1500);
   await tap("route:stop");
   await expect("stopped: Inbox zero kept as a block too, with Undo", (a, s) => shown(a, "route:start", s) && shown(a, "block:Inbox zero", s) && shown(a, "block:Morning run", s) && shown(a, "toast:undo", s));
+  // The two blocks keep their true ends: a few seconds each, Inbox zero starting where Morning run
+  // ended, neither past the moment it stopped (review 2-wum1.6).
+  const span = (a, title) => { const k = Object.keys(a).find((n) => n.startsWith(`span:${title}:`)); const [s, e] = k.slice(`span:${title}:`.length).split("-").map(Number); return { s, e }; };
+  const a = await anchors();
+  const run = span(a, "Morning run"), inbox = span(a, "Inbox zero");
+  if (!(run.e - run.s < 30 && inbox.e - inbox.s < 30)) throw new Error(`blocks should be seconds long: Morning run ${run.e - run.s} s, Inbox zero ${inbox.e - inbox.s} s`);
+  if (Math.abs(inbox.s - run.e) > 1) throw new Error(`Inbox zero should start where Morning run ended: ${run.e} then ${inbox.s}`);
   await tap("toast:undo");
   await expect("Undo: Inbox zero running again, its block gone", (a, s) => shown(a, "route:running", s) && !("block:Inbox zero" in a));
 }

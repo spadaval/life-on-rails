@@ -284,7 +284,7 @@ fun DueRow(store: ConceptStore, ui: TimelineUi, item: Item.Due, wide: Boolean, s
             .clickable { open(store, ui, item.key, wide) }.heightIn(min = T.rowMin).padding(end = 4.dp).labAnchor("item:${item.key}"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Check(done, { if (done) store.untick(t.id) else store.tick(t.id) }, anchor = "tick:${item.key}")
+        Check(done, { if (done) store.untick(t.id) else store.tick(t.id) }, anchor = "tick:${item.key}", enabled = store.lorLive)
         Column(Modifier.weight(1f)) {
             TaskTitle(t.title, done, maxLines = 2)
             BasicText(dueWords(t, store), style = T.label.copy(color = if (t.overdue && !done) T.red else T.text3))

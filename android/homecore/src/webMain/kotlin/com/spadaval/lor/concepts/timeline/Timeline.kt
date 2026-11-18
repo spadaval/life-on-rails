@@ -245,6 +245,7 @@ fun readout(d: Duration): String {
 /** "47 min", "1 h 12 min": a length of time in words. */
 fun spoken(d: Duration): String {
     val m = d.inWholeMinutes.coerceAtLeast(0)
+    if (m < 1) return "under a minute"
     return if (m < 60) "$m min" else "${m / 60} h${if (m % 60 > 0) " ${m % 60} min" else ""}"
 }
 
@@ -254,6 +255,7 @@ fun leftWords(d: Duration): String = spoken(with(Duration) { ((d.inWholeMinutes 
 /** "47m", "1h 12m": a length on the route, where room is short. */
 fun short(d: Duration): String {
     val m = d.inWholeMinutes.coerceAtLeast(0)
+    if (m < 1) return "<1m"
     return if (m < 60) "${m}m" else "${m / 60}h${if (m % 60 > 0) " ${m % 60}m" else ""}"
 }
 

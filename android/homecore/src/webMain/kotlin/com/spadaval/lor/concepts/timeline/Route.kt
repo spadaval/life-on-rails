@@ -196,7 +196,9 @@ private fun BlockCard(store: ConceptStore, ui: TimelineUi, s: Span) {
             .clip(shape).background(if (selected) T.surface2 else fill)
             .then(if (b.tone == DayBlock.Tone.BARE) Modifier.dashedBorder(edge, shape = 10.dp) else Modifier.border(1.dp, if (selected) T.amberEdge else edge, shape))
             .clickable { ui.selected = b.id; ui.sheet = Sheet.Block(b.id) }
-            .labAnchor("block:${b.id}").labAnchor("block:${b.title}"),
+            .labAnchor("block:${b.id}").labAnchor("block:${b.title}")
+            // Its exact interval, in epoch seconds, for scripts that check a timer's endpoints.
+            .labAnchor("span:${b.title}:${b.start.epochSeconds}-${b.end.epochSeconds}"),
         verticalAlignment = if (compact) Alignment.CenterVertically else Alignment.Top,
     ) {
         if (b.tone == DayBlock.Tone.TRACKED) Box(Modifier.width(3.dp).fillMaxHeight().background(T.amber))
