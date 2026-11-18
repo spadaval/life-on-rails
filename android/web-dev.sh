@@ -1,7 +1,14 @@
 #!/bin/bash
 # The launcher lab, rebuilt on every save: homecore's wasm development build in Gradle's continuous
 # mode, served with live reload at http://127.0.0.1:${LOR_LAB_PORT:-3860}/ (loopback only).
-# Usage: android/web-dev.sh [--dry-run]
+# Usage: android/web-dev.sh [--only <concept>[,<concept>]] [--dry-run]
+#
+# --only compiles just the named design concepts (homecore/build.gradle.kts's `concepts` list,
+# passed as -Plor.concepts): the lab then holds current, the concepts' shared kit and those
+# concepts, and the others drop out of the Version dropdown. Work on one concept with it set to
+# that concept: with every concept in, the build no longer fits the scope (lor-j1fe below). Without
+# it every concept is compiled, as boat's full bundle is. The bundle a build with --only leaves in
+# homecore/build/dist is not the lab to publish: publish one built with every concept.
 #
 # Decision lor-0v68 (spike lor-8a7n's numbers) is why it looks like this: the only Gradle build
 # allowed on this host, in a scope capped at 4 GB of memory and 512 MB of swap, Gradle at -Xmx1g,
@@ -14,6 +21,14 @@
 # of 32 to 68 s, then an edit takes about 21 s cold and 13 to 16 s warm, and a long session peaks at
 # about 4,080 MB of the scope's 4 GB (3,730 MB of it anon, never killed). A compile in another
 # process does not warm it.
+# With a second concept that would be past the cap, so lor-j1fe added --only rather than raise it
+# (the cap is lor-0v68's). Measured with --only timeline:
+#   before Timeline was written (current and the kit): first build 79 s, edits 13 to 19 s, peak
+#   3,732 MB after three edits (3,281 MB anon; the Kotlin daemon alone 2,078 MB).
+#   with Timeline in: first build 36 s, edits 13 to 18 s, peak 3,511 MB after four edits
+#   (3,011 MB anon). A working session of about forty edits grew to 4,078 MB (3,734 MB anon) with
+#   its 512 MB of swap full, and was never killed: one concept fits, at the edge, and a long
+#   session is best restarted now and then.
 # Known crash (Kotlin 2.3.20): an incremental compile whose changed files are all in wasmJsMain
 # fails with ArrayIndexOutOfBoundsException in WasmIrFileMetadata.fromByteArray, and every build
 # after it fails the same way until this script restarts. Changes that include a file from webMain
@@ -23,6 +38,15 @@
 # --dry-run runs the refusals and prints the command without starting it.
 set -euo pipefail
 cd "$(dirname "$0")"
+ONLY=() DRY=
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --only) [ $# -ge 2 ] || { echo "web-dev: --only needs a concept name" >&2; exit 2; }; ONLY=("-Plor.concepts=$2"); shift 2 ;;
+    --only=*) ONLY=("-Plor.concepts=${1#--only=}"); shift ;;
+    --dry-run) DRY=1; shift ;;
+    *) echo "web-dev: unknown argument $1 (usage: web-dev.sh [--only <concept>] [--dry-run])" >&2; exit 2 ;;
+  esac
+done
 UNIT=lor-web-dev
 PORT=${LOR_LAB_PORT:-3860}
 
@@ -41,13 +65,13 @@ if ss -Htln "sport = :$PORT" | grep -q .; then refuse "port $PORT is taken"; fi
 GRADLE=(./gradlew --no-daemon --console=plain --max-workers=2
   -Dorg.gradle.jvmargs="-Xmx1g -Dfile.encoding=UTF-8"
   "-Pkotlin.daemon.jvmargs=-Xmx1536m -Dlor.web=1"
-  -Pkotlin.incremental.wasm=true)
+  -Pkotlin.incremental.wasm=true "${ONLY[@]}")
 CMD=(systemd-run --user --scope --quiet --slice=agents.slice --unit="$UNIT"
   -p MemoryMax=4G -p MemorySwapMax=512M
   env LOR_LAB_PORT="$PORT"
   "${GRADLE[@]}" --continuous :homecore:wasmJsBrowserDevelopmentRun)
 
-if [ "${1:-}" = --dry-run ]; then printf '%q ' "${CMD[@]}"; echo; exit 0; fi
+if [ -n "$DRY" ]; then printf '%q ' "${CMD[@]}"; echo; exit 0; fi
 
 rm -rf homecore/build/classes/kotlin/wasmJs/main homecore/build/compileSync/wasmJs/main/developmentExecutable
 
