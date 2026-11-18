@@ -257,4 +257,3 @@ private fun Reply(store: ConceptStore, ui: CtxUi, thread: T3Thread) {
         }, anchor = "reply:send", tint = if (can) C.amberInk else C.text3, size = 48.dp, fill = if (can) C.amber else C.raise, enabled = store.t3Live)
     }
 }
-
