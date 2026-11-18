@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-fdtk
 title: 'The Panes direction on the phone in the lab: every required screen, state and interaction'
-status: in_review
+status: approved
 mission: lor-2803
 labels:
 - launcher
