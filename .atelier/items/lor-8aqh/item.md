@@ -111,5 +111,12 @@ Also `menu` (WhatsApp's long-press menu), `risk` (Loose ends' suggested link, wi
 - **Local build:** `web-dev.sh --only context`. First session: first build 51 s, edits 12 to 25 s, about fourteen builds; the scope's MemoryPeak reached 4,295 MB (MemorySwapCurrent 67 MB), so I restarted it. Second session: first build 35 s, peak 3,017 MB. Stopped; nothing else ran beside it.
 - **boat:** VM resumed, `android/boat-build.sh` with its default tasks passed at 33ca3494 (940 tests, 0 failures); stopped again.
 - **Scratch publish:** boat's bundle put where `publish.sh` reads the phone lab, published with `LOR_LAB_DIR` set to a scratch directory, served through `labStatic` (lor-web's `/lab/` handler and its policy): `/lab/phone/#context/demo` drew (`~/.local/state/lor-evidence/lor-8aqh/published/01-context_demo.png`). The scratch directory and `build/dist` are removed. I did not publish to the real lab.
+- **After review round 1:** boat's default build passed again at 557a1acb (4 min 39 s, 940 tests, 0 failures), and all twenty-two Context scripts plus `home/overscroll.mjs` pass on that bundle. Local session peak 3,401 MB; web-dev.sh and the VM are stopped.
 - `pnpm test` passes (206). `pnpm typecheck` not run (no TypeScript changed; lor-iurl).
 - Tool notes: a tap on a bar chip scrolled out of view lands beside it, so `risk` goes through All; and the Contexts sheet lists Loose ends before the long People list so it is reachable.
+
+### Responses
+
+1-2l4w.1: fixed in 557a1acb. Search resolves a typed `#word` to a project or goal (its exact title, else the one title word it starts), shows that context's name in the preview, and Add puts the task under it; Undo removes the task. A `#word` that names no context shows "No context matches #word" with what to do, and Add is not offered. `add-goal.mjs` checks both.
+1-2l4w.2: fixed in 557a1acb rather than deferred. Move to another context… opens the contexts as "Move to", without the task's own; a pick moves it with Undo and does not switch the surface (here Now follows it, as it is the one thing's task). `move-task.mjs` checks the move and the Undo.
+1-2l4w.3: fixed in 557a1acb rather than deferred. A context opened from All, a link, a flag or search joins the bar as a recent tab (the last four, newest first). `switch.mjs` checks Public beta's tab appears.
