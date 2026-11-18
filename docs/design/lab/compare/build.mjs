@@ -110,6 +110,8 @@ const concept = (c) => `
   ${openSeats()}
 </section>`;
 
+// No line ends in whitespace: the indented helpers above start with a newline, and the
+// repository's `git diff --check` refuses trailing spaces.
 const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -261,18 +263,19 @@ ${CONCEPTS.map(concept).join("\n")}
 </html>
 `;
 
+const page = html.replace(/[ \t]+$/gm, "");
 if (problems.length) {
   console.error(problems.map((p) => `build: ${p}`).join("\n"));
   process.exit(1);
 }
 const out = path.join(here, "index.html");
 if (process.argv.includes("--check")) {
-  if (readFileSync(out, "utf8") !== html) {
+  if (readFileSync(out, "utf8") !== page) {
     console.error("build: index.html is not what content.mjs and the notes make; run build.mjs");
     process.exit(1);
   }
   console.log("build: index.html is current");
 } else {
-  writeFileSync(out, html);
-  console.log(`build: wrote ${out} (${html.length} bytes)`);
+  writeFileSync(out, page);
+  console.log(`build: wrote ${out} (${page.length} bytes)`);
 }
