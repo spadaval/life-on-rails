@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-fdtk
 title: 'The Panes direction on the phone in the lab: every required screen, state and interaction'
-status: ready
+status: building
 mission: lor-2803
 labels:
 - launcher
@@ -11,7 +11,8 @@ labels:
 priority: medium
 blocked_by:
 - lor-j1fe
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A9fa0a269-e48d-4704-afbf-af6a22c90c73%3Adelegate-task%3A7e37ad6d-cf9d-47bf-bd77-533fa0405f32
 ready:
   by: lead of lor-2803, after the brief (lor-npa6)
   at: 2026-11-17T15:10:01.478110201Z
