@@ -273,7 +273,7 @@ private fun AppResult(store: ConceptStore, ui: PanesUi, a: App, selected: Boolea
             val shortcuts = store.fixture.search.shortcuts.count { it.pkg == a.pkg }
             BasicText(listOfNotNull("App", if (n > 0) "opened $n times" else null, if (shortcuts > 0) "$shortcuts shortcuts" else null).joinToString(" · "), style = P.meta, maxLines = 1)
         }
-        IconButton(Glyph.Chevron, "Shortcuts", { ui.searchApp = a.ref; if (!wide) ui.appSheet = a.ref }, anchor = "app-pane:${a.label}", tint = P.text2)
+        IconButton(Glyph.Chevron, "Shortcuts", { ui.searchApp = a.ref; if (!wide) ui.appSheet = a.ref }, anchor = "app-more:${a.label}", tint = P.text2)
     }
 }
 
@@ -322,7 +322,8 @@ private fun ResultRow(glyph: Glyph, title: String, detail: String?, tint: Color,
 @Composable
 private fun SearchPane(store: ConceptStore, ui: PanesUi, q: String, close: () -> Unit) {
     val h = hits(store, q)
-    val app = ui.searchApp?.let(store::app) ?: h.apps.firstOrNull()
+    // The same choice the results highlight: the picked app while it still matches, else the first.
+    val app = ui.searchApp?.let { r -> h.apps.firstOrNull { it.ref == r } } ?: h.apps.firstOrNull()
     if (app != null) AppPane(store, ui, app, close, inSheet = false)
     else Column(Modifier.fillMaxSize().padding(24.dp).labAnchor("search:pane")) {
         when (val u = understand(q, store.today)) {

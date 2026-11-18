@@ -39,11 +39,12 @@ import com.spadaval.lor.ui.LocalClock
 @Composable
 fun AgentPage(store: ConceptStore, ui: PanesUi, wide: Boolean) {
     val cards = store.cards
+    val flags = store.home?.needsYou.orEmpty()
     val threads = store.otherThreads()
     PanelPage(
         store, ui, PanesUi.AGENT, wide, "agent",
         head = {
-            PaneHead("Agent", cards.size, t3Line(store), countTone = P.cyan) {
+            PaneHead("Agent", cards.size + flags.size, t3Line(store), countTone = P.cyan) {
                 MoreButton(ui, { Menu.Page(PanesUi.AGENT, it) }, "agent:more")
             }
         },
@@ -51,9 +52,15 @@ fun AgentPage(store: ConceptStore, ui: PanesUi, wide: Boolean) {
         detail = { key, inSheet -> AgentDetail(store, ui, key, inSheet) },
     ) {
         item(key = "notes") { Column(Modifier.padding(horizontal = 6.dp)) { AgentNotes(store, ui) } }
-        item(key = "waiting-label") { GroupLabel("Waiting on you", cards.size) }
-        if (cards.isEmpty()) item(key = "calm") { Calm(store, t3 = true) }
+        // What waits on him, both kinds side by side as the spec has them: T3's cards first (a turn
+        // is blocked on them), then what LoR flagged, the same flags Today lists.
+        item(key = "waiting-label") { GroupLabel("Waiting on you", cards.size + flags.size) }
+        if (cards.isEmpty() && flags.isEmpty()) item(key = "calm") { Calm(store, lor = true, t3 = true) }
         items(cards, key = { it.key }) { c -> CardRow(store, ui, c) }
+        if (flags.isNotEmpty()) {
+            item(key = "flags-label") { GroupLabel("Flagged by LoR", flags.size) }
+            items(flags, key = { "flag:${it.id}" }) { FlagRow(store, ui, it, PanesUi.AGENT) }
+        }
         if (threads.isNotEmpty()) {
             item(key = "threads-label") { GroupLabel("Threads", threads.size) }
             items(threads, key = { "thread:${it.id}" }) { t -> ThreadRow(store, ui, t) }
@@ -88,10 +95,13 @@ fun AgentNotes(store: ConceptStore, ui: PanesUi) {
 fun SyncNote(store: ConceptStore, ui: PanesUi) =
     Note("Phone sync failed", "${store.sync.pending} readings waiting · ${store.sync.errors.firstOrNull().orEmpty()}", P.red, Glyph.Warning, action = "Fix", onAction = { ui.sheet = Sheet.Settings("sync") }, anchor = "note:sync")
 
-/** Nothing waits: said calmly. When T3 (or LoR) can't be read, it says it can't tell instead. */
+/**
+ * Nothing waits: said calmly. Each source it covers ([lor] flags, [t3] cards) has to have been read;
+ * when one can't be, it says it can't tell instead.
+ */
 @Composable
-fun Calm(store: ConceptStore, t3: Boolean) {
-    val knows = if (t3) store.knowsT3() else store.knowsLor()
+fun Calm(store: ConceptStore, lor: Boolean, t3: Boolean) {
+    val knows = (!lor || store.knowsLor()) && (!t3 || store.knowsT3())
     Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp).clip(P.rMd).background(P.raise).padding(horizontal = 14.dp, vertical = 14.dp).labAnchor(if (knows) "calm" else "unknown"), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(32.dp).clip(CircleShape).background(P.raise2), contentAlignment = Alignment.Center) {
             Icon(if (knows) Glyph.Check else Glyph.Sync, if (knows) P.text1 else P.text2, size = 16.dp, weight = 2f)
@@ -101,10 +111,10 @@ fun Calm(store: ConceptStore, t3: Boolean) {
             BasicText(if (knows) "Nothing waits on you" else "Can't tell yet", style = P.rowTitle)
             BasicText(
                 when {
-                    knows && t3 -> "No approvals, questions or failed turns"
+                    knows && t3 && lor -> "No approvals, questions or flags"
                     knows -> "No flags, and nothing due today"
-                    t3 -> "T3's cards show once it's connected"
-                    else -> "What waits shows once LoR answers"
+                    lor && !store.knowsLor() -> "What waits shows once LoR answers"
+                    else -> "T3's cards show once it's connected"
                 },
                 style = P.meta,
             )
@@ -240,6 +250,7 @@ private fun AgentOverview(store: ConceptStore, wide: Boolean) {
  */
 @Composable
 fun AgentDetail(store: ConceptStore, ui: PanesUi, key: String, inSheet: Boolean) {
+    if (key.startsWith("flag:")) return TodayDetail(store, ui, key, inSheet, PanesUi.AGENT)
     val row = store.agentRow(key)
     val thread = when (row) { is AgentRow.Card -> row.card.thread; is AgentRow.Thread -> row.thread; null -> null }
     val card = (row as? AgentRow.Card)?.card

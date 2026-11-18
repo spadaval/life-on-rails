@@ -66,7 +66,7 @@ fun TodayPage(store: ConceptStore, ui: PanesUi, wide: Boolean) {
         item(key = "notes") { Column(Modifier.padding(horizontal = 6.dp)) { TodayNotes(store, ui) } }
         item(key = "timer") { TimerRow(store, ui) }
         item(key = "needs-label") { GroupLabel("Needs you", flags.size) }
-        if (flags.isEmpty() && due.isEmpty()) item(key = "calm") { Calm(store, t3 = false) }
+        if (flags.isEmpty() && due.isEmpty()) item(key = "calm") { Calm(store, lor = true, t3 = false) }
         items(flags, key = { "flag:${it.id}" }) { FlagRow(store, ui, it) }
         if (due.isNotEmpty()) {
             item(key = "due-label") { GroupLabel("Due", due.count { store.done[it.id] != true }) }
@@ -139,10 +139,10 @@ private fun TimerRow(store: ConceptStore, ui: PanesUi) {
 
 /** A flag: the agent's mark, its title and note, and Done and Seen on the row. */
 @Composable
-private fun FlagRow(store: ConceptStore, ui: PanesUi, need: LorHome.Need) {
+fun FlagRow(store: ConceptStore, ui: PanesUi, need: LorHome.Need, page: Int = PanesUi.TODAY) {
     val key = "flag:${need.id}"
     Row(
-        Modifier.paneRow(ui.openToday == key, key) { ui.openToday = key }.padding(start = 6.dp, end = 4.dp, top = 10.dp, bottom = 12.dp),
+        Modifier.paneRow(ui.open(page) == key, key) { ui.setOpen(page, key) }.padding(start = 6.dp, end = 4.dp, top = 10.dp, bottom = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         Box(Modifier.size(36.dp, 26.dp), contentAlignment = Alignment.Center) { Icon(Glyph.Flag, P.cyan, size = 18.dp) }
@@ -264,7 +264,7 @@ private fun Stat(value: String, label: String, modifier: Modifier) {
  * can't change, and under them, collapsed, the uncommon things.
  */
 @Composable
-fun TodayDetail(store: ConceptStore, ui: PanesUi, key: String, inSheet: Boolean) {
+fun TodayDetail(store: ConceptStore, ui: PanesUi, key: String, inSheet: Boolean, page: Int = PanesUi.TODAY) {
     val row = store.todayRow(key)
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 22.dp, end = if (inSheet) 22.dp else 10.dp, top = if (inSheet) 0.dp else 18.dp, bottom = 24.dp)
@@ -274,7 +274,7 @@ fun TodayDetail(store: ConceptStore, ui: PanesUi, key: String, inSheet: Boolean)
         fun header(kicker: String, tone: Color, title: String, done: Boolean = false) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Kicker(kicker, tone, Modifier.weight(1f))
-                if (!inSheet) IconButton(Glyph.Close, "Close", { ui.openToday = null }, anchor = "pane:close", size = 40.dp)
+                if (!inSheet) IconButton(Glyph.Close, "Close", { ui.setOpen(page, null) }, anchor = "pane:close", size = 40.dp)
             }
             Spacer(Modifier.height(6.dp))
             TaskTitle(title, done, maxLines = 4, style = if (inSheet) P.head else P.title)
@@ -326,7 +326,7 @@ fun TodayDetail(store: ConceptStore, ui: PanesUi, key: String, inSheet: Boolean)
                         Kicker("Person · ${p.kind}", P.text3)
                         BasicText(p.name, style = if (inSheet) P.head else P.title, maxLines = 2)
                     }
-                    if (!inSheet) IconButton(Glyph.Close, "Close", { ui.openToday = null }, anchor = "pane:close", size = 40.dp)
+                    if (!inSheet) IconButton(Glyph.Close, "Close", { ui.setOpen(page, null) }, anchor = "pane:close", size = 40.dp)
                 }
                 Spacer(Modifier.height(P.s4))
                 Row(horizontalArrangement = Arrangement.spacedBy(P.s2)) {

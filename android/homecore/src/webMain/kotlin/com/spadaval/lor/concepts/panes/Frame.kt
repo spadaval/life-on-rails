@@ -316,7 +316,7 @@ fun PageNav(store: ConceptStore, ui: PanesUi, page: Int, onWallpaper: Boolean = 
     val a = ui.anchorsOn(page)
     val scope = rememberCoroutineScope()
     val current = ui.shell.pager.targetPage
-    val cards = store.cards.size
+    val cards = store.cards.size + store.home?.needsYou.orEmpty().size
     val today = store.todayCount()
     Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
         Row(

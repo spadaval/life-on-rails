@@ -60,7 +60,8 @@ fun Sheets(store: ConceptStore, ui: PanesUi, wide: Boolean) {
         when (val s = shown) {
             Sheet.Timer -> KitSheet(sheet == Sheet.Timer, close, "sheet:timer", detents = listOf(if (store.timer != null && !ui.switching) 0.42f else 0.55f)) { TimerSheet(store, ui) }
             Sheet.QuickSend -> KitSheet(sheet == Sheet.QuickSend, { close(); ui.sent = null }, "sheet:quick", detents = listOf(0.52f)) { QuickSend(store, ui) }
-            is Sheet.Settings -> KitSheet(sheet is Sheet.Settings, close, "sheet:settings", detents = listOf(0.93f), maxWidth = 820.dp) { Settings(store, ui, s.section, wide) }
+            // On the cover, Back (or the scrim) from a section returns to the section list first.
+            is Sheet.Settings -> KitSheet(sheet is Sheet.Settings, { if (!wide && s.section != null && ui.focused == null) ui.sheet = Sheet.Settings(null) else close() }, "sheet:settings", detents = listOf(0.93f), maxWidth = 820.dp) { Settings(store, ui, s.section, wide) }
             is Sheet.Folder -> KitSheet(sheet is Sheet.Folder, close, "sheet:folder", detents = listOf(0.5f)) { Folder(store, s.name, close) }
             null -> {}
         }
@@ -221,7 +222,6 @@ private fun Settings(store: ConceptStore, ui: PanesUi, section: String?, wide: B
                 Section(store, ui, s, wide = false)
             }
         }
-        BackHandler(section != null && ui.focused == null) { pick(null) }
     }
 }
 
@@ -389,7 +389,7 @@ fun MenuFor(store: ConceptStore, ui: PanesUi, menu: Menu) {
             val entries = buildList {
                 val agent = store.agentRow(menu.key)
                 val today = if (agent == null) store.todayRow(menu.key) else null
-                add(MenuItem("Open", Glyph.Chevron) { close(); if (agent != null) ui.openAgent = menu.key else ui.openToday = menu.key })
+                add(MenuItem("Open", Glyph.Chevron) { close(); if (agent != null || (menu.key.startsWith("flag:") && ui.shell.pager.currentPage == PanesUi.AGENT)) ui.openAgent = menu.key else ui.openToday = menu.key })
                 when (agent) {
                     is AgentRow.Card -> {
                         add(MenuItem("Open in T3", Glyph.Agent) { close(); store.launch("T3 Code: ${agent.card.thread.title}") })

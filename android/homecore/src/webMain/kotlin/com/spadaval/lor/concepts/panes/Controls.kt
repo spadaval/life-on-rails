@@ -261,6 +261,9 @@ fun Field(
     pill: Boolean = false,
 ) {
     var focused by remember { mutableStateOf(false) }
+    // The stand-in keyboard's Return calls ui.onEnter: keep it the latest callback while focused,
+    // since one made at focus would act on what was typed then.
+    SideEffect { if (focused && ui.focused === state) ui.onEnter = onEnter }
     val edge by animateColorAsState(if (focused) P.focus.copy(alpha = 0.6f) else P.line2, tween(150))
     val shape = if (pill) P.rPill else P.rMd
     BasicTextField(
