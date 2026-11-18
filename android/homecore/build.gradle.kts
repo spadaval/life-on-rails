@@ -86,7 +86,7 @@ tasks.named<ProcessResources>("wasmJsProcessResources") {
 // so the capped local development build holds current, the kit and the concept being worked on
 // (lor-j1fe: the build with every concept outgrew the scope's 4 GB). Unset, every concept is in,
 // as boat's full bundle needs.
-val concepts = listOf("queue" to "Queue", "timeline" to "Timeline", "panes" to "Panes")
+val concepts = listOf("queue" to "Queue", "timeline" to "Timeline", "panes" to "Panes", "context" to "Context")
 val conceptsOnly: List<String>? = providers.gradleProperty("lor.concepts").orNull
     ?.split(',')?.map(String::trim)?.filter(String::isNotEmpty)
 conceptsOnly?.forEach { name ->

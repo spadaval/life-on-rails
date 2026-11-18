@@ -8,6 +8,10 @@
 <style>
   :root { color-scheme: dark; --bg: #07080b; --bar: #111218; --line: #1e2029; --txt: #ece6dc; --mute: #b1a596; --or: #f08a2c; --bad: #e0735a; }
   html, body { margin: 0; background: var(--bg); color: var(--txt); font: 14px system-ui, sans-serif; }
+  /* The phone's gestures are the phone's: a swipe a page doesn't use (right on the leftmost page,
+     say) must not reach Chrome, which takes a sideways overscroll as Back and leaves the lab, or a
+     vertical one as pull-to-refresh. */
+  html, body { overscroll-behavior: none; }
   header { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 10px 16px; background: var(--bar); border-bottom: 1px solid var(--line); }
   label { display: flex; gap: 6px; align-items: center; color: var(--mute); }
   select, button { font: inherit; color: var(--txt); background: #181920; border: 1px solid #3a3634; padding: 4px 8px; }
@@ -16,7 +20,7 @@
   main { display: flex; justify-content: center; padding: 24px 16px; }
   /* The phone: a bezel around the screen, which is exactly the screen's size in dp (1 dp = 1 CSS px). */
   .bezel { padding: 14px; background: #000; border: 1px solid #2a2a2e; border-radius: 28px; }
-  #phone { position: relative; overflow: hidden; border-radius: 14px; background: #000; }
+  #phone { position: relative; overflow: hidden; border-radius: 14px; background: #000; touch-action: none; }
   #phone canvas { display: block; }
   #json-box { width: min(760px, calc(100vw - 32px)); background: var(--bar); color: var(--txt); border: 1px solid var(--line); padding: 16px; }
   #json-box::backdrop { background: rgb(0 0 0 / 60%); }

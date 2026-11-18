@@ -201,11 +201,19 @@ class ConceptStore(val fixture: Fixture, private val scope: CoroutineScope) {
         }, { tasks = before })
     }
 
-    /** A task added from search: it goes to the top of the open tasks. */
-    fun addTask(title: String, due: LocalDate?) {
+    private var added = 0
+
+    /**
+     * A task added from search: it goes to the top of the open tasks, and its id is never reused, so
+     * nothing a concept keeps by id outlives an Undo onto the next one. [also] and [unAlso] are a
+     * concept's own state that belongs to the add (where it was filed), applied and undone with it.
+     */
+    fun addTask(title: String, due: LocalDate?, also: (id: String) -> Unit = {}, unAlso: (id: String) -> Unit = {}): String {
         val before = tasks
-        val task = LorTasks.Task("new-${before.size}", title, due, false, null, null, false, false, false)
-        undoable("Added “${title.take(40)}”", { tasks = listOf(task) + before }, { tasks = before })
+        val id = "new-${++added}"
+        val task = LorTasks.Task(id, title, due, false, null, null, false, false, false)
+        undoable("Added “${title.take(40)}”", { tasks = listOf(task) + before; also(id) }, { tasks = before; unAlso(id) })
+        return id
     }
 
     // ---- The timer: one, with one vocabulary ----
