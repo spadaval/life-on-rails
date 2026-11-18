@@ -144,7 +144,7 @@ fun Detail(store: ConceptStore, ui: TimelineUi, key: String, pane: Boolean, top:
             val task = store.tasks.firstOrNull { it.id == taskId }
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                 SectionLabel("Due", trailing = task?.due?.let { "now ${it.dayOfMonth} ${it.month.name.take(3).lowercase().replaceFirstChar { c -> c.uppercase() }}" } ?: "no date")
-                DueChoices(store, taskId, task?.due)
+                DueChoices(store, ui, taskId, task?.due)
                 Spacer(Modifier.height(T.s4))
                 TButton("Open in LoR", { store.toast("Opens the task in LoR") }, kind = Kind.QUIET, glyph = Glyph.Chevron)
             }
@@ -154,13 +154,13 @@ fun Detail(store: ConceptStore, ui: TimelineUi, key: String, pane: Boolean, top:
 
 /** Today, Tomorrow, the coming Friday, next Monday, or no date: one tap each, with Undo. */
 @Composable
-private fun DueChoices(store: ConceptStore, id: String, due: LocalDate?) {
+private fun DueChoices(store: ConceptStore, ui: TimelineUi, id: String, due: LocalDate?) {
     val today = store.today
     fun next(day: DayOfWeek): LocalDate { var d = today.plus(DatePeriod(days = 1)); while (d.dayOfWeek != day) d = d.plus(DatePeriod(days = 1)); return d }
     val choices = listOf("Today" to today, "Tomorrow" to today.plus(DatePeriod(days = 1)), "Friday" to next(DayOfWeek.FRIDAY), "Next week" to next(DayOfWeek.MONDAY), "No date" to null)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(T.s2), verticalArrangement = Arrangement.spacedBy(T.s2)) {
         choices.forEach { (label, d) ->
-            Chip(label, selected = d == due, detail = d?.let { "${it.dayOfMonth} ${it.month.name.take(3).lowercase().replaceFirstChar { c -> c.uppercase() }}" }, onClick = { store.setDue(id, d) }, anchor = "due:$label", enabled = store.lorLive)
+            Chip(label, selected = d == due, detail = d?.let { "${it.dayOfMonth} ${it.month.name.take(3).lowercase().replaceFirstChar { c -> c.uppercase() }}" }, onClick = { ui.setDue(id, d) }, anchor = "due:$label", enabled = store.lorLive)
         }
     }
 }
@@ -214,15 +214,18 @@ fun MenuFor(store: ConceptStore, ui: TimelineUi, menu: Menu) {
                     }
                     is Item.Flag -> {
                         add(com.spadaval.lor.concepts.kit.MenuItem("Start a timer on it", Glyph.Play) { close(); ui.startTimer(item.need.title) })
-                        add(com.spadaval.lor.concepts.kit.MenuItem("Due tomorrow", Glyph.Calendar) { close(); store.setDue(item.need.id, store.today.plus(DatePeriod(days = 1))) })
+                        if (store.lorLive) add(com.spadaval.lor.concepts.kit.MenuItem("Due tomorrow", Glyph.Calendar) { close(); ui.setDue(item.need.id, store.today.plus(DatePeriod(days = 1))) })
                     }
                     is Item.Due -> {
                         add(com.spadaval.lor.concepts.kit.MenuItem("Start a timer on it", Glyph.Play) { close(); ui.startTimer(item.task.title) })
-                        ui.route(store.clock()).firstOrNull { it.kind == SpanKind.FREE }?.let { gap ->
+                        if (store.lorLive) ui.route(store.clock()).firstOrNull { it.kind == SpanKind.FREE }?.let { gap ->
                             add(com.spadaval.lor.concepts.kit.MenuItem("Plan at ${LocalClock.time(gap.start, store.zone)}", Glyph.Clock) { close(); ui.plan(item.task.id, item.task.title, gap.start, gap.end) })
                         }
-                        add(com.spadaval.lor.concepts.kit.MenuItem("Due tomorrow", Glyph.Calendar) { close(); store.setDue(item.task.id, store.today.plus(DatePeriod(days = 1))) })
-                        add(com.spadaval.lor.concepts.kit.MenuItem("No date", Glyph.Close) { close(); store.setDue(item.task.id, null) })
+                        // While LoR isn't answering a date can't be saved, so the menu doesn't offer one.
+                        if (store.lorLive) {
+                            add(com.spadaval.lor.concepts.kit.MenuItem("Due tomorrow", Glyph.Calendar) { close(); ui.setDue(item.task.id, store.today.plus(DatePeriod(days = 1))) })
+                            add(com.spadaval.lor.concepts.kit.MenuItem("No date", Glyph.Close) { close(); ui.setDue(item.task.id, null) })
+                        }
                     }
                     null -> {}
                 }

@@ -197,7 +197,7 @@ private fun firstResult(store: ConceptStore, ui: TimelineUi, q: String): (() -> 
 
 private fun act(store: ConceptStore, ui: TimelineUi, u: Understood) {
     when (u) {
-        is Understood.Add -> { store.addTask(u.title, u.due); ui.search.edit { replace(0, length, "") } }
+        is Understood.Add -> { if (ui.addTask(u.title, u.due)) ui.search.edit { replace(0, length, "") } }
         is Understood.Ask -> { ui.quick.edit { replace(0, length, u.text) }; ui.sent = null; ui.sheet = Sheet.QuickSend }
     }
 }

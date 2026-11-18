@@ -194,13 +194,13 @@ private fun Actions(store: ConceptStore, ui: TimelineUi, item: Item, lead: Boole
             }
         }
         is Item.Flag -> Row(horizontalArrangement = Arrangement.spacedBy(T.s2)) {
-            TButton("Done", { store.flagDone(item.need.id) }, kind = primary, glyph = Glyph.Check, anchor = "done:${item.key}", enabled = store.lorLive)
-            TButton("Seen", { store.seen(item.need.id) }, anchor = "seen:${item.key}", enabled = store.lorLive)
+            TButton("Done", { ui.flagDone(item.need.id) }, kind = primary, glyph = Glyph.Check, anchor = "done:${item.key}", enabled = store.lorLive)
+            TButton("Seen", { ui.seen(item.need.id) }, anchor = "seen:${item.key}", enabled = store.lorLive)
         }
         is Item.Due -> {
             val done = store.done[item.task.id] == true
             Row(horizontalArrangement = Arrangement.spacedBy(T.s2)) {
-                TButton(if (done) "Not done" else "Done", { if (done) store.untick(item.task.id) else store.tick(item.task.id) }, kind = if (done) Kind.PLAIN else primary, glyph = Glyph.Check, anchor = "tick:${item.key}", enabled = store.lorLive)
+                TButton(if (done) "Not done" else "Done", { if (done) ui.untick(item.task.id) else ui.tick(item.task.id) }, kind = if (done) Kind.PLAIN else primary, glyph = Glyph.Check, anchor = "tick:${item.key}", enabled = store.lorLive)
                 TButton("Change date", { open(store, ui, item.key, wide) }, kind = Kind.QUIET)
             }
         }
@@ -284,7 +284,7 @@ fun DueRow(store: ConceptStore, ui: TimelineUi, item: Item.Due, wide: Boolean, s
             .clickable { open(store, ui, item.key, wide) }.heightIn(min = T.rowMin).padding(end = 4.dp).labAnchor("item:${item.key}"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Check(done, { if (done) store.untick(t.id) else store.tick(t.id) }, anchor = "tick:${item.key}", enabled = store.lorLive)
+        Check(done, { if (done) ui.untick(t.id) else ui.tick(t.id) }, anchor = "tick:${item.key}", enabled = store.lorLive)
         Column(Modifier.weight(1f)) {
             TaskTitle(t.title, done, maxLines = 2)
             BasicText(dueWords(t, store), style = T.label.copy(color = if (t.overdue && !done) T.red else T.text3))

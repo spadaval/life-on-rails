@@ -138,7 +138,7 @@ fun UntimedSheet(store: ConceptStore, ui: TimelineUi) {
         items(tasks, key = { it.id }) { t ->
             val done = store.done[t.id] == true
             Row(Modifier.fillMaxWidth().heightIn(min = T.rowMin).padding(end = 8.dp).labAnchor("untimed:${t.title}"), verticalAlignment = Alignment.CenterVertically) {
-                Check(done, { if (done) store.untick(t.id) else store.tick(t.id) }, anchor = "tick:task:${t.id}", enabled = store.lorLive)
+                Check(done, { if (done) ui.untick(t.id) else ui.tick(t.id) }, anchor = "tick:task:${t.id}", enabled = store.lorLive)
                 Column(Modifier.weight(1f).clickable { open(store, ui, "task:${t.id}", ui.wide) }) {
                     TaskTitle(t.title, done, maxLines = 2, style = T.body.copy(fontWeight = FontWeight.Medium))
                     BasicText(dueWords(t, store) + (t.parent?.let { " · $it" } ?: ""), style = T.label.copy(color = if (t.overdue && !done) T.red else T.text3), maxLines = 1, overflow = TextOverflow.Ellipsis)

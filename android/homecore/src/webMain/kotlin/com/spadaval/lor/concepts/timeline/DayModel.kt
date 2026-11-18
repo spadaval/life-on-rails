@@ -136,6 +136,17 @@ fun TimelineUi.plan(taskId: String, title: String, start: Instant, gapEnd: Insta
     store.undoable("Planned at ${com.spadaval.lor.ui.LocalClock.time(start, store.zone)}: ${title.take(36)}", { plans.add(p) }, { plans.remove(p) })
 }
 
+// ---- LoR's task writes, as Timeline makes them ----
+// Every task change from any control (a tick, a menu, search's Add) goes through these, so none
+// claims a save while LoR isn't answering. Each says whether it went through.
+
+fun TimelineUi.tick(id: String): Boolean = canSave().also { if (it) store.tick(id) }
+fun TimelineUi.untick(id: String): Boolean = canSave().also { if (it) store.untick(id) }
+fun TimelineUi.flagDone(id: String): Boolean = canSave().also { if (it) store.flagDone(id) }
+fun TimelineUi.seen(id: String): Boolean = canSave().also { if (it) store.seen(id) }
+fun TimelineUi.setDue(id: String, due: kotlinx.datetime.LocalDate?): Boolean = canSave().also { if (it) store.setDue(id, due) }
+fun TimelineUi.addTask(title: String, due: kotlinx.datetime.LocalDate?): Boolean = canSave().also { if (it) store.addTask(title, due) }
+
 /** Takes a planned task off the route, back to the untimed tasks, with Undo. */
 fun TimelineUi.unplan(p: Plan) {
     if (!canSave()) return
