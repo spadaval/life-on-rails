@@ -1,6 +1,6 @@
 # Timeline: the critics' notes
 
-Item lor-glev, 17 and 18 November 2026. Each critic read docs/design/lab/brief.md, the galleries and recordings, and where it could the live viewers, without seeing the others' notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
+Item lor-glev, 17 and 18 November 2026. Each critic was given docs/design/lab/brief.md, both galleries, the gesture recordings and the live viewers, without seeing the others' notes, and says in its notes what it used and what it saw only as a still. GPT-6 Astra's first notes did not use the recordings; at review it was asked to watch them, and its addendum on motion follows its first notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
 
 <!-- critic: gpt-6-astra -->
 
@@ -25,6 +25,24 @@ Timeline is the most convincing expression of Life on Rails as a day, rather tha
 **Phone, steal.** Give Queue Timeline's home summary of time remaining and the next fixed event. It would make Queue's home about available life as well as outstanding work.
 
 Evidence: I used dashboard Stop in the afternoon viewer. Dashboard Today at 1500/412, Tasks at 1100 and Maya at 1500 were stills. Phone home/demo, agent-waiting, search-mixed and thread-long/inner were stills only. These notes do not assess touch or animation quality.
+
+GPT-6 Astra
+
+Timeline's strongest motion is the small local change on the route. It makes correcting time feel more concrete than the static “12 to name” count suggests.
+
+**What it gets right on the phone.** In relabel-demo, the unnamed stretch immediately above now opens a label sheet. Choosing Offline maps spec lowers the sheet and leaves a solid named block in that same stretch. Undo restores the gap. The surrounding appointments remain landmarks throughout. The subsequent confirmation of the Beta design review changes that block in place, without another sheet. This is a satisfying distinction between choosing a label and simply agreeing with one.
+
+The fold-thread-long sequence retains the migration conversation and the “half-written” reply through the cover-to-inner-to-cover round trip. The larger screen supplies a route alongside the conversation without demanding that the thread be opened again. That continuity is useful even though I still question whether the route is the best companion to this particular thread.
+
+**What would annoy daily.** Naming one gap temporarily blurs the whole route and opens a substantial sheet. The result is local, but the journey there occupies much of the screen. Several uncertain blocks would mean repeated departures from, and returns to, the very timeline being repaired. The direct confirmation at the end is markedly lighter. Motion makes the report's concern about a day of guesses more specific: the burden depends on how often I must choose, rather than merely confirm.
+
+**What becomes harder than current.** Keeping an uninterrupted overview while correcting time. Current's compressed day view is less readable in detail, but Timeline's phone sequence repeatedly exchanges the overview for a picker. The route makes the result easier to understand; the sheet makes the surrounding day unavailable while choosing. I have not watched a matching current relabel recording, so this is a structural comparison, not a claim that current animates better.
+
+On folding, the sheet and pane do not read as one continuously transforming object. The background route becomes exposed during the change, then the conversation settles into its new position. Nothing in the reviewed sequence establishes lost work, but I would distinguish preserved state from an effortless visual transition.
+
+**The idea to steal.** Give Context Timeline's local confirmation feedback for time: show the uncertain stretch becoming a counted block in place, with Undo restoring its former appearance. A toast alone does not explain the correction as well.
+
+**Recordings reviewed.** From `lor-j1fe/gestures`: [relabel-demo](/home/supadava/.local/state/lor-evidence/lor-j1fe/gestures/relabel-demo/recording.webm) and [fold-thread-long](/home/supadava/.local/state/lor-evidence/lor-j1fe/gestures/fold-thread-long/recording.webm). I reviewed timestamped frames throughout both videos, the relabel recording's original 50 ms strip, and the fold's full-size final frame. These are phone-lab recordings; I have not extended the judgment to dashboard animation or physical-device smoothness.
 
 GPT-6 Astra
 

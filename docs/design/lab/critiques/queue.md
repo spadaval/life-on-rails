@@ -1,6 +1,6 @@
 # Queue: the critics' notes
 
-Item lor-glev, 17 and 18 November 2026. Each critic read docs/design/lab/brief.md, the galleries and recordings, and where it could the live viewers, without seeing the others' notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
+Item lor-glev, 17 and 18 November 2026. Each critic was given docs/design/lab/brief.md, both galleries, the gesture recordings and the live viewers, without seeing the others' notes, and says in its notes what it used and what it saw only as a still. GPT-6 Astra's first notes did not use the recordings; at review it was asked to watch them, and its addendum on motion follows its first notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
 
 <!-- critic: gpt-6-astra -->
 
@@ -25,6 +25,22 @@ Queue has the strongest immediate hierarchy, and the greatest risk of making LoR
 **Phone, steal.** Give Context Queue's inline single-choice answers with descriptions. The tile-provider question is answerable where it appears instead of opening another layer first.
 
 Evidence: dashboard Today was used only for the lead Done transition. Dashboard Tasks at 1100, Today at 1500/412 and Maya at 1500 were stills. Phone home, agent-waiting, search-mixed, sync-failed and thread-long/inner were stills only; I did not test their gestures.
+
+GPT-6 Astra
+
+Queue's motion makes me warmer toward its single-list idea. It gives clearing work a readable rhythm, although I still dislike turning the whole backlog into a home badge.
+
+**What it gets right on the phone.** In approve-agent-waiting, the approval stays put during the cancellation window. Its buttons become “Approving…” and Cancel, with a shrinking progress line. After roughly three seconds, the approval leaves and the tile-provider question rises into the reticle. The important continuity is where to look next: the same place. The 50 ms strip shows the handover around 3.3–3.5 seconds rather than an unexplained replacement of the entire page. This is a useful bit of personality, not just ornament.
+
+The move-demo recording is also reassuring. Camera first has a recognizable menu, then lifts into a drag while neighbouring icons make room, and finishes with “Moved Camera” and Undo. Arranging home looks like manipulating objects in place. It no longer looks like the invisible mode described in the current-design audit.
+
+**What would annoy daily.** The three-second approval window dominates an otherwise quick exchange. I understand the safety it buys, and Cancel is honest, but repeated approvals could feel like repeatedly waiting for a lift door to close. Once the card clears, everything below it moves too. That is excellent when working from the top and distracting when already reading the next question. The reticle's insistence is more palpable in motion than in a still.
+
+**What becomes harder than current.** Queue's replacement of current's compact card overview with a procession makes comparing multiple requests less stable: their positions change as the lead clears. The fold recording also shows a cost that the final inner screenshot hides. The cover sheet drops away as the inner composition takes over; folding back briefly exposes the queue before the sheet returns. The draft survives, but the reading surface is reconstructed rather than visibly carried across. I have not reviewed an equivalent current fold recording, so I cannot claim a measured motion regression there.
+
+**The idea to steal.** Give Panes Queue's handover from a completed lead item to the next actionable item. The spatial continuity matters more than the reticle itself. It would make clearing an agent queue feel purposeful without adding another page.
+
+**Recordings reviewed.** From `lor-5fk6/gestures`: [approve-agent-waiting](/home/supadava/.local/state/lor-evidence/lor-5fk6/gestures/approve-agent-waiting/recording.webm), [move-demo](/home/supadava/.local/state/lor-evidence/lor-5fk6/gestures/move-demo/recording.webm), and [fold-thread-long](/home/supadava/.local/state/lor-evidence/lor-5fk6/gestures/fold-thread-long/recording.webm). I reviewed timestamped frames extracted across each video, the approval's original 50 ms strip, and the fold's full-size final frame. “half-written” remains in the reply field after the round trip. This is recorded browser evidence, not a judgment of physical Fold latency or touch feel. These phone recordings add no dashboard motion evidence.
 
 GPT-6 Astra
 

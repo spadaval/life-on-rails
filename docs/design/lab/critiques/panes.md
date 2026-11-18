@@ -1,6 +1,6 @@
 # Panes: the critics' notes
 
-Item lor-glev, 17 and 18 November 2026. Each critic read docs/design/lab/brief.md, the galleries and recordings, and where it could the live viewers, without seeing the others' notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
+Item lor-glev, 17 and 18 November 2026. Each critic was given docs/design/lab/brief.md, both galleries, the gesture recordings and the live viewers, without seeing the others' notes, and says in its notes what it used and what it saw only as a still. GPT-6 Astra's first notes did not use the recordings; at review it was asked to watch them, and its addendum on motion follows its first notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
 
 <!-- critic: gpt-6-astra -->
 
@@ -25,6 +25,24 @@ Panes is the best foundation for an instrument you sit down to use. It is less p
 **Phone, steal.** Give Queue Panes' search field immediately above the keyboard with app results just above it. The search-mixed still puts Strava close to the typing thumb. Queue makes the same app selection a reach to the top.
 
 Evidence: dashboard observations are stills at 1500, 1100 and 412. Phone home, agent-waiting, search-mixed, sync-failed and thread-long/inner were inspected as stills; I additionally used the lab's Fold and Unfold controls on thread-long. This was a browser simulation, not a physical Fold test.
+
+GPT-6 Astra
+
+Panes benefits most from the motion evidence. Its half sheet is more useful than my still-based critique allowed, although it remains an uncomfortable reading surface for a long thread.
+
+**What it gets right on the phone.** In sheet, Today slides into view under the persistent page switcher. Opening the crash task raises a half sheet and brings the selected row into view above it. Tapping the App Store flag replaces the contents of that same sheet. There is no close, return to list, reopen cycle. Expanding the sheet gives the detail more room; returning it to half height restores the list relationship. That is a coherent interaction, not simply a desktop pane squeezed onto a phone.
+
+In risk, Back first removes the keyboard and then closes the thread sheet. These are comprehensible layers. In fold, the open thread becomes the right-hand pane and returns to a cover sheet with “half-written” intact. The evidence supports more continuity than the single fold I tried in my original pass established.
+
+**What would annoy daily.** The sheet and the list can move together when a selected row is brought clear of the sheet. My eye has two things to follow: the rising detail and the shifting source. It is worth that cost when browsing several items, less so for a single quick lookup.
+
+Transparency is also doing too much. In the fold's final frame, the underlying flags, thread list and dock are visible through the reading sheet. That is legible evidence of depth, but poor support for concentrating on a transcript. As the foreground and background move independently, their text becomes visual interference. I prefer the more decisive background separation in Queue and Context.
+
+**What becomes harder than current.** A compact current card can be scanned as part of the page; Panes adds a spatial decision about half height, full height or dismissal. The risk recording makes the keyboard-then-sheet Back order clear, but also shows how many layers one thread acquires. The new system buys much better browsing and editing at the price of managing those layers. I have not watched matching current footage and am not claiming a comparative frame-rate result.
+
+**The idea to steal.** Give Context Panes' ability to change the selected item while keeping one detail container open. On the inner screen especially, moving between related tasks or people should feel like browsing a workspace, not repeatedly visiting and dismissing destinations.
+
+**Recordings reviewed.** From `lor-fdtk/gestures`: [sheet](/home/supadava/.local/state/lor-evidence/lor-fdtk/gestures/sheet/recording.webm), [risk](/home/supadava/.local/state/lor-evidence/lor-fdtk/gestures/risk/recording.webm), and [fold](/home/supadava/.local/state/lor-evidence/lor-fdtk/gestures/fold/recording.webm). I reviewed timestamped frames across each video, sheet's original 50 ms strip, and fold's full-size final frame. This changes my assessment of the phone's browsing model; it does not establish dashboard motion quality or physical Fold performance.
 
 GPT-6 Astra
 

@@ -1,6 +1,6 @@
 # The count on home, and defects: the critics' notes
 
-Item lor-glev, 17 and 18 November 2026. Each critic read docs/design/lab/brief.md, the galleries and recordings, and where it could the live viewers, without seeing the others' notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
+Item lor-glev, 17 and 18 November 2026. Each critic was given docs/design/lab/brief.md, both galleries, the gesture recordings and the live viewers, without seeing the others' notes, and says in its notes what it used and what it saw only as a still. GPT-6 Astra's first notes did not use the recordings; at review it was asked to watch them, and its addendum on motion follows its first notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
 
 <!-- critic: gpt-6-astra -->
 

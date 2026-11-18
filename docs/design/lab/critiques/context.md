@@ -1,6 +1,6 @@
 # Context: the critics' notes
 
-Item lor-glev, 17 and 18 November 2026. Each critic read docs/design/lab/brief.md, the galleries and recordings, and where it could the live viewers, without seeing the others' notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
+Item lor-glev, 17 and 18 November 2026. Each critic was given docs/design/lab/brief.md, both galleries, the gesture recordings and the live viewers, without seeing the others' notes, and says in its notes what it used and what it saw only as a still. GPT-6 Astra's first notes did not use the recordings; at review it was asked to watch them, and its addendum on motion follows its first notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
 
 <!-- critic: gpt-6-astra -->
 
@@ -25,6 +25,24 @@ Context is the direction I most want LoR to grow into. It can make opening the a
 **Phone, steal.** Give Queue Context's one directly tickable home task. That preserves Queue's quiet launcher while making progress possible without entering its entire backlog. Keep the context attached so the task has a reason to matter.
 
 Evidence: all Context observations are from stills: dashboard Today at 1500/412, All tasks at 1100, Maya at 1500; phone home/demo, agent-waiting, search-mixed and thread-long/inner. I did not operate Context or verify its gestures. The dependency on maintained links comes from its dashboard and phone Reports as well as the visible composition.
+
+GPT-6 Astra
+
+Context's motion makes its distinction between looking at something and working on it clearer. That is a more valuable quality than a spectacular transition would be.
+
+**What it gets right on the phone.** In switch, Offline maps starts timing. All opens the contexts sheet; choosing Public beta replaces the project surface while the pending migration approval remains above it. Crucially, the new surface says the timer is still on Offline maps and offers “Switch here”. Only that second action moves the timer to Public beta. Browsing has not silently changed the account of my work. The timer's amber treatment then moves into the new context, and the confirmation names what happened.
+
+The fold recording also improves my view of Context for reading. The conversation returns to a nearly full-height cover sheet, with “half-written” still in the composer. The fold-context recording keeps Public beta selected and returns to the scrolled portion containing tasks, Lena and time. Unfolding adds the project page alongside it. It feels like gaining a working area rather than starting a different session.
+
+**What would annoy daily.** Switching through All uses a tall chooser and a substantial background blur before revealing the replacement surface. The 50 ms strip shows the new context heading and next task appearing before the lower groups finish appearing. The change is understandable, but the small reveal sequence adds ceremony to what may become a frequent navigation action. For a short glance at another project, I would want the content to settle quickly enough to read at once.
+
+The top bar also changes as Public beta joins it, then becomes Now after switching the timer. That records useful history, but a frequent switcher must keep interpreting whether a tab denotes the active timer or a place recently visited. The motion helps explain that distinction without eliminating its mental cost.
+
+**What becomes harder than current.** Maintaining a fixed mental map of where information lives. Current's home/agent organization is comparatively stable; Context replaces tasks, people and time together when the project changes. The benefit is relevance, the cost is reacquiring several regions at once. The pending approval staying in place is an important restraint on that cost. I have no matching current switching recording, so this is a comparison of interaction models, not measured animation quality.
+
+**The idea to steal.** Give Timeline Context's explicit separation between navigation and switching the timer. Opening a future block or another project should let me inspect it; a separately named action should say when my work changes. The recorded “Timer on Offline maps” → “Switch here” → amber Public beta sequence makes that contract unusually clear.
+
+**Recordings reviewed.** From `lor-8aqh/gestures`: [switch](/home/supadava/.local/state/lor-evidence/lor-8aqh/gestures/switch/recording.webm), [fold](/home/supadava/.local/state/lor-evidence/lor-8aqh/gestures/fold/recording.webm), and [fold-context](/home/supadava/.local/state/lor-evidence/lor-8aqh/gestures/fold-context/recording.webm). I reviewed timestamped frames throughout each video, switch's original 50 ms strip, and fold's full-size final frame. This is recorded phone-lab evidence, not a new hands-on test or evidence of dashboard animation quality.
 
 GPT-6 Astra
 
