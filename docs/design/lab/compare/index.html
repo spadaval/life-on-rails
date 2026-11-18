@@ -167,11 +167,11 @@ footer { padding: 48px 0 64px; color: var(--faint); font-size: var(--t-xs); }
   <div class="sides">
     <div class="side side-for">
       <h3>For</h3>
-      <ul class="quotes"><li><q>In Today, afternoon, at 1500 and 412, “Find a physio for the left knee” is unmistakably the thing to read.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>Home/demo leaves the icons and search unobstructed; the single timer line is exceptionally economical.</q><cite>GPT-6 Astra, on the phone</cite></li><li><q>The important continuity is where to look next: the same place.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>Quiet at 1500 is the most beautiful empty of the four: &quot;ALL CLEAR / Nothing wants you.&quot;</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>Compared with current's cover, where a huge TODAY widget eats the grid and the icons are grey discs, this is the first home that looks like a phone.</q><cite>Grok 4.6, on the phone</cite></li></ul>
+      <ul class="quotes"><li><q>In Today, afternoon, at 1500 and 412, “Find a physio for the left knee” is unmistakably the thing to read.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>Home/demo leaves the icons and search unobstructed; the single timer line is exceptionally economical.</q><cite>GPT-6 Astra, on the phone</cite></li><li><q>The important continuity is where to look next: the same place.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>Quiet at 1500 is the most beautiful empty of the four: &quot;ALL CLEAR / Nothing wants you.&quot;</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>Compared with current's cover, where a huge TODAY widget eats the grid and the icons are grey discs, this is the first home that looks like a phone.</q><cite>Grok 4.6, on the phone</cite></li><li><q>The next thing in the gun-sight is the next thing that wants you.</q><cite>Grok 4.6, on the phone, in motion</cite></li></ul>
     </div>
     <div class="side side-against">
       <h3>Against</h3>
-      <ul class="quotes"><li><q>Queue's confident recommendation is now competing with my actual work.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>“11 waiting” recruits every unlock into clearing a backlog.</q><cite>GPT-6 Astra, on the phone</cite></li><li><q>The three-second approval window dominates an otherwise quick exchange.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>You will know the dripping tap is four days late before you know you have an hour and a half until the dentist.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>You came to open WhatsApp and the phone told you the bathroom tap is late.</q><cite>Grok 4.6, on the phone</cite></li></ul>
+      <ul class="quotes"><li><q>Queue's confident recommendation is now competing with my actual work.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>“11 waiting” recruits every unlock into clearing a backlog.</q><cite>GPT-6 Astra, on the phone</cite></li><li><q>The three-second approval window dominates an otherwise quick exchange.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>You will know the dripping tap is four days late before you know you have an hour and a half until the dentist.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>You came to open WhatsApp and the phone told you the bathroom tap is late.</q><cite>Grok 4.6, on the phone</cite></li><li><q>Three seconds of a progress bar on a phone you unlocked to clear one tap.</q><cite>Grok 4.6, on the phone, in motion</cite></li></ul>
     </div>
   </div>
   <div class="steal">
@@ -242,6 +242,29 @@ footer { padding: 48px 0 64px; color: var(--faint); font-size: var(--t-xs); }
 <h3>Steal</h3>
 <p>Inline question options on the cover card (MapTiler / Stadia / Self-host / Other), into Timeline. Timeline's agent-waiting still puts an Answer button on the question and hides the rest behind &quot;3 more waiting&quot;. Queue lets you answer without opening anything.</p>
 <p>Grok 4.6</p>
+<h1>Queue, in motion</h1>
+<p>Phone first. These recordings are the cover, the queue page, and the Fold. The dashboard stills from the first notes still stand; the gesture lab did not record the 1280 column moving.</p>
+<p>I watched every run under <code>~/.local/state/lor-evidence/lor-5fk6/gestures/</code>, from the 50 ms strips and from frames pulled out of each <code>recording.webm</code>. The ones that change the stills are <code>approve-agent-waiting</code>, <code>tick-demo</code>, <code>answer-agent-waiting</code>, <code>fold-thread-long</code>, <code>fold-inner-thread-long</code>, <code>reply-thread-long</code>, <code>drawer-demo</code>, <code>search-demo</code>, <code>sync-sync-failed</code>, <code>timer-demo</code>, and <code>move-demo</code>.</p>
+<h2>Phone</h2>
+<h3>What it gets right</h3>
+<p>The card clear is the concept. In <code>approve-agent-waiting</code> you tap Approve at 0 ms. The reticle stays. The card turns into Approving… with a Cancel hold for about three seconds. At 3.15 s the header still says 12 for you. At 3.35 s it already says 11, while the card is still Approving and the question is already sitting under it, waiting. At 4.4 s the question occupies the reticle, MapTiler / Stadia / Self-host / Other on the card, and a toast &quot;Approved. T3 runs the command.&quot; The next thing in the gun-sight is the next thing that wants you. That is the move a final frame cannot show.</p>
+<p><code>answer-agent-waiting</code> keeps the approval in the reticle and answers below it. Other… opens a field on the card. Sending “MapTiler for now”… Cancel runs in the question card. The lead never jumps.</p>
+<p><code>tick-demo</code> swipes home onto the queue with the icon grid still visible on the right, ticks Finish unit 8, greys the row, and offers Undo. The reticle stays on the approval. Due work is a swipe away from a launcher.</p>
+<p><code>drawer-demo</code> pulls Used most now and All apps 29 up from the thumb. Search sits at the top of that overlay. <code>sync-sync-failed</code> swaps the 11-waiting chip for &quot;Sync failed Fix&quot; and leaves the icons alone.</p>
+<p>Fold is the required interaction, and it holds. <code>fold-thread-long</code>: cover sheet, type &quot;half-written&quot;, unfold to the queue, fold back, the draft is still there. <code>fold-inner-thread-long</code>: list on the left, transcript on the right, Approve / Deny / Open in the thread header, Step 18 readable. At 8 s Approving… and Cancel appear on the list card and on the thread at the same time. <code>reply-thread-long</code> puts the keyboard under an inner thread whose header still holds Approve.</p>
+<h3>What would annoy in daily use</h3>
+<p>The Approving… hold is every approval. Three seconds of a progress bar on a phone you unlocked to clear one tap. Cancel is the reason it exists. Living with it on the tenth approval of the afternoon is the cost.</p>
+<p>The settle toast in <code>approve-agent-waiting</code> sits on the first overdue row. &quot;Approved. T3 runs the command.&quot; covers &quot;Fix the dripping bathroom tap&quot;. The reticle has already moved to the question, which is correct. The toast still eats the list you are about to read.</p>
+<p>The cover thread sheet in <code>fold-thread-long</code> puts Approve / Deny / Open over the start of the transcript. You type under a clipped Step 18. Inner is the working version of this. Cover is a sheet that talks over the thread.</p>
+<p>Search in <code>drawer-demo</code> and <code>search-demo</code> puts the field at the top. On a Fold cover that is a reach. The drawer itself is the right motion.</p>
+<h3>What it makes harder than current</h3>
+<p>Launching is easier than current. The cost that motion adds is the hold. Current's Today widget did not make you wait three seconds to confirm a command. Queue does, on every approve and on every send.</p>
+<p>Ticking unit 8 is a swipe plus a tick plus a toast. Current hid Today. Queue found it. The swipe in <code>tick-demo</code> is honest: home stays a launcher until you ask for the list.</p>
+<h3>Steal</h3>
+<p>The Approving… Cancel hold before the card clears, into Timeline and into Context. Timeline's approve in <code>lor-j1fe</code> already uses the same hold on the pinned card, with the route still visible under it. Queue is the one that then lets the next card occupy the same reticle. Put that occupy-in-place on Timeline's waiting stack: the question should slide into the pin when the approval settles, instead of the pin collapsing and the route jumping up.</p>
+<h2>Dashboard</h2>
+<p>The gesture recordings are phone. Nothing here changes the afternoon column I used live: one lead, Then 8, a wordless strip. The card-clear on a 1280 screen would be the same reticle move with more air around it. I would still tire of the list. I would still keep the all-clear card.</p>
+<p>Grok 4.6</p>
 </div>
     </details>
   </div>
@@ -287,11 +310,11 @@ footer { padding: 48px 0 64px; color: var(--faint); font-size: var(--t-xs); }
   <div class="sides">
     <div class="side side-for">
       <h3>For</h3>
-      <ul class="quotes"><li><q>This is a more actionable version of current's attractive but comparatively remote arc.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>Home/demo is my favourite glance at the day: next event, time until it, remaining day and timer share one calm card.</q><cite>GPT-6 Astra, on the phone</cite></li><li><q>This is a satisfying distinction between choosing a label and simply agreeing with one.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>Current's arc is the same information as jewellery. This is the same information as a page.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>A clear queue does not erase the day. I like that.</q><cite>Grok 4.6, on the phone</cite></li></ul>
+      <ul class="quotes"><li><q>This is a more actionable version of current's attractive but comparatively remote arc.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>Home/demo is my favourite glance at the day: next event, time until it, remaining day and timer share one calm card.</q><cite>GPT-6 Astra, on the phone</cite></li><li><q>This is a satisfying distinction between choosing a label and simply agreeing with one.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>Current's arc is the same information as jewellery. This is the same information as a page.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>A clear queue does not erase the day. I like that.</q><cite>Grok 4.6, on the phone</cite></li><li><q>The day tells instead of asking, in place.</q><cite>Grok 4.6, on the phone, in motion</cite></li></ul>
     </div>
     <div class="side side-against">
       <h3>Against</h3>
-      <ul class="quotes"><li><q>The report's worry is visible: an automatic account of the day starts to resemble homework.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>The very concept about “now” makes me scroll to now.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>Naming one gap temporarily blurs the whole route and opens a substantial sheet.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>Until you hit Confirm all, the route is a questionnaire.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>The cover is still a lot of LoR for a phone you unlock to open Gmail.</q><cite>Grok 4.6, on the phone</cite></li></ul>
+      <ul class="quotes"><li><q>The report's worry is visible: an automatic account of the day starts to resemble homework.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>The very concept about “now” makes me scroll to now.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>Naming one gap temporarily blurs the whole route and opens a substantial sheet.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>Until you hit Confirm all, the route is a questionnaire.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>The cover is still a lot of LoR for a phone you unlock to open Gmail.</q><cite>Grok 4.6, on the phone</cite></li><li><q>One chip sheet per unnamed block, twelve times, is a labelling shift with nicer motion.</q><cite>Grok 4.6, on the phone, in motion</cite></li></ul>
     </div>
   </div>
   <div class="steal">
@@ -362,6 +385,30 @@ footer { padding: 48px 0 64px; color: var(--faint); font-size: var(--t-xs); }
 <h3>Steal</h3>
 <p>The 412 dashboard composition (waiting, then folded morning, then now) into Queue's phone queue page. Queue's queue is one ranked column and the day vanishes. Timeline's cover day page already knows the day is the spine. Steal the fold of &quot;earlier&quot; so a cover queue can still show now.</p>
 <p>Grok 4.6</p>
+<h1>Timeline, in motion</h1>
+<p>Phone first. The recordings are the cover, the day page, and the Fold. The 1280 route I used live still stands; the lab recorded the phone.</p>
+<p>I watched every run under <code>~/.local/state/lor-evidence/lor-j1fe/gestures/</code>, from the 50 ms strips and from frames of each <code>recording.webm</code>. The ones that change the stills are <code>relabel-demo</code>, <code>plan-demo</code>, <code>approve-agent-waiting</code>, <code>tick-demo</code>, <code>timer-demo</code>, <code>fold-thread-long</code>, <code>fold-inner-thread-long-inner</code>, <code>answer-agent-waiting</code>, <code>drawer-demo</code>, <code>drawer-demo-inner</code>, and <code>search-demo</code>.</p>
+<h2>Phone</h2>
+<h3>What it gets right</h3>
+<p>A block filling in on the route is the concept. <code>relabel-demo</code>: swipe home onto the day, the strip and the icons still visible on the right. Tap Name it on &quot;47m nothing recorded&quot;. A COUNT IT AS sheet. Tap Offline maps spec. The gap becomes a solid amber block, &quot;Offline maps spec 14:13–15:00 47m&quot;, in the same slot, with the now line still under it. 12 to name becomes 11. Undo on the toast. The day tells instead of asking, in place.</p>
+<p><code>plan-demo</code> does the same job going forward. Plan a task on the 17:15–18:00 45 m free gap opens a sheet of due work, each already stamped at 17:15. The route stays the subject. The sheet is a picker onto a time.</p>
+<p><code>approve-agent-waiting</code> pins WAITING ON YOU, runs Approving… Cancel on the approval, and leaves the route drawn underneath. At settle the question takes the pin, the failed receipts card comes up, WAITING goes 5 to 4, and the now line has not moved. The toast &quot;Approved. T3 runs the command.&quot; sits on Portuguese. The day is still there.</p>
+<p><code>tick-demo</code> opens &quot;Due, no time yet&quot; as a sheet, ticks unit 8, greys it, Undo. Plan stays on every other row. Ticking and placing are the same list.</p>
+<p><code>timer-demo</code> returns you to home with &quot;Stopped Offline maps spec Undo&quot; over the icons. The strip still shows 4 waiting.</p>
+<p>Fold holds the draft. <code>fold-thread-long</code>: cover sheet, type half-written, unfold to the day, the route on the left and the thread on the right, half-written still in the field. <code>fold-inner-thread-long-inner</code> is that inner already: now line visible while you read. <code>drawer-demo-inner</code> is the Fold used as a phone: six columns of icons, the day strip, 4 waiting, search at the thumb.</p>
+<h3>What would annoy in daily use</h3>
+<p>The COUNT IT AS sheet is a full-height overlay on a day you came to glance. Relabel is the signature, and it still covers the route while you pick a name. One chip sheet per unnamed block, twelve times, is a labelling shift with nicer motion.</p>
+<p><code>answer-agent-waiting</code> leaves the question as an Answer button. The options are a sheet away. Queue put MapTiler on the card and sent from there.</p>
+<p>The approve toast covers the evening of the route. You just cleared a command and Portuguese is under a banner.</p>
+<p>Cover search still puts the field at the top. Inner home in <code>drawer-demo-inner</code> is the better search reach.</p>
+<h3>What it makes harder than current</h3>
+<p>Launching is easier (icons live, strip as a glance). Relabel is easier than current, because current had no picture of the unnamed afternoon. The cost motion adds is the sheet. Every name, every plan, every due tick is a sheet over the route. The route is the reason to open the day. The sheets hide it for the seconds you are doing the work the route asked for.</p>
+<p>Inner-screen reading still fails the start of the transcript. In <code>fold-thread-long</code> at unfold, Approve / Deny / Open sit on &quot;next?&quot;. In <code>fold-inner-thread-long-inner</code> Step 18 of the user question is the first visible line; the earlier agent turn is gone. Reply works. Reading the beginning does not. Listed as a defect in the first notes. Motion confirms it.</p>
+<h3>Steal</h3>
+<p>The unnamed gap filling in as a named block, into Queue's day strip and into Context's Time region. Queue's strip is rectangles. Context's Time in no context is a count. Timeline lets a 47-minute hole become Offline maps spec without leaving the page. Put that fill-in-place on Queue's strip: tap a pale block, chip sheet, the block colours in. The queue list can stay a queue.</p>
+<h2>Dashboard</h2>
+<p>The recordings are phone. Confirm all 8, used live at 1280, is the same idea as the phone relabel, done in one click. Phone motion is one block at a time. I would still steal Confirm all into Queue and Context. I would still want the 412 composition (waiting, folded morning, now) on the cover day page.</p>
+<p>Grok 4.6</p>
 </div>
     </details>
   </div>
@@ -407,11 +454,11 @@ footer { padding: 48px 0 64px; color: var(--faint); font-size: var(--t-xs); }
   <div class="sides">
     <div class="side side-for">
       <h3>For</h3>
-      <ul class="quotes"><li><q>Panes is the best foundation for an instrument you sit down to use.</q><cite>GPT-6 Astra</cite></li><li><q>The named Agent/Home/Today switcher is far more discoverable than current's page dots.</q><cite>GPT-6 Astra, on the phone</cite></li><li><q>That is a coherent interaction, not simply a desktop pane squeezed onto a phone.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>It is the one that feels like software you already know how to operate.</q><cite>Grok 4.6</cite></li><li><q>Panes is the one that made failure look designed.</q><cite>Grok 4.6, on the phone</cite></li></ul>
+      <ul class="quotes"><li><q>Panes is the best foundation for an instrument you sit down to use.</q><cite>GPT-6 Astra</cite></li><li><q>The named Agent/Home/Today switcher is far more discoverable than current's page dots.</q><cite>GPT-6 Astra, on the phone</cite></li><li><q>That is a coherent interaction, not simply a desktop pane squeezed onto a phone.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>It is the one that feels like software you already know how to operate.</q><cite>Grok 4.6</cite></li><li><q>Panes is the one that made failure look designed.</q><cite>Grok 4.6, on the phone</cite></li><li><q>The half sheet rest is real, and it is the Fold concept on a cover.</q><cite>Grok 4.6, on the phone, in motion</cite></li></ul>
     </div>
     <div class="side side-against">
       <h3>Against</h3>
-      <ul class="quotes"><li><q>That is consistency becoming repetition: the layout looks settled before it has earned the division of space.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>I want more transcript and less repeated scaffolding.</q><cite>GPT-6 Astra, on the phone</cite></li><li><q>Transparency is also doing too much.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>You are in Queue with extra chrome.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>Quiet Today's people list will be the identity of a clear afternoon.</q><cite>Grok 4.6, on the phone</cite></li></ul>
+      <ul class="quotes"><li><q>That is consistency becoming repetition: the layout looks settled before it has earned the division of space.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>I want more transcript and less repeated scaffolding.</q><cite>GPT-6 Astra, on the phone</cite></li><li><q>Transparency is also doing too much.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>You are in Queue with extra chrome.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>Quiet Today's people list will be the identity of a clear afternoon.</q><cite>Grok 4.6, on the phone</cite></li><li><q>The expand is the trap.</q><cite>Grok 4.6, on the phone, in motion</cite></li></ul>
     </div>
   </div>
   <div class="steal">
@@ -485,6 +532,31 @@ footer { padding: 48px 0 64px; color: var(--faint); font-size: var(--t-xs); }
 <h3>Steal</h3>
 <p>The sync-fail line in the glance pane, into Queue and Context. Queue already swaps the waiting chip for &quot;Sync failed Fix&quot;. Context should put the same line on the home context card. Panes is the one that made failure look designed.</p>
 <p>Grok 4.6</p>
+<h1>Panes, in motion</h1>
+<p>Phone first. The first notes said I never saw the half sheet rest. I have now. <code>sheet</code> in <code>lor-fdtk</code> is the recording that was missing.</p>
+<p>I watched every run under <code>~/.local/state/lor-evidence/lor-fdtk/gestures/</code>, from the 50 ms strips and from frames of each <code>recording.webm</code>. The ones that change the stills are <code>sheet</code>, <code>pages</code>, <code>fold</code>, <code>enter</code>, <code>approve</code>, <code>search-switch</code>, <code>search</code>, <code>search-inner</code>, <code>tick</code>, <code>answer</code>, <code>settings-drag</code>, <code>drawer</code>, and <code>reply</code>.</p>
+<h2>Phone</h2>
+<h3>What it gets right</h3>
+<p>The half sheet rest is real, and it is the Fold concept on a cover. <code>sheet</code>, from Today: at 1.3 s a sheet of &quot;Fix the crash on rotate in the map view&quot; sits over the list. The list is still there. Search is still at the thumb. At 1.6–2.1 s the sheet rests at half. The selected row (the crash, then the App Store notes) is edged in amber above it. Done / Seen, due chips, Start a timer, More, all on the sheet. At 2.8 s the chevron expands it full height; the list is gone. At 3.5 s it peeks: title, Done / Seen, People visible through the glass. Back dismisses. You read the list and the task at once. That is what the stills of full-height sheets could not show.</p>
+<p><code>pages</code> is the switcher in motion. Home, then Agent (Waiting on you 4, flags, threads, dock at the thumb), then Home again, then Today sliding in from the right. Agent 4 / Today 10 stay on the pill. Home stays a launcher.</p>
+<p><code>enter</code> is search at the thumb, used. Tap the dock field, Used most now and All apps 29, type &quot;stra&quot;, Strava next to the keyboard, Enter, toast &quot;Opens Strava&quot; over the icons. <code>search-switch</code> on the inner screen is list plus detail: &quot;st&quot; finds Play Store on the right, &quot;wha&quot; finds WhatsApp with Maya and Daniel as shortcuts. The Fold is doing the job it was bought for.</p>
+<p><code>approve</code> runs Approving… Cancel on the Agent list. Mid-hold the switcher reads Agent 5 / Today 9. At settle Agent 4, the question is the lead with an Answer button, the migration has dropped into Threads, toast &quot;Approved. T3 runs the command.&quot; over the thread list.</p>
+<p><code>tick</code> swipes Home onto Today. The grid is still visible on the left. Due 7 is one switcher tap from a launcher.</p>
+<p>Fold holds the draft. <code>fold</code>: cover half-sheet of the thread over the Agent list, keyboard, half-written. Unfold: list left, thread right, half-written still there. Search and Start stay at the thumb.</p>
+<p><code>settings-drag</code> leaves the sync-fail line in the glance pane (&quot;Phone sync failed · 312 readings waiting · Fix&quot;) while a sheet peeks from the bottom. Failure stays designed while you move.</p>
+<h3>What would annoy in daily use</h3>
+<p>The full-height expand in <code>sheet</code> at 2.8 s is the still I already disliked: the list is gone, you are in a modal. The rest at half is the daily move. The expand is the trap. One extra tap and you have lost Today.</p>
+<p>Answer is still a button. <code>answer</code> leaves the question as &quot;3 options&quot; and a chevron. Queue sent MapTiler from the card. Panes will open a sheet for a choice that already fits on the row.</p>
+<p>The approve toast covers the thread you are about to open. Agent 5 during the hold is a flicker on a launcher pill. The split Agent / Today is the right count. Watching 5 then 4 then the question is a lot of chrome for one tap.</p>
+<p>Cover search in <code>search</code> raises the keyboard over the lower icons and keeps the field at the thumb, which is correct. The first letters hide the grid you came to use. <code>enter</code> recovers it.</p>
+<h3>What it makes harder than current</h3>
+<p>Ticking is easier than current (Today is a switcher tap). Searching is easier (field at the thumb). The cost motion adds is the sheet stack. Half rest, full expand, Back, chevron, X. Inner unfold in <code>fold</code> still puts Approve / Deny on the first lines of the transcript (&quot;under a second on the test database…&quot;). Reply works. Reading the start does not. Same break as Timeline and Context. Queue's inner keeps Approve in the header.</p>
+<p>Quiet Today's people list is still waiting under the half sheet. At peek in <code>sheet</code> at 3.5 s you see Marcus, Aisha, Rosa through the glass. Cadence is uncommon. It is also what the sheet rests on.</p>
+<h3>Steal</h3>
+<p>The half-sheet rest over a still-visible list, into Queue's cover thread and into Timeline's relabel. Queue's cover thread is already a sheet; it goes too high and eats the transcript. Timeline's COUNT IT AS covers the route. Rest both at half. Keep the queue or the route in the top half. Panes proved the rest is usable: selected row edged, search still at the thumb, Back still dismisses.</p>
+<h2>Dashboard</h2>
+<p>The recordings are phone. The 1280 two-pane glass I used live is the inner-screen version of <code>search-switch</code> and of <code>fold</code> at unfold: list left, detail right. Phone motion is that idea, compressed to a restable sheet. I would still want the right pane at 1100. The half sheet is how you fake it on a cover.</p>
+<p>Grok 4.6</p>
 </div>
     </details>
   </div>
@@ -530,11 +602,11 @@ footer { padding: 48px 0 64px; color: var(--faint); font-size: var(--t-xs); }
   <div class="sides">
     <div class="side side-for">
       <h3>For</h3>
-      <ul class="quotes"><li><q>Context is the direction I most want LoR to grow into.</q><cite>GPT-6 Astra</cite></li><li><q>That is a materially better answer to “help me resume” than current's separate lists.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>Browsing has not silently changed the account of my work.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>This is the organisation LoR actually has, and the dashboard is the first time I have seen it drawn.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>This one is the one I would actually use, because the next task is ticked from home.</q><cite>Grok 4.6, on the phone</cite></li></ul>
+      <ul class="quotes"><li><q>Context is the direction I most want LoR to grow into.</q><cite>GPT-6 Astra</cite></li><li><q>That is a materially better answer to “help me resume” than current's separate lists.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>Browsing has not silently changed the account of my work.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>This is the organisation LoR actually has, and the dashboard is the first time I have seen it drawn.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>This one is the one I would actually use, because the next task is ticked from home.</q><cite>Grok 4.6, on the phone</cite></li><li><q>That is a context switch, and it is the organisation LoR actually has, drawn as a motion.</q><cite>Grok 4.6, on the phone, in motion</cite></li></ul>
     </div>
     <div class="side side-against">
       <h3>Against</h3>
-      <ul class="quotes"><li><q>Its danger is that keeping the meaning organized becomes another job.</q><cite>GPT-6 Astra</cite></li><li><q>The design promises concentration but keeps advertising other obligations.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>The change is understandable, but the small reveal sequence adds ceremony to what may become a frequent navigation action.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>You will scroll inside the thing you are supposed to be in.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>You came to approve a migration and you are holding a project.</q><cite>Grok 4.6, on the phone</cite></li></ul>
+      <ul class="quotes"><li><q>Its danger is that keeping the meaning organized becomes another job.</q><cite>GPT-6 Astra</cite></li><li><q>The design promises concentration but keeps advertising other obligations.</q><cite>GPT-6 Astra, on the dashboard</cite></li><li><q>The change is understandable, but the small reveal sequence adds ceremony to what may become a frequent navigation action.</q><cite>GPT-6 Astra, on the phone, in motion</cite></li><li><q>You will scroll inside the thing you are supposed to be in.</q><cite>Grok 4.6, on the dashboard</cite></li><li><q>You came to approve a migration and you are holding a project.</q><cite>Grok 4.6, on the phone</cite></li><li><q>For a beat you have switched to nothing.</q><cite>Grok 4.6, on the phone, in motion</cite></li></ul>
     </div>
   </div>
   <div class="steal">
@@ -608,6 +680,31 @@ footer { padding: 48px 0 64px; color: var(--faint); font-size: var(--t-xs); }
 <h3>Steal</h3>
 <p>Tick the next task from the home card, into Queue. Queue's home line is timer plus 11 waiting. Context's card is Offline maps, a checkbox on the spec, Dentist in 1 h 29. That is the one-line home the brief allowed, used for the thing you are in, with a tick. Queue should steal the tick and keep the icons.</p>
 <p>Grok 4.6</p>
+<h1>Context, in motion</h1>
+<p>Phone first. The whole surface switching is the concept. A final frame of Public beta cannot show the empty flash, or the approval that stays pinned while the project under it is replaced.</p>
+<p>I watched every run under <code>~/.local/state/lor-evidence/lor-8aqh/gestures/</code>, from the 50 ms strips and from frames of each <code>recording.webm</code>. The ones that change the stills are <code>switch</code>, <code>tick-now</code>, <code>fold</code>, <code>fold-context</code>, <code>approve</code>, <code>answer</code>, <code>reply</code>, <code>drawer</code>, <code>search</code>, <code>tick</code>, and <code>timer</code>.</p>
+<h2>Phone</h2>
+<h3>What it gets right</h3>
+<p><code>switch</code> is the signature. Cover of Offline maps, 4 waiting, the three-line card, icons. Tap through Now. Offline maps is a workplace: approval pinned, the one thing, Given to the agent, Lena Waiting. Tap into a Contexts sheet of goals and projects, Offline maps highlighted, Loose ends 7 under nothing. Tap Public beta. At 2.2 s the surface is a blank card, &quot;Chosen by you&quot;, title Public beta, toast still &quot;Started Offline maps Undo&quot;. At 2.8 s it has filled: timer On Public beta since 15:00, Stop / Switch, NEXT the App Store notes, Tasks 3, Lena, toast now &quot;Switched to Public beta Undo&quot;. The approval never left the pin. T3 stays. The project replaces. That is a context switch, and it is the organisation LoR actually has, drawn as a motion.</p>
+<p><code>tick-now</code> starts on the home card. The first tap opens Now. The spec expands in place with due chips (Today / Tomorrow / Fri / None), toast &quot;Due 20 Nov Undo&quot;, then a tick, &quot;Done: Draft the offline maps spec Undo&quot;. The home card is an entry to the workplace. The tick happens on the expanded task, with the project still around it.</p>
+<p><code>approve</code> runs Approving… Cancel on WAITING ON YOU 3. The question sits under it as Answer. Offline maps stays below. At settle WAITING is 2, the question is the lead, toast &quot;Approved. T3 runs the command.&quot; over Given to the agent. The workplace does not leave.</p>
+<p><code>drawer</code> slides apps up from the thumb while the context card is still on screen. <code>search</code> is Used most now and All apps 29 with the field at the thumb.</p>
+<p>Fold holds the draft. <code>fold</code>: cover sheet of the migration thread, type half-written, unfold at 5.5 s to Offline maps on the left and the thread on the right, half-written still in the field. <code>fold-context</code> unfolds Public beta on the inner screen with Next context Dentist, Fits before it (release notes 60 min, testers 30 min, dripping tap 45 min), Waiting elsewhere 7, and an empty Notes pane on the right (&quot;No page in Notes for this project&quot;). The Fold keeps the workplace on the left when there is no thread.</p>
+<p><code>reply</code> on the inner screen is that workplace plus a thread you can type into. Lena, the one thing, and the agent work stay visible while &quot;Ru&quot; is in the field.</p>
+<h3>What would annoy in daily use</h3>
+<p>The blank flash in <code>switch</code> at 2.2 s. Public beta arrives empty, &quot;Chosen by you&quot;, then fills. For a beat you have switched to nothing. Replace is the right model. A morph, or a fill that travels with the tap, would make the replace feel like a place. The empty card feels like a load.</p>
+<p><code>answer</code> opens the question as a full sheet: MapTiler / Stadia / Self-host / Something else, &quot;No messages yet&quot;, reply field at the bottom. Queue put those chips on the card. Here a three-option question covers the project you were in.</p>
+<p>The home-card tick in <code>tick-now</code> does not complete on the launcher. It opens Now, then expands, then ticks. The stills read as a checkbox on home. Motion is an entry. That is a better workplace and a worse glance. You came to mark the spec done and you are holding Offline maps.</p>
+<p>Cover <code>fold</code> at 6.8 s is still the sheet, Approve over the start of the transcript. Inner at 5.5 s clips &quot;so it runs in well under a second…&quot;. <code>reply</code> starts the visible thread at Step 19. Reading the beginning fails, same as Timeline and Panes.</p>
+<h3>What it makes harder than current</h3>
+<p>Launching is easier than current (icons live, card is three lines). Ticking the thing you are in is easier, once you are in Now. Ticking it from home is a walk into the workplace. Current's widget at least pretended to tick NEXT on the cover.</p>
+<p>Switching context is work current never asked for, and it is the point. The Contexts sheet in <code>switch</code> is a directory of LoR. Hunting is the cost. The blank flash is the extra cost motion added on top of the stills.</p>
+<p>Inner-screen reading is still the defect from the first notes. Motion confirms it on <code>fold</code> and on <code>reply</code>. Queue's inner is the one that keeps Approve in the header and the first message whole.</p>
+<h3>Steal</h3>
+<p>The pinned approval that survives a whole-surface replace, into Timeline and into Panes. Timeline's pin already stays while you relabel the route. Panes' Agent list is the pin. Context is the one that changes everything under the pin and leaves T3 where it was. When Panes' Today sheet opens, keep Waiting on you on the switcher. When Timeline's COUNT IT AS sheet opens, keep the approval card above the blur. The agent loop is the thing that must not move.</p>
+<h2>Dashboard</h2>
+<p>The recordings are phone. The Public beta click I used live at 1280 is the same replace, with more regions to turn. Phone motion made the blank flash visible. I would still steal Next context plus Fits before it into Timeline's route. I would still want Queue's all-clear on days I am not in a project. The home card is still the size I would ship.</p>
+<p>Grok 4.6</p>
 </div>
     </details>
   </div>
@@ -651,7 +748,7 @@ footer { padding: 48px 0 64px; color: var(--faint); font-size: var(--t-xs); }
 <section class="plain" id="defects" aria-labelledby="defects-h">
   <h2 id="defects-h">Defects the critics hit</h2>
   <p>The critics were asked for any defect that breaks one of the interactions the brief requires. Astra found none in what it used. Grok 4.6 reported one: on the inner screen in Timeline, Panes and Context, the Approve bar seemed to cover the start of a long thread.</p>
-  <p>It did not hold. The thread opens at its newest message, as a chat does, so the message at the top is cut by the scroll, not by the bar. Scrolled up in the published viewer on 18 November, all three show step 1 in full beneath the header. Queue's still happened to stop on a whole message. Nothing was changed, and Grok's notes stand as written.</p>
+  <p>It did not hold. The thread opens at its newest message, as a chat does, so the message at the top is cut by the scroll, not by the bar. Scrolled up in the published viewer on 18 November, all three show step 1 in full beneath the header. Queue's still happened to stop on a whole message. Grok's addenda on motion repeat the claim from the cover and inner fold recordings, which also open at the newest message. Nothing was changed, and Grok's notes stand as written.</p>
 
   <div class="notes">
     <details>

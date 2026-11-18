@@ -1,6 +1,6 @@
 # Queue: the critics' notes
 
-Item lor-glev, 17 and 18 November 2026. Each critic was given docs/design/lab/brief.md, both galleries, the gesture recordings and the live viewers, without seeing the others' notes, and says in its notes what it used and what it saw only as a still. GPT-6 Astra's first notes did not use the recordings; at review it was asked to watch them, and its addendum on motion follows its first notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
+Item lor-glev, 17 and 18 November 2026. Each critic was given docs/design/lab/brief.md, both galleries, the gesture recordings and the live viewers, without seeing the others' notes, and says in its notes what it used and what it saw only as a still. At review each critic was asked to watch the recordings its first notes had not used, and its addendum on motion follows its first notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
 
 <!-- critic: gpt-6-astra -->
 
@@ -115,5 +115,51 @@ Current already hid Today in a widget, so Queue's home is easier for launching. 
 ### Steal
 
 Inline question options on the cover card (MapTiler / Stadia / Self-host / Other), into Timeline. Timeline's agent-waiting still puts an Answer button on the question and hides the rest behind "3 more waiting". Queue lets you answer without opening anything.
+
+Grok 4.6
+
+# Queue, in motion
+
+Phone first. These recordings are the cover, the queue page, and the Fold. The dashboard stills from the first notes still stand; the gesture lab did not record the 1280 column moving.
+
+I watched every run under `~/.local/state/lor-evidence/lor-5fk6/gestures/`, from the 50 ms strips and from frames pulled out of each `recording.webm`. The ones that change the stills are `approve-agent-waiting`, `tick-demo`, `answer-agent-waiting`, `fold-thread-long`, `fold-inner-thread-long`, `reply-thread-long`, `drawer-demo`, `search-demo`, `sync-sync-failed`, `timer-demo`, and `move-demo`.
+
+## Phone
+
+### What it gets right
+
+The card clear is the concept. In `approve-agent-waiting` you tap Approve at 0 ms. The reticle stays. The card turns into Approving… with a Cancel hold for about three seconds. At 3.15 s the header still says 12 for you. At 3.35 s it already says 11, while the card is still Approving and the question is already sitting under it, waiting. At 4.4 s the question occupies the reticle, MapTiler / Stadia / Self-host / Other on the card, and a toast "Approved. T3 runs the command." The next thing in the gun-sight is the next thing that wants you. That is the move a final frame cannot show.
+
+`answer-agent-waiting` keeps the approval in the reticle and answers below it. Other… opens a field on the card. Sending “MapTiler for now”… Cancel runs in the question card. The lead never jumps.
+
+`tick-demo` swipes home onto the queue with the icon grid still visible on the right, ticks Finish unit 8, greys the row, and offers Undo. The reticle stays on the approval. Due work is a swipe away from a launcher.
+
+`drawer-demo` pulls Used most now and All apps 29 up from the thumb. Search sits at the top of that overlay. `sync-sync-failed` swaps the 11-waiting chip for "Sync failed Fix" and leaves the icons alone.
+
+Fold is the required interaction, and it holds. `fold-thread-long`: cover sheet, type "half-written", unfold to the queue, fold back, the draft is still there. `fold-inner-thread-long`: list on the left, transcript on the right, Approve / Deny / Open in the thread header, Step 18 readable. At 8 s Approving… and Cancel appear on the list card and on the thread at the same time. `reply-thread-long` puts the keyboard under an inner thread whose header still holds Approve.
+
+### What would annoy in daily use
+
+The Approving… hold is every approval. Three seconds of a progress bar on a phone you unlocked to clear one tap. Cancel is the reason it exists. Living with it on the tenth approval of the afternoon is the cost.
+
+The settle toast in `approve-agent-waiting` sits on the first overdue row. "Approved. T3 runs the command." covers "Fix the dripping bathroom tap". The reticle has already moved to the question, which is correct. The toast still eats the list you are about to read.
+
+The cover thread sheet in `fold-thread-long` puts Approve / Deny / Open over the start of the transcript. You type under a clipped Step 18. Inner is the working version of this. Cover is a sheet that talks over the thread.
+
+Search in `drawer-demo` and `search-demo` puts the field at the top. On a Fold cover that is a reach. The drawer itself is the right motion.
+
+### What it makes harder than current
+
+Launching is easier than current. The cost that motion adds is the hold. Current's Today widget did not make you wait three seconds to confirm a command. Queue does, on every approve and on every send.
+
+Ticking unit 8 is a swipe plus a tick plus a toast. Current hid Today. Queue found it. The swipe in `tick-demo` is honest: home stays a launcher until you ask for the list.
+
+### Steal
+
+The Approving… Cancel hold before the card clears, into Timeline and into Context. Timeline's approve in `lor-j1fe` already uses the same hold on the pinned card, with the route still visible under it. Queue is the one that then lets the next card occupy the same reticle. Put that occupy-in-place on Timeline's waiting stack: the question should slide into the pin when the approval settles, instead of the pin collapsing and the route jumping up.
+
+## Dashboard
+
+The gesture recordings are phone. Nothing here changes the afternoon column I used live: one lead, Then 8, a wordless strip. The card-clear on a 1280 screen would be the same reticle move with more air around it. I would still tire of the list. I would still keep the all-clear card.
 
 Grok 4.6

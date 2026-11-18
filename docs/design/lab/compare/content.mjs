@@ -20,7 +20,7 @@ export const PAGE = {
   ],
   defects: [
     "The critics were asked for any defect that breaks one of the interactions the brief requires. Astra found none in what it used. Grok 4.6 reported one: on the inner screen in Timeline, Panes and Context, the Approve bar seemed to cover the start of a long thread.",
-    "It did not hold. The thread opens at its newest message, as a chat does, so the message at the top is cut by the scroll, not by the bar. Scrolled up in the published viewer on 18 November, all three show step 1 in full beneath the header. Queue's still happened to stop on a whole message. Nothing was changed, and Grok's notes stand as written.",
+    "It did not hold. The thread opens at its newest message, as a chat does, so the message at the top is cut by the scroll, not by the bar. Scrolled up in the published viewer on 18 November, all three show step 1 in full beneath the header. Queue's still happened to stop on a whole message. Grok's addenda on motion repeat the claim from the cover and inner fold recordings, which also open at the newest message. Nothing was changed, and Grok's notes stand as written.",
   ],
   footer: "Made by lor-glev from `docs/design/lab/compare/` and `docs/design/lab/critiques/`. The brief is `docs/design/lab/brief.md`.",
 };
@@ -41,14 +41,16 @@ export const CONCEPTS = [
       {"by": "gpt-6-astra", "text": "Home/demo leaves the icons and search unobstructed; the single timer line is exceptionally economical.", "on": "phone"},,
       {"by": "gpt-6-astra", "text": "The important continuity is where to look next: the same place.", "on": "phone, in motion"},
       {"by": "grok-4.6", "text": "Quiet at 1500 is the most beautiful empty of the four: \"ALL CLEAR / Nothing wants you.\"", "on": "dashboard"},
-      {"by": "grok-4.6", "text": "Compared with current's cover, where a huge TODAY widget eats the grid and the icons are grey discs, this is the first home that looks like a phone.", "on": "phone"}
+      {"by": "grok-4.6", "text": "Compared with current's cover, where a huge TODAY widget eats the grid and the icons are grey discs, this is the first home that looks like a phone.", "on": "phone"},
+      {"by": "grok-4.6", "text": "The next thing in the gun-sight is the next thing that wants you.", "on": "phone, in motion"}
     ],
     against: [
       {"by": "gpt-6-astra", "text": "Queue's confident recommendation is now competing with my actual work.", "on": "dashboard"},
       {"by": "gpt-6-astra", "text": "“11 waiting” recruits every unlock into clearing a backlog.", "on": "phone"},,
       {"by": "gpt-6-astra", "text": "The three-second approval window dominates an otherwise quick exchange.", "on": "phone, in motion"},
       {"by": "grok-4.6", "text": "You will know the dripping tap is four days late before you know you have an hour and a half until the dentist.", "on": "dashboard"},
-      {"by": "grok-4.6", "text": "You came to open WhatsApp and the phone told you the bathroom tap is late.", "on": "phone"}
+      {"by": "grok-4.6", "text": "You came to open WhatsApp and the phone told you the bathroom tap is late.", "on": "phone"},
+      {"by": "grok-4.6", "text": "Three seconds of a progress bar on a phone you unlocked to clear one tap.", "on": "phone, in motion"}
     ],
     steal: [
       {"by": "gpt-6-astra", "text": "Give Context Queue's inline single-choice answers with descriptions.", "on": "phone"},,
@@ -70,14 +72,16 @@ export const CONCEPTS = [
       {"by": "gpt-6-astra", "text": "Home/demo is my favourite glance at the day: next event, time until it, remaining day and timer share one calm card.", "on": "phone"},,
       {"by": "gpt-6-astra", "text": "This is a satisfying distinction between choosing a label and simply agreeing with one.", "on": "phone, in motion"},
       {"by": "grok-4.6", "text": "Current's arc is the same information as jewellery. This is the same information as a page.", "on": "dashboard"},
-      {"by": "grok-4.6", "text": "A clear queue does not erase the day. I like that.", "on": "phone"}
+      {"by": "grok-4.6", "text": "A clear queue does not erase the day. I like that.", "on": "phone"},
+      {"by": "grok-4.6", "text": "The day tells instead of asking, in place.", "on": "phone, in motion"}
     ],
     against: [
       {"by": "gpt-6-astra", "text": "The report's worry is visible: an automatic account of the day starts to resemble homework.", "on": "dashboard"},
       {"by": "gpt-6-astra", "text": "The very concept about “now” makes me scroll to now.", "on": "dashboard"},,
       {"by": "gpt-6-astra", "text": "Naming one gap temporarily blurs the whole route and opens a substantial sheet.", "on": "phone, in motion"},
       {"by": "grok-4.6", "text": "Until you hit Confirm all, the route is a questionnaire.", "on": "dashboard"},
-      {"by": "grok-4.6", "text": "The cover is still a lot of LoR for a phone you unlock to open Gmail.", "on": "phone"}
+      {"by": "grok-4.6", "text": "The cover is still a lot of LoR for a phone you unlock to open Gmail.", "on": "phone"},
+      {"by": "grok-4.6", "text": "One chip sheet per unnamed block, twelve times, is a labelling shift with nicer motion.", "on": "phone, in motion"}
     ],
     steal: [
       {"by": "gpt-6-astra", "text": "Give Queue Timeline's home summary of time remaining and the next fixed event.", "on": "phone"},,
@@ -99,14 +103,16 @@ export const CONCEPTS = [
       {"by": "gpt-6-astra", "text": "The named Agent/Home/Today switcher is far more discoverable than current's page dots.", "on": "phone"},,
       {"by": "gpt-6-astra", "text": "That is a coherent interaction, not simply a desktop pane squeezed onto a phone.", "on": "phone, in motion"},
       {"by": "grok-4.6", "text": "It is the one that feels like software you already know how to operate."},
-      {"by": "grok-4.6", "text": "Panes is the one that made failure look designed.", "on": "phone"}
+      {"by": "grok-4.6", "text": "Panes is the one that made failure look designed.", "on": "phone"},
+      {"by": "grok-4.6", "text": "The half sheet rest is real, and it is the Fold concept on a cover.", "on": "phone, in motion"}
     ],
     against: [
       {"by": "gpt-6-astra", "text": "That is consistency becoming repetition: the layout looks settled before it has earned the division of space.", "on": "dashboard"},
       {"by": "gpt-6-astra", "text": "I want more transcript and less repeated scaffolding.", "on": "phone"},,
       {"by": "gpt-6-astra", "text": "Transparency is also doing too much.", "on": "phone, in motion"},
       {"by": "grok-4.6", "text": "You are in Queue with extra chrome.", "on": "dashboard"},
-      {"by": "grok-4.6", "text": "Quiet Today's people list will be the identity of a clear afternoon.", "on": "phone"}
+      {"by": "grok-4.6", "text": "Quiet Today's people list will be the identity of a clear afternoon.", "on": "phone"},
+      {"by": "grok-4.6", "text": "The expand is the trap.", "on": "phone, in motion"}
     ],
     steal: [
       {"by": "gpt-6-astra", "text": "Give Queue Panes' search field immediately above the keyboard with app results just above it.", "on": "phone"},,
@@ -128,14 +134,16 @@ export const CONCEPTS = [
       {"by": "gpt-6-astra", "text": "That is a materially better answer to “help me resume” than current's separate lists.", "on": "dashboard"},,
       {"by": "gpt-6-astra", "text": "Browsing has not silently changed the account of my work.", "on": "phone, in motion"},
       {"by": "grok-4.6", "text": "This is the organisation LoR actually has, and the dashboard is the first time I have seen it drawn.", "on": "dashboard"},
-      {"by": "grok-4.6", "text": "This one is the one I would actually use, because the next task is ticked from home.", "on": "phone"}
+      {"by": "grok-4.6", "text": "This one is the one I would actually use, because the next task is ticked from home.", "on": "phone"},
+      {"by": "grok-4.6", "text": "That is a context switch, and it is the organisation LoR actually has, drawn as a motion.", "on": "phone, in motion"}
     ],
     against: [
       {"by": "gpt-6-astra", "text": "Its danger is that keeping the meaning organized becomes another job."},
       {"by": "gpt-6-astra", "text": "The design promises concentration but keeps advertising other obligations.", "on": "dashboard"},,
       {"by": "gpt-6-astra", "text": "The change is understandable, but the small reveal sequence adds ceremony to what may become a frequent navigation action.", "on": "phone, in motion"},
       {"by": "grok-4.6", "text": "You will scroll inside the thing you are supposed to be in.", "on": "dashboard"},
-      {"by": "grok-4.6", "text": "You came to approve a migration and you are holding a project.", "on": "phone"}
+      {"by": "grok-4.6", "text": "You came to approve a migration and you are holding a project.", "on": "phone"},
+      {"by": "grok-4.6", "text": "For a beat you have switched to nothing.", "on": "phone, in motion"}
     ],
     steal: [
       {"by": "gpt-6-astra", "text": "Give Queue Context's one directly tickable home task.", "on": "phone"},,

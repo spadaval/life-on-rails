@@ -1,6 +1,6 @@
 # Timeline: the critics' notes
 
-Item lor-glev, 17 and 18 November 2026. Each critic was given docs/design/lab/brief.md, both galleries, the gesture recordings and the live viewers, without seeing the others' notes, and says in its notes what it used and what it saw only as a still. GPT-6 Astra's first notes did not use the recordings; at review it was asked to watch them, and its addendum on motion follows its first notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
+Item lor-glev, 17 and 18 November 2026. Each critic was given docs/design/lab/brief.md, both galleries, the gesture recordings and the live viewers, without seeing the others' notes, and says in its notes what it used and what it saw only as a still. At review each critic was asked to watch the recordings its first notes had not used, and its addendum on motion follows its first notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
 
 <!-- critic: gpt-6-astra -->
 
@@ -115,5 +115,53 @@ Inner-screen reading: the Approve / Deny / Open bar sits on the first lines of t
 ### Steal
 
 The 412 dashboard composition (waiting, then folded morning, then now) into Queue's phone queue page. Queue's queue is one ranked column and the day vanishes. Timeline's cover day page already knows the day is the spine. Steal the fold of "earlier" so a cover queue can still show now.
+
+Grok 4.6
+
+# Timeline, in motion
+
+Phone first. The recordings are the cover, the day page, and the Fold. The 1280 route I used live still stands; the lab recorded the phone.
+
+I watched every run under `~/.local/state/lor-evidence/lor-j1fe/gestures/`, from the 50 ms strips and from frames of each `recording.webm`. The ones that change the stills are `relabel-demo`, `plan-demo`, `approve-agent-waiting`, `tick-demo`, `timer-demo`, `fold-thread-long`, `fold-inner-thread-long-inner`, `answer-agent-waiting`, `drawer-demo`, `drawer-demo-inner`, and `search-demo`.
+
+## Phone
+
+### What it gets right
+
+A block filling in on the route is the concept. `relabel-demo`: swipe home onto the day, the strip and the icons still visible on the right. Tap Name it on "47m nothing recorded". A COUNT IT AS sheet. Tap Offline maps spec. The gap becomes a solid amber block, "Offline maps spec 14:13–15:00 47m", in the same slot, with the now line still under it. 12 to name becomes 11. Undo on the toast. The day tells instead of asking, in place.
+
+`plan-demo` does the same job going forward. Plan a task on the 17:15–18:00 45 m free gap opens a sheet of due work, each already stamped at 17:15. The route stays the subject. The sheet is a picker onto a time.
+
+`approve-agent-waiting` pins WAITING ON YOU, runs Approving… Cancel on the approval, and leaves the route drawn underneath. At settle the question takes the pin, the failed receipts card comes up, WAITING goes 5 to 4, and the now line has not moved. The toast "Approved. T3 runs the command." sits on Portuguese. The day is still there.
+
+`tick-demo` opens "Due, no time yet" as a sheet, ticks unit 8, greys it, Undo. Plan stays on every other row. Ticking and placing are the same list.
+
+`timer-demo` returns you to home with "Stopped Offline maps spec Undo" over the icons. The strip still shows 4 waiting.
+
+Fold holds the draft. `fold-thread-long`: cover sheet, type half-written, unfold to the day, the route on the left and the thread on the right, half-written still in the field. `fold-inner-thread-long-inner` is that inner already: now line visible while you read. `drawer-demo-inner` is the Fold used as a phone: six columns of icons, the day strip, 4 waiting, search at the thumb.
+
+### What would annoy in daily use
+
+The COUNT IT AS sheet is a full-height overlay on a day you came to glance. Relabel is the signature, and it still covers the route while you pick a name. One chip sheet per unnamed block, twelve times, is a labelling shift with nicer motion.
+
+`answer-agent-waiting` leaves the question as an Answer button. The options are a sheet away. Queue put MapTiler on the card and sent from there.
+
+The approve toast covers the evening of the route. You just cleared a command and Portuguese is under a banner.
+
+Cover search still puts the field at the top. Inner home in `drawer-demo-inner` is the better search reach.
+
+### What it makes harder than current
+
+Launching is easier (icons live, strip as a glance). Relabel is easier than current, because current had no picture of the unnamed afternoon. The cost motion adds is the sheet. Every name, every plan, every due tick is a sheet over the route. The route is the reason to open the day. The sheets hide it for the seconds you are doing the work the route asked for.
+
+Inner-screen reading still fails the start of the transcript. In `fold-thread-long` at unfold, Approve / Deny / Open sit on "next?". In `fold-inner-thread-long-inner` Step 18 of the user question is the first visible line; the earlier agent turn is gone. Reply works. Reading the beginning does not. Listed as a defect in the first notes. Motion confirms it.
+
+### Steal
+
+The unnamed gap filling in as a named block, into Queue's day strip and into Context's Time region. Queue's strip is rectangles. Context's Time in no context is a count. Timeline lets a 47-minute hole become Offline maps spec without leaving the page. Put that fill-in-place on Queue's strip: tap a pale block, chip sheet, the block colours in. The queue list can stay a queue.
+
+## Dashboard
+
+The recordings are phone. Confirm all 8, used live at 1280, is the same idea as the phone relabel, done in one click. Phone motion is one block at a time. I would still steal Confirm all into Queue and Context. I would still want the 412 composition (waiting, folded morning, now) on the cover day page.
 
 Grok 4.6

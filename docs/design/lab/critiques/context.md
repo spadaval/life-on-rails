@@ -1,6 +1,6 @@
 # Context: the critics' notes
 
-Item lor-glev, 17 and 18 November 2026. Each critic was given docs/design/lab/brief.md, both galleries, the gesture recordings and the live viewers, without seeing the others' notes, and says in its notes what it used and what it saw only as a still. GPT-6 Astra's first notes did not use the recordings; at review it was asked to watch them, and its addendum on motion follows its first notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
+Item lor-glev, 17 and 18 November 2026. Each critic was given docs/design/lab/brief.md, both galleries, the gesture recordings and the live viewers, without seeing the others' notes, and says in its notes what it used and what it saw only as a still. At review each critic was asked to watch the recordings its first notes had not used, and its addendum on motion follows its first notes. None of them built a concept. Each critic's notes are below its marker exactly as it wrote them; the comparison page (docs/design/lab/compare/) quotes from them. GPT-6 Astra and Grok 4.6 wrote here; the third seat, Kimi K3, is open because OpenCode Go's usage limits and OpenCode's balance refused it on 17 and 18 November.
 
 <!-- critic: gpt-6-astra -->
 
@@ -121,5 +121,55 @@ Context inner on agent-waiting, from earlier stills in this pass, also crops the
 ### Steal
 
 Tick the next task from the home card, into Queue. Queue's home line is timer plus 11 waiting. Context's card is Offline maps, a checkbox on the spec, Dentist in 1 h 29. That is the one-line home the brief allowed, used for the thing you are in, with a tick. Queue should steal the tick and keep the icons.
+
+Grok 4.6
+
+# Context, in motion
+
+Phone first. The whole surface switching is the concept. A final frame of Public beta cannot show the empty flash, or the approval that stays pinned while the project under it is replaced.
+
+I watched every run under `~/.local/state/lor-evidence/lor-8aqh/gestures/`, from the 50 ms strips and from frames of each `recording.webm`. The ones that change the stills are `switch`, `tick-now`, `fold`, `fold-context`, `approve`, `answer`, `reply`, `drawer`, `search`, `tick`, and `timer`.
+
+## Phone
+
+### What it gets right
+
+`switch` is the signature. Cover of Offline maps, 4 waiting, the three-line card, icons. Tap through Now. Offline maps is a workplace: approval pinned, the one thing, Given to the agent, Lena Waiting. Tap into a Contexts sheet of goals and projects, Offline maps highlighted, Loose ends 7 under nothing. Tap Public beta. At 2.2 s the surface is a blank card, "Chosen by you", title Public beta, toast still "Started Offline maps Undo". At 2.8 s it has filled: timer On Public beta since 15:00, Stop / Switch, NEXT the App Store notes, Tasks 3, Lena, toast now "Switched to Public beta Undo". The approval never left the pin. T3 stays. The project replaces. That is a context switch, and it is the organisation LoR actually has, drawn as a motion.
+
+`tick-now` starts on the home card. The first tap opens Now. The spec expands in place with due chips (Today / Tomorrow / Fri / None), toast "Due 20 Nov Undo", then a tick, "Done: Draft the offline maps spec Undo". The home card is an entry to the workplace. The tick happens on the expanded task, with the project still around it.
+
+`approve` runs Approving… Cancel on WAITING ON YOU 3. The question sits under it as Answer. Offline maps stays below. At settle WAITING is 2, the question is the lead, toast "Approved. T3 runs the command." over Given to the agent. The workplace does not leave.
+
+`drawer` slides apps up from the thumb while the context card is still on screen. `search` is Used most now and All apps 29 with the field at the thumb.
+
+Fold holds the draft. `fold`: cover sheet of the migration thread, type half-written, unfold at 5.5 s to Offline maps on the left and the thread on the right, half-written still in the field. `fold-context` unfolds Public beta on the inner screen with Next context Dentist, Fits before it (release notes 60 min, testers 30 min, dripping tap 45 min), Waiting elsewhere 7, and an empty Notes pane on the right ("No page in Notes for this project"). The Fold keeps the workplace on the left when there is no thread.
+
+`reply` on the inner screen is that workplace plus a thread you can type into. Lena, the one thing, and the agent work stay visible while "Ru" is in the field.
+
+### What would annoy in daily use
+
+The blank flash in `switch` at 2.2 s. Public beta arrives empty, "Chosen by you", then fills. For a beat you have switched to nothing. Replace is the right model. A morph, or a fill that travels with the tap, would make the replace feel like a place. The empty card feels like a load.
+
+`answer` opens the question as a full sheet: MapTiler / Stadia / Self-host / Something else, "No messages yet", reply field at the bottom. Queue put those chips on the card. Here a three-option question covers the project you were in.
+
+The home-card tick in `tick-now` does not complete on the launcher. It opens Now, then expands, then ticks. The stills read as a checkbox on home. Motion is an entry. That is a better workplace and a worse glance. You came to mark the spec done and you are holding Offline maps.
+
+Cover `fold` at 6.8 s is still the sheet, Approve over the start of the transcript. Inner at 5.5 s clips "so it runs in well under a second…". `reply` starts the visible thread at Step 19. Reading the beginning fails, same as Timeline and Panes.
+
+### What it makes harder than current
+
+Launching is easier than current (icons live, card is three lines). Ticking the thing you are in is easier, once you are in Now. Ticking it from home is a walk into the workplace. Current's widget at least pretended to tick NEXT on the cover.
+
+Switching context is work current never asked for, and it is the point. The Contexts sheet in `switch` is a directory of LoR. Hunting is the cost. The blank flash is the extra cost motion added on top of the stills.
+
+Inner-screen reading is still the defect from the first notes. Motion confirms it on `fold` and on `reply`. Queue's inner is the one that keeps Approve in the header and the first message whole.
+
+### Steal
+
+The pinned approval that survives a whole-surface replace, into Timeline and into Panes. Timeline's pin already stays while you relabel the route. Panes' Agent list is the pin. Context is the one that changes everything under the pin and leaves T3 where it was. When Panes' Today sheet opens, keep Waiting on you on the switcher. When Timeline's COUNT IT AS sheet opens, keep the approval card above the blur. The agent loop is the thing that must not move.
+
+## Dashboard
+
+The recordings are phone. The Public beta click I used live at 1280 is the same replace, with more regions to turn. Phone motion made the blank flash visible. I would still steal Next context plus Fits before it into Timeline's route. I would still want Queue's all-clear on days I am not in a project. The home card is still the size I would ship.
 
 Grok 4.6
