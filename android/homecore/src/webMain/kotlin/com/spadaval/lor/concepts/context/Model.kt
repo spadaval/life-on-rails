@@ -311,10 +311,23 @@ class Model(val store: ConceptStore, val links: Map<String, String>, val labelLi
     }
 
     /** The contexts for the bar at the top of Now: the current one, then the recent and those with something flagged, then Loose ends. */
-    fun recent(current: Ctx): List<Ctx> {
+    fun recent(current: Ctx, visited: List<String> = emptyList()): List<Ctx> {
+        val fromVisits = visited.mapNotNull { byKey(it, store.now) }
         val fromTimer = store.fixture.timer.recent.map { ctxOfLabel(it.title) }.filter { it.kind == Kind.PROJECT || it.kind == Kind.GOAL }
         val fromFlags = store.home?.needsYou.orEmpty().mapNotNull { n -> store.tasks.firstOrNull { it.title == n.title }?.let(::homeOf) }
-        return (listOf(current) + fromTimer + fromFlags).distinctBy { it.key }.filter { it.kind != Kind.LOOSE }.take(4) + LOOSE
+        return (listOf(current) + fromVisits + fromTimer + fromFlags).distinctBy { it.key }.filter { it.kind != Kind.LOOSE }.take(5) + LOOSE
+    }
+
+    /**
+     * The project or goal a typed `#word` names: the one whose title is the word, else the one with
+     * a title word starting with it. Null when none does, or when it is ambiguous among several.
+     */
+    fun goalNamed(word: String): Ctx? {
+        val w = word.lowercase().replace('-', ' ')
+        val all = allProjects()
+        all.firstOrNull { it.title.lowercase() == w }?.let { return it }
+        val hits = all.filter { c -> c.title.lowercase().startsWith(w) || c.title.lowercase().split(' ').any { it.startsWith(w) && it.length >= 3 && w.length >= 3 } }
+        return hits.singleOrNull() ?: hits.firstOrNull { it.title.lowercase().startsWith(w) }
     }
 
     fun byKey(key: String, now: Instant): Ctx? = when {

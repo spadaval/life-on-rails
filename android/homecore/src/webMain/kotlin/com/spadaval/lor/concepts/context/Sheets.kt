@@ -63,7 +63,7 @@ fun Sheets(store: ConceptStore, ui: CtxUi, wide: Boolean) {
     val sheet = ui.sheet
     var shown by remember { mutableStateOf(sheet) }
     if (sheet != null) shown = sheet
-    val close = { focusManager.clearFocus(); ui.sheet = null; ui.switching = false }
+    val close = { focusManager.clearFocus(); ui.sheet = null; ui.switching = false; ui.moving = null }
     LaunchedEffect(sheet) { if (sheet == null) focusManager.clearFocus() }
     Box(Modifier.fillMaxSize().padding(bottom = if (ui.keyboard) KeyboardHeight else 0.dp)) {
         when (val s = shown) {
@@ -178,9 +178,16 @@ private fun TimerSheet(store: ConceptStore, ui: CtxUi) {
 private fun ContextsSheet(store: ConceptStore, ui: CtxUi) {
     val m = ui.model
     val (shown, _) = ui.shown()
-    val pick = { c: Ctx -> ui.switchTo(c); ui.sheet = null; ui.later(ui.scope) { if (shell.pager.currentPage != CtxUi.NOW) shell.goTo(CtxUi.NOW) } }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp).labAnchor("contexts")) {
-        SheetTitle("Contexts", "Everything you can work in, with what is open in each")
+    // Opened by a task's Move, the sheet moves that task (with Undo) and stays where he is; else a pick turns Now to it.
+    val moving = ui.moving?.let { m.taskById(it) }
+    val pick = { c: Ctx ->
+        if (moving != null) ui.link(moving, c.title, "Moved to")
+        else { ui.switchTo(c); ui.later(ui.scope) { if (shell.pager.currentPage != CtxUi.NOW) shell.goTo(CtxUi.NOW) } }
+        ui.moving = null; ui.sheet = null
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp).labAnchor(if (moving != null) "contexts:move" else "contexts")) {
+        if (moving != null) SheetTitle("Move to", "“${moving.title}” goes under the context you pick")
+        else SheetTitle("Contexts", "Everything you can work in, with what is open in each")
         @Composable fun row(c: Ctx, indent: Boolean = false) {
             val n = m.tasksOf(c).size
             val on = c.key == shown.key
@@ -196,12 +203,14 @@ private fun ContextsSheet(store: ConceptStore, ui: CtxUi) {
             }
         }
         val now = store.now
-        listOf(
+        val home = moving?.let { m.homeOf(it).key }
+        val groups = if (moving != null) listOf("Goals and projects" to m.allProjects().filter { it.key != home }) else listOf(
             "Goals and projects" to m.allProjects(),
             "Under nothing" to listOf(LOOSE),
             "Today's fixed events" to m.slots(now),
             "People" to m.peopleContexts(),
-        ).forEach { (h, list) ->
+        )
+        groups.forEach { (h, list) ->
             if (list.isEmpty()) return@forEach
             Spacer(Modifier.height(C.s4))
             BasicText(h.uppercase(), Modifier.padding(start = 10.dp, bottom = 4.dp), style = C.label)
@@ -467,7 +476,7 @@ fun MenuFor(store: ConceptStore, ui: CtxUi, menu: Menu) {
                 }
                 if (task != null) {
                     add(MenuItem("Due tomorrow", Glyph.Calendar, enabled = store.lorLive) { close(); if (ui.saves()) store.setDue(task.id, store.today.plus(DatePeriod(days = 1))) })
-                    add(MenuItem("Move to another context…", Glyph.Swap, enabled = store.lorLive) { close(); ui.sheet = Sheet.Contexts; store.toast("Pick where “${task.title.take(30)}” belongs") })
+                    add(MenuItem("Move to another context…", Glyph.Swap, enabled = store.lorLive) { close(); ui.moving = task.id; ui.sheet = Sheet.Contexts })
                     add(MenuItem("Give it to the agent", Glyph.Agent) { close(); ui.quick.edit { replace(0, length, task.title) }; ui.sent = null; ui.sheet = Sheet.QuickSend })
                     add(MenuItem("Open in LoR", Glyph.Chevron) { close(); store.launch("LoR: ${task.title}") })
                 }

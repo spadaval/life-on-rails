@@ -17,7 +17,7 @@ export default async function () {
   await wait(500);
   await tap("context:Public beta");
   await wait(700);
-  await expect("the surface turned to Public beta, chosen", (a, s) => shown(a, "ctx:Public beta", s) && shown(a, "ctx:why:chosen", s) && shown(a, "ctx:switch-here", s));
+  await expect("the surface turned to Public beta, chosen, and a tab for it in the bar", (a, s) => shown(a, "ctx:Public beta", s) && shown(a, "ctx:why:chosen", s) && shown(a, "ctx:switch-here", s) && "bar:Public beta" in a);
   await tap("ctx:switch-here");
   await wait(700);
   await expect("timing Public beta, now the current context", (a, s) => shown(a, "ctx:Public beta", s) && shown(a, "ctx:readout", s) && shown(a, "ctx:why:timer", s));

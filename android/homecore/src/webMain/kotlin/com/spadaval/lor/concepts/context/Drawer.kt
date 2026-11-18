@@ -220,7 +220,15 @@ private fun firstResult(store: ConceptStore, ui: CtxUi, q: String, close: () -> 
 
 private fun act(store: ConceptStore, ui: CtxUi, u: Understood) {
     when (u) {
-        is Understood.Add -> if (ui.saves()) { store.addTask(u.title, u.due); ui.search.edit { replace(0, length, "") } }
+        is Understood.Add -> {
+            // The #goal it previewed is where the task goes; one that names no context is not added (the row says so).
+            val goal = u.goal?.let { ui.model.goalNamed(it) ?: return }
+            if (!ui.saves()) return
+            val id = "new-${store.tasks.size}"
+            store.addTask(u.title, u.due)
+            goal?.let { ui.links[id] = it.title }
+            ui.search.edit { replace(0, length, "") }
+        }
         is Understood.Ask -> { ui.quick.edit { replace(0, length, u.text) }; ui.sent = null; ui.sheet = Sheet.QuickSend }
     }
 }
@@ -313,7 +321,12 @@ private fun UnderstoodRow(store: ConceptStore, ui: CtxUi, u: Understood, wide: B
     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp).clip(C.rMd).background(C.raise).border(1.dp, C.line2, C.rMd).padding(4.dp)) {
         when (u) {
             is Understood.Add -> {
-                ResultRow(Glyph.Plus, "Add task", null, C.amber, anchor = "understood:add", chips = listOfNotNull(u.title, u.due?.let { dayWords(it, store.today) }, u.goal?.let { "#$it" })) { act(store, ui, u) }
+                val goal = u.goal?.let { ui.model.goalNamed(it) }
+                if (u.goal != null && goal == null) {
+                    ResultRow(Glyph.Warning, "No context matches #${u.goal}", "Change the word after #, or drop it to add under Loose ends", C.red, anchor = "understood:no-goal") {}
+                } else {
+                    ResultRow(Glyph.Plus, "Add task", null, C.amber, anchor = "understood:add", chips = listOfNotNull(u.title, u.due?.let { dayWords(it, store.today) }, goal?.title)) { act(store, ui, u) }
+                }
                 ResultRow(Glyph.Agent, "Ask the agent instead", null, C.cyan, anchor = "understood:ask-instead") { act(store, ui, Understood.Ask(ui.search.text.toString())) }
             }
             is Understood.Ask -> ResultRow(Glyph.Agent, "Ask the agent", "“${u.text}”", C.cyan, anchor = "understood:ask") { act(store, ui, u) }
@@ -359,9 +372,9 @@ private fun SearchPane(store: ConceptStore, ui: CtxUi, q: String, close: () -> U
                 Spacer(Modifier.height(6.dp))
                 BasicText(u.title, style = C.title)
                 Spacer(Modifier.height(C.s3))
-                BasicText(listOfNotNull(u.due?.let { "Due ${dayWords(it, store.today)}" }, u.goal?.let { "Counts toward #$it" }).joinToString(" · "), style = C.small)
+                BasicText(listOfNotNull(u.due?.let { "Due ${dayWords(it, store.today)}" }, u.goal?.let { g -> ui.model.goalNamed(g)?.let { "Goes under ${it.title}" } ?: "No context matches #$g" }).joinToString(" · "), style = C.small)
                 Spacer(Modifier.height(C.s4))
-                CButton("Add task", { act(store, ui, u) }, kind = Tone.PRIMARY, glyph = Glyph.Plus, anchor = "pane:add")
+                CButton("Add task", { act(store, ui, u) }, kind = Tone.PRIMARY, glyph = Glyph.Plus, anchor = "pane:add", enabled = u.goal == null || ui.model.goalNamed(u.goal) != null)
             }
             is Understood.Ask -> {
                 Kicker("Ask the agent", C.cyan)

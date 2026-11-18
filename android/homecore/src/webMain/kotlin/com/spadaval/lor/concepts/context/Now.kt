@@ -120,7 +120,7 @@ fun NowGround() {
 fun ContextBar(store: ConceptStore, ui: CtxUi) {
     val (shown, _) = ui.shown()
     val (current, _) = ui.model.current()
-    val list = ui.model.recent(current)
+    val list = ui.model.recent(current, ui.visited)
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).labAnchor("bar"), verticalAlignment = Alignment.CenterVertically) {
     Row(
         Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(start = 12.dp, end = 4.dp),

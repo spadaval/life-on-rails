@@ -110,6 +110,11 @@ class CtxUi(val store: ConceptStore, val scope: CoroutineScope) {
     var open: String? by mutableStateOf(null)
     /** The task opened in place, in its row. */
     var expanded: String? by mutableStateOf(null)
+    /** Contexts opened here, newest first: the bar keeps them as recent tabs. */
+    val visited = androidx.compose.runtime.mutableStateListOf<String>()
+    /** The task the Contexts sheet is moving, when it was opened by Move; null when it only switches. */
+    var moving: String? by mutableStateOf(null)
+
     /** Whether the crowded queue shows every card, not the first three. */
     var allCards by mutableStateOf(false)
     /** The uncommon things of a context, collapsed until asked for, by context key. */
@@ -149,6 +154,7 @@ class CtxUi(val store: ConceptStore, val scope: CoroutineScope) {
     /** Turns Now to [c]: the whole surface changes, and what was open in the last one closes. */
     fun switchTo(c: Ctx, then: (() -> Unit)? = null) {
         chosen = if (c.key == model.current().first.key) null else c.key
+        if (c.kind != Kind.LOOSE) { visited.remove(c.key); visited.add(0, c.key); if (visited.size > 4) visited.removeAt(visited.lastIndex) }
         expanded = null
         if (open?.startsWith("page:") == true || open?.startsWith("person:") == true) open = null
         then?.invoke()
@@ -157,10 +163,11 @@ class CtxUi(val store: ConceptStore, val scope: CoroutineScope) {
     /** Back to the context the timer or the one thing picks. */
     fun followNow() { chosen = null; expanded = null }
 
-    /** Links a task under nothing to [title], with Undo. */
-    fun link(t: LorTasks.Task, title: String) {
+    /** Links a task under nothing to [title], or moves one to it, with Undo. */
+    fun link(t: LorTasks.Task, title: String, verb: String = "Linked to") {
         if (!saves()) return
-        store.undoable("Linked to $title", { links[t.id] = title }, { links.remove(t.id) })
+        val before = links[t.id]
+        store.undoable("$verb $title", { links[t.id] = title }, { if (before == null) links.remove(t.id) else links[t.id] = before })
     }
 
     /** Links a timer label (or, with "", the running timer that has none) to [title], with Undo: the time so far counts there too. */
