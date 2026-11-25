@@ -35,7 +35,7 @@ Opening Today shows what needs Sumeet without scrolling, and nothing on the page
 
 ## Scope
 
-`src/routes/index.tsx`, `src/routes/status.tsx`, `shots/dashboard.json`, the `today` flow in `scripts/ui-check.mjs`, and the verify skill's `references/features/today.md`. Not the timeline strip (lor-auhc) and not the block editor's behaviour.
+`src/routes/index.tsx`, `src/routes/status.tsx`, `GlobalActions` in `src/routes/__root.tsx` (it takes a flag, or reads the route, so Today keeps Add task and Search and drops only the timer chip), `shots/dashboard.json`, the `today` flow in `scripts/ui-check.mjs`, and the verify skill's `references/features/today.md`. Not the timeline strip (lor-auhc) and not the block editor's behaviour.
 
 ## Context
 
