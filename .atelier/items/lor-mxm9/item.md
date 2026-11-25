@@ -3,12 +3,13 @@ schema: atelier.item
 schema_version: 3
 id: lor-mxm9
 title: 'One look for every page: panels by tone, three button levels, four type sizes, styled form controls'
-status: open
+status: building
 mission: lor-40i0
 labels: []
 priority: medium
 blocked_by: []
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Aa51dd0ff-c339-42c3-a502-f77c8982c242%3Adelegate-task%3Ad723c0aa-1bab-4ac7-8d2a-d93839f3f259
 ready: null
 trivial: null
 caused_by: null
