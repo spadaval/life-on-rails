@@ -3,8 +3,8 @@ schema: atelier.item
 schema_version: 3
 id: lor-mxrc
 title: Fix scripts/ui-check.mjs so the today and goals flows check what Today and Goals do on main
-status: open
-mission: lor-40i0
+status: ready
+mission: lor-l9a7
 labels:
 - verification
 priority: medium

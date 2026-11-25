@@ -9,7 +9,7 @@ labels: []
 priority: medium
 blocked_by:
 - lor-mxm9
-- lor-mxrc
+- lor-w2tw
 - lor-zuqn
 - lor-auhc
 - lor-zk52

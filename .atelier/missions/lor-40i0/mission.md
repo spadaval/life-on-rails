@@ -47,7 +47,7 @@ Out:
 - New features beyond the two under "more useful": undo, and the phone health line.
 - A new palette, a new typeface or a new layout for any page. This is a cleanup of the look in `DESIGN.md`, not a new one.
 
-Environment: the dev server on the test database (`scripts/ui-dev.sh`, `:3858`) with the demo set (`pnpm demo:test`), screenshots by `node scripts/shots.mjs`, and checks through the verify skill (`.claude/skills/verify-lor/SKILL.md`). Its `today` flow fails on main at its first step and its `goals` flow asserts nothing, so lor-mxrc, which repairs both, is this mission's and comes before the items that rely on them. Each page item then keeps its flow current with the page. Never `pnpm build` in the main checkout.
+Environment: the dev server on the test database (`scripts/ui-dev.sh`, `:3858`) with the demo set (`pnpm demo:test`), screenshots by `node scripts/shots.mjs`, and checks through the verify skill (`.claude/skills/verify-lor/SKILL.md`). Its `today` flow fails on main at its first step and its `goals` flow asserts nothing, so lor-w2tw, which repairs both, is this mission's and comes before the items that rely on them. Each page item then keeps its flow current with the page. Never `pnpm build` in the main checkout.
 
 ## Authority
 

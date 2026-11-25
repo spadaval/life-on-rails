@@ -9,7 +9,7 @@ labels: []
 priority: medium
 blocked_by:
 - lor-mxm9
-- lor-mxrc
+- lor-w2tw
 implementers: []
 ready: null
 trivial: null
@@ -30,7 +30,7 @@ Opening Today shows what needs Sumeet without scrolling, and nothing on the page
 - [ ] "with the agent" in Needs you is a list, one task a line, each opening its task, instead of a run-on paragraph.
 - [ ] The footer's "Calendar confirmed N% · time accounted for N%" is gone from Today and both numbers are on `/status` with a sentence each saying what they measure. "Too much? Reset visibility" stays.
 - [ ] `shots/dashboard.json` has a shot of Today with the brief open, and `node scripts/shots.mjs --only Today` runs clean.
-- [ ] The `today` flow in `scripts/ui-check.mjs`, as lor-mxrc repaired it, is changed with the page so it drives the new order and the brief's open and close, and `verify-lor screen today` passes.
+- [ ] The `today` flow in `scripts/ui-check.mjs`, as lor-w2tw repaired it, is changed with the page so it drives the new order and the brief's open and close, and `verify-lor screen today` passes.
 - [ ] `pnpm typecheck` and `pnpm test` pass.
 
 ## Scope
