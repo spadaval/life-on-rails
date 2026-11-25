@@ -3,12 +3,13 @@ schema: atelier.item
 schema_version: 3
 id: lor-w2tw
 title: The Today and Goals checks drive the pages as they are on main
-status: open
+status: building
 mission: lor-40i0
 labels: []
 priority: medium
 blocked_by: []
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Aa51dd0ff-c339-42c3-a502-f77c8982c242%3Adelegate-task%3A187459b5-4233-4388-bbff-96ad8c6039c2
 ready: null
 trivial: null
 caused_by: null
