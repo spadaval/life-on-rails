@@ -6,7 +6,7 @@ title: 'The dashboard cleaned up where it stands: what needs you first, fewer bo
 status: open
 labels:
 - dashboard
-lead: null
+lead: e05499fa-7ab0-4d4d-87b3-517340323121
 planners:
 - e05499fa-7ab0-4d4d-87b3-517340323121
 created_at: 2026-11-25T23:37:29.082451781Z
