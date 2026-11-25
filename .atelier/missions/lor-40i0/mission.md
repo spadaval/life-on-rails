@@ -33,7 +33,7 @@ The shipped dashboard's structure and character hold up: the day arc, the amber,
 
 - needs-you-first: On the demo set at 1500 by 950, `/?at=15:00&data=running` shows the Needs you head and its first flagged item without scrolling, and the brief takes one line until clicked. Shown by lor-zuqn's Report, with the screenshot.
 - one-look: Across `src/routes` and `src/components`, body text uses four sizes (display sizes for the arc's readout aside), every button is one of three named levels, and on Today, Tasks, Goals and a person's page at most two panels per screen carry the bronze frame. Shown by lor-mxm9's Report, with the counts and the screenshots.
-- undo: On the test server, stopping a running timer and then Undo leaves the block running with its original start; deleting a time block and then Undo restores it with the same times, intent and commitment; and the fill around both is as it was. Shown by lor-n3vi's Report and its `pnpm test:db` tests.
+- undo: On the test server, stopping a timer and then Undo puts it back as it was, running or paused, a timer under a minute included; deleting a time block and then Undo restores it with its times, intent, commitment and proposals; the fill around both is as it was; and an undo that would overlap a later write is refused and changes nothing. Shown by lor-n3vi's Report and its `pnpm test:db` tests.
 - judged: Sumeet has a gallery that flips every shot in `shots/dashboard.json` at 1500px between the mission's base commit and its end. Shown by lor-a8wq.
 
 ## Scope

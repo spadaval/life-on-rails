@@ -26,7 +26,7 @@ Opening Today shows what needs Sumeet without scrolling, and nothing on the page
 - [ ] Needs you, Due soon and Goals this week come directly after the arc, the timeline strip and an open block editor. The brief, the day record and the Ask box come after them.
 - [ ] At 1500 by 950, `/?at=15:00&data=running` shows the Needs you head and its first item without scrolling. The Report has the screenshot.
 - [ ] The morning brief shows its first sentence on one line with a control that opens the rest; opening and closing it works by mouse and by keyboard, and its state survives a data refresh on the page.
-- [ ] On Today the running timer appears once. The Report says which of the two was kept (the card under the arc, or the page head's chip) and why, and the other pages keep their head's timer.
+- [ ] On Today the running timer appears once: the card under the arc, which has Pause and Stop, stays, and the page head's chip is not drawn on Today. On every other page the chip stays as it is, a link to Today.
 - [ ] "with the agent" in Needs you is a list, one task a line, each opening its task, instead of a run-on paragraph.
 - [ ] The footer's "Calendar confirmed N% · time accounted for N%" is gone from Today and both numbers are on `/status` with a sentence each saying what they measure. "Too much? Reset visibility" stays.
 - [ ] `shots/dashboard.json` has a shot of Today with the brief open, and `node scripts/shots.mjs --only Today` runs clean.
