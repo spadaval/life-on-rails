@@ -17,13 +17,14 @@ created_at: 2026-11-25T23:47:15.500746952Z
 
 ## Goal
 
-`verify-lor screen today` and `verify-lor screen goals` prove what Today and Goals do, so the items that change those pages have a check that can fail. Today the `today` flow fails at its first step and the `goals` flow passes without asserting anything. This is lor-mxrc's work, done here because that item sits in a mission that is not agreed; lor-mxrc is dropped as done by this item once this merges.
+`verify-lor screen today` and `verify-lor screen goals` prove what Today and Goals do, so the items that change those pages have a check that can fail. Today the `today` flow fails at its first step and the `goals` flow passes without asserting anything. This is lor-mxrc's work, done here because that item sits in a mission that is not agreed; Once this merges, the lead drops lor-mxrc as done by this item and moves lor-thnc's wait onto this item, on a backlog branch.
 
 ## Done when
 
 - [ ] The `today` flow drives Today as `src/routes/index.tsx` draws it on main: start, pause and stop a timer from its card, select and relabel a block in the Planned and actual lanes, and it passes through `verify-lor screen today`.
 - [ ] The `goals` flow's `tasks for vendors:` line lists Shortlist venues and Call the florist, and the flow fails if the filter shows anything else. It also asserts Did it, selecting a row and opening the editor.
 - [ ] `.claude/skills/verify-lor/references/features/today.md`, `goals.md` and the skill's Drive section no longer describe the broken flows.
+- [ ] The `today` flow runs at 1500 by 950, as the `goals` flow does and as this mission's criteria are measured.
 - [ ] The Report shows each flow failing against a deliberately wrong expectation and passing against the right one.
 
 ## Scope
