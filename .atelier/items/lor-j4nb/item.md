@@ -9,6 +9,7 @@ labels: []
 priority: medium
 blocked_by:
 - lor-mxm9
+- lor-mxrc
 implementers: []
 ready: null
 trivial: null
@@ -27,9 +28,9 @@ The Goals page is a tidy grid, and a habit, a project and a task count are told 
 - [ ] A card's task count is said once. Today each project row shows its count and the card's foot shows a total; the Report says which was kept.
 - [ ] A goal over its week's target looks different from one under it (today 16 / 15h draws the same bar as 1.3 / 2h).
 - [ ] The editor's Weight field has a line saying what it does, in plain words taken from how scoring uses it.
-- [ ] Did it, selecting a row and opening the editor still work; the verify skill's Goals checks pass.
+- [ ] Did it, selecting a row and opening the editor still work: the `goals` flow in `scripts/ui-check.mjs`, as lor-mxrc repaired it, asserts each, is changed with the page, and `verify-lor screen goals` passes.
 - [ ] `node scripts/shots.mjs --only Goals` runs clean, and `pnpm typecheck` and `pnpm test` pass.
 
 ## Scope
 
-`src/routes/goals.tsx` and `src/components/IntentEditor.tsx`. Nothing about how hours or scores are computed.
+`src/routes/goals.tsx`, `src/components/IntentEditor.tsx` and the `goals` flow in `scripts/ui-check.mjs`. Nothing about how hours or scores are computed.

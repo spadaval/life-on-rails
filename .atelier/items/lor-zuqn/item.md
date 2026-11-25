@@ -9,6 +9,7 @@ labels: []
 priority: medium
 blocked_by:
 - lor-mxm9
+- lor-mxrc
 implementers: []
 ready: null
 trivial: null
@@ -29,11 +30,12 @@ Opening Today shows what needs Sumeet without scrolling, and nothing on the page
 - [ ] "with the agent" in Needs you is a list, one task a line, each opening its task, instead of a run-on paragraph.
 - [ ] The footer's "Calendar confirmed N% · time accounted for N%" is gone from Today and both numbers are on `/status` with a sentence each saying what they measure. "Too much? Reset visibility" stays.
 - [ ] `shots/dashboard.json` has a shot of Today with the brief open, and `node scripts/shots.mjs --only Today` runs clean.
-- [ ] `pnpm typecheck` and `pnpm test` pass, and the verify skill's Today checks pass.
+- [ ] The `today` flow in `scripts/ui-check.mjs`, as lor-mxrc repaired it, is changed with the page so it drives the new order and the brief's open and close, and `verify-lor screen today` passes.
+- [ ] `pnpm typecheck` and `pnpm test` pass.
 
 ## Scope
 
-`src/routes/index.tsx`, `src/routes/status.tsx`, `shots/dashboard.json`, and `scripts/ui-check.mjs` where a check names the old order. Not the timeline strip (lor-auhc) and not the block editor's behaviour.
+`src/routes/index.tsx`, `src/routes/status.tsx`, `shots/dashboard.json`, the `today` flow in `scripts/ui-check.mjs`, and the verify skill's `references/features/today.md`. Not the timeline strip (lor-auhc) and not the block editor's behaviour.
 
 ## Context
 

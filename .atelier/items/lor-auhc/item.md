@@ -27,11 +27,12 @@ The strip under the arc shows the day and one useful suggestion, without a print
 - [ ] No two gaps can be given the same task: `src/server/today.ts` no longer calls `gapSuggestion` once and hands its answer to every gap. A unit test covers a day with three gaps and two candidate tasks.
 - [ ] The morning brief's gap lines (the `could go to:` text built in `src/server/today.ts`) still read correctly; a test shows them for the same day.
 - [ ] No event label on the arc is cut off by the arc's edge at 1500px or 1100px: a label near either end is anchored inward or moved. `/?at=15:00&data=base` shows "Field Guide standup" in full; the Report has the screenshot.
-- [ ] `pnpm typecheck`, `pnpm test` and the verify skill's Today checks pass.
+- [ ] The `today` flow in `scripts/ui-check.mjs` opens the legend from its help mark and asserts the one free slot, and `verify-lor screen today` passes.
+- [ ] `pnpm typecheck` and `pnpm test` pass.
 
 ## Scope
 
-`Lanes` in `src/routes/index.tsx`, `src/components/DayArc.tsx`, and the gap code in `src/server/today.ts` with its tests. Not the phone line under the strip, and not how blocks are labelled.
+`Lanes` in `src/routes/index.tsx`, `src/components/DayArc.tsx`, the gap code in `src/server/today.ts` with its tests, and the `today` flow in `scripts/ui-check.mjs`. Not the phone line under the strip, and not how blocks are labelled.
 
 ## Context
 

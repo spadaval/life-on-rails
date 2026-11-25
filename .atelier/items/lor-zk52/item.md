@@ -26,9 +26,9 @@ The Tasks page reads as a list of tasks: the titles lead, and the controls and h
 - [ ] The syntax hint row under the add field (`#` counts toward, `@agent`, dates) shows only while the add field has focus or has text.
 - [ ] The filter field, the For, Due and From menus, Needs you, Group and Sort sit on one line at 1500px and wrap cleanly at 1100px.
 - [ ] The keyboard hints at the foot of the list are behind a `?` key and a small help mark, not printed permanently. `?` does nothing while a text field has focus.
-- [ ] Every interaction the verify skill's Tasks checks cover still passes: add, tick, open, bulk pick, filter, keyboard move.
+- [ ] `verify-lor screen tasks` passes, with its flow in `scripts/ui-check.mjs` changed where a selector moved. Add, tick, open, bulk pick, filter and keyboard move each work; the Report says which the flow asserts and which were driven by hand, with the output.
 - [ ] `node scripts/shots.mjs --only Tasks` runs clean, and `pnpm typecheck` and `pnpm test` pass.
 
 ## Scope
 
-`src/routes/tasks.tsx`, `src/components/QuickAdd.tsx` where the hint lives, `shots/dashboard.json` if a state is added. Not the task panel's fields (their controls are restyled in lor-mxm9) and not how tasks are grouped or sorted.
+`src/routes/tasks.tsx`, `src/components/QuickAdd.tsx` where the hint lives, `shots/dashboard.json` if a state is added, and the `tasks` flow in `scripts/ui-check.mjs`. Not the task panel's fields (their controls are restyled in lor-mxm9) and not how tasks are grouped or sorted.
