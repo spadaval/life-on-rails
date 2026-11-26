@@ -3,7 +3,7 @@ schema: atelier.mission
 schema_version: 3
 id: lor-40i0
 title: 'The dashboard cleaned up where it stands: what needs you first, fewer boxes, undo'
-status: open
+status: done
 labels:
 - dashboard
 lead: e05499fa-7ab0-4d4d-87b3-517340323121
@@ -54,3 +54,16 @@ Environment: the dev server on the test database (`scripts/ui-dev.sh`, `:3858`) 
 The lead may change the items, their order and their wording; choose the four type sizes, the tones, the radius, the three button styles and which panels keep the frame; and choose how long Undo is offered and how stale a phone is before the health line says so. These come back to Sumeet: dropping the arc, the amber, the condensed heads or the voice; removing a thing a page shows rather than moving or collapsing it (the footer's two percentages are the one exception, see lor-zuqn); and anything that changes what scoring counts.
 
 ## Result
+
+Done and deployed on 2026-11-26: `lor-web` runs main at d50b7d37. The gallery at `/lab/shots/dashboard-lor-40i0/` flips all 28 dashboard shots at 1500px between the mission's start (93d569a3) and its end. lor-a8wq checked the four success criteria itself and all pass.
+
+Of the sixteen edits Sumeet approved, fourteen were built as approved and two came out differently:
+
+- The footer's "Calendar confirmed" and "time accounted for" percentages moved to `/status`, each with a sentence saying what it measures, instead of being dropped.
+- To fit Tasks' filters on one line, Group and Sort show their value only when it is not the view's default.
+
+Stop stayed on Today's timer card only; the page head's chip gained none. The phone health line reports silence past 2 hours, chosen from two weeks of upload gaps (longest ordinary gap 46 minutes).
+
+Found and fixed alongside, outside the plan: `pnpm` on buildbot (lor-9lxd), Today's timer picker ignoring mouse clicks (lor-ug9r), and free slots losing the behind-goal suggestion that lor-auhc's wording dropped (lor-yijs).
+
+Not done: phone-width layout, by Sumeet's call. Left open: lor-wwxm (an arc label crowds the timer suggestions after a stop) and lor-c8zb (Tasks' Group and Sort at phone width). The shared test server and database cost reruns throughout; lor-3ydk, lor-j0qy, lor-rdbu, lor-ujhg and lor-uuut all report it.
