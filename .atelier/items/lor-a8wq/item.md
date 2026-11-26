@@ -118,3 +118,6 @@ I ran `pnpm build && systemctl --user restart lor-web` in `~/projects/life-on-ra
 
 The phone-silence test only reaches stale on the demo set if `observation.ingested_at` for `source='android'` is moved before the fake clock. The demo loader stamps those rows with real time, not `LOR_FAKE_NOW`, so under a fixed clock the phone always looks fresh. lor-0v56 met the same thing.
 
+### Responses
+
+1-azkb.1: fixed in 3b4be81b
