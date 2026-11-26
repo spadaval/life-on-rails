@@ -3,13 +3,14 @@ schema: atelier.item
 schema_version: 3
 id: lor-0v56
 title: A phone that has stopped reporting shows in the sidebar's health line
-status: open
+status: building
 mission: lor-40i0
 labels: []
 priority: medium
 blocked_by:
 - lor-mxm9
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Ae517f1eb-1e70-42c5-ab63-9280bb58c045%3Adelegate-task%3A7ff45527-af95-4b1c-bde4-96fc72888442
 ready: null
 trivial: null
 caused_by: null
