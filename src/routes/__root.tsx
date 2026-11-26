@@ -55,10 +55,10 @@ function RootComponent() {
     <RootDocument clock={shell.clock}>
       <div className="min-h-dvh md:grid md:grid-cols-[208px_1fr]">
         <aside className="hidden border-r border-frame md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:py-5">
-          <Link to="/" className="cond mx-[22px] text-[19px] font-semibold tracking-[0.1em] text-or">
+          <Link to="/" className="cond mx-[22px] text-lead font-semibold tracking-[0.1em] text-or">
             Life on Rails
           </Link>
-          <p className="mx-[22px] mb-6 text-[13px] text-mute" suppressHydrationWarning>
+          <p className="mx-[22px] mb-6 text-small text-mute" suppressHydrationWarning>
             <Stamp timezone={shell.timezone} />
           </p>
           <nav className="flex flex-col gap-[3px]" aria-label="Main">
@@ -66,12 +66,12 @@ function RootComponent() {
               <Link
                 key={n.to}
                 to={n.to}
-                className="cond flex h-[34px] items-center justify-between px-[22px] text-[15px] font-semibold text-mute hover:text-txt"
+                className="cond flex h-[34px] items-center justify-between px-[22px] text-body font-semibold text-mute hover:text-txt"
                 activeProps={{ className: "!bg-or !text-[#1a0d02]" }}
                 activeOptions={{ exact: n.to === "/", includeSearch: false }}
               >
                 {n.label}
-                {n.to === "/tasks" && shell.openTasks > 0 ? <span className="font-sans text-[13px] font-medium normal-case opacity-80">{shell.openTasks}</span> : null}
+                {n.to === "/tasks" && shell.openTasks > 0 ? <span className="font-sans text-small font-medium normal-case opacity-80">{shell.openTasks}</span> : null}
               </Link>
             ))}
           </nav>
@@ -79,14 +79,14 @@ function RootComponent() {
         </aside>
 
         <header className="flex items-center gap-1 overflow-x-auto border-b border-frame px-3 md:hidden">
-          <Link to="/" className="cond mr-2 py-3 text-[15px] font-semibold tracking-[0.1em] text-or">
+          <Link to="/" className="cond mr-2 py-3 text-body font-semibold tracking-[0.1em] text-or">
             LoR
           </Link>
           {NAV.map((n) => (
             <Link
               key={n.to}
               to={n.to}
-              className="cond px-2.5 py-3 text-[14px] font-semibold whitespace-nowrap text-mute"
+              className="cond px-2.5 py-3 text-body font-semibold whitespace-nowrap text-mute"
               activeProps={{ className: "!text-or" }}
               activeOptions={{ exact: n.to === "/", includeSearch: false }}
             >
@@ -113,7 +113,7 @@ function Stamp({ timezone }: { timezone: string }) {
 function Health({ unwell, className }: { unwell: Shell["unwell"]; className: string }) {
   const ok = unwell !== null && unwell.length === 0;
   return (
-    <Link to="/status" className={`block text-[13px] text-mute hover:text-txt ${className}`}>
+    <Link to="/status" className={`block text-small text-mute hover:text-txt ${className}`}>
       <span className={`mr-2 inline-block size-1.5 rounded-full align-[2px] ${ok ? "bg-or" : "bg-bad"}`} />
       {unwell === null ? "Database unreachable" : ok ? "All senses reporting" : `${unwell.length} ${unwell.length === 1 ? "job needs" : "jobs need"} a look`}
     </Link>
@@ -132,7 +132,7 @@ export function GlobalActions() {
 
   return (
     <>
-      <button className="btn" onClick={openQuickAdd} title="Add a task (q)">
+      <button className="btn btn-secondary" onClick={openQuickAdd} title="Add a task (q)">
         Add task <Key>q</Key>
       </button>
       <form
@@ -145,7 +145,7 @@ export function GlobalActions() {
         <input className="input w-[300px]" placeholder="Search notes, people, tasks" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search everything" />
       </form>
       {run ? (
-        <Link to="/" className="flex items-center gap-2 border border-or/60 bg-or/10 px-3 py-1 text-[13.5px] hover:bg-or/15">
+        <Link to="/" className="flex items-center gap-2 rounded-sm border border-or/60 bg-or/10 px-3 py-1 text-small leading-6 hover:bg-or/15">
           <span className={`size-1.5 rounded-full bg-or ${run.paused_at ? "opacity-40" : ""}`} />
           <span className="max-w-[220px] truncate">{run.intent ?? run.title ?? "Timer"}</span>
           <span className="cond font-semibold text-or" suppressHydrationWarning>

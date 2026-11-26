@@ -37,12 +37,12 @@ export function IntentPicker({ intents, recent, onPick, inputId }: {
       />
       <div className="flex flex-wrap gap-2">
         {matches.map((i) => (
-          <button key={i.id} type="button" className="btn" onClick={() => onPick(i)}>
+          <button key={i.id} type="button" className="btn btn-secondary" onClick={() => onPick(i)}>
             {i.title}
-            {i.type && i.type !== "system" ? <span className="ml-1 text-xs text-dim">{i.type}</span> : null}
+            {i.type && i.type !== "system" ? <span className="ml-1 text-small text-dim">{i.type}</span> : null}
           </button>
         ))}
-        {matches.length === 0 ? <span className="text-sm text-dim">No match.</span> : null}
+        {matches.length === 0 ? <span className="text-small text-dim">No match.</span> : null}
       </div>
     </div>
   );

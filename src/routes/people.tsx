@@ -120,13 +120,13 @@ function PeopleList({ list, act }: { list: List; act: Act }) {
       aside={total === 0 ? undefined : `${total} ${filter === "groups" ? (total === 1 ? "group" : "groups") : total === 1 ? "person" : "people"}${total > people.length ? `, showing ${people.length}` : ""}`}
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap border border-edge">
+        <div className="seg">
           {FILTERS.map((f) => (
             <Link
               key={f.id}
               to="/people"
               search={{ filter: f.id === "important" ? undefined : f.id, q: search.q }}
-              className={`border-l border-edge px-3 py-1 text-[13.5px] first:border-l-0 ${filter === f.id ? "row-sel text-txt" : "text-mute hover:text-txt"}`}
+              className={`text-small ${filter === f.id ? "active" : ""}`}
             >
               {f.label}
             </Link>
@@ -140,7 +140,7 @@ function PeopleList({ list, act }: { list: List; act: Act }) {
           }}
         >
           <input className="input" placeholder="Find by name, email, or number" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Find a person" />
-          <button className="btn" type="submit">
+          <button className="btn btn-secondary" type="submit">
             Find
           </button>
         </form>
@@ -150,9 +150,9 @@ function PeopleList({ list, act }: { list: List; act: Act }) {
         <Empty>{filter === "important" && !search.q ? "No one yet. People arrive from Google Contacts once LoR is signed in, and the agent adds people who matter." : "No one matches."}</Empty>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-[14px]">
+          <table className="w-full min-w-[860px] text-left text-body">
             <thead>
-              <tr className="cond border-b border-line text-[12.5px] text-dim">
+              <tr className="cond border-b border-line text-small text-dim">
                 <th className="py-2 pr-4 font-medium">Name</th>
                 <th className="py-2 pr-4 font-medium">Last in touch</th>
                 <th className="py-2 pr-4 font-medium">Birthday</th>
@@ -168,8 +168,8 @@ function PeopleList({ list, act }: { list: List; act: Act }) {
                       {p.name}
                     </Link>
                     {p.kind !== "person" ? <span className="chip ml-2">{p.kind}</span> : null}
-                    {p.page ? <span className="ml-2 text-[12.5px] text-dim">has a page</span> : null}
-                    {p.identifiers.length > 0 ? <span className="block max-w-[340px] truncate text-[12.5px] text-dim">{p.identifiers.map((i) => i.value).join(" · ")}</span> : null}
+                    {p.page ? <span className="ml-2 text-small text-dim">has a page</span> : null}
+                    {p.identifiers.length > 0 ? <span className="block max-w-[340px] truncate text-small text-dim">{p.identifiers.map((i) => i.value).join(" · ")}</span> : null}
                   </td>
                   <td className="py-2.5 pr-4">
                     <LastTouch p={p} />
@@ -207,12 +207,12 @@ function LastTouch({ p }: { p: Person }) {
       {p.last.at ? (
         <>
           <Ago iso={p.last.at} />
-          {p.last.via ? <span className="block text-[12.5px] text-dim">{VIA[p.last.via]}</span> : null}
+          {p.last.via ? <span className="block text-small text-dim">{VIA[p.last.via]}</span> : null}
         </>
       ) : (
         <span className="text-dim">Not seen yet</span>
       )}
-      {p.overdue_by !== null && p.overdue_by > 0 ? <span className="block text-[12.5px] text-or">{p.overdue_by} days past the cadence</span> : null}
+      {p.overdue_by !== null && p.overdue_by > 0 ? <span className="block text-small text-or">{p.overdue_by} days past the cadence</span> : null}
     </>
   );
 }
@@ -223,7 +223,7 @@ function Birthday({ p }: { p: Person }) {
     <>
       {bday(p.birthday)}
       {p.birthday_in !== null && p.birthday_in <= 30 ? (
-        <span className="block text-[12.5px] text-or">
+        <span className="block text-small text-or">
           {p.birthday_in === 0 ? "today" : `in ${p.birthday_in} days`}
           {p.turning ? `, turning ${p.turning}` : ""}
         </span>
@@ -242,7 +242,7 @@ function PersonHub({ hub, act }: { hub: Hub; act: Act }) {
 
   return (
     <div className="space-y-[22px]">
-      <p className="text-[14px]">
+      <p className="text-body">
         <Link to="/people" className="text-mute hover:text-txt">
           ← Everyone
         </Link>
@@ -250,20 +250,20 @@ function PersonHub({ hub, act }: { hub: Hub; act: Act }) {
       <div className="grid items-start gap-[22px] xl:grid-cols-[380px_minmax(0,1fr)]">
         <div className="space-y-[22px]">
           <Panel title={e.name} aside={e.kind !== "person" ? e.kind : undefined}>
-            {e.aliases.length > 0 ? <p className="text-[13px] text-dim">also {e.aliases.join(", ")}</p> : null}
-            <ul className="mt-1 text-[13.5px] text-mute">
+            {e.aliases.length > 0 ? <p className="text-small text-dim">also {e.aliases.join(", ")}</p> : null}
+            <ul className="mt-1 text-small text-mute">
               {e.identifiers.map((i) => (
                 <li key={`${i.kind}:${i.value}`} className="truncate">
                   {i.value}
                 </li>
               ))}
             </ul>
-            <dl className="mt-4 grid grid-cols-[120px_1fr] items-baseline gap-x-3 gap-y-2 text-[14px]">
-              <dt className="cond text-[12.5px] font-medium text-dim">Last in touch</dt>
+            <dl className="mt-4 grid grid-cols-[120px_1fr] items-baseline gap-x-3 gap-y-2 text-body">
+              <dt className="cond text-small font-medium text-dim">Last in touch</dt>
               <dd>{p ? <LastTouch p={p} /> : <span className="text-dim">Not seen yet</span>}</dd>
               {channels.length > 1
                 ? channels.map(([label, at]) => (
-                    <div key={label} className="contents text-[13px] text-mute">
+                    <div key={label} className="contents text-small text-mute">
                       <dt className="pl-2">{label}</dt>
                       <dd>
                         <Ago iso={at} />
@@ -271,13 +271,13 @@ function PersonHub({ hub, act }: { hub: Hub; act: Act }) {
                     </div>
                   ))
                 : null}
-              <dt className="cond text-[12.5px] font-medium text-dim">Birthday</dt>
+              <dt className="cond text-small font-medium text-dim">Birthday</dt>
               <dd>{p ? <Birthday p={p} /> : "—"}</dd>
-              <dt className="cond text-[12.5px] font-medium text-dim">Keep in touch</dt>
+              <dt className="cond text-small font-medium text-dim">Keep in touch</dt>
               <dd>
                 <Cadence id={e.id} name={e.name} days={e.keep_in_touch_days} act={act} />
               </dd>
-              <dt className="cond text-[12.5px] font-medium text-dim">Their mail</dt>
+              <dt className="cond text-small font-medium text-dim">Their mail</dt>
               <dd>
                 <label className="flex items-center gap-2 text-mute">
                   <input type="checkbox" checked={e.priority} onChange={(ev) => act(() => setPersonFn({ data: { id: e.id, priority: ev.target.checked } }))} />
@@ -295,7 +295,7 @@ function PersonHub({ hub, act }: { hub: Hub; act: Act }) {
                   <Link to="/tasks" search={{ view: w.status === "later" ? "later" : w.status === "waiting" ? "waiting" : undefined, id: w.id }} className="hover:text-or">
                     {w.title}
                   </Link>
-                  {w.due ? <span className={`shrink-0 text-[12.5px] ${w.due === today ? "text-or" : "text-dim"}`}>{dueLabel(w.due, today)}</span> : null}
+                  {w.due ? <span className={`shrink-0 text-small ${w.due === today ? "text-or" : "text-dim"}`}>{dueLabel(w.due, today)}</span> : null}
                 </li>
               ))}
             </ul>
@@ -303,7 +303,7 @@ function PersonHub({ hub, act }: { hub: Hub; act: Act }) {
 
           {e.members.length > 0 || e.groups.length > 0 ? (
             <Panel title={e.kind === "group" ? "Members" : "Groups"} aside={e.members.length || e.groups.length}>
-              <ul className="text-[14px]">
+              <ul className="text-body">
                 {e.kind === "group"
                   ? e.members.map((m) => (
                       <li key={m.identifier} className="py-0.5">
@@ -333,7 +333,7 @@ function PersonHub({ hub, act }: { hub: Hub; act: Act }) {
             title={page ? "Their page" : "No page yet"}
             aside={
               page ? (
-                <Link to="/notes" search={{ slug: page.slug }} className="btn btn-sm">
+                <Link to="/notes" search={{ slug: page.slug }} className="btn btn-secondary btn-sm">
                   Open in Notes
                 </Link>
               ) : undefined
@@ -343,7 +343,7 @@ function PersonHub({ hub, act }: { hub: Hub; act: Act }) {
             {page ? (
               <>
                 <Markdown source={page.body} />
-                <p className="mt-4 text-[13px] text-dim">
+                <p className="mt-4 text-small text-dim">
                   last written by {page.via} · <Ago iso={page.written_at} />
                 </p>
               </>
@@ -356,10 +356,10 @@ function PersonHub({ hub, act }: { hub: Hub; act: Act }) {
             <Panel title="Messages" aside="latest">
               <ul>
                 {e.recent_messages.map((m, i) => (
-                  <li key={i} className="grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 border-t border-line py-1.5 text-[14px] first:border-t-0">
-                    <span className="text-[13px] text-mute">{clock(m.at)}</span>
+                  <li key={i} className="grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 border-t border-line py-1.5 text-body first:border-t-0">
+                    <span className="text-small text-mute">{clock(m.at)}</span>
                     <span className="min-w-0">
-                      <span className={`text-[12.5px] ${m.direction === "out" ? "text-mute" : "text-cy"}`}>
+                      <span className={`text-small ${m.direction === "out" ? "text-mute" : "text-cy"}`}>
                         {m.direction === "out" ? "you" : (m.from ?? e.name)}
                         {m.group ? ` in ${m.group}` : ""}
                         {m.kind === "whatsapp" ? " · WhatsApp" : " · text"}
@@ -376,9 +376,9 @@ function PersonHub({ hub, act }: { hub: Hub; act: Act }) {
             <Panel title="Mail" aside="latest, headers only">
               <ul>
                 {e.recent_mail.map((m) => (
-                  <li key={m.gmail_id} className="grid grid-cols-[110px_60px_minmax(0,1fr)] gap-x-3 border-t border-line py-1.5 text-[14px] first:border-t-0">
-                    <span className="text-[13px] text-mute">{clock(m.at)}</span>
-                    <span className="text-[12.5px] text-dim">{m.direction === "sent" ? "you sent" : "they sent"}</span>
+                  <li key={m.gmail_id} className="grid grid-cols-[110px_60px_minmax(0,1fr)] gap-x-3 border-t border-line py-1.5 text-body first:border-t-0">
+                    <span className="text-small text-mute">{clock(m.at)}</span>
+                    <span className="text-small text-dim">{m.direction === "sent" ? "you sent" : "they sent"}</span>
                     <a href={`https://mail.google.com/mail/u/0/#all/${m.gmail_id}`} target="_blank" rel="noreferrer" className="truncate hover:text-or">
                       {m.subject ?? "(no subject)"}
                     </a>

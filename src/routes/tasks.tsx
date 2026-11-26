@@ -203,10 +203,10 @@ function Tasks() {
                   setPicked(new Set());
                   set({ view: v.id === "open" ? undefined : v.id, group: undefined, sort: undefined });
                 }}
-                className={`-mb-px border-b-2 px-3.5 py-2 text-[14px] ${view === v.id ? "border-or text-txt" : "border-transparent text-mute hover:text-txt"}`}
+                className={`-mb-px border-b-2 px-3.5 py-2 text-body ${view === v.id ? "border-or text-txt" : "border-transparent text-mute hover:text-txt"}`}
               >
                 {v.label}
-                <span className="ml-1.5 text-[12.5px] text-dim">{count(v.id)}</span>
+                <span className="ml-1.5 text-small text-dim">{count(v.id)}</span>
               </button>
             ))}
           </nav>
@@ -224,11 +224,11 @@ function Tasks() {
             <Choice label="For" value={search.for} onChange={(v) => set({ for: v })} options={parents.map((p) => ({ id: p.id, label: `${p.title}`, hint: p.type }))} />
             <Choice label="Due" value={search.due} onChange={(v) => set({ due: v as Filters["due"] })} options={DUE.map((d) => ({ id: d.id, label: d.label }))} />
             <Choice label="From" value={search.from} onChange={(v) => set({ from: v as Filters["from"] })} options={FROM.map((d) => ({ id: d.id, label: d.label }))} />
-            <button className={`btn ${search.flagged ? "border-or/70 text-or" : "text-mute"}`} aria-pressed={!!search.flagged} onClick={() => set({ flagged: search.flagged ? undefined : true })}>
+            <button className={`btn btn-secondary text-small ${search.flagged ? "" : "text-mute"}`} aria-pressed={!!search.flagged} onClick={() => set({ flagged: search.flagged ? undefined : true })}>
               <Star size={9} /> Needs you
             </button>
             {filtering ? (
-              <button className="text-[13px] text-mute underline decoration-dim hover:text-txt" onClick={() => set({ for: undefined, due: undefined, from: undefined, flagged: undefined, q: undefined })}>
+              <button className="btn btn-quiet btn-sm" onClick={() => set({ for: undefined, due: undefined, from: undefined, flagged: undefined, q: undefined })}>
                 Clear
               </button>
             ) : null}
@@ -247,8 +247,8 @@ function Tasks() {
             g.rows.length === 0 ? null : (
               <section key={g.key}>
                 {group !== "none" ? (
-                  <h2 className="h-sec mt-2 mb-1 text-[13.5px] text-mute">
-                    {g.title} <span className="font-sans text-[12.5px] font-normal tracking-normal text-dim">{g.rows.length}</span>
+                  <h2 className="h-sec mt-2 mb-1 text-small text-mute">
+                    {g.title} <span className="font-sans text-small font-normal tracking-normal text-dim">{g.rows.length}</span>
                   </h2>
                 ) : null}
                 <ul className="border-t border-line">
@@ -280,7 +280,7 @@ function Tasks() {
             ),
           )}
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-[12.5px] text-dim">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-small text-dim">
             <span>
               <Key>j</Key> <Key>k</Key> move · <Key>Enter</Key> open · <Key>x</Key> select · <Key>d</Key> done · <Key>/</Key> filter · <Key>q</Key> add · <Key>Esc</Key> close
             </span>
@@ -288,7 +288,7 @@ function Tasks() {
               <span className="ml-auto">
                 Too much?{" "}
                 <button
-                  className="underline decoration-dim hover:text-txt"
+                  className="btn btn-quiet btn-sm"
                   onClick={() =>
                     act(async () => {
                       const r = await resetVisibilityFn({ data: {} });
@@ -393,7 +393,7 @@ function Choice({ label, value, options, onChange, always = false }: {
 }) {
   const current = options.find((o) => o.id === value);
   return (
-    <label className={`relative inline-flex items-center border text-[13.5px] ${current && !always ? "border-or/70 text-txt" : "border-edge text-mute"} hover:border-or/70`}>
+    <label className={`relative inline-flex items-center rounded-sm border text-small leading-6 ${current && !always ? "border-or/70 text-txt" : "border-edge text-mute"} hover:border-or/70`}>
       <span className="pointer-events-none flex items-center gap-1.5 py-1 pr-6 pl-3 whitespace-nowrap">
         {label}
         {current ? <span className="max-w-[200px] truncate text-txt">{current.label}</span> : null}
@@ -446,10 +446,10 @@ function TaskRow({ node: n, today, showParent, open, cursor, picked, onOpen, onP
           {n.title}
         </span>
       </button>
-      <span className="flex shrink-0 items-center gap-2 text-[12.5px]">
+      <span className="flex shrink-0 items-center gap-2 text-small">
         {n.status === "waiting" ? <span className="text-mute">waiting on {n.waiting_on ?? "someone"}</span> : null}
         {n.assignee === "agent" ? <span className="text-cy/85">agent</span> : null}
-        {showParent && n.parents[0] ? <span className="chip max-w-[190px] truncate">{n.parents[0].title}</span> : null}
+        {showParent && n.parents[0] ? <span className="chip block max-w-[120px] truncate sm:max-w-[190px]">{n.parents[0].title}</span> : null}
         {n.google_task_id ? <span className="text-dim" title="From Google Tasks">G</span> : null}
         <span className={`w-[68px] text-right ${n.due_local === today && !done ? "text-or" : past ? "text-txt" : "text-mute"}`}>
           {n.due_local ? dueLabel(n.due_local, today) : ""}
@@ -477,16 +477,16 @@ function BulkBar({ ids, parents, today, act, onClear }: { ids: string[]; parents
     }, `${said}: ${ids.length}.`).then(action.op === "delete" || action.op === "done" ? onClear : () => undefined);
   const dates = QUICK_DATES(today);
   return (
-    <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 border border-or/50 bg-panel px-3 py-2 text-[13.5px]">
+    <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-sm border border-or/50 bg-panel px-3 py-2 text-small">
       <span className="mr-1 font-medium">{ids.length} selected</span>
-      <button className="btn btn-sm" onClick={() => run({ op: "done" }, "Done")}>Done</button>
+      <button className="btn btn-primary btn-sm" onClick={() => run({ op: "done" }, "Done")}>Done</button>
       <Choice label="Due" value={undefined} always onChange={(v) => v && run({ op: "due", due: v === "none" ? null : v }, "Rescheduled")} options={[...dates.map((d) => ({ id: d.ymd, label: d.label })), { id: "none", label: "No date" }]} />
       <Choice label="Later" value={undefined} always onChange={(v) => v && run({ op: "later", until: v === "none" ? null : v }, "Moved to Later")} options={[...dates.slice(1).map((d) => ({ id: d.ymd, label: `until ${d.label.toLowerCase()}` })), { id: "none", label: "until I bring it back" }]} />
       <Choice label="For" value={undefined} always onChange={(v) => v && run({ op: "parent", parentId: v === "none" ? null : v }, "Moved")} options={[...parents.map((p) => ({ id: p.id, label: p.title, hint: p.type })), { id: "none", label: "Nothing" }]} />
-      <button className="btn btn-sm" onClick={() => run({ op: "assign", assignee: "agent" }, "Given to the agent")}>Give to the agent</button>
-      <button className="btn btn-sm" onClick={() => run({ op: "assign", assignee: "owner" }, "Taken back")}>Take back</button>
-      <button className="btn btn-sm btn-danger" onClick={() => confirm(`Delete ${ids.length} tasks?`) && run({ op: "delete" }, "Deleted")}>Delete</button>
-      <button className="ml-auto text-[13px] text-mute underline decoration-dim hover:text-txt" onClick={onClear}>Clear</button>
+      <button className="btn btn-secondary btn-sm" onClick={() => run({ op: "assign", assignee: "agent" }, "Given to the agent")}>Give to the agent</button>
+      <button className="btn btn-secondary btn-sm" onClick={() => run({ op: "assign", assignee: "owner" }, "Taken back")}>Take back</button>
+      <button className="btn btn-secondary btn-danger btn-sm" onClick={() => confirm(`Delete ${ids.length} tasks?`) && run({ op: "delete" }, "Deleted")}>Delete</button>
+      <button className="btn btn-quiet btn-sm ml-auto" onClick={onClear}>Clear</button>
     </div>
   );
 }
@@ -510,11 +510,11 @@ function TaskPanel({ node: n, parents, entities, today, act, onClose }: {
   const later = n.status === "later" || n.status === "paused";
 
   return (
-    <Panel title="Task" aside={<button className="btn btn-sm" onClick={onClose}>Close</button>}>
+    <Panel framed title="Task" aside={<button className="btn btn-quiet btn-sm" onClick={onClose}>Close</button>}>
       <div className="mt-1 flex items-start gap-3">
         <TaskCheck id={n.id} title={n.title} done={done} google={google} act={act} className="mt-[9px] size-[16px]" />
         <textarea
-          className="min-h-0 w-full resize-none border border-transparent bg-transparent px-1 py-1 text-[18px] leading-snug font-medium text-txt hover:border-edge focus:border-or/70 focus:outline-none disabled:hover:border-transparent"
+          className="min-h-0 w-full resize-none border border-transparent bg-transparent px-1 py-1 text-lead leading-snug font-medium text-txt hover:border-edge focus:border-or/70 focus:outline-none disabled:hover:border-transparent"
           rows={Math.max(1, Math.ceil(title.length / 34))}
           value={title}
           disabled={google}
@@ -526,18 +526,18 @@ function TaskPanel({ node: n, parents, entities, today, act, onClose }: {
       </div>
 
       {n.flagged_at ? (
-        <div className="mt-3 border-l-2 border-or bg-or/5 px-3 py-2 text-[14px]">
-          <p className="mb-1 flex items-center gap-1.5 text-[12.5px] text-or">
+        <div className="mt-3 border-l-2 border-or bg-or/5 px-3 py-2 text-body">
+          <p className="mb-1 flex items-center gap-1.5 text-small text-or">
             <Star size={9} /> The agent flagged this for you <span className="text-dim">· <Ago iso={n.flagged_at} /></span>
           </p>
           {n.flag_note ? <p className="text-mute">{n.flag_note}</p> : null}
-          <button className="btn btn-sm mt-2" onClick={() => act(() => unflagFn({ data: { id: n.id } }), "Marked seen.")}>
+          <button className="btn btn-secondary btn-sm mt-2" onClick={() => act(() => unflagFn({ data: { id: n.id } }), "Marked seen.")}>
             Seen
           </button>
         </div>
       ) : null}
 
-      <dl className="mt-4 grid grid-cols-[96px_1fr] items-center gap-x-3 gap-y-2 text-[14px]">
+      <dl className="mt-4 grid grid-cols-[96px_1fr] items-center gap-x-3 gap-y-2 text-body">
         <Prop label="Status">
           {done ? (
             <span className="text-mute">Done</span>
@@ -570,7 +570,7 @@ function TaskPanel({ node: n, parents, entities, today, act, onClose }: {
             <span className="flex flex-wrap items-center gap-1.5">
               <input className="input w-[150px] py-1" type="date" value={n.due_local ?? ""} onChange={(e) => save({ dueAt: e.target.value || null })} aria-label="Due" />
               {QUICK_DATES(today).map((d) => (
-                <button key={d.label} className="btn btn-sm text-mute" onClick={() => save({ dueAt: d.ymd })}>
+                <button key={d.label} className="btn btn-quiet btn-sm" onClick={() => save({ dueAt: d.ymd })}>
                   {d.label}
                 </button>
               ))}
@@ -590,14 +590,15 @@ function TaskPanel({ node: n, parents, entities, today, act, onClose }: {
               </option>
             ))}
           </select>
-          {n.parents.length > 1 ? <span className="mt-1 block text-[12.5px] text-dim">Also: {n.parents.slice(1).map((p) => p.title).join(", ")}</span> : null}
+          {n.parents.length > 1 ? <span className="mt-1 block text-small text-dim">Also: {n.parents.slice(1).map((p) => p.title).join(", ")}</span> : null}
         </Prop>
         <Prop label="Whose">
-          <span className="flex border border-edge">
+          <span className="seg flex">
             {(["owner", "agent"] as const).map((a) => (
               <button
                 key={a}
-                className={`flex-1 border-l border-edge px-3 py-1 text-[13.5px] first:border-l-0 ${n.assignee === a ? "row-sel text-txt" : "text-mute hover:text-txt"}`}
+                aria-pressed={n.assignee === a}
+                className="flex-1 text-small"
                 onClick={() => n.assignee !== a && act(() => bulkTasksFn({ data: { ids: [n.id], action: { op: "assign", assignee: a } } }))}
               >
                 {a === "owner" ? "Mine" : "The agent's"}
@@ -626,7 +627,7 @@ function TaskPanel({ node: n, parents, entities, today, act, onClose }: {
         </Prop>
       </dl>
 
-      <label className="mt-4 block text-[13px] text-mute">
+      <label className="mt-4 block text-small text-mute">
         <span className="mb-1 block">Notes{google ? " · from Google Tasks" : ""}</span>
         <textarea
           className="input leading-relaxed"
@@ -639,7 +640,7 @@ function TaskPanel({ node: n, parents, entities, today, act, onClose }: {
         />
       </label>
 
-      <ul className="mt-4 space-y-0.5 border-t border-line pt-3 text-[13px] text-dim">
+      <ul className="mt-4 space-y-0.5 border-t border-line pt-3 text-small text-dim">
         <li>
           {madeBy(n)} · <Ago iso={n.created_at} />
         </li>
@@ -650,12 +651,12 @@ function TaskPanel({ node: n, parents, entities, today, act, onClose }: {
 
       <div className="mt-4 flex flex-wrap gap-2">
         {done && !google ? (
-          <button className="btn" onClick={() => act(() => taskDoneFn({ data: { id: n.id, done: false } }), "Reopened.")}>
+          <button className="btn btn-secondary" onClick={() => act(() => taskDoneFn({ data: { id: n.id, done: false } }), "Reopened.")}>
             Reopen
           </button>
         ) : null}
         <button
-          className="btn btn-danger ml-auto"
+          className="btn btn-secondary btn-danger ml-auto"
           disabled={google}
           title={google ? "Lives in Google Tasks: delete it there" : undefined}
           onClick={() =>
@@ -677,7 +678,7 @@ function TaskPanel({ node: n, parents, entities, today, act, onClose }: {
 function Prop({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="contents">
-      <dt className="cond text-[12.5px] font-medium text-dim">{label}</dt>
+      <dt className="cond text-small font-medium text-dim">{label}</dt>
       <dd className="min-w-0">{children}</dd>
     </div>
   );

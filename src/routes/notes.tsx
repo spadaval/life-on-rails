@@ -74,15 +74,15 @@ function Notes() {
       </PageHead>
 
       <div className="flex flex-wrap items-center gap-3">
-        <nav className="flex border border-edge" aria-label="Show">
-          <Link to="/notes" search={{ slug: search.slug }} className={`px-4 py-1 text-[14px] ${!graph ? "row-sel text-txt" : "text-mute hover:text-txt"}`}>
+        <nav className="seg" aria-label="Show">
+          <Link to="/notes" search={{ slug: search.slug }} className={`px-4 ${!graph ? "active" : ""}`}>
             Pages
           </Link>
-          <Link to="/notes" search={{ slug: search.slug, view: "graph" }} className={`border-l border-edge px-4 py-1 text-[14px] ${graph ? "row-sel text-txt" : "text-mute hover:text-txt"}`}>
+          <Link to="/notes" search={{ slug: search.slug, view: "graph" }} className={`px-4 ${graph ? "active" : ""}`}>
             Graph
           </Link>
         </nav>
-        <button className="btn" onClick={() => setCreating((v) => !v)}>
+        <button className="btn btn-secondary" onClick={() => setCreating((v) => !v)}>
           {creating ? "Close" : "New page"}
         </button>
       </div>
@@ -127,8 +127,8 @@ function GraphView({ data, selected }: { data: Data; selected: string | null }) 
       </div>
       <aside className="xl:sticky xl:top-4">
         {page ? (
-          <Panel title={page.title} aside={<Link to="/notes" search={{ slug: page.slug }} className="btn btn-sm border-or text-or">Read</Link>}>
-            <p className="text-[13px] text-dim">
+          <Panel framed title={page.title} aside={<Link to="/notes" search={{ slug: page.slug }} className="btn btn-primary btn-sm">Read</Link>}>
+            <p className="text-small text-dim">
               {page.slug} · last changed by {page.last_via} <Ago iso={page.updated_at} />
             </p>
             <LinkList title="Links here" pages={linksIn} graph />
@@ -147,18 +147,18 @@ function GraphView({ data, selected }: { data: Data; selected: string | null }) 
 function LinkList({ title, pages, graph = false }: { title: string; pages: { slug: string; title: string }[]; graph?: boolean }) {
   return (
     <section className="mt-4">
-      <h4 className="cond flex justify-between border-b border-line pb-1 text-[13px] font-semibold text-mute">
+      <h4 className="cond flex justify-between border-b border-line pb-1 text-small font-semibold text-mute">
         {title}
-        <span className="font-sans text-[12.5px] font-normal text-dim">{pages.length}</span>
+        <span className="font-sans text-small font-normal text-dim">{pages.length}</span>
       </h4>
-      {pages.length === 0 ? <p className="py-1.5 text-[13.5px] text-dim">None.</p> : null}
+      {pages.length === 0 ? <p className="py-1.5 text-small text-dim">None.</p> : null}
       <ul className="mt-1">
         {pages.map((p) => (
           <li key={p.slug} className="py-1">
             <Link to="/notes" search={graph ? { view: "graph", slug: p.slug } : { slug: p.slug }} className="hover:text-or">
               {p.title}
             </Link>
-            {folderOf(p.slug) ? <span className="ml-2 text-[12.5px] text-dim">{folderOf(p.slug)}</span> : null}
+            {folderOf(p.slug) ? <span className="ml-2 text-small text-dim">{folderOf(p.slug)}</span> : null}
           </li>
         ))}
       </ul>
@@ -185,7 +185,7 @@ function PagesView({ data, act, onFollow }: { data: Data; act: Act; onFollow: (s
     <li key={p.slug}>
       <Link to="/notes" search={{ slug: p.slug }} className={`flex items-baseline justify-between gap-3 px-2 py-1 ${current === p.slug ? "row-sel" : "hover:bg-raised"}`}>
         <span className="min-w-0 truncate">{p.title}</span>
-        {sub ? <span className="shrink-0 text-[12.5px] text-dim">{sub}</span> : null}
+        {sub ? <span className="shrink-0 text-small text-dim">{sub}</span> : null}
       </Link>
     </li>
   );
@@ -196,7 +196,7 @@ function PagesView({ data, act, onFollow }: { data: Data; act: Act; onFollow: (s
         <input className="input mb-3" placeholder="Filter pages" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter pages" />
         {pinned.length > 0 ? (
           <section className="mb-3">
-            <h3 className="cond mb-1 flex items-center gap-1.5 text-[12.5px] font-medium text-dim">
+            <h3 className="cond mb-1 flex items-center gap-1.5 text-small font-medium text-dim">
               <Star size={8} className="text-or" /> Loaded into every agent run
             </h3>
             <ul className="-mx-2">{pinned.map((p) => item(p))}</ul>
@@ -209,7 +209,7 @@ function PagesView({ data, act, onFollow }: { data: Data; act: Act; onFollow: (s
           const open = !!f || !dated || (current !== null && folderOf(current) === k);
           return (
             <details key={k} open={open} className="mb-2 group">
-              <summary className="cond flex cursor-pointer list-none items-center justify-between py-1 text-[12.5px] font-medium text-dim hover:text-txt">
+              <summary className="cond flex cursor-pointer list-none items-center justify-between py-1 text-small font-medium text-dim hover:text-txt">
                 <span>
                   <span className="mr-1.5 inline-block transition-transform group-open:rotate-90">›</span>
                   {k || "Other"}
@@ -238,12 +238,12 @@ function PagesView({ data, act, onFollow }: { data: Data; act: Act; onFollow: (s
             {recent.map((p) => (
               <li key={p.slug} className="flex flex-wrap items-baseline justify-between gap-2 border-t border-line py-2 first:border-t-0">
                 <span>
-                  <Link to="/notes" search={{ slug: p.slug }} className="link text-[15.5px] font-medium">
+                  <Link to="/notes" search={{ slug: p.slug }} className="link text-body font-medium">
                     {p.title}
                   </Link>
-                  <span className="ml-2 text-[12.5px] text-dim">{p.slug}</span>
+                  <span className="ml-2 text-small text-dim">{p.slug}</span>
                 </span>
-                <span className="text-[13px] text-mute">
+                <span className="text-small text-mute">
                   {p.last_via} · <Ago iso={p.updated_at} />
                 </span>
               </li>
@@ -262,7 +262,7 @@ function NewPage({ onCreate, onCancel }: { onCreate: (input: { slug: string; tit
   const derived = (t: string) => `${slug.includes("/") ? slug.slice(0, slug.lastIndexOf("/") + 1) : ""}${t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
   return (
     <form
-      className="flex flex-wrap items-center gap-2 border border-edge bg-panel p-3"
+      className="flex flex-wrap items-center gap-2 rounded-sm bg-panel p-3"
       onSubmit={(e) => {
         e.preventDefault();
         if (title.trim()) onCreate({ slug: slug.trim(), title: title.trim(), body: `# ${title.trim()}\n` });
@@ -289,10 +289,10 @@ function NewPage({ onCreate, onCancel }: { onCreate: (input: { slug: string; tit
         }}
         aria-label="Slug"
       />
-      <button className="btn border-or text-or" type="submit" disabled={!title.trim()}>
+      <button className="btn btn-primary" type="submit" disabled={!title.trim()}>
         Create
       </button>
-      <button className="btn" type="button" onClick={onCancel}>
+      <button className="btn btn-quiet" type="button" onClick={onCancel}>
         Cancel
       </button>
     </form>
@@ -310,6 +310,7 @@ function PageView({ page, pages, history: historyLinked, act, onFollow }: { page
     <div className="grid items-start gap-[22px] 2xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="min-w-0 space-y-[22px]">
         <Panel
+          framed={isHead}
           title={
             <Link to="/notes" className="text-mute hover:text-txt lg:hidden">
               All pages
@@ -318,18 +319,18 @@ function PageView({ page, pages, history: historyLinked, act, onFollow }: { page
           bodyClass="px-7 py-5"
         >
           {!isHead ? (
-            <div className="row-sel mb-4 flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[14px]">
+            <div className="row-sel mb-4 flex flex-wrap items-center justify-between gap-2 rounded-sm px-3 py-2 text-body">
               <span>You are looking at an old version.</span>
               <span className="flex gap-2">
                 <button
-                  className="btn btn-sm border-or text-or"
+                  className="btn btn-primary btn-sm"
                   onClick={() =>
                     act(() => revertPageFn({ data: { slug: view.slug, version: view.version } }), `Reverted to version ${view.version}.`).then(() => navigate({ search: { slug: view.slug } }))
                   }
                 >
                   Revert to this version
                 </button>
-                <Link to="/notes" search={{ slug: view.slug }} className="btn btn-sm">
+                <Link to="/notes" search={{ slug: view.slug }} className="btn btn-secondary btn-sm">
                   Back to current
                 </Link>
               </span>
@@ -342,7 +343,7 @@ function PageView({ page, pages, history: historyLinked, act, onFollow }: { page
             <Markdown source={view.body} />
           )}
 
-          <p className="mt-6 text-[13px] text-dim">
+          <p className="mt-6 text-small text-dim">
             {view.slug} · version {view.version} of {view.head_version} · last written by {view.via}
             {view.source_ref ? ` · thread ${view.source_ref.slice(0, 8)}` : ""} · <Ago iso={view.written_at} />
             {view.entity_id ? (
@@ -356,15 +357,15 @@ function PageView({ page, pages, history: historyLinked, act, onFollow }: { page
           </p>
           {isHead ? (
             <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-line pt-3">
-              <button className="btn" onClick={() => setShowHistory((v) => !v)}>
+              <button className="btn btn-secondary" onClick={() => setShowHistory((v) => !v)}>
                 {showHistory ? "Hide history" : `History (${history.length})`}
               </button>
               {history.length > 1 && history[0]!.via === "agent" ? (
-                <button className="btn" onClick={() => act(() => takeBackFn({ data: { slug: view.slug, version: history[0]!.version } }), "Took back the agent's last edit.")}>
+                <button className="btn btn-secondary" onClick={() => act(() => takeBackFn({ data: { slug: view.slug, version: history[0]!.version } }), "Took back the agent's last edit.")}>
                   Take back the agent's last edit
                 </button>
               ) : null}
-              <label className="ml-auto flex items-center gap-2 text-[14px] text-mute">
+              <label className="ml-auto flex items-center gap-2 text-body text-mute">
                 <input type="checkbox" checked={view.in_digest} onChange={(e) => act(() => setInDigestFn({ data: { slug: view.slug, value: e.target.checked } }))} />
                 Load into every agent run
               </label>
@@ -380,14 +381,14 @@ function PageView({ page, pages, history: historyLinked, act, onFollow }: { page
                   <Link to="/notes" search={{ slug: view.slug, version: h.version }} className={`link ${h.version === view.version ? "font-semibold text-or" : ""}`}>
                     Version {h.version}
                   </Link>
-                  <span className="flex items-baseline gap-3 text-[13px] text-mute">
+                  <span className="flex items-baseline gap-3 text-small text-mute">
                     <span>
                       {h.via}
                       {h.note ? ` · ${h.note}` : ""} · <Ago iso={h.created_at} />
                     </span>
                     {h.version !== history[history.length - 1]!.version ? (
                       <button
-                        className="text-dim underline decoration-dim hover:text-txt"
+                        className="btn btn-quiet btn-sm"
                         title="Undo what this version changed, and keep every edit since"
                         onClick={() => act(() => takeBackFn({ data: { slug: view.slug, version: h.version } }), `Took back version ${h.version}.`)}
                       >
@@ -400,8 +401,8 @@ function PageView({ page, pages, history: historyLinked, act, onFollow }: { page
             </ul>
             {diff ? (
               <>
-                <h3 className="cond mt-4 mb-1 text-[13px] font-semibold text-mute">What version {view.version} changed</h3>
-                <pre className="overflow-x-auto border border-line bg-well p-3 text-[12.5px] leading-relaxed">
+                <h3 className="cond mt-4 mb-1 text-small font-semibold text-mute">What version {view.version} changed</h3>
+                <pre className="overflow-x-auto rounded-sm border border-line bg-well p-3 text-small leading-relaxed">
                   {diff.split("\n").map((line, i) => (
                     <span key={i} className={line.startsWith("+") ? "text-or" : line.startsWith("-") ? "text-dim line-through" : "text-mute"}>
                       {line}
@@ -420,8 +421,8 @@ function PageView({ page, pages, history: historyLinked, act, onFollow }: { page
         <LinkList title="Links to" pages={linksOut} />
         {missing.length > 0 ? (
           <section className="mt-4">
-            <h4 className="cond border-b border-line pb-1 text-[13px] font-semibold text-mute">Not written yet</h4>
-            <ul className="mt-1 text-[13.5px] text-dim">
+            <h4 className="cond border-b border-line pb-1 text-small font-semibold text-mute">Not written yet</h4>
+            <ul className="mt-1 text-small text-dim">
               {missing.map((m) => (
                 <li key={m} className="py-0.5">
                   {m}
@@ -430,7 +431,7 @@ function PageView({ page, pages, history: historyLinked, act, onFollow }: { page
             </ul>
           </section>
         ) : null}
-        <p className="mt-4 text-[13px]">
+        <p className="mt-4 text-small">
           <Link to="/notes" search={{ view: "graph", slug: view.slug }} className="link">
             See it on the graph
           </Link>
@@ -582,9 +583,9 @@ function LiveBody({ view, authors, pages, onFollow }: { view: View; authors: num
     <div>
       {clash ? <Clash clash={clash} onPick={(i, p) => setClash({ ...clash, picks: clash.picks.map((x, n) => (n === i ? p : x)) })} onDone={settle} /> : null}
       {merged && !clash ? (
-        <p role="status" className="row-sel mb-3 flex items-center justify-between px-3 py-1.5 text-[13.5px]">
+        <p role="status" className="row-sel mb-3 flex items-center justify-between rounded-sm px-3 py-1.5 text-small">
           {merged}
-          <button className="text-[13px] text-mute underline hover:text-txt" onClick={() => setMerged(null)}>
+          <button className="btn btn-quiet btn-sm" onClick={() => setMerged(null)}>
             dismiss
           </button>
         </p>
@@ -603,7 +604,7 @@ function LiveBody({ view, authors, pages, onFollow }: { view: View; authors: num
         onFollow={onFollow}
         onSave={() => void save()}
       />
-      <p className="mt-2 text-[12.5px] text-dim" aria-live="polite">
+      <p className="mt-2 text-small text-dim" aria-live="polite">
         {state === "saving" ? "Saving…" : state === "unsaved" ? "Not saved yet" : state === "error" ? `Not saved: ${problem}` : state === "clash" ? "Not saved" : "Saved"}
         <span className="ml-3">
           <code>[[</code> links a page · a link opens on a click, or Ctrl-click while you type it ·{" "}
@@ -622,10 +623,10 @@ function Clash({ clash, onPick, onDone }: {
 }) {
   const theirs = clash.head.via === "agent" ? "The agent's" : "The other edit";
   const conflicts = clash.merge.chunks.filter((c): c is Extract<Merge["chunks"][number], { kind: "conflict" }> => c.kind === "conflict");
-  const block = (lines: string[]) => <pre className="font-sans text-[14px] whitespace-pre-wrap">{lines.join("\n") || "(removed)"}</pre>;
+  const block = (lines: string[]) => <pre className="font-sans text-body whitespace-pre-wrap">{lines.join("\n") || "(removed)"}</pre>;
   return (
-    <section className="mb-4 border border-or/50 bg-or/5 p-3" aria-label="Settle the clash">
-      <p className="mb-3 text-[14px]">
+    <section className="mb-4 rounded-sm border border-or/50 bg-or/5 p-3" aria-label="Settle the clash">
+      <p className="mb-3 text-body">
         {clash.head.via === "agent" ? "The agent" : "Someone else"} changed this page while you were writing. Everything else is merged;{" "}
         {conflicts.length === 1 ? "one passage was" : `${conflicts.length} passages were`} changed by both of you.
       </p>
@@ -633,24 +634,24 @@ function Clash({ clash, onPick, onDone }: {
         <div key={i} className="mb-3 border-t border-line pt-2">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <h4 className="cond mb-1 text-[12.5px] font-semibold text-mute">Yours</h4>
+              <h4 className="cond mb-1 text-small font-semibold text-mute">Yours</h4>
               {block(c.mine)}
             </div>
             <div>
-              <h4 className="cond mb-1 text-[12.5px] font-semibold text-cy">{theirs}</h4>
+              <h4 className="cond mb-1 text-small font-semibold text-cy">{theirs}</h4>
               {block(c.theirs)}
             </div>
           </div>
           <div className="mt-2 flex gap-2">
             {(["mine", "theirs", "both"] as const).map((p) => (
-              <button key={p} className={`btn btn-sm ${clash.picks[i] === p ? "border-or text-or" : ""}`} onClick={() => onPick(i, p)}>
+              <button key={p} className="btn btn-secondary btn-sm" aria-pressed={clash.picks[i] === p} onClick={() => onPick(i, p)}>
                 {p === "mine" ? "Keep yours" : p === "theirs" ? `Keep ${theirs.toLowerCase()}` : "Keep both"}
               </button>
             ))}
           </div>
         </div>
       ))}
-      <button className="btn border-or text-or" disabled={clash.picks.some((p) => p === null)} onClick={onDone}>
+      <button className="btn btn-primary" disabled={clash.picks.some((p) => p === null)} onClick={onDone}>
         Done
       </button>
     </section>

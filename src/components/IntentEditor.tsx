@@ -14,7 +14,7 @@ export const numOrNull = (s: string): number | null => (s.trim() === "" || Numbe
 
 function Field({ label, children, wide = false }: { label: string; children: ReactNode; wide?: boolean }) {
   return (
-    <label className={`block text-[13px] text-mute ${wide ? "sm:col-span-2" : ""}`}>
+    <label className={`block text-small text-mute ${wide ? "sm:col-span-2" : ""}`}>
       <span className="mb-1 block">{label}</span>
       {children}
     </label>
@@ -91,8 +91,8 @@ export function IntentEditor({ node: n, nodes, entities, act }: { node: GraphNod
         {n.type === "habit" ? (
           <Field label="How often">
             <span className="flex gap-2">
-              <input className="input w-20" inputMode="numeric" value={frequency} onChange={(e) => setFrequency(e.target.value)} />
-              <select className="input" value={horizon} onChange={(e) => setHorizon(e.target.value as "day" | "week")}>
+              <input className="input w-16 shrink-0" inputMode="numeric" value={frequency} onChange={(e) => setFrequency(e.target.value)} />
+              <select className="input min-w-0 flex-1" value={horizon} onChange={(e) => setHorizon(e.target.value as "day" | "week")}>
                 <option value="day">per day</option>
                 <option value="week">per week</option>
               </select>
@@ -128,9 +128,9 @@ export function IntentEditor({ node: n, nodes, entities, act }: { node: GraphNod
 
       {n.type === "metric" ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[13px] text-mute">Log a value</span>
+          <span className="text-small text-mute">Log a value</span>
           {[1, 2, 3, 4, 5].map((v) => (
-            <button key={v} className="btn btn-sm min-w-8" onClick={() => act(() => metricFn({ data: { id: n.id, value: v } }), `Logged ${v} for “${n.title}”.`)}>
+            <button key={v} className="btn btn-secondary btn-sm min-w-8" onClick={() => act(() => metricFn({ data: { id: n.id, value: v } }), `Logged ${v} for “${n.title}”.`)}>
               {v}
             </button>
           ))}
@@ -138,14 +138,14 @@ export function IntentEditor({ node: n, nodes, entities, act }: { node: GraphNod
       ) : null}
 
       <div className="space-y-2">
-        <p className="text-[13px] text-mute">Counts toward</p>
+        <p className="text-small text-mute">Counts toward</p>
         <div className="flex flex-wrap gap-2">
-          {n.parents.length === 0 ? <span className="text-[14px] text-dim">Nothing yet.</span> : null}
+          {n.parents.length === 0 ? <span className="text-body text-dim">Nothing yet.</span> : null}
           {n.parents.map((p) => (
             <span key={p.link_id} className="chip text-txt">
               {p.title}
               {p.via === "agent" ? <span className="text-cy">agent</span> : null}
-              <button className="text-mute underline hover:text-txt" onClick={() => act(() => unlinkFn({ data: { id: p.link_id } }))}>
+              <button className="btn btn-quiet btn-sm px-1 leading-5 underline" onClick={() => act(() => unlinkFn({ data: { id: p.link_id } }))}>
                 remove
               </button>
             </span>
@@ -160,34 +160,34 @@ export function IntentEditor({ node: n, nodes, entities, act }: { node: GraphNod
               </option>
             ))}
           </select>
-          <button className="btn" disabled={!parent} onClick={() => act(() => linkFn({ data: { fromId: n.id, toId: parent, kind: "measures" } })).then(() => setParent(""))}>
+          <button className="btn btn-secondary" disabled={!parent} onClick={() => act(() => linkFn({ data: { fromId: n.id, toId: parent, kind: "measures" } })).then(() => setParent(""))}>
             Link
           </button>
         </span>
       </div>
 
       <div className="flex flex-wrap gap-2 border-t border-line pt-3">
-        <button className="btn border-or text-or" onClick={save}>
+        <button className="btn btn-primary" onClick={save}>
           Save
         </button>
         {n.type === "task" ? (
           <>
             {n.status === "done" && !n.google_task_id ? (
-              <button className="btn" onClick={() => act(() => taskDoneFn({ data: { id: n.id, done: false } }), "Reopened.")}>
+              <button className="btn btn-secondary" onClick={() => act(() => taskDoneFn({ data: { id: n.id, done: false } }), "Reopened.")}>
                 Reopen
               </button>
             ) : null}
-            <button className="btn" onClick={() => act(() => assignFn({ data: { id: n.id, assignee: n.assignee === "agent" ? "owner" : "agent" } }))}>
+            <button className="btn btn-secondary" onClick={() => act(() => assignFn({ data: { id: n.id, assignee: n.assignee === "agent" ? "owner" : "agent" } }))}>
               {n.assignee === "agent" ? "Take it back" : "Give to the agent"}
             </button>
           </>
         ) : (
-          <button className="btn" onClick={async () => setExplain((await explainFn({ data: { id: n.id } })).json)}>
+          <button className="btn btn-secondary" onClick={async () => setExplain((await explainFn({ data: { id: n.id } })).json)}>
             Explain score
           </button>
         )}
         <button
-          className="btn btn-danger ml-auto"
+          className="btn btn-secondary btn-danger ml-auto"
           disabled={n.google_task_id !== null}
           title={n.google_task_id ? "Lives in Google Tasks: delete it there" : "Deleted, or archived if time or check-ins were recorded against it"}
           onClick={() => confirm(`Delete “${n.title}”?`) && act(() => deleteIntentFn({ data: { id: n.id } }), `Deleted “${n.title}”.`)}
@@ -195,7 +195,7 @@ export function IntentEditor({ node: n, nodes, entities, act }: { node: GraphNod
           Delete
         </button>
       </div>
-      {explain ? <pre className="overflow-x-auto border border-line bg-well p-3 text-xs text-mute">{explain}</pre> : null}
+      {explain ? <pre className="overflow-x-auto rounded-sm border border-line bg-well p-3 text-small text-mute">{explain}</pre> : null}
     </div>
   );
 }
