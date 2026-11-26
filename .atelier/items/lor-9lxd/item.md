@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-9lxd
 title: 'The pnpm command works on buildbot again: corepack''s shim cannot run pnpm 12'
-status: in_review
+status: approved
 mission: null
 labels: []
 priority: medium
