@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-yijs
 title: A free slot suggests the goal most behind on its hours again, before a task
-status: in_review
+status: approved
 mission: null
 labels: []
 priority: medium
