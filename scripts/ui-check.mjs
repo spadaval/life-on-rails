@@ -454,7 +454,8 @@ const flows = {
     lor(["intent", "create", "--type", "task", "--title", "Shortlist venues", "--parent", vendors]);
     lor(["intent", "create", "--type", "task", "--title", "Call the florist", "--parent", vendors]);
     lor(["intent", "create", "--type", "task", "--title", "Book flights", "--parent", wedding]);
-    id(lor(["intent", "create", "--type", "habit", "--title", "Call Neha", "--parent", wedding, "--frequency", "1"]));
+    const callNeha = id(lor(["intent", "create", "--type", "habit", "--title", "Call Neha", "--parent", wedding, "--frequency", "1"]));
+    lor(["intent", "create", "--type", "task", "--title", "Buy Neha a card", "--parent", callNeha]);
     lor(["intent", "create", "--type", "project", "--title", "Health admin"]);
 
     await page.setViewportSize({ width: 1500, height: 950 });
@@ -466,8 +467,9 @@ const flows = {
     expect(/0 \/ 6h this week/.test(card) && /Wedding vendors/.test(card) && /Call Neha/.test(card), "the wedding card with 0 / 6h, Wedding vendors and Call Neha", card);
     // Each row says its kind; a habit says how often it is due beside Did it. innerText carries the CSS uppercase.
     expect(/Project Wedding vendors 2 tasks/i.test(card) && /Habit Call Neha 1 per day Did it/i.test(card), "rows labelled Project (with its 2 tasks) and Habit (1 per day, beside Did it)", card);
-    // Tasks are said once: the project row counts its two, the foot only Book flights, filed on the goal itself.
-    expect(/1 task on the goal itself/.test(card) && !/3 tasks/.test(card), "the foot counting only the 1 task on the goal itself, no 3-task total", card);
+    // Tasks are said once and none goes unsaid: the project row counts its two, the foot the other two,
+    // Book flights on the goal itself and Buy Neha a card under the habit. No 4-task total.
+    expect(/2 tasks outside its projects/.test(card) && !/4 tasks/.test(card), "the foot counting the 2 tasks outside the project (on the goal, under the habit), no 4-task total", card);
 
     await page.click('button:has-text("New goal, project or habit")');
     await page.selectOption('select[aria-label="Kind"]', "goal");

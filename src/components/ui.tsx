@@ -14,13 +14,14 @@ export function Panel({ title, aside, children, className = "", bodyClass = "", 
   bodyClass?: string;
   framed?: boolean;
 }) {
+  // An aside that does not fit beside the title wraps under it, right-aligned, rather than squeezing it.
   return (
     <section className={`panel ${framed ? "panel-framed" : ""} ${className}`}>
       <div className={`face flex flex-col px-5 py-4 ${bodyClass}`}>
         {title ? (
-          <header className="mb-2 flex items-baseline justify-between gap-3">
+          <header className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <h2 className="h-sec">{title}</h2>
-            {aside ? <span className="text-small text-mute">{aside}</span> : null}
+            {aside ? <span className="ml-auto text-small text-mute">{aside}</span> : null}
           </header>
         ) : null}
         {children}

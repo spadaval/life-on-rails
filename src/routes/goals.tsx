@@ -99,7 +99,7 @@ function Goals() {
             </Panel>
           ) : null}
           {goals.map((g) => (
-            <GoalCard key={g.id} goal={g} kids={shown.filter((k) => k.parents.some((p) => p.id === g.id))} shown={shown} openTasks={openTasks} ownTasks={live.filter((t) => t.type === "task" && isOpen(t) && t.parents.some((p) => p.id === g.id)).length} selected={selected?.id ?? null} onSelect={(id) => set({ id, edit: undefined })} act={act} />
+            <GoalCard key={g.id} goal={g} kids={shown.filter((k) => k.parents.some((p) => p.id === g.id))} shown={shown} openTasks={openTasks} selected={selected?.id ?? null} onSelect={(id) => set({ id, edit: undefined })} act={act} />
           ))}
           {loose.length > 0 ? (
             <Panel title="Not under a goal">
@@ -125,9 +125,12 @@ function Goals() {
   );
 }
 
-/** Open tasks under each intent, counting everything beneath it. */
-function useOpenTasks(nodes: GraphNode[]): Map<string, number> {
-  const out = new Map<string, number>();
+/** The ids of the open tasks under each intent, at any depth. */
+type OpenTasks = Map<string, Set<string>>;
+const countOf = (open: OpenTasks, id: string) => open.get(id)?.size ?? 0;
+
+function useOpenTasks(nodes: GraphNode[]): OpenTasks {
+  const out: OpenTasks = new Map();
   const byId = new Map(nodes.map((n) => [n.id, n]));
   for (const t of nodes) {
     if (t.type !== "task" || !isOpen(t)) continue;
@@ -137,7 +140,8 @@ function useOpenTasks(nodes: GraphNode[]): Map<string, number> {
       const id = stack.pop()!;
       if (seen.has(id)) continue;
       seen.add(id);
-      out.set(id, (out.get(id) ?? 0) + 1);
+      if (!out.has(id)) out.set(id, new Set());
+      out.get(id)!.add(t.id);
       stack.push(...(byId.get(id)?.parents.map((p) => p.id) ?? []));
     }
   }
@@ -154,11 +158,21 @@ function TaskCount({ id, n }: { id: string; n: number }) {
 
 /**
  * One goal: its week's hours, and the projects and habits under it. Each project row carries its
- * own task count; the foot counts only the tasks filed on the goal itself, so no task is said twice.
+ * own task count; the foot counts the goal's other open tasks (on the goal itself, or under a habit),
+ * so every task is said once and none goes unsaid.
  */
-function GoalCard({ goal: g, kids, shown, openTasks, ownTasks, selected, onSelect, act }: {
-  goal: GraphNode; kids: GraphNode[]; shown: GraphNode[]; openTasks: Map<string, number>; ownTasks: number; selected: string | null; onSelect: (id: string) => void; act: Act;
+function GoalCard({ goal: g, kids, shown, openTasks, selected, onSelect, act }: {
+  goal: GraphNode; kids: GraphNode[]; shown: GraphNode[]; openTasks: OpenTasks; selected: string | null; onSelect: (id: string) => void; act: Act;
 }) {
+  const counted = new Set<string>();
+  const walk = (rows: GraphNode[], depth: number) => {
+    for (const r of rows) {
+      if (r.type === "project" || r.type === "goal") for (const t of openTasks.get(r.id) ?? []) counted.add(t);
+      if (depth < 4) walk(shown.filter((k) => k.parents.some((p) => p.id === r.id)), depth + 1);
+    }
+  };
+  walk(kids, 0);
+  const other = [...(openTasks.get(g.id) ?? [])].filter((t) => !counted.has(t)).length;
   const order = (n: GraphNode) => (n.type === "goal" ? 0 : n.type === "project" ? 1 : n.type === "habit" ? 2 : 3);
   return (
     <Panel
@@ -181,10 +195,10 @@ function GoalCard({ goal: g, kids, shown, openTasks, ownTasks, selected, onSelec
           <Row key={k.id} n={k} shown={shown} depth={0} openTasks={openTasks} selected={selected} onSelect={onSelect} act={act} />
         ))}
       </ul>
-      {ownTasks > 0 ? (
+      {other > 0 ? (
         <p className="mt-auto flex justify-end pt-2">
           <Link to="/tasks" search={{ for: g.id, group: "for" }} className="text-small text-dim hover:text-or" title="Open this goal's tasks in Tasks, grouped by what each counts toward">
-            {tasks(ownTasks)} on the goal itself
+            {counted.size > 0 ? `${tasks(other)} outside its projects` : tasks(other)}
           </Link>
         </p>
       ) : null}
@@ -193,28 +207,33 @@ function GoalCard({ goal: g, kids, shown, openTasks, ownTasks, selected, onSelec
 }
 
 function Row({ n, shown, depth, openTasks, selected, onSelect, act }: {
-  n: GraphNode; shown: GraphNode[]; depth: number; openTasks: Map<string, number>; selected: string | null; onSelect: (id: string) => void; act: Act;
+  n: GraphNode; shown: GraphNode[]; depth: number; openTasks: OpenTasks; selected: string | null; onSelect: (id: string) => void; act: Act;
 }) {
   const kids = shown.filter((k) => k.parents.some((p) => p.id === n.id));
   const quiet = !isOpen(n);
   return (
     <li>
-      <div className={`flex items-center gap-2.5 py-1.5 pr-2 ${selected === n.id ? "row-sel" : "hover:bg-raised"}`} style={{ paddingLeft: 8 + depth * 20 }}>
-        <span className={`cond w-[54px] shrink-0 text-small tracking-[0.06em] uppercase ${n.type === "habit" ? "text-or-deep" : "text-dim"}`}>{TYPE_NAME[n.type]}</span>
-        <button className={`min-w-0 flex-1 truncate text-left ${quiet ? "text-dim" : ""}`} onClick={() => onSelect(n.id)}>
-          {n.title}
-          {quiet ? <span className="ml-2 text-small">{n.status}</span> : null}
-        </button>
-        {n.due_local && !quiet ? <span className="shrink-0 text-small text-dim">due {shortDate(n.due_local)}</span> : null}
-        {n.weekly_hour_target ? <span className="shrink-0 text-small text-mute">{round1(n.week_hours ?? 0)} / {round1(n.weekly_hour_target)}h</span> : null}
-        {n.type === "habit" && n.frequency ? <span className="shrink-0 text-small text-mute">{n.frequency} per {n.frequency_horizon ?? "day"}</span> : null}
-        {n.type === "habit" ? (
-          <button className="btn btn-primary btn-sm" onClick={() => act(() => habitFn({ data: { id: n.id } }), `Logged “${n.title}”.`)}>
-            Did it
+      {/* The name keeps at least 11rem; when the details beside it do not fit, they wrap under it. */}
+      <div className={`flex flex-wrap items-center gap-x-2.5 gap-y-0.5 py-1.5 pr-2 ${selected === n.id ? "row-sel" : "hover:bg-raised"}`} style={{ paddingLeft: 8 + depth * 20 }}>
+        <span className="flex min-w-[11rem] flex-1 items-center gap-2.5">
+          <span className={`cond w-[54px] shrink-0 text-small tracking-[0.06em] uppercase ${n.type === "habit" ? "text-or-deep" : "text-dim"}`}>{TYPE_NAME[n.type]}</span>
+          <button className={`min-w-0 flex-1 truncate text-left ${quiet ? "text-dim" : ""}`} onClick={() => onSelect(n.id)}>
+            {n.title}
+            {quiet ? <span className="ml-2 text-small">{n.status}</span> : null}
           </button>
-        ) : n.type === "project" || n.type === "goal" ? (
-          <TaskCount id={n.id} n={openTasks.get(n.id) ?? 0} />
-        ) : null}
+        </span>
+        <span className="ml-auto flex shrink-0 items-center gap-2.5">
+          {n.due_local && !quiet ? <span className="text-small text-dim">due {shortDate(n.due_local)}</span> : null}
+          {n.weekly_hour_target ? <span className="text-small text-mute">{round1(n.week_hours ?? 0)} / {round1(n.weekly_hour_target)}h</span> : null}
+          {n.type === "habit" && n.frequency ? <span className="text-small text-mute">{n.frequency} per {n.frequency_horizon ?? "day"}</span> : null}
+          {n.type === "habit" ? (
+            <button className="btn btn-primary btn-sm" onClick={() => act(() => habitFn({ data: { id: n.id } }), `Logged “${n.title}”.`)}>
+              Did it
+            </button>
+          ) : n.type === "project" || n.type === "goal" ? (
+            <TaskCount id={n.id} n={countOf(openTasks, n.id)} />
+          ) : null}
+        </span>
       </div>
       {kids.length > 0 && depth < 4 ? (
         <ul>
@@ -228,7 +247,7 @@ function Row({ n, shown, depth, openTasks, selected, onSelect, act }: {
 }
 
 function Details({ node: n, edit, nodes, entities, openTasks, act, onSelect, onClose }: {
-  node: GraphNode; edit: boolean; nodes: GraphNode[]; entities: { id: string; name: string }[]; openTasks: Map<string, number>; act: Act; onSelect: (id: string) => void; onClose: () => void;
+  node: GraphNode; edit: boolean; nodes: GraphNode[]; entities: { id: string; name: string }[]; openTasks: OpenTasks; act: Act; onSelect: (id: string) => void; onClose: () => void;
 }) {
   const [editing, setEditing] = useState(edit);
   const kids = nodes.filter((k) => k.type !== "task" && k.parents.some((p) => p.id === n.id) && isOpen(k));
@@ -246,7 +265,8 @@ function Details({ node: n, edit, nodes, entities, openTasks, act, onSelect, onC
         ))] as [string, ReactNode]]
       : []),
     ...(n.type === "habit" && n.frequency ? [["How often", `${n.frequency} per ${n.frequency_horizon ?? "day"}`] as [string, string]] : []),
-    ...(n.type !== "habit" && n.type !== "metric" ? [["Tasks", <TaskCount key="t" id={n.id} n={openTasks.get(n.id) ?? 0} />] as [string, ReactNode]] : []),
+    // A habit rarely has tasks, so its Tasks line shows only when it does.
+    ...(n.type !== "metric" && (n.type !== "habit" || countOf(openTasks, n.id) > 0) ? [["Tasks", <TaskCount key="t" id={n.id} n={countOf(openTasks, n.id)} />] as [string, ReactNode]] : []),
   ];
 
   return (
