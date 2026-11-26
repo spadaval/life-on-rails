@@ -116,9 +116,9 @@ timing checks belong on the Mac.
 - **Web:** `node $V screen <tasks|goals|people|notes|today> <out-dir>` runs that
   flow of `scripts/ui-check.mjs` (each one first deletes rows in the test
   database; the feature file says which). `node $V screen /goals <out-dir>`
-  takes one 1500x950 screenshot of a path and changes nothing. On main the
-  `today` flow is out of date and fails at its first step (lor-mxrc); use
-  `screen /` and the API for Today.
+  takes one 1500x950 screenshot of a path and changes nothing. The `today`
+  and `goals` flows check what they drive and stop at the first wrong thing
+  with `FLOW FAILED: expected ...; found ...`.
 - **Launcher:** drive only through the `agent-device` command that `device_open`
   returned: `open com.spadaval.lor`, `snapshot -i`, `press @eN --settle`,
   `fill`, `home`, `back`, `screenshot <file>` (`agent-device help` lists the

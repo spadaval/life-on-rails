@@ -22,22 +22,29 @@ What the owner's time is for: each goal with this week's hours against its targe
 
 - `node .claude/skills/verify-lor/verify.mjs screen goals <out-dir>` runs the `goals` flow in `scripts/ui-check.mjs` against the test server on port 3857. It prints JSON (`ok`, `shots`, `log`, `browser_errors`) and saves the flow's console output to `<out-dir>/goals.log`. `verify.mjs screen /goals <out-dir>` instead takes one 1500x950 screenshot of that path without touching data.
 - The flow first runs psql on `life_on_rails_test`: DELETE FROM `intent_link`, `proposal`, `commitment`, `time_block_observation`, `time_block`, `attribution_rule`, and non-system `intent` rows, after clearing `time_block.commitment_id`. It seeds goal "Neha and the wedding" (6 h/week), project "Wedding vendors" with tasks "Shortlist venues" and "Call the florist", task "Book flights" and habit "Call Neha" under the goal, and project "Health admin".
-- Screenshots: `goals-1.png`, `goals-2-selected.png`, `goals-3-tasks.png`.
-- Console lines: `goal card:` (the wedding card's text), `tasks for vendors:` (task titles found on the Tasks page), plus `shot <name>`.
+- It adds goal "Ship Life on Rails" (10 h/week) through the form, presses "Did it" on Call Neha, selects Wedding vendors, opens its editor, and follows its "2 tasks" link.
+- Each check prints `ok: <what>`; the first that fails ends the flow with `FLOW FAILED: expected <what>; found <what was there>` and `goals-FAILED.png`.
+- Screenshots: `goals-1.png`, `goals-2-selected.png`, `goals-3-editor.png`, `goals-4-tasks.png`.
+- Console lines: `goal card:` (the wedding card's text), `tasks for vendors:` (the titles of the task rows on the filtered Tasks page), plus `shot <name>`.
 - Set data up through the API instead (the API refuses writes without a `thread` field; `verify.mjs api` adds `"thread":"verify-lor"` when the body has none):
   - `verify.mjs api POST /intents --body '{"type":"goal","title":"G","weekly_hour_target":10}'` (also `project`, `habit` with `frequency` and `frequency_horizon`, `metric`, with `parent_id`).
   - `POST /intents/<id>/habit` logs a habit, `POST /intents/<id>/status` (`active|paused|later|archived`), `POST /links` (`from_id`, `to_id`, `kind`), `GET /graph`, `GET /intents/<id>/score`.
 
 ## Proves it works
 
-- `goals-1` shows the wedding card with "0 / 6h this week", Wedding vendors and Call Neha under it, and Health admin under "Not under a goal". `goal card:` prints that text.
-- After adding, a button "Ship Life on Rails" appears as a new goal card. "Did it" on Call Neha shows the "Logged" notice.
-- `goals-2-selected` shows Wedding vendors selected with its side panel and a "2 tasks" link.
-- Following that link lands on `/tasks?for=<id>`. `goals-3-tasks` shows that page with "For Wedding vendors" set and only Call the florist and Shortlist venues listed, not Book flights (which is under the goal, not the project). Judge this from the screenshot: on main (2026-11-08) the flow's own `tasks for vendors:` line printed `null` although the page was right, because its text match does not find the titles (lor-mxrc).
+`screen goals` exits 0 with every check `ok`:
+
+- The wedding card reads "0 / 6h this week" with Wedding vendors and Call Neha under it.
+- The form adds a goal Ship Life on Rails with `weekly_hour_target` 10.
+- "Did it" on Call Neha shows `Logged “Call Neha”.` and writes one `habit_completion` commitment.
+- Selecting Wedding vendors puts its id in the link, draws its row selected (`row-sel`), and opens the side panel on it: Kind Project, counts toward Neha and the wedding, Tasks 2 tasks.
+- "Edit" opens the editor with Title "Wedding vendors" and an Hours a week field.
+- The "2 tasks" link opens `/tasks?for=<id>`, and `tasks for vendors:` prints exactly `Call the florist, Shortlist venues`. Any other list fails the flow, Book flights included (it is under the goal, not the project).
 
 ## Gotchas
 
 - The flow sets the viewport to 1500x950. The side panel sits beside the cards only at the `xl` breakpoint.
+- `innerText` carries the CSS uppercase of titles and labels ("KIND Project"); the flow matches those without case.
 - "This week" hours are the score's `last_7_days` term (`src/server/graph.ts`), recomputed on every load because `getGraphFn` calls `recomputeScores`. The flow deletes every time block, so each goal reads 0 hours unless you log time first.
 - The task count counts only open tasks (status active or waiting), walking every level up.
 - The "2 tasks" link is found with `aside a:has-text("2 tasks")`, which depends on the exact count text.
