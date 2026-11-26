@@ -214,10 +214,11 @@ function Tasks() {
             ))}
           </nav>
 
-          <div className="flex flex-wrap items-center gap-2">
+          {/* One line from xl up: the text field and the chosen values give way, not the line. Below xl it wraps. */}
+          <div className="flex flex-wrap items-center gap-2 xl:flex-nowrap">
             <input
               ref={filterBox}
-              className="input w-auto max-w-[200px] min-w-[120px] flex-1 py-1"
+              className="input w-[200px] min-w-[100px] py-1"
               placeholder="Filter…  /"
               aria-label="Filter by text"
               value={search.q ?? ""}
@@ -227,17 +228,17 @@ function Tasks() {
             <Choice label="For" value={search.for} onChange={(v) => set({ for: v })} options={parents.map((p) => ({ id: p.id, label: `${p.title}`, hint: p.type }))} />
             <Choice label="Due" value={search.due} onChange={(v) => set({ due: v as Filters["due"] })} options={DUE.map((d) => ({ id: d.id, label: d.label }))} />
             <Choice label="From" value={search.from} onChange={(v) => set({ from: v as Filters["from"] })} options={FROM.map((d) => ({ id: d.id, label: d.label }))} />
-            <button className={`btn btn-secondary text-small ${search.flagged ? "" : "text-mute"}`} aria-pressed={!!search.flagged} onClick={() => set({ flagged: search.flagged ? undefined : true })}>
+            <button className={`btn btn-secondary shrink-0 text-small ${search.flagged ? "" : "text-mute"}`} aria-pressed={!!search.flagged} onClick={() => set({ flagged: search.flagged ? undefined : true })}>
               <Star size={9} /> Needs you
             </button>
             {filtering ? (
-              <button className="btn btn-quiet btn-sm" onClick={() => set({ for: undefined, due: undefined, from: undefined, flagged: undefined, q: undefined })}>
+              <button className="btn btn-quiet btn-sm shrink-0" onClick={() => set({ for: undefined, due: undefined, from: undefined, flagged: undefined, q: undefined })}>
                 Clear
               </button>
             ) : null}
             <span className="ml-auto flex shrink-0 items-center gap-2">
-              <Choice label="Group" value={group} always onChange={(v) => set({ group: (v ?? "none") as Filters["group"] })} options={GROUPS.map((g) => ({ id: g.id, label: g.label }))} />
-              <Choice label="Sort" value={sort} always onChange={(v) => set({ sort: (v ?? "due") as Filters["sort"] })} options={SORTS.map((g) => ({ id: g.id, label: g.label }))} />
+              <Choice label="Group" value={group} always quiet={view === "done" ? "none" : "due"} onChange={(v) => set({ group: (v ?? "none") as Filters["group"] })} options={GROUPS.map((g) => ({ id: g.id, label: g.label }))} />
+              <Choice label="Sort" value={sort} always quiet={view === "done" ? "updated" : "due"} onChange={(v) => set({ sort: (v ?? "due") as Filters["sort"] })} options={SORTS.map((g) => ({ id: g.id, label: g.label }))} />
             </span>
           </div>
 
@@ -398,20 +399,28 @@ function bucket(rows: GraphNode[], key: (n: GraphNode) => string, order: string[
   return [...m.entries()].map(([k, rows]) => ({ key: k, title: k, rows }));
 }
 
-/** A filter or display choice: a quiet button that opens a list; the chosen value shows on the button. */
-function Choice({ label, value, options, onChange, always = false }: {
+/**
+ * A filter or display choice: a quiet button that opens a list; the chosen value shows on the button,
+ * unless it is `quiet`, a display choice's default. A long value is cut, and the button's title has it whole.
+ */
+function Choice({ label, value, options, onChange, always = false, quiet }: {
   label: string;
   value: string | undefined;
   options: { id: string; label: string; hint?: string }[];
   onChange: (v: string | undefined) => void;
   always?: boolean;
+  quiet?: string;
 }) {
   const current = options.find((o) => o.id === value);
+  const shown = current && current.id !== quiet ? current : undefined;
   return (
-    <label className={`relative inline-flex items-center rounded-sm border text-small leading-6 ${current && !always ? "border-or/70 text-txt" : "border-edge text-mute"} hover:border-or/70`}>
-      <span className="pointer-events-none flex items-center gap-1.5 py-1 pr-6 pl-3 whitespace-nowrap">
-        {label}
-        {current ? <span className="max-w-[200px] truncate text-txt">{current.label}</span> : null}
+    <label
+      className={`relative inline-flex ${shown ? "min-w-0" : "shrink-0"} items-center rounded-sm border text-small leading-6 ${current && !always ? "border-or/70 text-txt" : "border-edge text-mute"} hover:border-or/70`}
+      title={current ? `${label}: ${current.label}` : undefined}
+    >
+      <span className="pointer-events-none flex min-w-0 items-center gap-1.5 py-1 pr-6 pl-3 whitespace-nowrap">
+        <span className="shrink-0">{label}</span>
+        {shown ? <span className="max-w-[200px] min-w-0 truncate text-txt">{shown.label}</span> : null}
       </span>
       <select
         className="absolute inset-0 cursor-pointer opacity-0"

@@ -116,9 +116,20 @@ const flows = {
 
     // The filter bar sits on one line at 1500px.
     const bar = page.locator('input[aria-label="Filter by text"]').locator("..");
-    const tops = async () => bar.evaluate((el) => [...el.children].map((c) => Math.round(c.getBoundingClientRect().top)));
+    // Each control's vertical centre: buttons of different heights on one line share it.
+    const tops = async () => bar.evaluate((el) => [...el.children].map((c) => { const r = c.getBoundingClientRect(); return Math.round(r.top + r.height / 2); }));
     const at1500 = await tops();
     expect(new Set(at1500).size === 1, "filter, For, Due, From, Needs you, Group and Sort on one line at 1500px", at1500);
+    // Still one line with a long goal chosen in For and Clear showing; nothing spills past the bar.
+    await page.goto(`${BASE}/tasks?for=${portuguese}`);
+    await settle();
+    const chosen = await tops();
+    // Inside the bar, and no control squeezed below its own content (a label over its arrow).
+    const inside = await bar.evaluate((el) => [...el.querySelectorAll(":scope > *, :scope > span > *")].every((c) => c.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 && c.scrollWidth <= c.clientWidth + 1));
+    expect(new Set(chosen).size === 1 && chosen.length === 7 && inside, "the filter line stays one line at 1500px with a long For value and Clear", chosen);
+    await shot("tasks-1b-for-chosen");
+    await page.goto(`${BASE}/tasks`);
+    await settle();
 
     // Keyboard hints hide behind ? and the help mark; ? in a text field types a ?.
     const keysShown = () => page.locator("#task-keys").count();
@@ -229,7 +240,7 @@ const flows = {
 
     // At 1100px the filter bar wraps whole controls, and nothing spills past the list.
     await page.setViewportSize({ width: 1100, height: 950 });
-    await page.goto(`${BASE}/tasks`);
+    await page.goto(`${BASE}/tasks?for=${portuguese}`);
     await settle();
     await shot("tasks-10-1100");
     const wrap = await bar.evaluate((el) => {
