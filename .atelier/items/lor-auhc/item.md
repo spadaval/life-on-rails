@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-auhc
 title: 'Today''s timeline strip says less: the legend behind a help mark, one free slot, no clipped arc label'
-status: building
+status: in_review
 mission: lor-40i0
 labels: []
 priority: medium
