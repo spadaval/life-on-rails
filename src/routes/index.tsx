@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
+import { Link, createFileRoute, useRouter, useRouterState } from "@tanstack/react-router";
 import { z } from "zod";
 import { DayArc } from "../components/DayArc.js";
 import { useNow } from "../components/clock.js";
@@ -8,10 +8,10 @@ import { localTimeOnDay } from "../shared/localTime.js";
 import { TaskCheck } from "../components/IntentEditor.js";
 import { IntentPicker, type PickIntent } from "../components/IntentPicker.js";
 import { Markdown } from "../components/Markdown.js";
-import { Empty, Meter, Notice, PageHead, Panel, Star } from "../components/ui.js";
+import { Empty, Meter, Notice, PAGE_ACTION, PageHead, Panel, Star } from "../components/ui.js";
 import { metricFn, resetVisibilityFn, taskDoneFn, unflagFn } from "../server/functions/graph.js";
 import {
-  askAgentFn, confirmFn, deleteBlockFn, editBlockFn, getTodayFn, recategorizeFn, splitBlockFn, timerFn, uncommitFn,
+  askAgentFn, confirmFn, deleteBlockFn, editBlockFn, getTodayFn, recategorizeFn, splitBlockFn, timerFn, uncommitFn, undoBlockFn,
 } from "../server/functions/today.js";
 import { GlobalActions } from "./__root.js";
 
@@ -29,6 +29,8 @@ export const Route = createFileRoute("/")({
 type Data = Awaited<ReturnType<typeof getTodayFn>>;
 type Block = Data["today"]["actual"][number];
 type Act = (fn: () => Promise<unknown>, done?: string) => Promise<void>;
+/** What a stop or a delete hands back so the page can offer Undo. */
+type BlockSnapshot = NonNullable<Awaited<ReturnType<typeof deleteBlockFn>>["undo"]>;
 
 /** Phone or place time nobody has labelled: shown, never asked about. */
 const isBare = (b: Block) => (b.origin === "auto_activity" || b.origin === "place") && !b.intent && !b.committed && !b.proposal;
@@ -45,8 +47,23 @@ function Today() {
   const linked = useMemo(() => linkedBlock(t, search.block), [t, search.block]);
   const [selected, setSelected] = useState<string | null>(linked);
   useEffect(() => setSelected(linked), [linked]);
-  const [notice, setNotice] = useState<string | null>(null);
+  // A stop or a delete offers Undo on its notice. The offer holds the snapshot the server returned
+  // and lasts until the next action on the page or a navigation. Each of those bumps `epoch` and
+  // drops the offer; an action installs its own offer only if nothing bumped `epoch` while it ran.
+  const [notice, setNoticeState] = useState<{ text: string; undo: BlockSnapshot | null } | null>(null);
+  const setNotice = (text: string | null) => setNoticeState(text ? { text, undo: null } : null);
   const [busy, setBusy] = useState(false);
+  const epoch = useRef(0);
+  const endOffer = () => {
+    epoch.current++;
+    setNoticeState((n) => (n?.undo ? { text: n.text, undo: null } : n));
+  };
+  const href = useRouterState({ select: (s) => s.location.href });
+  useEffect(endOffer, [href]);
+  useEffect(() => {
+    window.addEventListener(PAGE_ACTION, endOffer);
+    return () => window.removeEventListener(PAGE_ACTION, endOffer);
+  }, []);
   // The timer card's "Something else…" picker. It opens under the arc, not in it: laid over the picture it grew past
   // the arc's bottom and under the lanes, which then took its clicks.
   const [picking, setPicking] = useState(false);
@@ -65,9 +82,13 @@ function Today() {
   const act: Act = async (fn, done) => {
     if (busy) return;
     setBusy(true);
+    endOffer();
+    const mine = epoch.current;
     try {
-      await fn();
-      setNotice(done ?? null);
+      const r = await fn();
+      const offered = r && typeof r === "object" && "undo" in r ? ((r as { undo: BlockSnapshot | null }).undo ?? null) : null;
+      const undo = epoch.current === mine ? offered : null;
+      setNoticeState(done ? { text: done, undo } : null);
     } catch (err) {
       setNotice(err instanceof Error ? err.message : String(err));
     }
@@ -129,7 +150,11 @@ function Today() {
         <GlobalActions timerChip={!t.is_today} />
       </PageHead>
 
-      <Notice text={notice} onClose={() => setNotice(null)} />
+      <Notice
+        text={notice?.text ?? null}
+        onClose={() => setNotice(null)}
+        action={notice?.undo ? { label: "Undo", disabled: busy, onClick: () => void act(() => undoBlockFn({ data: notice.undo! }), "Put back.") } : null}
+      />
 
       <DayArc
         wakeStart={t.wake_start}
@@ -240,7 +265,7 @@ function TimerCard({ data, now, busy, act, onStart, picking, onTogglePicker, onR
         <button className="btn btn-quiet btn-sm" disabled={busy} onClick={() => act(() => timerFn({ data: { action: paused ? "resume" : "pause" } }))}>
           {paused ? "Resume" : "Pause"}
         </button>
-        <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => act(() => timerFn({ data: { action: "stop" } }))}>
+        <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => act(() => timerFn({ data: { action: "stop" } }), "Stopped.")}>
           Stop
         </button>
       </div>

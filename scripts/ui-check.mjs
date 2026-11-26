@@ -641,6 +641,78 @@ const flows = {
     expect((await actual("Ship Life on Rails").count()) === 1, "one Ship Life on Rails block in the Actual lane", await lanes.locator("button").evaluateAll((bs) => bs.map((b) => b.title)));
     await shot("today-4-stopped");
 
+    // Stop offers Undo on its notice: the timer comes back paused at 16:00, as it was, and the fill it let in goes again.
+    const notice = page.locator('main p[role="status"]');
+    const undo = notice.getByRole("button", { name: "Undo", exact: true });
+    expect(/Stopped\./.test(await notice.innerText()) && (await undo.count()) === 1, "a notice offering Undo after Stop", await notice.innerText());
+    await undo.click();
+    await page.getByRole("button", { name: "Resume", exact: true }).waitFor();
+    await settle();
+    expect(blocks() === paused, "Undo puts the timer and the fill back as they were before the stop", blocks());
+    expect((await undo.count()) === 0 && /Put back\./.test(await notice.innerText()), "no Undo once it has been used", await notice.innerText());
+    await shot("today-4b-stop-undone");
+    // Stop again; a navigation ends the offer.
+    await stop.click();
+    await undo.waitFor();
+    await settle();
+    expect(blocks() === stopped, "the second stop leaves the same blocks as the first", blocks());
+    await page.getByRole("link", { name: "Previous day" }).click();
+    await page.locator("h1", { hasText: /^Day$/ }).waitFor();
+    await settle();
+    await undo.waitFor({ state: "detached", timeout: 5_000 }).catch(() => {});
+    expect((await undo.count()) === 0, "no Undo after a navigation", await page.locator("main").innerText().then((t) => t.slice(0, 200)));
+    await page.goto(`${BASE}/?at=${day}T16:10`);
+    await settle();
+    // Delete the stopped block from its panel, without a confirm; Undo brings it back with its suggestion still pending.
+    const suggestions = () =>
+      psql(`SELECT p.id || ' ' || p.status FROM proposal p JOIN time_block b ON b.id = p.time_block_id WHERE b.origin = 'manual' AND b.title = 'Writing the spec' ORDER BY p.id`).trim();
+    const suggested = suggestions();
+    expect(/ pending$/m.test(suggested), "the stopped block with a pending suggestion", suggested);
+    await actual("Ship Life on Rails").click();
+    await page.waitForSelector("#relabel-search");
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await undo.waitFor();
+    await settle();
+    expect(!/Writing the spec/.test(blocks()) && /Deleted\./.test(await notice.innerText()), "the block gone at once, and a notice offering Undo", blocks());
+    await shot("today-4c-deleted");
+    await undo.click();
+    await notice.getByText("Put back.").waitFor();
+    await settle();
+    expect(blocks() === stopped && suggestions() === suggested, "Undo puts the block and the fill back, its suggestion still pending", { blocks: blocks(), suggestions: suggestions() });
+    await shot("today-4d-delete-undone");
+    // The page head's Start timer is an action too: it ends the offer. A timer stopped in the minute it
+    // started is dropped, so these leave the blocks as they were.
+    const headStart = page.locator("main header").getByRole("button", { name: "Start timer", exact: true });
+    await headStart.click();
+    await stop.waitFor();
+    await stop.click();
+    await undo.waitFor();
+    await headStart.click();
+    await stop.waitFor();
+    await settle();
+    expect((await undo.count()) === 0, "no Undo once the page head has started another timer", await notice.innerText().catch(() => "no notice"));
+    // A Stop whose answer arrives after a navigation offers nothing on the page it lands on.
+    const answered = Promise.withResolvers();
+    await page.route("**/*", async (route) => {
+      const req = route.request();
+      if (req.method() !== "POST" || !(req.postData() ?? "").includes("stop")) return route.continue();
+      const response = await route.fetch();
+      await answered.promise;
+      await route.fulfill({ response });
+    });
+    await stop.click();
+    await page.getByRole("link", { name: "Previous day" }).click();
+    await page.locator("h1", { hasText: /^Day$/ }).waitFor();
+    const landed = page.waitForResponse((r) => r.request().method() === "POST" && (r.request().postData() ?? "").includes("stop"));
+    answered.resolve();
+    await landed;
+    await settle();
+    await page.unroute("**/*");
+    expect((await undo.count()) === 0, "no Undo from a Stop that answered after a navigation", await notice.innerText().catch(() => "no notice"));
+    await page.goto(`${BASE}/?at=${day}T16:10`);
+    await settle();
+    expect(blocks() === stopped, "the dropped timers left the blocks as they were", blocks());
+
     // Select the Dentist block: the calendar fill made it, labelled Meetings.
     const before = blocks();
     expect(/14:00-15:00 calendar Dentist -> Meetings/.test(before), "a 14:00-15:00 calendar block for Dentist, labelled Meetings", before);

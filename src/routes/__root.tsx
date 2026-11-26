@@ -3,6 +3,7 @@ import { Link, Outlet, createRootRoute, HeadContent, Scripts, retainSearchParams
 import { FixedClockProvider, useNow } from "../components/clock.js";
 import { duration } from "../components/format.js";
 import { Key, QuickAddDialog, openQuickAdd } from "../components/QuickAdd.js";
+import { announcePageAction } from "../components/ui.js";
 import { healthLine } from "../shared/phoneSilence.js";
 import { getShellFn } from "../server/functions/shell.js";
 import { timerFn } from "../server/functions/today.js";
@@ -164,6 +165,7 @@ export function GlobalActions({ timerChip = true }: { timerChip?: boolean }) {
           disabled={busy}
           onClick={async () => {
             setBusy(true);
+            announcePageAction();
             await timerFn({ data: { action: "start", intentId: null, title: null } }).catch(() => undefined);
             await router.invalidate();
             setBusy(false);
