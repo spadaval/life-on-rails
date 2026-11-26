@@ -8,7 +8,7 @@ import { localTimeOnDay } from "../shared/localTime.js";
 import { TaskCheck } from "../components/IntentEditor.js";
 import { IntentPicker, type PickIntent } from "../components/IntentPicker.js";
 import { Markdown } from "../components/Markdown.js";
-import { Empty, Meter, Notice, PageHead, Panel, Star } from "../components/ui.js";
+import { Empty, Meter, Notice, PAGE_ACTION, PageHead, Panel, Star } from "../components/ui.js";
 import { metricFn, resetVisibilityFn, taskDoneFn, unflagFn } from "../server/functions/graph.js";
 import {
   askAgentFn, confirmFn, deleteBlockFn, editBlockFn, getTodayFn, recategorizeFn, splitBlockFn, timerFn, uncommitFn, undoBlockFn,
@@ -48,12 +48,22 @@ function Today() {
   const [selected, setSelected] = useState<string | null>(linked);
   useEffect(() => setSelected(linked), [linked]);
   // A stop or a delete offers Undo on its notice. The offer holds the snapshot the server returned
-  // and lasts until the next action on the page (every action replaces the notice) or a navigation.
+  // and lasts until the next action on the page or a navigation. Each of those bumps `epoch` and
+  // drops the offer; an action installs its own offer only if nothing bumped `epoch` while it ran.
   const [notice, setNoticeState] = useState<{ text: string; undo: BlockSnapshot | null } | null>(null);
   const setNotice = (text: string | null) => setNoticeState(text ? { text, undo: null } : null);
   const [busy, setBusy] = useState(false);
+  const epoch = useRef(0);
+  const endOffer = () => {
+    epoch.current++;
+    setNoticeState((n) => (n?.undo ? { text: n.text, undo: null } : n));
+  };
   const href = useRouterState({ select: (s) => s.location.href });
-  useEffect(() => setNoticeState((n) => (n?.undo ? { text: n.text, undo: null } : n)), [href]);
+  useEffect(endOffer, [href]);
+  useEffect(() => {
+    window.addEventListener(PAGE_ACTION, endOffer);
+    return () => window.removeEventListener(PAGE_ACTION, endOffer);
+  }, []);
 
   const hm24 = useMemo(() => new Intl.DateTimeFormat("en-GB", { timeZone: t.timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }), [t.timezone]);
   const hm = (ms: number) => hm24.format(new Date(ms));
@@ -62,9 +72,12 @@ function Today() {
   const act: Act = async (fn, done) => {
     if (busy) return;
     setBusy(true);
+    endOffer();
+    const mine = epoch.current;
     try {
       const r = await fn();
-      const undo = r && typeof r === "object" && "undo" in r ? ((r as { undo: BlockSnapshot | null }).undo ?? null) : null;
+      const offered = r && typeof r === "object" && "undo" in r ? ((r as { undo: BlockSnapshot | null }).undo ?? null) : null;
+      const undo = epoch.current === mine ? offered : null;
       setNoticeState(done ? { text: done, undo } : null);
     } catch (err) {
       setNotice(err instanceof Error ? err.message : String(err));

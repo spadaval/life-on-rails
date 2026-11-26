@@ -6,6 +6,7 @@ import { useRouter } from "@tanstack/react-router";
 import { getQuickAddFn, saveIntentFn } from "../server/functions/graph.js";
 import { type Named, type Token, activeSigil, parseQuickAdd, suggest, tokenKey } from "../shared/quickAdd.js";
 import { longDate } from "./format.js";
+import { announcePageAction } from "./ui.js";
 
 export interface QuickAddOptions {
   today: string;
@@ -88,6 +89,7 @@ export function QuickAdd({ options, initial = "", autoFocus = false, onEscape, o
     edit("", 0);
     setIgnore(new Set());
     setBusy(true);
+    announcePageAction();
     try {
       await saveIntentFn({
         data: {

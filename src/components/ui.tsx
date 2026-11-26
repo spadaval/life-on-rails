@@ -39,6 +39,13 @@ export function PageHead({ title, sub, children }: { title: ReactNode; sub?: Rea
   );
 }
 
+/**
+ * Writes made outside a page's own controls (the page head's Start timer, Add task) announce themselves,
+ * so a page can end what it offers until the next action, such as Today's Undo.
+ */
+export const PAGE_ACTION = "lor:page-action";
+export const announcePageAction = () => window.dispatchEvent(new Event(PAGE_ACTION));
+
 /** A one-line notice. `action` puts one button before dismiss, such as the Undo a stop or a delete offers. */
 export function Notice({ text, onClose, action }: {
   text: string | null;

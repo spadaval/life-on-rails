@@ -559,6 +559,38 @@ const flows = {
     await settle();
     expect(blocks() === stopped && suggestions() === suggested, "Undo puts the block and the fill back, its suggestion still pending", { blocks: blocks(), suggestions: suggestions() });
     await shot("today-4d-delete-undone");
+    // The page head's Start timer is an action too: it ends the offer. A timer stopped in the minute it
+    // started is dropped, so these leave the blocks as they were.
+    const headStart = page.locator("main header").getByRole("button", { name: "Start timer", exact: true });
+    await headStart.click();
+    await stop.waitFor();
+    await stop.click();
+    await undo.waitFor();
+    await headStart.click();
+    await stop.waitFor();
+    await settle();
+    expect((await undo.count()) === 0, "no Undo once the page head has started another timer", await notice.innerText().catch(() => "no notice"));
+    // A Stop whose answer arrives after a navigation offers nothing on the page it lands on.
+    const answered = Promise.withResolvers();
+    await page.route("**/*", async (route) => {
+      const req = route.request();
+      if (req.method() !== "POST" || !(req.postData() ?? "").includes("stop")) return route.continue();
+      const response = await route.fetch();
+      await answered.promise;
+      await route.fulfill({ response });
+    });
+    await stop.click();
+    await page.getByRole("link", { name: "Previous day" }).click();
+    await page.locator("h1", { hasText: /^Day$/ }).waitFor();
+    const landed = page.waitForResponse((r) => r.request().method() === "POST" && (r.request().postData() ?? "").includes("stop"));
+    answered.resolve();
+    await landed;
+    await settle();
+    await page.unroute("**/*");
+    expect((await undo.count()) === 0, "no Undo from a Stop that answered after a navigation", await notice.innerText().catch(() => "no notice"));
+    await page.goto(`${BASE}/?at=${day}T16:10`);
+    await settle();
+    expect(blocks() === stopped, "the dropped timers left the blocks as they were", blocks());
 
     // Select the Dentist block: the calendar fill made it, labelled Meetings.
     const before = blocks();
