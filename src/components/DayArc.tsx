@@ -38,6 +38,10 @@ const normal = (f: number) => {
   const len = Math.hypot(nx, ny);
   return { x: r2(nx / len), y: r2(ny / len) };
 };
+/** How far a label keeps from the picture's left and right edges. */
+const EDGE = 4;
+/** A generous width for a 14px Saira label: wide enough that a label measured to fit does fit. */
+const labelWidth = (text: string) => text.length * 8.2;
 const arcPath = (f0: number, f1: number) => {
   const steps = Math.max(2, Math.ceil((f1 - f0) * 80));
   let d = "";
@@ -132,15 +136,24 @@ export function DayArc({ wakeStart, wakeEnd, now, isToday, blocks, events, hm, c
           const n = normal(e.f);
           const dx = p.x + n.x * 18;
           const dy = p.y + n.y * 18;
-          const anchor = p.x < CX - 80 ? "end" : p.x > CX + 80 ? "start" : "middle";
-          const lx = p.x + n.x * 34 + (anchor === "end" ? -4 : anchor === "start" ? 4 : 0);
-          const ly = p.y + n.y * 34 + 4;
+          const text = `${hm(new Date(e.t_start).getTime())} ${e.title.length > 34 ? `${e.title.slice(0, 33)}…` : e.title}`;
+          // Outside the arc, away from the middle; a label that would run past the picture's edge goes inside the arc instead.
+          let anchor: "start" | "middle" | "end" = p.x < CX - 80 ? "end" : p.x > CX + 80 ? "start" : "middle";
+          let lx = p.x + n.x * 34 + (anchor === "end" ? -4 : anchor === "start" ? 4 : 0);
+          let ly = p.y + n.y * 34 + 4;
+          const width = labelWidth(text);
+          if ((anchor === "end" && lx - width < EDGE) || (anchor === "start" && lx + width > W - EDGE)) {
+            anchor = anchor === "end" ? "start" : "end";
+            // Past the hour numbers, which sit 24 inside the arc.
+            lx = p.x - n.x * 44 + (anchor === "start" ? 4 : -4);
+            ly = p.y - n.y * 44 + 4;
+          }
           return (
             <g key={e.key}>
               <rect x={dx - 5} y={dy - 5} width={10} height={10} transform={`rotate(45 ${dx} ${dy})`} fill="#0c0d12" stroke="#6cc6ec" strokeWidth={1.5} />
               {e.show ? (
                 <text x={lx} y={ly} textAnchor={anchor} fill="#6cc6ec" fontSize={14}>
-                  {hm(new Date(e.t_start).getTime())} {e.title.length > 34 ? `${e.title.slice(0, 33)}…` : e.title}
+                  {text}
                 </text>
               ) : null}
             </g>

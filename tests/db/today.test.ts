@@ -108,4 +108,16 @@ dbDescribe("time over the API", () => {
     expect((await api("POST", "/timer/start", { thread: "" })).status).toBe(400);
     expect((await api("POST", `/blocks/${stopped.id}/recategorize`, { intent_id: deep.id, thread: "t-1" })).status).toBe(200);
   });
+
+  it("a free stretch finds a task that fits even behind many that do not", async () => {
+    for (let i = 0; i < 60; i++) {
+      await createIntent(sql, { type: "task", title: `Long ${i}` }, ui);
+    }
+    // Sixty tasks due first, each longer than the day; the one that fits is due last.
+    await sql`UPDATE intent SET estimate_hours = 20, due_at = ${at(9, 0, 15)} WHERE title LIKE 'Long %'`;
+    const short = await createIntent(sql, { type: "task", title: "Quick call" }, ui);
+    await sql`UPDATE intent SET estimate_hours = 0.25 WHERE id = ${short.id}`;
+    const t = await getToday(sql, "2026-10-14", at(12));
+    expect(t.gaps.map((g) => [g.minutes, g.fits])).toEqual([[600, "Quick call"]]);
+  });
 });
