@@ -3,13 +3,14 @@ schema: atelier.item
 schema_version: 3
 id: lor-auhc
 title: 'Today''s timeline strip says less: the legend behind a help mark, one free slot, no clipped arc label'
-status: open
+status: building
 mission: lor-40i0
 labels: []
 priority: medium
 blocked_by:
 - lor-zuqn
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A5dd1565a-52f2-4a99-aba1-ff6c55381694%3Adelegate-task%3Ae932aedb-ab5a-4c00-a77d-7afac24c3dde
 ready: null
 trivial: null
 caused_by: null
