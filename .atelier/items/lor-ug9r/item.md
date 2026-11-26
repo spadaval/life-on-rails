@@ -3,12 +3,13 @@ schema: atelier.item
 schema_version: 3
 id: lor-ug9r
 title: Today’s timer picker must accept mouse clicks at 1500×950
-status: open
+status: building
 mission: null
 labels: []
 priority: medium
 blocked_by: []
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A4a2870e7-da4e-4b83-912b-01cba07c6a79%3Adelegate-task%3A0ee8586c-5f33-4ecb-8ca3-b634c56f2eba
 ready: null
 trivial: null
 caused_by: null
