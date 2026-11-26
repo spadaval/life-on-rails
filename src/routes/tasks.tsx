@@ -214,11 +214,11 @@ function Tasks() {
             ))}
           </nav>
 
-          {/* One line from xl up: the text field and the chosen values give way, not the line. Below xl it wraps. */}
-          <div className="flex flex-wrap items-center gap-2 xl:flex-nowrap">
+          {/* Sized so the usual bar (one filter chosen, Clear showing) is one line at 1500px; more than that wraps whole controls. */}
+          <div className="flex flex-wrap items-center gap-2">
             <input
               ref={filterBox}
-              className="input w-[200px] min-w-[100px] py-1"
+              className="input w-auto max-w-[200px] min-w-[100px] grow basis-[100px] py-1"
               placeholder="Filter…  /"
               aria-label="Filter by text"
               value={search.q ?? ""}
@@ -401,7 +401,7 @@ function bucket(rows: GraphNode[], key: (n: GraphNode) => string, order: string[
 
 /**
  * A filter or display choice: a quiet button that opens a list; the chosen value shows on the button,
- * unless it is `quiet`, a display choice's default. A long value is cut, and the button's title has it whole.
+ * unless it is `quiet`, a display choice's default. A long value is cut at 120px, and the button's title has it whole.
  */
 function Choice({ label, value, options, onChange, always = false, quiet }: {
   label: string;
@@ -415,12 +415,12 @@ function Choice({ label, value, options, onChange, always = false, quiet }: {
   const shown = current && current.id !== quiet ? current : undefined;
   return (
     <label
-      className={`relative inline-flex ${shown ? "min-w-0" : "shrink-0"} items-center rounded-sm border text-small leading-6 ${current && !always ? "border-or/70 text-txt" : "border-edge text-mute"} hover:border-or/70`}
+      className={`relative inline-flex shrink-0 items-center rounded-sm border text-small leading-6 ${current && !always ? "border-or/70 text-txt" : "border-edge text-mute"} hover:border-or/70`}
       title={current ? `${label}: ${current.label}` : undefined}
     >
-      <span className="pointer-events-none flex min-w-0 items-center gap-1.5 py-1 pr-6 pl-3 whitespace-nowrap">
-        <span className="shrink-0">{label}</span>
-        {shown ? <span className="max-w-[200px] min-w-0 truncate text-txt">{shown.label}</span> : null}
+      <span className="pointer-events-none flex items-center gap-1.5 py-1 pr-6 pl-3 whitespace-nowrap">
+        {label}
+        {shown ? <span className="max-w-[120px] truncate text-txt">{shown.label}</span> : null}
       </span>
       <select
         className="absolute inset-0 cursor-pointer opacity-0"

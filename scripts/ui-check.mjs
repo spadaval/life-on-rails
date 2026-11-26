@@ -114,20 +114,37 @@ const flows = {
     const g = await page.locator('li[id^=task-]:has-text("Renew passport") [title="From Google Tasks"]').getAttribute("class");
     expect(/\bchip\b/.test(g ?? ""), "the Google Tasks mark boxed", g);
 
-    // The filter bar sits on one line at 1500px.
+    // The filter bar: how many lines it takes, and whether every control is whole (inside the bar, not
+    // squeezed below its own content, no two overlapping). Lines are counted by vertical centre, since
+    // buttons of different heights on one line share it.
     const bar = page.locator('input[aria-label="Filter by text"]').locator("..");
-    // Each control's vertical centre: buttons of different heights on one line share it.
-    const tops = async () => bar.evaluate((el) => [...el.children].map((c) => { const r = c.getBoundingClientRect(); return Math.round(r.top + r.height / 2); }));
-    const at1500 = await tops();
-    expect(new Set(at1500).size === 1, "filter, For, Due, From, Needs you, Group and Sort on one line at 1500px", at1500);
-    // Still one line with a long goal chosen in For and Clear showing; nothing spills past the bar.
-    await page.goto(`${BASE}/tasks?for=${portuguese}`);
-    await settle();
-    const chosen = await tops();
-    // Inside the bar, and no control squeezed below its own content (a label over its arrow).
-    const inside = await bar.evaluate((el) => [...el.querySelectorAll(":scope > *, :scope > span > *")].every((c) => c.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1 && c.scrollWidth <= c.clientWidth + 1));
-    expect(new Set(chosen).size === 1 && chosen.length === 7 && inside, "the filter line stays one line at 1500px with a long For value and Clear", chosen);
+    const layout = () => bar.evaluate((el) => {
+      const box = el.getBoundingClientRect();
+      const kids = [...el.querySelectorAll(":scope > *, :scope > span > *")].filter((c) => c.tagName !== "SPAN");
+      const rects = kids.map((c) => c.getBoundingClientRect());
+      const overlap = rects.some((a, i) => rects.some((b, j) => i < j && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1));
+      return {
+        lines: new Set(rects.map((r) => Math.round(r.top + r.height / 2))).size,
+        whole: !overlap && kids.every((c, i) => rects[i].left >= box.left - 1 && rects[i].right <= box.right + 1 && c.scrollWidth <= c.clientWidth + 1),
+        controls: kids.length,
+      };
+    });
+    const barAt = async (width, query, what, lines) => {
+      await page.setViewportSize({ width, height: 950 });
+      await page.goto(`${BASE}/tasks${query}`);
+      await settle();
+      const l = await layout();
+      expect(l.whole && (lines === undefined || l.lines === lines), what, l);
+      return l;
+    };
+    await barAt(1500, "", "filter, For, Due, From, Needs you, Group and Sort on one line at 1500px", 1);
+    await barAt(1500, `?for=${portuguese}`, "the filter line stays one line at 1500px with a long For value and Clear", 1);
     await shot("tasks-1b-for-chosen");
+    await barAt(1500, `?for=${portuguese}&group=for&sort=updated`, "with Group and Sort changed too, the bar wraps whole controls at 1500px");
+    await shot("tasks-1c-all-chosen");
+    await barAt(1280, "", "the bar whole at 1280px, where the panel first sits beside the list");
+    await barAt(1280, `?for=${portuguese}&group=for&sort=updated`, "the bar whole at 1280px with everything chosen");
+    await page.setViewportSize({ width: 1500, height: 950 });
     await page.goto(`${BASE}/tasks`);
     await settle();
 
@@ -239,16 +256,8 @@ const flows = {
     await shot("tasks-9-agent");
 
     // At 1100px the filter bar wraps whole controls, and nothing spills past the list.
-    await page.setViewportSize({ width: 1100, height: 950 });
-    await page.goto(`${BASE}/tasks?for=${portuguese}`);
-    await settle();
+    await barAt(1100, `?for=${portuguese}`, "the filter bar wraps cleanly at 1100px");
     await shot("tasks-10-1100");
-    const wrap = await bar.evaluate((el) => {
-      const box = el.getBoundingClientRect();
-      const kids = [...el.querySelectorAll(":scope > *, :scope > span > *")].map((c) => c.getBoundingClientRect());
-      return { spill: kids.some((k) => k.right > box.right + 1 || k.left < box.left - 1), tall: kids.some((k) => k.height > 40) };
-    });
-    expect(!wrap.spill && !wrap.tall, "the filter bar wraps cleanly at 1100px", wrap);
     await page.setViewportSize({ width: 1500, height: 950 });
   },
   async people() {
