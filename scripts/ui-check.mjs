@@ -93,6 +93,8 @@ const flows = {
     const goal = id(lor(["intent", "create", "--type", "goal", "--title", "Neha and the wedding"]));
     const vendors = id(lor(["intent", "create", "--type", "project", "--title", "Wedding vendors", "--parent", goal]));
     id(lor(["intent", "create", "--type", "project", "--title", "Life on Rails"]));
+    const portuguese = id(lor(["intent", "create", "--type", "goal", "--title", "Hold a conversation in Portuguese"]));
+    lor(["intent", "create", "--type", "task", "--title", "Book a weekly tutor session", "--parent", portuguese]);
     lor(["entity", "upsert", "--kind", "person", "--name", "Dad"]);
     lor(["intent", "create", "--type", "task", "--title", "Shortlist ceremony venues", "--parent", vendors, "--due", new Date(Date.now() + 3 * 86400000).toISOString(), "--flag", "You fly out on the 23rd: a shortlist first means you can visit them."]);
     lor(["intent", "create", "--type", "task", "--title", "Check the H-1B change of status took effect", "--due", new Date(Date.now() - 2 * 86400000).toISOString()]);
@@ -104,9 +106,42 @@ const flows = {
     await settle();
     await shot("tasks-1-open");
 
+    // A row names what it counts toward in plain dim text, in full; the Google mark stays boxed.
+    const tutor = page.locator('li[id^=task-]:has-text("Book a weekly tutor session")');
+    const goalName = tutor.locator('span[title="Hold a conversation in Portuguese"]');
+    const fit = await goalName.evaluate((el) => ({ cls: el.className, cut: el.scrollWidth > el.clientWidth, text: el.textContent }));
+    expect(!/\bchip\b/.test(fit.cls) && !fit.cut && fit.text === "Hold a conversation in Portuguese", "the goal name on the row as plain text, not cut at 1500px", fit);
+    const g = await page.locator('li[id^=task-]:has-text("Renew passport") [title="From Google Tasks"]').getAttribute("class");
+    expect(/\bchip\b/.test(g ?? ""), "the Google Tasks mark boxed", g);
+
+    // The filter bar sits on one line at 1500px.
+    const bar = page.locator('input[aria-label="Filter by text"]').locator("..");
+    const tops = async () => bar.evaluate((el) => [...el.children].map((c) => Math.round(c.getBoundingClientRect().top)));
+    const at1500 = await tops();
+    expect(new Set(at1500).size === 1, "filter, For, Due, From, Needs you, Group and Sort on one line at 1500px", at1500);
+
+    // Keyboard hints hide behind ? and the help mark; ? in a text field types a ?.
+    const keysShown = () => page.locator("#task-keys").count();
+    expect((await keysShown()) === 0, "no keyboard hints printed at rest");
+    await page.keyboard.press("?");
+    expect((await keysShown()) === 1, "? shows the keyboard hints");
+    await page.keyboard.press("Escape");
+    expect((await keysShown()) === 0, "Escape hides them");
+    await page.getByRole("button", { name: "Keyboard shortcuts" }).click();
+    expect((await keysShown()) === 1, "the help mark shows them");
+    await page.getByRole("button", { name: "Keyboard shortcuts" }).click();
+    await page.locator('input[aria-label="Filter by text"]').click();
+    await page.keyboard.press("?");
+    expect((await keysShown()) === 0 && (await page.locator('input[aria-label="Filter by text"]').inputValue()) === "?", "? in the filter field types a ? and opens nothing");
+    await page.locator('input[aria-label="Filter by text"]').fill("");
+    await page.keyboard.press("Escape");
+
     // Quick add: parent, date and agent in one line, with a suggestion picked by keyboard.
     const qa = page.getByRole("combobox", { name: "Add a task" });
+    const hint = page.getByText("counts toward ·");
+    expect((await hint.count()) === 0, "no syntax hint under the add field at rest");
     await qa.click();
+    expect(await hint.isVisible(), "the syntax hint once the add field has focus");
     await qa.pressSequentially("Ask the florist about peonies #wedd");
     await page.waitForSelector("#quick-add-choices");
     await shot("tasks-2-suggest");
@@ -115,24 +150,38 @@ const flows = {
     await shot("tasks-3-parsed");
     const chips = await page.locator(".chip").allInnerTexts();
     console.log("chips:", chips.join(" | "));
+    expect(chips.some((c) => /For\s+Wedding vendors/.test(c)) && chips.some((c) => /Due/.test(c)) && chips.some((c) => /With the agent/.test(c)), "chips for the parent, the date and the agent", chips.join(" | "));
     await qa.press("Enter");
-    await page.waitForSelector('li:has-text("Ask the florist about peonies")', { state: "attached" }).catch(() => {});
+    // Given to the agent, it leaves the Open view, so wait for the field's own word that it saved.
+    await page.getByText("Added “Ask the florist about peonies”.").waitFor();
     await settle();
     const row = psql(`SELECT title, assignee, to_char(due_at AT TIME ZONE 'America/New_York', 'Dy') FROM intent WHERE title LIKE 'Ask the florist%'`);
     console.log("created:", row.trim());
+    expect(/\|agent\|Fri$/.test(row.trim()), "the quick-added task given to the agent and due on a Friday", row.trim());
     const linked = psql(`SELECT p.title FROM intent_link l JOIN intent p ON p.id = l.to_id JOIN intent t ON t.id = l.from_id WHERE t.title LIKE 'Ask the florist%'`);
     console.log("counts toward:", linked.trim());
+    expect(linked.trim() === "Wedding vendors", "the quick-added task under Wedding vendors", linked.trim());
 
     // Waiting on a person, and a dismissed date word.
     await qa.pressSequentially("Get the deposit back @Dad tomorrow");
     await qa.press("Enter");
-    await settle();
+    await page.getByText("Added “Get the deposit back”.").waitFor();
     await qa.pressSequentially("Watch Friday Night Lights");
     await page.locator('.chip:has-text("Due") button').click();
     await qa.press("Enter");
+    await page.getByText("Added “Watch Friday Night Lights”.").waitFor();
+    const waiting = psql(`SELECT title, status FROM intent WHERE title LIKE 'Get the deposit%'`).trim();
+    console.log("waiting:", waiting);
+    expect(/\|waiting$/.test(waiting), "@Dad made the task waiting", waiting);
+    const literal = psql(`SELECT title, due_at IS NULL FROM intent WHERE title LIKE 'Watch%'`).trim();
+    console.log("literal:", literal);
+    expect(literal === "Watch Friday Night Lights|t", "the dismissed date kept as text", literal);
+
+    // Tick a row off.
+    await page.getByRole("checkbox", { name: "Choose the invitation vendor" }).check();
     await settle();
-    console.log("waiting:", psql(`SELECT title, status FROM intent WHERE title LIKE 'Get the deposit%'`).trim());
-    console.log("literal:", psql(`SELECT title, due_at IS NULL FROM intent WHERE title LIKE 'Watch%'`).trim());
+    const ticked = psql(`SELECT status FROM intent WHERE title = 'Choose the invitation vendor'`).trim();
+    expect(ticked === "done", "ticking a row marks it done", ticked);
 
     // The global dialog from another screen.
     await page.goto(`${BASE}/`);
@@ -146,13 +195,20 @@ const flows = {
     await page.goto(`${BASE}/tasks?for=${goal}`);
     await settle();
     await shot("tasks-5-filter-goal");
-    console.log("under the goal:", (await page.locator("li[id^=task-]").allInnerTexts()).map((t) => t.split("\n")[0]).join(" | "));
+    const under = (await page.locator("li[id^=task-]").allInnerTexts()).map((t) => t.split("\n")[0]);
+    console.log("under the goal:", under.join(" | "));
+    // Open view: the florist task went to the agent and the invitation one was ticked, so Shortlist is the one left.
+    expect(under.length === 1 && /Shortlist ceremony venues/.test(under[0]), "only the goal's tasks, its project's included", under);
     await page.goto(`${BASE}/tasks?group=for`);
     await settle();
+    await page.keyboard.press("j");
     await page.keyboard.press("j");
     await page.keyboard.press("Enter");
     await settle();
     await shot("tasks-6-panel");
+    const second = (await page.locator("li[id^=task-]").nth(1).innerText()).split("\n")[0];
+    const panelTitle = await page.getByRole("textbox", { name: "Title" }).inputValue();
+    expect(panelTitle === second, "j j Enter opens the second row in the panel", { second, panelTitle });
 
     // Bulk: select two with x, reschedule them.
     await page.keyboard.press("Escape");
@@ -162,12 +218,27 @@ const flows = {
     await shot("tasks-7-bulk");
     await page.locator('label:has(select[aria-label="Due"])').last().locator("select").selectOption({ label: "Tomorrow" });
     await settle();
-    console.log("notice:", await page.getByRole("status").innerText().catch(() => "(none)"));
+    const notice = await page.getByRole("status").innerText().catch(() => "(none)");
+    console.log("notice:", notice);
+    expect(/Rescheduled: 2\./.test(notice), "the bulk bar rescheduled the two picked rows", notice);
     await shot("tasks-8-after-bulk");
 
     await page.goto(`${BASE}/tasks?view=agent`);
     await settle();
     await shot("tasks-9-agent");
+
+    // At 1100px the filter bar wraps whole controls, and nothing spills past the list.
+    await page.setViewportSize({ width: 1100, height: 950 });
+    await page.goto(`${BASE}/tasks`);
+    await settle();
+    await shot("tasks-10-1100");
+    const wrap = await bar.evaluate((el) => {
+      const box = el.getBoundingClientRect();
+      const kids = [...el.querySelectorAll(":scope > *, :scope > span > *")].map((c) => c.getBoundingClientRect());
+      return { spill: kids.some((k) => k.right > box.right + 1 || k.left < box.left - 1), tall: kids.some((k) => k.height > 40) };
+    });
+    expect(!wrap.spill && !wrap.tall, "the filter bar wraps cleanly at 1100px", wrap);
+    await page.setViewportSize({ width: 1500, height: 950 });
   },
   async people() {
     psql(`DELETE FROM page WHERE slug NOT IN ('agent', 'me', 'inbox'); UPDATE intent SET waiting_on_entity_id = NULL; DELETE FROM entity_identifier; DELETE FROM entity; DELETE FROM observation WHERE source = 'gmail';`);

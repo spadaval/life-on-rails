@@ -86,6 +86,7 @@ function Tasks() {
   // Null until a row is picked by hand: until then the rows `pick=` names.
   const [pickedByHand, setPicked] = useState<ReadonlySet<string> | null>(null);
   const filterBox = useRef<HTMLInputElement>(null);
+  const [help, setHelp] = useState(false);
 
   const view: View = search.view ?? "open";
   const group = search.group ?? (view === "done" ? "none" : "due");
@@ -173,8 +174,10 @@ function Tasks() {
       if (pickedIds.length) void act(() => bulkTasksFn({ data: { ids: pickedIds, action: { op: "done" } } }), `Done: ${pickedIds.length}.`).then(() => setPicked(new Set()));
       else if (at && !at.google_task_id) void act(() => taskDoneFn({ data: { id: at.id, done: at.status !== "done" } }));
     } else if (e.key === "/") (handled(), filterBox.current?.focus());
+    else if (e.key === "?") (handled(), setHelp((h) => !h));
     else if (e.key === "Escape") {
-      if (search.id) open(null);
+      if (help) setHelp(false);
+      else if (search.id) open(null);
       else if (picked.size) setPicked(new Set());
     }
   };
@@ -214,7 +217,7 @@ function Tasks() {
           <div className="flex flex-wrap items-center gap-2">
             <input
               ref={filterBox}
-              className="input w-[180px] py-1"
+              className="input w-auto max-w-[200px] min-w-[120px] flex-1 py-1"
               placeholder="Filter…  /"
               aria-label="Filter by text"
               value={search.q ?? ""}
@@ -232,7 +235,7 @@ function Tasks() {
                 Clear
               </button>
             ) : null}
-            <span className="ml-auto flex items-center gap-2">
+            <span className="ml-auto flex shrink-0 items-center gap-2">
               <Choice label="Group" value={group} always onChange={(v) => set({ group: (v ?? "none") as Filters["group"] })} options={GROUPS.map((g) => ({ id: g.id, label: g.label }))} />
               <Choice label="Sort" value={sort} always onChange={(v) => set({ sort: (v ?? "due") as Filters["sort"] })} options={SORTS.map((g) => ({ id: g.id, label: g.label }))} />
             </span>
@@ -281,9 +284,21 @@ function Tasks() {
           )}
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-small text-dim">
-            <span>
-              <Key>j</Key> <Key>k</Key> move · <Key>Enter</Key> open · <Key>x</Key> select · <Key>d</Key> done · <Key>/</Key> filter · <Key>q</Key> add · <Key>Esc</Key> close
-            </span>
+            <button
+              className="btn btn-quiet btn-sm size-6 justify-center rounded-full border border-edge p-0"
+              aria-label="Keyboard shortcuts"
+              aria-expanded={help}
+              aria-controls="task-keys"
+              title="Keyboard shortcuts (?)"
+              onClick={() => setHelp(!help)}
+            >
+              ?
+            </button>
+            {help ? (
+              <span id="task-keys">
+                <Key>j</Key> <Key>k</Key> move · <Key>Enter</Key> open · <Key>x</Key> select · <Key>d</Key> done · <Key>/</Key> filter · <Key>q</Key> add · <Key>?</Key> these keys · <Key>Esc</Key> close
+              </span>
+            ) : null}
             {view === "open" ? (
               <span className="ml-auto">
                 Too much?{" "}
@@ -449,8 +464,8 @@ function TaskRow({ node: n, today, showParent, open, cursor, picked, onOpen, onP
       <span className="flex shrink-0 items-center gap-2 text-small">
         {n.status === "waiting" ? <span className="text-mute">waiting on {n.waiting_on ?? "someone"}</span> : null}
         {n.assignee === "agent" ? <span className="text-cy/85">agent</span> : null}
-        {showParent && n.parents[0] ? <span className="chip block max-w-[120px] truncate sm:max-w-[190px]">{n.parents[0].title}</span> : null}
-        {n.google_task_id ? <span className="text-dim" title="From Google Tasks">G</span> : null}
+        {showParent && n.parents[0] ? <span className="block max-w-[140px] truncate text-dim sm:max-w-[320px]" title={n.parents[0].title}>{n.parents[0].title}</span> : null}
+        {n.google_task_id ? <span className="chip px-1 font-medium" title="From Google Tasks" aria-label="From Google Tasks">G</span> : null}
         <span className={`w-[68px] text-right ${n.due_local === today && !done ? "text-or" : past ? "text-txt" : "text-mute"}`}>
           {n.due_local ? dueLabel(n.due_local, today) : ""}
         </span>
