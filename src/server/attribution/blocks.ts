@@ -14,6 +14,7 @@ import { scheduleRecompute } from "../scoring/recompute.js";
 import { placeOf } from "./activity.js";
 import { loadPlaces, loadRules, lockBlocks, syncFill } from "./fill.js";
 import { clockNow } from "../clock.js";
+import type { JsonObject } from "../../shared/json.js";
 
 export interface Who {
   via: "ui" | "agent" | "rule" | "job";
@@ -119,14 +120,18 @@ export async function startManualBlock(db: Sql, input: StartInput, who: Who, now
   return { id };
 }
 
-export async function stopRunningBlock(db: Sql, who: Who, now = clockNow()): Promise<{ id: string | null }> {
+export async function stopRunningBlock(db: Sql, who: Who, now = clockNow()): Promise<{ id: string | null; undo: BlockSnapshot | null }> {
   let closed: BlockRow | null = null;
+  let undo: BlockSnapshot | null = null;
   await db.begin(async (tx) => {
     await lockBlocks(tx);
+    const open = await openBlock(tx);
+    const before = open ? await snapshotOf(tx, open.id) : null;
     closed = await closeOpen(tx, now, who);
-    await resync(tx, now, (closed as BlockRow | null)?.t_start);
+    await resync(tx, now, open?.t_start);
+    if (before) undo = { ...before, after: await rowJson(tx, before.block.id) };
   });
-  return { id: (closed as BlockRow | null)?.id ?? null };
+  return { id: (closed as BlockRow | null)?.id ?? null, undo };
 }
 
 export async function pauseRunningBlock(db: Sql, now = clockNow()): Promise<{ id: string | null }> {
@@ -293,14 +298,112 @@ export async function editBlock(db: Sql, blockId: string, patch: { tStart?: Date
   scheduleRecompute();
 }
 
-export async function deleteBlock(db: Sql, blockId: string, now = clockNow()): Promise<void> {
+export async function deleteBlock(db: Sql, blockId: string, now = clockNow()): Promise<BlockSnapshot> {
+  let undo: BlockSnapshot | null = null;
   await db.begin(async (tx) => {
     await lockBlocks(tx);
     const block = await getBlock(tx, blockId);
     if (isFill(block.origin)) throw new Refused("fill-block", `this block follows ${followsWhat(block.origin)}; reject its label instead`);
+    undo = { ...(await snapshotOf(tx, blockId)), after: null };
     await tx`DELETE FROM commitment WHERE time_block_id = ${blockId}`;
     await tx`DELETE FROM time_block WHERE id = ${blockId}`;
     await resync(tx, now, block.t_start, block.t_end);
+  });
+  scheduleRecompute();
+  return undo!;
+}
+
+// ---- undo ----
+
+/** A row as `to_jsonb` gives it: every column, timestamps as strings, so it goes back in exactly. */
+type RowJson = JsonObject;
+
+/**
+ * What a stop or a delete changed, as it was just before: the block, its
+ * proposals, commitments and evidence links. `after` is the block as the
+ * change left it, or null when the change removed it; undo refuses if the
+ * block is not still in that state. JSON-safe, so the page holds it while it
+ * offers Undo and sends it back.
+ */
+export interface BlockSnapshot {
+  block: RowJson & { id: string };
+  proposals: RowJson[];
+  commitments: RowJson[];
+  links: RowJson[];
+  after: RowJson | null;
+}
+
+async function rowJson(tx: Tx, blockId: string): Promise<RowJson | null> {
+  const rows = await tx<{ row: RowJson }[]>`SELECT to_jsonb(b) AS row FROM time_block b WHERE id = ${blockId}`;
+  return rows[0]?.row ?? null;
+}
+
+async function snapshotOf(tx: Tx, blockId: string): Promise<Omit<BlockSnapshot, "after">> {
+  const block = (await rowJson(tx, blockId)) as BlockSnapshot["block"] | null;
+  if (!block) throw new NotFound(`no block ${blockId}`);
+  const rows = async (q: Promise<{ row: RowJson }[]>) => (await q).map((r) => r.row);
+  return {
+    block,
+    proposals: await rows(tx`SELECT to_jsonb(p) AS row FROM proposal p WHERE time_block_id = ${blockId} ORDER BY id`),
+    commitments: await rows(tx`SELECT to_jsonb(c) AS row FROM commitment c WHERE time_block_id = ${blockId} ORDER BY id`),
+    links: await rows(tx`SELECT to_jsonb(l) AS row FROM time_block_observation l WHERE block_id = ${blockId}`),
+  };
+}
+
+/**
+ * Put back what a stop or a delete changed. Refused, changing nothing, when a
+ * later write is in the way: the block changed since, another timer started,
+ * or the restored span (an open block's runs to now) would overlap timer,
+ * manual or confirmed time. Uncommitted fill under it yields, as it does to
+ * any block the owner times.
+ */
+export async function undoBlockChange(db: Sql, snap: BlockSnapshot, now = clockNow()): Promise<void> {
+  const json = (v: unknown) => db.json(v as never);
+  const id = snap.block.id;
+  await db.begin(async (tx) => {
+    await lockBlocks(tx);
+    const current = await tx<{ same: boolean }[]>`
+      SELECT b IS NOT DISTINCT FROM jsonb_populate_record(NULL::time_block, ${json(snap.after ?? {})}::jsonb) AS same
+      FROM time_block b WHERE id = ${id} FOR UPDATE`;
+    if (snap.after === null && current[0]) throw new Refused("undone", "Nothing to undo: that block is already back.");
+    if (snap.after !== null && !current[0]?.same) throw new Refused("changed", "Can't undo: that block was changed since.");
+
+    const [r] = await tx<{ t_start: Date; t_end: Date | null }[]>`
+      SELECT t_start, t_end FROM jsonb_populate_record(NULL::time_block, ${json(snap.block)}::jsonb)`;
+    if (!r) throw new BadInput("not a block");
+    if (r.t_end === null) {
+      const other = await tx`SELECT 1 FROM time_block WHERE t_end IS NULL AND id <> ${id}`;
+      if (other.length > 0) throw new Refused("timer-running", "Can't undo: another timer has started since. Stop it first.");
+    }
+    const clash = await tx<{ id: string; title: string | null; intent: string | null }[]>`
+      SELECT b.id, b.title, i.title AS intent FROM time_block b LEFT JOIN intent i ON i.id = b.intent_id
+      WHERE b.id <> ${id} AND (b.origin IN ('manual', 'merged') OR b.committed)
+        AND b.t_start < ${r.t_end ?? now} AND coalesce(b.t_end, 'infinity') > ${r.t_start}
+      ORDER BY b.t_start LIMIT 1`;
+    if (clash[0]) {
+      const name = clash[0].intent ?? clash[0].title ?? "another block";
+      throw new Refused("overlaps", `Can't undo: ${name} now covers part of that time.`, { block_id: clash[0].id });
+    }
+    const intents = [snap.block.intent_id, ...snap.proposals.map((p) => p.intent_id), ...snap.commitments.map((c) => c.intent_id)].filter(
+      (x): x is string => typeof x === "string",
+    );
+    const known = await tx<{ id: string }[]>`SELECT id FROM intent WHERE id = ANY(${intents}::uuid[])`;
+    if (new Set(known.map((k) => k.id)).size < new Set(intents).size) throw new Refused("intent-gone", "Can't undo: a goal it was labelled with has been deleted.");
+
+    // The block goes back with its own id, so everything that pointed at it points at it again.
+    // The cycle block -> commitment -> block means the block goes in first and gets its commitment last.
+    if (current[0]) await tx`DELETE FROM time_block WHERE id = ${id}`; // and the proposal the stop made
+    await tx`INSERT INTO time_block SELECT * FROM jsonb_populate_record(NULL::time_block, ${json({ ...snap.block, commitment_id: null })}::jsonb)`;
+    if (snap.proposals.length) await tx`INSERT INTO proposal SELECT * FROM jsonb_populate_recordset(NULL::proposal, ${json(snap.proposals)}::jsonb)`;
+    if (snap.commitments.length) await tx`INSERT INTO commitment SELECT * FROM jsonb_populate_recordset(NULL::commitment, ${json(snap.commitments)}::jsonb)`;
+    await tx`UPDATE time_block SET commitment_id = ${(snap.block.commitment_id as string | null) ?? null} WHERE id = ${id}`;
+    if (snap.links.length) {
+      await tx`INSERT INTO time_block_observation
+        SELECT l.* FROM jsonb_populate_recordset(NULL::time_block_observation, ${json(snap.links)}::jsonb) l
+        WHERE EXISTS (SELECT 1 FROM observation o WHERE o.id = l.observation_id)`;
+    }
+    const afterEnd = snap.after?.t_end;
+    await resync(tx, now, r.t_start, r.t_end, typeof afterEnd === "string" ? new Date(afterEnd) : null);
   });
   scheduleRecompute();
 }

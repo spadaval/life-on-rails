@@ -520,7 +520,7 @@ route("POST", /^\/timer\/(start|stop|pause|resume)$/, async ({ params, body }) =
     case "start":
       return startManualBlock(sql, { intentId: d.intent_id, title: d.title }, agentWho(d.thread));
     case "stop":
-      return stopRunningBlock(sql, agentWho(d.thread));
+      return { id: (await stopRunningBlock(sql, agentWho(d.thread))).id };
     case "pause":
       return pauseRunningBlock(sql);
     default:

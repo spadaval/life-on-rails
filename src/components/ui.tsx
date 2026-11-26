@@ -39,14 +39,26 @@ export function PageHead({ title, sub, children }: { title: ReactNode; sub?: Rea
   );
 }
 
-export function Notice({ text, onClose }: { text: string | null; onClose: () => void }) {
+/** A one-line notice. `action` puts one button before dismiss, such as the Undo a stop or a delete offers. */
+export function Notice({ text, onClose, action }: {
+  text: string | null;
+  onClose: () => void;
+  action?: { label: string; onClick: () => void; disabled?: boolean } | null;
+}) {
   if (!text) return null;
   return (
     <p role="status" className="row-sel flex items-center justify-between gap-3 rounded-sm px-3 py-2">
       <span>{text}</span>
-      <button className="btn btn-quiet btn-sm" onClick={onClose}>
-        dismiss
-      </button>
+      <span className="flex items-center gap-2">
+        {action ? (
+          <button className="btn btn-secondary btn-sm" disabled={action.disabled} onClick={action.onClick}>
+            {action.label}
+          </button>
+        ) : null}
+        <button className="btn btn-quiet btn-sm" onClick={onClose}>
+          dismiss
+        </button>
+      </span>
     </p>
   );
 }

@@ -4,7 +4,7 @@ import { sql } from "../../db/client.js";
 import { type Ymd, addDays, localDayBounds, localTimeOnDay, localYmd } from "../../shared/localTime.js";
 import {
   confirmDay, deleteBlock, editBlock, pauseRunningBlock, recategorizeBlock, resumeRunningBlock, splitBlock,
-  startManualBlock, stopRunningBlock, uncommitBlock,
+  startManualBlock, stopRunningBlock, uncommitBlock, undoBlockChange, type BlockSnapshot,
 } from "../attribution/blocks.js";
 import { askFromDashboard, channelConfigured, t3Handoff } from "../channel/channel.js";
 import { env } from "../env.js";
@@ -85,11 +85,11 @@ export const timerFn = createServerFn({ method: "POST" })
     z.object({ action: z.enum(["start", "stop", "pause", "resume"]), intentId: z.string().uuid().nullable().optional(), title: z.string().max(200).nullable().optional() }).parse(d),
   )
   .handler(async ({ data }) => {
+    if (data.action === "stop") return { ok: true, undo: (await stopRunningBlock(sql, ui)).undo };
     if (data.action === "start") await startManualBlock(sql, { intentId: data.intentId, title: data.title }, ui);
-    else if (data.action === "stop") await stopRunningBlock(sql, ui);
     else if (data.action === "pause") await pauseRunningBlock(sql);
     else await resumeRunningBlock(sql, ui);
-    return { ok: true };
+    return { ok: true, undo: null };
   });
 
 export const recategorizeFn = createServerFn({ method: "POST" })
@@ -131,7 +131,18 @@ export const splitBlockFn = createServerFn({ method: "POST" })
 export const deleteBlockFn = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ blockId: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    await deleteBlock(sql, data.blockId);
+    return { ok: true, undo: await deleteBlock(sql, data.blockId) };
+  });
+
+/** Put back what a stop or a delete changed, from the snapshot that call returned. */
+export const undoBlockFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => {
+    const row = z.record(z.string(), z.unknown());
+    const snap = z.object({ block: row.and(z.object({ id: z.string().uuid() })), proposals: z.array(row), commitments: z.array(row), links: z.array(row), after: row.nullable() });
+    return snap.parse(d) as BlockSnapshot;
+  })
+  .handler(async ({ data }) => {
+    await undoBlockChange(sql, data);
     return { ok: true };
   });
 
