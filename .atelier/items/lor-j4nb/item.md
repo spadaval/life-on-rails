@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-j4nb
 title: Goals in even rows, with habits and projects told apart at a glance
-status: in_review
+status: approved
 mission: lor-40i0
 labels: []
 priority: medium
