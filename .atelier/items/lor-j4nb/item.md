@@ -3,14 +3,15 @@ schema: atelier.item
 schema_version: 3
 id: lor-j4nb
 title: Goals in even rows, with habits and projects told apart at a glance
-status: open
+status: building
 mission: lor-40i0
 labels: []
 priority: medium
 blocked_by:
 - lor-mxm9
 - lor-w2tw
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Aab2feab2-8ed8-40be-ad1b-e17103ce5d1b%3Adelegate-task%3A07e83177-feed-40b0-9af9-55ad32d79658
 ready: null
 trivial: null
 caused_by: null
