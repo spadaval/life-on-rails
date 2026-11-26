@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-zuqn
 title: 'Today leads with what needs you: lists under the arc, a one-line brief, one timer'
-status: in_review
+status: changes_requested
 mission: lor-40i0
 labels: []
 priority: medium
