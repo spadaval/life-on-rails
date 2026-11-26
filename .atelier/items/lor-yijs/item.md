@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-yijs
 title: A free slot suggests the goal most behind on its hours again, before a task
-status: changes_requested
+status: in_review
 mission: null
 labels: []
 priority: medium
@@ -46,4 +46,8 @@ The first free stretch of the day goes to a goal behind on its hours again; late
 Checks: `pnpm typecheck` passes (after a `pnpm build` in this worktree to generate the route tree, lor-iurl), `pnpm test` 223 passed, `pnpm test:db` 147 passed, `verify-lor screen today` ok (shots in `/tmp/claude-1000/lor-yijs-shots/`).
 
 Separate commit eb66c6df: `tests/db/device.test.ts` failed today with no leak. Its `not.toMatch(/555/)` matched UUIDv7 ids, whose clock prefix reads `01a21555` on 2026-11-25. It now checks for the phone numbers themselves (`/555\D?010[01]/`).
+
+### Responses
+
+1-gbhc.1: rebutted: the repro is accurate, but holding the goal to the day's first stretch across calls contradicts Done when 1 and the Goal. Today keeps no record of past suggestions, so the only stable anchor is the first stretch from wake start. Then opening Today at noon, after the 08:00 stretch has passed, would never show the starving goal, though Done when 1 says the one slot Today shows suggests it "when there is one". Keeping the goal on one stretch would need new stored state for a suggestion. Done when 3's own reason ("so later stretches still get tasks") is about the stretches listed together, and every response gives the goal one stretch and the rest tasks (tests/today/gaps.test.ts). At 15:00 a goal still starving is still the one that most needs free time, which is what this item restores.
 
