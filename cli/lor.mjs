@@ -2,10 +2,14 @@
 // lor: a thin client for Life on Rails' /api/v1. No dependencies; runs on any
 // recent Node. Installed as ~/.local/bin/lor (a symlink to this file).
 //
+// Only that symlink reaches the real LoR. Run as a file (`node cli/lor.mjs`), which is
+// how a checkout's copy is tried out, it wants a server named in the environment and
+// refuses lor-web's (lor-y8lw): a worktree's test command once made a goal in the real one.
+//
 // stdout is data only (JSON, or markdown with --md); diagnostics go to stderr.
 // Exit codes: 0 ok, 2 usage, 3 empty result, 4 auth, 5 not found,
 //             6 refused by a write rule, 8 server unavailable, 1 anything else.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -124,7 +128,32 @@ function loadConfig() {
     }
   }
   const get = (k) => process.env[k] ?? fromFile[k] ?? "";
-  return { token: get("LOR_AGENT_TOKEN"), port: get("LOR_PORT") || "3847", url: get("LOR_URL") };
+  return {
+    token: get("LOR_AGENT_TOKEN"),
+    port: get("LOR_PORT") || "3847",
+    url: get("LOR_URL"),
+    // Whether this call's own environment names the server, and the ports lor-web holds.
+    named: Boolean(process.env.LOR_PORT || process.env.LOR_URL),
+    // As numbers, the way scripts/serve.mjs reads them: "04000" listens on 4000.
+    realPorts: [3847, 3848, Number(fromFile.LOR_PORT), Number(fromFile.LOR_SERVE_PORT)].filter(Boolean),
+  };
+}
+
+/**
+ * Why this call may not go to `base`, or null. The installed `lor` is a symlink and goes anywhere.
+ * This file run by its own path is a checkout's copy under test: it reaches a server only when the
+ * environment names one, and never on one of lor-web's ports, which hold the owner's real data.
+ * The port alone decides: a host has too many spellings (localhost., [::ffff:127.0.0.1], a tailnet name).
+ */
+function refusal(config, base) {
+  if (lstatSync(process.argv[1]).isSymbolicLink()) return null;
+  const how = "For the test server: LOR_PORT=3857 node cli/lor.mjs ... (the verify skill's `up` starts it). For the real LoR: the installed `lor`.";
+  if (!config.named) return `cli/lor.mjs run as a file has no default server, so that a test command cannot write to the real LoR. ${how}`;
+  const url = new URL(base);
+  // A URL drops its scheme's default port, so http://host is port 80.
+  const port = Number(url.port || (url.protocol === "https:" ? 443 : 80));
+  if (config.realPorts.includes(port)) return `${base} is on a port of lor-web, with the owner's real data, and cli/lor.mjs run as a file does not go there. ${how}`;
+  return null;
 }
 
 function readBody(flags) {
@@ -451,6 +480,11 @@ async function main() {
   }
   const config = loadConfig();
   const base = config.url || `http://127.0.0.1:${config.port}`;
+  const refused = refusal(config, base);
+  if (refused) {
+    process.stderr.write(`lor: refused: ${refused}\n`);
+    return 6;
+  }
   let response;
   try {
     response = await fetch(`${base}/api/v1${call.path}`, {

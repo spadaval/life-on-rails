@@ -68,7 +68,7 @@ node .claude/skills/verify-lor/verify.mjs api POST /intents --body '{"type":"tas
 echo '{"text":"hi","thread":"verify"}' | node .claude/skills/verify-lor/verify.mjs api POST /log --body - --out /tmp/log.json
 ```
 
-It prints `{method, path, status, body}` JSON; the `--out` file adds `at`, `commit` and `dirty_files`. The same calls through `lor` itself: `LOR_PORT=3857 node cli/lor.mjs status`, or `LOR_PORT=3857 node cli/lor.mjs intent create --type task --title x --thread verify`. Never leave `LOR_PORT` unset: `lor` then talks to the real server on 3847.
+It prints `{method, path, status, body}` JSON; the `--out` file adds `at`, `commit` and `dirty_files`. The same calls through `lor` itself: `LOR_PORT=3857 node cli/lor.mjs status`, or `LOR_PORT=3857 node cli/lor.mjs intent create --type task --title x --thread verify`. Name the server every time: run as a file, `cli/lor.mjs` has no default server and refuses lor-web's ports (exit 6), so a test command cannot write to the real LoR. Only the installed `lor` goes there.
 
 ## Proves it works
 
