@@ -3,14 +3,14 @@ schema: atelier.item
 schema_version: 3
 id: lor-thnc
 title: Today, Goals, the wall and People stop showing wrong or failure-shaped numbers
-status: ready
+status: open
 mission: lor-l9a7
 labels:
 - chain
 - feature
 priority: medium
 blocked_by:
-- lor-mxrc
+- lor-w2tw
 implementers: []
 ready:
   by: conversion
