@@ -21,12 +21,12 @@ On Today with no timer running, the arc's event labels and the row of timer sugg
 
 ## Done when
 
-- [ ] On the demo set at 1500 by 950, `/?at=15:00&data=base` (no timer) draws "09:30 Field Guide standup" clear of the "Ship the Field Guide app" suggestion, with visible space between them, and no arc label is cut off at the edge (lor-auhc's fix stays).
-- [ ] The same holds at 1100px and on `/?at=09:00&data=base`.
+- [ ] On the demo set at 1500 by 950, after `/?at=15:00&data=running` and Stop, the suggestion row ("Ship the Field Guide app", "Draft the offline maps spec", "Public beta", "Something else...") sits clear of "09:30 Field Guide standup", with visible space between them, and no arc label is cut off at the edge (lor-auhc's fix stays).
+- [ ] The same holds at 1100px, and with the longest three suggestions the demo set can produce.
 
 ## Scope
 
-`src/components/DayArc.tsx` and where Today places the suggestion row. Found by lor-a8wq: lor-auhc moved the 09:30 label inward so it is no longer clipped (it read "iide standup" at 93d569a3), and it now ends about 5px from the first suggestion chip, so the two read as one row (see `/tmp/claude-1000/.../undo/1-stopped.png` in lor-a8wq's Report, or the gallery's "Today at 15:00").
+`src/components/DayArc.tsx` and where Today places the suggestion row. Found by lor-a8wq: lor-auhc moved the 09:30 label inward so it is no longer clipped (it read "iide standup" at 93d569a3), and the suggestion row is centred under the readout and grows with its labels. With the gallery's suggestions (`/?at=15:00&data=base`) there is about 30px between them; right after stopping the demo's timer the suggestions are longer and the label ends about 5px from "Ship the Field Guide app", so the two read as one row. lor-a8wq's Report has the screenshot.
 
 ## Context
 
