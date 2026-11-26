@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-n3vi
 title: Undo after stopping a timer or deleting a time block
-status: approved
+status: in_review
 mission: lor-40i0
 labels: []
 priority: medium
@@ -87,6 +87,8 @@ ok: the dropped timers left the blocks as they were
 The last three lines are round 2's. On the round 1 page code the flow fails at "no Undo once the page head has started another timer"; with only the counter guard removed it fails at "no Undo from a Stop that answered after a navigation". After the fix: `verify-lor screen today` ok with no browser errors, `pnpm typecheck` clean, `pnpm test` 220 passed, `pnpm test:db` 154 passed.
 
 **Tooling notes.** Port 3857 and `life_on_rails_test` are shared by every checkout. Another thread's `pnpm test:db` truncated tables mid-flow once, and another `verify-lor up` replaced my server once; both failures looked like page bugs. Worth a lock in verify-lor (related: lor-3ydk).
+
+**Round 3: merged main (06d59822).** The only conflict was in `src/routes/index.tsx`, where main's timer picker state (`picking`, `timerTitle`, `startTimer`) and this item's offer counter landed in the same spot; both are kept as written. On the merged tree: `pnpm typecheck` clean, `pnpm test` 223 passed, `pnpm test:db` 155 passed, `verify-lor screen today` ok with no browser errors.
 
 ### Responses
 
