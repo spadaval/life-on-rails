@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ago as agoText } from "../../src/components/format.js";
 import { PHONE_SILENT_AFTER_MS, healthLine, phoneSilentMs } from "../../src/shared/phoneSilence.js";
 
 const NOW = Date.parse("2026-11-25T18:00:00Z");
@@ -14,6 +15,13 @@ describe("the sidebar's health line", () => {
   it("names a phone silent past the threshold, with how long", () => {
     expect(line([], ago(5.2))).toEqual({ ok: false, text: "Phone silent for 5h" });
     expect(line([], ago(80))).toEqual({ ok: false, text: "Phone silent for 3d" });
+  });
+
+  it("says the same hours or days as the phone's \"ago\" on /status", () => {
+    for (const h of [2.1, 4.4, 4.6, 23.7, 35.9, 36.1, 47.5, 80]) {
+      const row = agoText(ago(h), NOW).replace(" ago", "");
+      expect(line([], ago(h)).text).toBe(`Phone silent for ${row}`);
+    }
   });
 
   it("says nothing about a phone that has never reported", () => {
