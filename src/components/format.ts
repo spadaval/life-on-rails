@@ -44,3 +44,11 @@ export function dueLabel(ymd: string, today: string): string {
 /** "Fri 16 Oct". */
 export const longDate = (ymd: string) =>
   new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(ymdUtc(ymd));
+
+/** A brief's first sentence, and everything after it. The agent writes the one next action as the first line. */
+export function splitBrief(body: string): { lead: string; rest: string } {
+  const text = body.trim();
+  const line = text.split("\n")[0] ?? "";
+  const lead = /^.*?[.!?](?=\s|$)/.exec(line)?.[0] ?? line;
+  return { lead, rest: text.slice(lead.length).trim() };
+}

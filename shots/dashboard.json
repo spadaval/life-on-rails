@@ -13,7 +13,8 @@
     { "screen": "Today", "name": "Today with a time block selected", "link": "/?block=11:00&at=15:00&data=base" },
     { "screen": "Today", "name": "Today on a past day", "link": "/?date=yesterday&at=15:00&data=base" },
     { "screen": "Today", "name": "Today on a past day with a block selected", "link": "/?date=yesterday&block=18:30&at=15:00&data=base" },
-    { "screen": "Today", "name": "Today scrolled to the lists", "link": "/?scroll=700&at=15:00&data=base", "capture": "viewport" },
+    { "screen": "Today", "name": "Today with the morning brief open", "link": "/?brief=1&at=15:00&data=base" },
+    { "screen": "Today", "name": "Today scrolled to the brief and the Ask box", "link": "/?scroll=700&at=15:00&data=base", "capture": "viewport" },
 
     { "screen": "Tasks", "name": "Tasks", "link": "/tasks?at=15:00&data=base" },
     { "screen": "Tasks", "name": "Tasks with a flagged task open in its panel", "link": "/tasks?id=Reply%20to%20the%20App%20Store%20review%20notes&at=15:00&data=base" },

@@ -1,5 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Ago } from "../components/Ago.js";
+import { pct } from "../components/format.js";
 import { PageHead, Panel } from "../components/ui.js";
 import { getCaptureStatus } from "../server/functions/cockpit.js";
 import { healthLine, phoneSilentMs } from "../shared/phoneSilence.js";
@@ -72,6 +73,23 @@ function Status() {
                 Not set up. Run <code className="bg-raised px-1">pnpm google:auth --mail</code> in the repo.
               </span>
             )}
+          </dd>
+        </dl>
+      </Panel>
+
+      <Panel title="Today so far" aside="over the waking time that has passed">
+        <dl className="grid gap-x-6 gap-y-3 text-body md:grid-cols-[auto_1fr]">
+          <dt className="cond text-small font-semibold text-mute">Calendar confirmed</dt>
+          <dd>
+            <span className="font-medium">{status.today.confirm_rate !== null ? pct(status.today.confirm_rate) : "Nothing to confirm yet"}</span>
+            <span className="block text-small text-mute">
+              How much of today's calendar time is counted as spent, with time you recorded outside the calendar counting as confirmed.
+            </span>
+          </dd>
+          <dt className="cond text-small font-semibold text-mute">Time accounted for</dt>
+          <dd>
+            <span className="font-medium">{status.today.coverage !== null ? pct(status.today.coverage) : "Not measured until the phone reports activity"}</span>
+            <span className="block text-small text-mute">How much of the waking day so far has a counted block, from any source.</span>
           </dd>
         </dl>
       </Panel>

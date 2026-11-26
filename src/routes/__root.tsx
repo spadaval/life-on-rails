@@ -121,8 +121,11 @@ function Health({ shell, className }: { shell: Shell; className: string }) {
   );
 }
 
-/** Search and the timer, on the right of every page head. */
-export function GlobalActions() {
+/**
+ * Search and the timer, on the right of every page head. A running timer shows as a chip that links to Today;
+ * Today passes `timerChip={false}` because its own card under the arc already shows it, with Pause and Stop.
+ */
+export function GlobalActions({ timerChip = true }: { timerChip?: boolean }) {
   const shell = Route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
@@ -146,13 +149,15 @@ export function GlobalActions() {
         <input className="input w-[300px]" placeholder="Search notes, people, tasks" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search everything" />
       </form>
       {run ? (
-        <Link to="/" className="flex items-center gap-2 rounded-sm border border-or/60 bg-or/10 px-3 py-1 text-small leading-6 hover:bg-or/15">
-          <span className={`size-1.5 rounded-full bg-or ${run.paused_at ? "opacity-40" : ""}`} />
-          <span className="max-w-[220px] truncate">{run.intent ?? run.title ?? "Timer"}</span>
-          <span className="cond font-semibold text-or" suppressHydrationWarning>
-            {duration(Math.max(0, ((run.paused_at ? new Date(run.paused_at).getTime() : now) - new Date(run.t_start).getTime()) / 1000))}
-          </span>
-        </Link>
+        timerChip ? (
+          <Link to="/" className="flex items-center gap-2 rounded-sm border border-or/60 bg-or/10 px-3 py-1 text-small leading-6 hover:bg-or/15">
+            <span className={`size-1.5 rounded-full bg-or ${run.paused_at ? "opacity-40" : ""}`} />
+            <span className="max-w-[220px] truncate">{run.intent ?? run.title ?? "Timer"}</span>
+            <span className="cond font-semibold text-or" suppressHydrationWarning>
+              {duration(Math.max(0, ((run.paused_at ? new Date(run.paused_at).getTime() : now) - new Date(run.t_start).getTime()) / 1000))}
+            </span>
+          </Link>
+        ) : null
       ) : (
         <button
           className="btn btn-primary"

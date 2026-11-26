@@ -205,6 +205,13 @@ export async function trailingConfirmRate(db: Tx, now: Date): Promise<number | n
   return total > 0 ? confirmed / total : null;
 }
 
+/** Today's two success measures over the waking time that has passed, for the status page. */
+export async function todayMeasures(db: Tx, now = clockNow()): Promise<{ confirm_rate: number | null; coverage: number | null }> {
+  const wake = wakeWindow(localYmd(env.LOR_TZ, now));
+  const m = await measures(db, wake.start, new Date(Math.min(now.getTime(), wake.end.getTime())));
+  return { confirm_rate: m.confirmRate, coverage: m.coverage };
+}
+
 const MIN_GAP_MIN = 15;
 
 export async function getToday(db: Tx, date: Ymd, now = clockNow()): Promise<TodayView> {
