@@ -11,9 +11,17 @@ import path from "node:path";
 import { chromium } from "playwright-core";
 
 const BASE = process.env.LOR_UI_BASE ?? "http://127.0.0.1:3857";
-// Flows empty tables and write as the agent: never against lor-web, which holds the owner's real data.
-if (["3847", "3848", "3849"].includes(new URL(BASE).port)) {
-  console.error(`ui-check: refused: ${BASE} is lor-web, with the owner's real data. Use the test server on :3857 (the verify skill's \`up\`).`);
+/** The server's env file, read as scripts/serve.mjs reads it (Node's own parser). */
+const ENV_FILE = (() => {
+  const file = process.env.LOR_ENV_FILE ?? path.join(homedir(), ".config/life-on-rails/env");
+  return existsSync(file) ? parseEnv(readFileSync(file, "utf8")) : {};
+})();
+/** The server's LOR_TZ: the environment, then the env file, then env.ts's default. */
+const SERVER_TZ = process.env.LOR_TZ || ENV_FILE.LOR_TZ || "America/New_York";
+// Flows empty tables and write as the agent: never on lor-web's ports, which hold the owner's real data.
+// The port alone decides, as in cli/lor.mjs (lor-y8lw).
+if (["3847", "3848", "3849", ENV_FILE.LOR_PORT, ENV_FILE.LOR_SERVE_PORT, ENV_FILE.LOR_TRMNL_PORT].includes(new URL(BASE).port)) {
+  console.error(`ui-check: refused: ${BASE} is on a port of lor-web, with the owner's real data. Use the test server on :3857 (the verify skill's \`up\`).`);
   process.exit(3);
 }
 const flow = process.argv[2] ?? "graph";
@@ -34,12 +42,6 @@ const settle = () => page.waitForLoadState("networkidle");
 
 /** Run SQL against the test database. */
 const psql = (sql) => execFileSync("psql", ["-d", "life_on_rails_test", "-v", "ON_ERROR_STOP=1", "-Atqc", sql], { encoding: "utf8" });
-/** The server's LOR_TZ, as scripts/serve.mjs gets it: the environment, then the env file (Node's own parser), then env.ts's default. */
-const SERVER_TZ = (() => {
-  if (process.env.LOR_TZ) return process.env.LOR_TZ;
-  const file = process.env.LOR_ENV_FILE ?? path.join(homedir(), ".config/life-on-rails/env");
-  return (existsSync(file) ? parseEnv(readFileSync(file, "utf8")).LOR_TZ : undefined) || "America/New_York";
-})();
 /**
  * The local day a flow works on: today in the server's time zone. A flow that fixes the clock passes it whole
  * (`?at=<DAY>T15:30`), which the server takes as is even when LOR_FAKE_NOW sets another day, so the page,

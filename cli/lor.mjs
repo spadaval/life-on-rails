@@ -141,15 +141,14 @@ function loadConfig() {
 /**
  * Why this call may not go to `base`, or null. The installed `lor` is a symlink and goes anywhere.
  * This file run by its own path is a checkout's copy under test: it reaches a server only when the
- * environment names one, and never lor-web on this machine, which holds the owner's real data.
+ * environment names one, and never on one of lor-web's ports, which hold the owner's real data.
+ * The port alone decides: a host has too many spellings (localhost., [::ffff:127.0.0.1], a tailnet name).
  */
 function refusal(config, base) {
   if (lstatSync(process.argv[1]).isSymbolicLink()) return null;
   const how = "For the test server: LOR_PORT=3857 node cli/lor.mjs ... (the verify skill's `up` starts it). For the real LoR: the installed `lor`.";
   if (!config.named) return `cli/lor.mjs run as a file has no default server, so that a test command cannot write to the real LoR. ${how}`;
-  const url = new URL(base);
-  const local = ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname);
-  if (local && config.realPorts.includes(url.port)) return `${base} is lor-web, with the owner's real data, and cli/lor.mjs run as a file does not go there. ${how}`;
+  if (config.realPorts.includes(new URL(base).port)) return `${base} is on a port of lor-web, with the owner's real data, and cli/lor.mjs run as a file does not go there. ${how}`;
   return null;
 }
 

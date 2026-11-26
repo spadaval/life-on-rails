@@ -1,62 +1,80 @@
 // cli/lor.mjs run by its own path never reaches lor-web (lor-y8lw): on 25 Nov 2026 a worktree's
 // `node cli/lor.mjs intent create ...`, meant for the test server, made a goal in the real LoR.
-// Nothing here reaches a server: every allowed call is aimed at a port nothing listens on.
+// Nothing here reaches a server: each child runs with fetch replaced by one that reports where the
+// call would have gone and answers it. scripts/ui-check.mjs is only run where it refuses.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
-import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const cli = path.resolve("cli/lor.mjs");
 const dir = mkdtempSync(path.join(tmpdir(), "lor-cli-"));
 const envFile = path.join(dir, "env");
 const installed = path.join(dir, "lor");
-let closed = "";
+const noNetwork = path.join(dir, "no-network.mjs");
+// lor-web on ports of its own, so a refusal is the env file's doing and not the built-in list's.
+writeFileSync(envFile, "LOR_AGENT_TOKEN=t\nLOR_PORT=4000\nLOR_SERVE_PORT=4001\nLOR_TRMNL_PORT=4002\n");
+writeFileSync(noNetwork, 'globalThis.fetch = async (url, init) => { process.stderr.write(`FETCH ${init?.method ?? "GET"} ${url}\\n`); return new Response("{}"); };\n');
+symlinkSync(cli, installed);
 
-/** Run the CLI with only the given LOR_ variables, and an env file that names lor-web on 4000. */
-const run = (entry: string, env: Record<string, string>, args = ["intent", "create", "--type", "goal", "--title", "x", "--thread", "t"]) => {
+const WRITE = ["intent", "create", "--type", "goal", "--title", "x", "--thread", "t"];
+/** Run a script with only the given LOR_ variables, the fake env file, and no network. */
+const run = (entry: string, env: Record<string, string>, args = WRITE) => {
   const clean = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("LOR_")));
-  const r = spawnSync(process.execPath, [entry, ...args], { encoding: "utf8", env: { ...clean, LOR_ENV_FILE: envFile, ...env } });
+  const r = spawnSync(process.execPath, ["--import", noNetwork, entry, ...args], { encoding: "utf8", env: { ...clean, LOR_ENV_FILE: envFile, ...env } });
   return { code: r.status, err: r.stderr };
 };
 
-beforeAll(async () => {
-  writeFileSync(envFile, "LOR_AGENT_TOKEN=t\nLOR_PORT=4000\n");
-  symlinkSync(cli, installed);
-  // A port that was free a moment ago: a call allowed through fails with "cannot reach" (8).
-  closed = await new Promise<string>((resolve) => {
-    const s = createServer().listen(0, "127.0.0.1", () => {
-      const { port } = s.address() as { port: number };
-      s.close(() => resolve(String(port)));
-    });
-  });
-});
-
 describe("cli/lor.mjs run as a file", () => {
   it("has no default server, for writes and reads", () => {
-    expect(run(cli, {})).toMatchObject({ code: 6, err: expect.stringMatching(/no default server.*LOR_PORT=3857/) });
-    expect(run(cli, {}, ["status"]).code).toBe(6);
+    for (const args of [WRITE, ["status"]]) {
+      const r = run(cli, {}, args);
+      expect(r).toMatchObject({ code: 6, err: expect.stringMatching(/no default server.*LOR_PORT=3857/) });
+      expect(r.err).not.toContain("FETCH");
+    }
   });
 
-  it("refuses lor-web's ports even when named", () => {
-    const named: Record<string, string>[] = [{ LOR_PORT: "3847" }, { LOR_PORT: "4000" }, { LOR_URL: "http://localhost:3848" }];
+  it("refuses lor-web's ports even when named, however the host is spelled", () => {
+    const named: Record<string, string>[] = [
+      { LOR_PORT: "3847" },
+      { LOR_PORT: "4000" },
+      { LOR_URL: "http://localhost:3848" },
+      { LOR_URL: "http://localhost.:4000" },
+      { LOR_URL: "http://[::ffff:127.0.0.1]:3847" },
+      { LOR_URL: "http://[::1]:4001" },
+      { LOR_URL: "http://box.tailnet.example:3848" },
+    ];
     for (const env of named) {
-      expect(run(cli, env)).toMatchObject({ code: 6, err: expect.stringMatching(/is lor-web/) });
+      const r = run(cli, env);
+      expect([env, r.code]).toEqual([env, 6]);
+      expect(r.err).toMatch(/port of lor-web/);
+      expect(r.err).not.toContain("FETCH");
     }
   });
 
   it("goes to a server the environment names", () => {
-    expect(run(cli, { LOR_PORT: closed })).toMatchObject({ code: 8, err: expect.stringContaining(`cannot reach http://127.0.0.1:${closed}`) });
+    expect(run(cli, { LOR_PORT: "3857" })).toMatchObject({ code: 0, err: "FETCH POST http://127.0.0.1:3857/api/v1/intents\n" });
+    expect(run(cli, { LOR_URL: "http://127.0.0.1:3999" }, ["status"])).toMatchObject({ code: 0, err: "FETCH GET http://127.0.0.1:3999/api/v1/status\n" });
   });
 
   it("still prints help", () => {
-    expect(run(cli, {}, ["help"]).code).toBe(0);
+    expect(run(cli, {}, ["help"])).toMatchObject({ code: 0, err: "" });
   });
 });
 
 describe("the installed lor, a symlink", () => {
   it("takes the env file's server by default", () => {
-    expect(run(installed, {})).toMatchObject({ code: 8, err: expect.stringContaining("cannot reach http://127.0.0.1:4000") });
+    expect(run(installed, {})).toMatchObject({ code: 0, err: "FETCH POST http://127.0.0.1:4000/api/v1/intents\n" });
+  });
+});
+
+describe("scripts/ui-check.mjs", () => {
+  it("refuses a base on lor-web's ports, built in or from the env file, before a browser starts", () => {
+    for (const port of ["3847", "3848", "3849", "4000", "4001", "4002"]) {
+      const r = run("scripts/ui-check.mjs", { LOR_UI_BASE: `http://localhost.:${port}` }, ["tasks", path.join(dir, "out")]);
+      expect([port, r.code]).toEqual([port, 3]);
+      expect(r.err).toMatch(/port of lor-web/);
+    }
   });
 });
