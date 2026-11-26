@@ -63,8 +63,21 @@ export function Star({ size = 10, className = "", fill = "currentColor" }: { siz
 export const STAR_PATH = "M0,-10 L2.2,-2.2 L10,0 L2.2,2.2 L0,10 L-2.2,2.2 L-10,0 L-2.2,-2.2 Z";
 
 /** A thin hours-against-target bar. Under target is dim, never red. */
+/**
+ * Hours against a target. Under it, the bar fills toward the end. Over it, the bar is full, the
+ * target becomes a notch, and what lies past it is drawn lighter, so 16 / 15 does not read as 15 / 15.
+ */
 export function Meter({ value, target }: { value: number; target: number }) {
-  const w = target > 0 ? Math.min(1, value / target) : 0;
+  if (target > 0 && value > target) {
+    const at = (target / value) * 100;
+    return (
+      <span className="relative block h-[3px] w-full bg-line" title={`${Math.round((value - target) * 10) / 10}h over the target`}>
+        <span className="absolute inset-y-0 left-0 bg-or/85" style={{ width: `${at}%` }} />
+        <span className="absolute inset-y-0 right-0 bg-txt/70" style={{ left: `calc(${at}% + 2px)` }} />
+      </span>
+    );
+  }
+  const w = target > 0 ? value / target : 0;
   return (
     <span className="relative block h-[3px] w-full bg-line">
       <span className="absolute inset-y-0 left-0 bg-or/85" style={{ width: `${w * 100}%` }} />

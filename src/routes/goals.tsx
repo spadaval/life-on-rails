@@ -31,6 +31,15 @@ type IntentType = GraphNode["type"];
 const TYPE_NAME: Record<IntentType, string> = { goal: "Goal", project: "Project", habit: "Habit", task: "Task", metric: "Metric" };
 const round1 = (n: number) => String(Math.round(n * 10) / 10);
 const isOpen = (n: GraphNode) => n.status === "active" || n.status === "waiting";
+const tasks = (n: number) => `${n} ${n === 1 ? "task" : "tasks"}`;
+
+/** " · 1.2h over" when the week's hours passed the target, else nothing. */
+const overBy = (hours: number | null, target: number | null) =>
+  target && (hours ?? 0) - target >= 0.05 ? ` · ${round1((hours ?? 0) - target)}h over` : "";
+
+/** A goal's hours this week against its target, saying how far over when it is. */
+const weekHours = (hours: number | null, target: number | null): string | undefined =>
+  target ? `${round1(hours ?? 0)} / ${round1(target)}h this week${overBy(hours, target)}` : hours ? `${round1(hours)}h this week` : undefined;
 
 function Goals() {
   const { nodes, entities } = Route.useLoaderData();
@@ -82,14 +91,15 @@ function Goals() {
       {adding ? <NewIntent nodes={live} defaultParent={selected} onDone={() => setAdding(false)} act={act} /> : null}
 
       <div className="grid items-start gap-[22px] xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="grid items-start gap-[22px] lg:grid-cols-2">
+        {/* Cards in a row stretch to the tallest, so every row starts level. */}
+        <div className="grid gap-[22px] lg:grid-cols-2">
           {goals.length === 0 && loose.length === 0 ? (
             <Panel title="No goals yet">
               <Empty>Add a goal, give it hours a week, and put projects and habits under it.</Empty>
             </Panel>
           ) : null}
           {goals.map((g) => (
-            <GoalCard key={g.id} goal={g} kids={shown.filter((k) => k.parents.some((p) => p.id === g.id))} shown={shown} openTasks={openTasks} selected={selected?.id ?? null} onSelect={(id) => set({ id, edit: undefined })} act={act} />
+            <GoalCard key={g.id} goal={g} kids={shown.filter((k) => k.parents.some((p) => p.id === g.id))} shown={shown} openTasks={openTasks} ownTasks={live.filter((t) => t.type === "task" && isOpen(t) && t.parents.some((p) => p.id === g.id)).length} selected={selected?.id ?? null} onSelect={(id) => set({ id, edit: undefined })} act={act} />
           ))}
           {loose.length > 0 ? (
             <Panel title="Not under a goal">
@@ -137,13 +147,17 @@ function useOpenTasks(nodes: GraphNode[]): Map<string, number> {
 function TaskCount({ id, n }: { id: string; n: number }) {
   return (
     <Link to="/tasks" search={{ for: id }} className="shrink-0 text-small text-dim hover:text-or" title="Open these in Tasks">
-      {n === 0 ? "no tasks" : `${n} ${n === 1 ? "task" : "tasks"}`}
+      {n === 0 ? "no tasks" : tasks(n)}
     </Link>
   );
 }
 
-function GoalCard({ goal: g, kids, shown, openTasks, selected, onSelect, act }: {
-  goal: GraphNode; kids: GraphNode[]; shown: GraphNode[]; openTasks: Map<string, number>; selected: string | null; onSelect: (id: string) => void; act: Act;
+/**
+ * One goal: its week's hours, and the projects and habits under it. Each project row carries its
+ * own task count; the foot counts only the tasks filed on the goal itself, so no task is said twice.
+ */
+function GoalCard({ goal: g, kids, shown, openTasks, ownTasks, selected, onSelect, act }: {
+  goal: GraphNode; kids: GraphNode[]; shown: GraphNode[]; openTasks: Map<string, number>; ownTasks: number; selected: string | null; onSelect: (id: string) => void; act: Act;
 }) {
   const order = (n: GraphNode) => (n.type === "goal" ? 0 : n.type === "project" ? 1 : n.type === "habit" ? 2 : 3);
   return (
@@ -154,7 +168,7 @@ function GoalCard({ goal: g, kids, shown, openTasks, selected, onSelect, act }: 
           {g.title}
         </button>
       }
-      aside={g.weekly_hour_target ? `${round1(g.week_hours ?? 0)} / ${round1(g.weekly_hour_target)}h this week` : g.week_hours ? `${round1(g.week_hours)}h this week` : undefined}
+      aside={<span className="whitespace-nowrap">{weekHours(g.week_hours, g.weekly_hour_target)}</span>}
     >
       {g.weekly_hour_target ? (
         <div className="mb-2">
@@ -167,9 +181,13 @@ function GoalCard({ goal: g, kids, shown, openTasks, selected, onSelect, act }: 
           <Row key={k.id} n={k} shown={shown} depth={0} openTasks={openTasks} selected={selected} onSelect={onSelect} act={act} />
         ))}
       </ul>
-      <p className="mt-2 flex justify-end border-t border-line pt-2">
-        <TaskCount id={g.id} n={openTasks.get(g.id) ?? 0} />
-      </p>
+      {ownTasks > 0 ? (
+        <p className="mt-auto flex justify-end pt-2">
+          <Link to="/tasks" search={{ for: g.id, group: "for" }} className="text-small text-dim hover:text-or" title="Open this goal's tasks in Tasks, grouped by what each counts toward">
+            {tasks(ownTasks)} on the goal itself
+          </Link>
+        </p>
+      ) : null}
     </Panel>
   );
 }
@@ -182,13 +200,14 @@ function Row({ n, shown, depth, openTasks, selected, onSelect, act }: {
   return (
     <li>
       <div className={`flex items-center gap-2.5 py-1.5 pr-2 ${selected === n.id ? "row-sel" : "hover:bg-raised"}`} style={{ paddingLeft: 8 + depth * 20 }}>
-        {n.type === "habit" ? <span className="size-2 shrink-0 border border-mute" /> : n.type === "goal" ? <Star size={9} className="text-mute" /> : <span className={`size-1.5 shrink-0 rounded-full ${n.type === "metric" ? "border border-mute" : "bg-mute"}`} />}
+        <span className={`cond w-[54px] shrink-0 text-small tracking-[0.06em] uppercase ${n.type === "habit" ? "text-or-deep" : "text-dim"}`}>{TYPE_NAME[n.type]}</span>
         <button className={`min-w-0 flex-1 truncate text-left ${quiet ? "text-dim" : ""}`} onClick={() => onSelect(n.id)}>
           {n.title}
           {quiet ? <span className="ml-2 text-small">{n.status}</span> : null}
         </button>
         {n.due_local && !quiet ? <span className="shrink-0 text-small text-dim">due {shortDate(n.due_local)}</span> : null}
         {n.weekly_hour_target ? <span className="shrink-0 text-small text-mute">{round1(n.week_hours ?? 0)} / {round1(n.weekly_hour_target)}h</span> : null}
+        {n.type === "habit" && n.frequency ? <span className="shrink-0 text-small text-mute">{n.frequency} per {n.frequency_horizon ?? "day"}</span> : null}
         {n.type === "habit" ? (
           <button className="btn btn-primary btn-sm" onClick={() => act(() => habitFn({ data: { id: n.id } }), `Logged “${n.title}”.`)}>
             Did it
@@ -215,7 +234,7 @@ function Details({ node: n, edit, nodes, entities, openTasks, act, onSelect, onC
   const kids = nodes.filter((k) => k.type !== "task" && k.parents.some((p) => p.id === n.id) && isOpen(k));
   const facts: [string, ReactNode][] = [
     ["Kind", TYPE_NAME[n.type]],
-    ...(n.type === "goal" || n.weekly_hour_target ? [["This week", `${round1(n.week_hours ?? 0)} / ${round1(n.weekly_hour_target ?? 0)}h${n.starving ? " · under target" : ""}`] as [string, string]] : []),
+    ...(n.type === "goal" || n.weekly_hour_target ? [["This week", `${round1(n.week_hours ?? 0)} / ${round1(n.weekly_hour_target ?? 0)}h${n.starving ? " · under target" : overBy(n.week_hours, n.weekly_hour_target)}`] as [string, string]] : []),
     ["Status", n.status],
     ...(n.due_local ? [["Due", shortDate(n.due_local)] as [string, string]] : []),
     ...(n.parents.length
