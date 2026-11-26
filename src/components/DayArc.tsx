@@ -52,7 +52,7 @@ const arcPath = (f0: number, f1: number) => {
   return d;
 };
 
-export function DayArc({ wakeStart, wakeEnd, now, isToday, blocks, events, hm, children }: {
+export function DayArc({ wakeStart, wakeEnd, now, isToday, blocks, events, hm, children, below }: {
   wakeStart: string;
   wakeEnd: string;
   now: number;
@@ -60,7 +60,10 @@ export function DayArc({ wakeStart, wakeEnd, now, isToday, blocks, events, hm, c
   blocks: ArcBlock[];
   events: ArcEvent[];
   hm: (ms: number) => string;
+  /** What sits in the arc's middle. Above the phone width it is laid over the picture, so it must stay short. */
   children: ReactNode;
+  /** What opens from the middle and could outgrow it, like the timer's picker: under the picture, in the page's flow. */
+  below?: ReactNode;
 }) {
   const t0 = new Date(wakeStart).getTime();
   const t1 = new Date(wakeEnd).getTime();
@@ -172,6 +175,7 @@ export function DayArc({ wakeStart, wakeEnd, now, isToday, blocks, events, hm, c
         </text>
       </svg>
       <div className="mx-auto mt-4 flex max-w-[640px] flex-col items-center text-center sm:absolute sm:inset-x-0 sm:top-[34%] sm:mt-0">{children}</div>
+      {below ? <div className="mx-auto mt-3 flex max-w-[640px] justify-center">{below}</div> : null}
     </section>
   );
 }

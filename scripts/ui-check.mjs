@@ -397,6 +397,14 @@ const flows = {
     const actual = (text) => lanes.locator(`button[title*="${text}"]`);
     const stop = page.getByRole("button", { name: "Stop", exact: true });
     const card = page.locator("div", { has: stop }).last();
+    // Whether a click at the element's middle lands on it: nothing else, such as the lanes' hour row, lies over it.
+    const onTop = (loc) =>
+      loc.evaluate((el) => {
+        el.scrollIntoView({ block: "center" });
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return hit && el.contains(hit) ? "on top" : `covered by <${hit?.tagName.toLowerCase()} class="${hit?.getAttribute("class") ?? ""}">`;
+      });
 
     await page.setViewportSize({ width: 1500, height: 950 });
     await page.goto(`${BASE}/?at=${day}T15:30`);
@@ -478,10 +486,16 @@ const flows = {
     await page.fill('input[placeholder="What are you doing? (optional)"]', "Writing the spec");
     const search = page.locator('input[placeholder="Search goals, projects, habits, tasks…"]');
     await search.fill("ship");
-    // Enter picks the first match. A click cannot: the picker spills out of the day arc and the
-    // lanes' hour row covers its buttons (a product bug, reported in lor-w2tw).
-    expect((await page.locator("button", { hasText: "Ship Life on Rails" }).count()) === 1, "the picker to offer Ship Life on Rails for \"ship\"");
-    await search.press("Enter");
+    // A mouse click on the match starts it: the picker opens under the arc, and nothing lies over its buttons.
+    const pickShip = page.locator("#timer-picker button", { hasText: "Ship Life on Rails" });
+    expect((await pickShip.count()) === 1, "the picker to offer Ship Life on Rails for \"ship\"");
+    const shipTop = await onTop(pickShip);
+    expect(shipTop === "on top", "the picker's Ship Life on Rails button not covered by another section at 1500x950", shipTop);
+    const pickerBox = await page.locator("#timer-picker").boundingBox();
+    const lanesBox = await lanes.boundingBox();
+    expect(pickerBox.y + pickerBox.height <= lanesBox.y, "the open picker above the lanes, not over them", { picker: pickerBox, lanes: lanesBox });
+    await shot("today-1d-picker");
+    await pickShip.click();
     await stop.waitFor();
     await settle();
     expect(/Ship Life on Rails.*Writing the spec/s.test(await card.innerText()), "the timer card to show Ship Life on Rails — Writing the spec", await card.innerText());
@@ -583,6 +597,23 @@ const flows = {
     await shot("today-9-brief-one-sentence-412");
     await briefToggle.click();
     expect((await briefToggle.getAttribute("aria-expanded")) === "false", "the one-sentence brief closed again");
+    // At phone width the picker and the lanes both take clicks, and Enter in the search still picks the first match.
+    await page.getByRole("button", { name: "Something else…" }).click();
+    await search.fill("health");
+    const pickHealth = page.locator("#timer-picker button", { hasText: "Health admin" });
+    const healthTop = await onTop(pickHealth);
+    expect(healthTop === "on top", "the picker's Health admin button not covered at 412px", healthTop);
+    const dentistTop = await onTop(actual("Dentist"));
+    expect(dentistTop === "on top", "the Dentist block in the Actual lane not covered at 412px with the picker open", dentistTop);
+    await shot("today-10-picker-412");
+    await search.press("Enter");
+    await stop.waitFor();
+    await settle();
+    expect(/Health admin/.test(await card.innerText()), "Enter in the picker's search to start the timer on the first match, Health admin", await card.innerText());
+    // Started and stopped at the same fixed instant, the timer leaves no block (MIN_BLOCK_MS).
+    await stop.click();
+    await page.getByRole("button", { name: "Something else…" }).waitFor();
+    await settle();
     await page.setViewportSize({ width: 1500, height: 950 });
   },
 
