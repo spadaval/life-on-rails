@@ -5,6 +5,7 @@ import { type GoogleAuthState, authState } from "./google/auth.js";
 import { JOBS, mailConfigured, staleAfterMs } from "./jobs/registry.js";
 import { type MailStatus, mailStatus } from "./mail/check.js";
 import { clockNow } from "./clock.js";
+import { phoneSilentMs } from "../shared/phoneSilence.js";
 
 export interface JobStatus {
   name: string;
@@ -20,6 +21,8 @@ export interface SourceStatus {
   source: string;
   lastArrival: string;
   count: number;
+  /** Past the silence threshold (only the phone has one). */
+  silent: boolean;
 }
 
 export interface Status {
@@ -59,6 +62,13 @@ export async function jobStatuses(now = clockNow()): Promise<JobStatus[]> {
   });
 }
 
+/** When the phone last reported: its newest observation's arrival, the same reading as its row in `sources`. Null when it never has. */
+export async function phoneLastReport(): Promise<string | null> {
+  const [row] = await sql<{ last: Date | null }[]>`
+    SELECT max(ingested_at) AS last FROM observation WHERE source = 'android'`;
+  return row?.last?.toISOString() ?? null;
+}
+
 export async function getStatus(): Promise<Status> {
   const now = clockNow();
   try {
@@ -70,7 +80,12 @@ export async function getStatus(): Promise<Status> {
       db: true,
       now: now.toISOString(),
       jobs,
-      sources: sources.map((s) => ({ source: s.source, lastArrival: s.last.toISOString(), count: s.n })),
+      sources: sources.map((s) => ({
+        source: s.source,
+        lastArrival: s.last.toISOString(),
+        count: s.n,
+        silent: s.source === "android" && phoneSilentMs(s.last.toISOString(), now.getTime()) !== null,
+      })),
       google: authState(),
       mail: await mailStatus(sql, mailConfigured()),
     };

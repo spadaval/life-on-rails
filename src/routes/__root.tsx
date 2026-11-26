@@ -3,6 +3,7 @@ import { Link, Outlet, createRootRoute, HeadContent, Scripts, retainSearchParams
 import { FixedClockProvider, useNow } from "../components/clock.js";
 import { duration } from "../components/format.js";
 import { Key, QuickAddDialog, openQuickAdd } from "../components/QuickAdd.js";
+import { healthLine } from "../shared/phoneSilence.js";
 import { getShellFn } from "../server/functions/shell.js";
 import { timerFn } from "../server/functions/today.js";
 import appCss from "../styles.css?url";
@@ -75,7 +76,7 @@ function RootComponent() {
               </Link>
             ))}
           </nav>
-          <Health unwell={shell.unwell} className="mt-auto border-t border-line px-[22px] pt-3.5" />
+          <Health shell={shell} className="mt-auto border-t border-line px-[22px] pt-3.5" />
         </aside>
 
         <header className="flex items-center gap-1 overflow-x-auto border-b border-frame px-3 md:hidden">
@@ -93,7 +94,7 @@ function RootComponent() {
               {n.label}
             </Link>
           ))}
-          <Health unwell={shell.unwell} className="ml-auto py-3 pl-3 whitespace-nowrap" />
+          <Health shell={shell} className="ml-auto py-3 pl-3 whitespace-nowrap" />
         </header>
 
         <main className="min-w-0 px-4 pb-10 md:px-[30px]">
@@ -110,12 +111,12 @@ function Stamp({ timezone }: { timezone: string }) {
   return new Intl.DateTimeFormat("en-GB", { timeZone: timezone, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(now)).replace(",", " ·");
 }
 
-function Health({ unwell, className }: { unwell: Shell["unwell"]; className: string }) {
-  const ok = unwell !== null && unwell.length === 0;
+function Health({ shell, className }: { shell: Shell; className: string }) {
+  const { ok, text } = healthLine(shell.unwell, shell.phoneSilentMs);
   return (
     <Link to="/status" className={`block text-small text-mute hover:text-txt ${className}`}>
       <span className={`mr-2 inline-block size-1.5 rounded-full align-[2px] ${ok ? "bg-or" : "bg-bad"}`} />
-      {unwell === null ? "Database unreachable" : ok ? "All senses reporting" : `${unwell.length} ${unwell.length === 1 ? "job needs" : "jobs need"} a look`}
+      {text}
     </Link>
   );
 }
