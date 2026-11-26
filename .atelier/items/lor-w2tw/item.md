@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-w2tw
 title: The Today and Goals checks drive the pages as they are on main
-status: changes_requested
+status: in_review
 mission: lor-40i0
 labels: []
 priority: medium
@@ -92,3 +92,7 @@ Notes:
 - The flow leaves phone and place evidence alone. After `pnpm demo:test` the lane also holds place and phone blocks, and the page shows the demo brief. They sit below the calendar in precedence and do not touch the checks.
 - Tooling: `pnpm install` fails in this worktree because corepack's pnpm 12.11.2 cache has no `bin/pnpm.cjs`. I followed `verify.mjs`'s own advice and symlinked the main checkout's `node_modules` (untracked, ignored).
 
+### Responses
+
+1-sb2d.1: fixed in 65053fc3
+1-sb2d.2: fixed in 65053fc3
