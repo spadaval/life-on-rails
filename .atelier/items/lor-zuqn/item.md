@@ -3,14 +3,15 @@ schema: atelier.item
 schema_version: 3
 id: lor-zuqn
 title: 'Today leads with what needs you: lists under the arc, a one-line brief, one timer'
-status: open
+status: building
 mission: lor-40i0
 labels: []
 priority: medium
 blocked_by:
 - lor-mxm9
 - lor-w2tw
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Ae517f1eb-1e70-42c5-ab63-9280bb58c045%3Adelegate-task%3Aa9276fd7-b621-4958-a181-dba39194efba
 ready: null
 trivial: null
 caused_by: null
