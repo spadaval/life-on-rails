@@ -47,7 +47,15 @@ export interface Gap {
   t_start: string;
   t_end: string;
   minutes: number;
+  /** An open task that fits this stretch; no other gap is given the same one. */
   fits: string | null;
+}
+
+/** An open task a free stretch could go to, in the order they are offered (due soonest first). */
+export interface GapTask {
+  title: string;
+  /** Null when the task has no estimate: it is taken to fit any stretch. */
+  estimate_min: number | null;
 }
 
 export interface TodayView {
@@ -240,11 +248,8 @@ export async function getToday(db: Tx, date: Ymd, now = clockNow()): Promise<Tod
   if (isToday && now.getTime() < wake.end.getTime()) {
     const from = Math.max(now.getTime(), wake.start.getTime());
     const busy = events.filter((e) => e.fills).map((e) => ({ t: e.t_start.getTime(), tEnd: e.t_end.getTime() }));
-    const fits = await gapSuggestion(db);
-    for (const g of subtractSpans([{ t: from, tEnd: wake.end.getTime() }], busy)) {
-      const minutes = Math.round((g.tEnd - g.t) / 60_000);
-      if (minutes >= MIN_GAP_MIN) gaps.push({ t_start: new Date(g.t).toISOString(), t_end: new Date(g.tEnd).toISOString(), minutes, fits });
-    }
+    const free = subtractSpans([{ t: from, tEnd: wake.end.getTime() }], busy);
+    gaps.push(...assignGapTasks(free, free.length > 0 ? await gapTasks(db) : []));
   }
 
   const sessions = await db<{ id: string; t_start: Date; t_end: Date; app: string | null; title: string | null; device: string }[]>`
@@ -285,19 +290,29 @@ export async function getToday(db: Tx, date: Ymd, now = clockNow()): Promise<Tod
   };
 }
 
-/** What a free stretch could go to: the hungriest high-weight goal, else the next task due. */
-async function gapSuggestion(db: Tx): Promise<string | null> {
-  const starving = await db<{ title: string }[]>`
-    SELECT i.title FROM intent i
-    JOIN LATERAL (SELECT parts FROM score_snapshot s WHERE s.intent_id = i.id ORDER BY as_of DESC LIMIT 1) s ON true
-    WHERE i.type = 'goal' AND i.status = 'active'
-      AND (s.parts->'terms'->'last_7_days'->>'starving')::boolean IS TRUE
-    ORDER BY i.weight DESC, (s.parts->'terms'->'last_7_days'->>'adequacy')::float8 ASC NULLS FIRST LIMIT 1`;
-  if (starving[0]) return starving[0].title;
-  const due = await db<{ title: string }[]>`
-    SELECT title FROM intent WHERE type = 'task' AND status = 'active' AND assignee = 'owner' AND due_at IS NOT NULL
-    ORDER BY due_at LIMIT 1`;
-  return due[0]?.title ?? null;
+/**
+ * The free stretches long enough to use, in time order, each with the first task (in the order given) whose estimate
+ * fits its length and that no earlier stretch took.
+ */
+export function assignGapTasks(free: Span[], tasks: GapTask[]): Gap[] {
+  const taken = new Set<number>();
+  const gaps: Gap[] = [];
+  for (const g of [...free].sort((a, b) => a.t - b.t)) {
+    const minutes = Math.round((g.tEnd - g.t) / 60_000);
+    if (minutes < MIN_GAP_MIN) continue;
+    const i = tasks.findIndex((task, j) => !taken.has(j) && (task.estimate_min === null || task.estimate_min <= minutes));
+    if (i >= 0) taken.add(i);
+    gaps.push({ t_start: new Date(g.t).toISOString(), t_end: new Date(g.tEnd).toISOString(), minutes, fits: i >= 0 ? tasks[i]!.title : null });
+  }
+  return gaps;
+}
+
+/** Open tasks of the owner's that a free stretch could go to, due soonest first, then those with no due date. */
+async function gapTasks(db: Tx): Promise<GapTask[]> {
+  const rows = await db<{ title: string; estimate_hours: number | null }[]>`
+    SELECT title, estimate_hours FROM intent WHERE type = 'task' AND status = 'active' AND assignee = 'owner' AND NOT system
+    ORDER BY due_at NULLS LAST, created_at LIMIT 50`;
+  return rows.map((r) => ({ title: r.title, estimate_min: r.estimate_hours === null ? null : Math.round(r.estimate_hours * 60) }));
 }
 
 const hm = (iso: string, tz: string) =>

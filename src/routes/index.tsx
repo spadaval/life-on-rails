@@ -278,6 +278,9 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
   for (let h = from; h <= to; h += 4 * 3_600_000) ticks.push(h);
   const timed = t.planned.filter((e) => !e.all_day);
   const allDay = t.planned.filter((e) => e.all_day);
+  // One free slot: the next stretch from now that a task fits. The server gives each stretch its own task.
+  const slot = t.gaps.find((g) => g.fits);
+  const unlabelled = t.actual.some((b) => !b.intent);
   const showNow = t.is_today && now >= from && now <= to;
 
   return (
@@ -349,7 +352,10 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
         </Track>
       </div>
       <div className="flex flex-wrap justify-between gap-x-6 gap-y-1 pl-[66px] text-small text-mute">
-        <span>Solid: counted · dashed: a suggestion · faint: unlabelled phone or place · outlined: running. Click a block to label it.</span>
+        <span className="flex items-center gap-2">
+          <LegendMark />
+          {unlabelled ? <span>Click a block to label it.</span> : null}
+        </span>
         {t.phone ? (
           <span>
             Phone today <b className="font-medium text-txt">{duration(t.phone.screen_s)}</b> on screen · <b className="font-medium text-txt">{t.phone.pickups}</b> pickups ·{" "}
@@ -358,17 +364,45 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
           </span>
         ) : null}
       </div>
-      {t.gaps.length > 0 ? (
-        <p className="flex flex-wrap gap-2 pl-[66px]">
-          {t.gaps.slice(0, 4).map((g) => (
-            <span key={g.t_start} className="chip max-w-full flex-wrap whitespace-normal">
-              {duration(g.minutes * 60)} free at {clock(g.t_start)}
-              {g.fits ? <span className="text-dim">· fits {g.fits}</span> : null}
-            </span>
-          ))}
+      {slot ? (
+        <p className="pl-[66px]">
+          <span className="chip max-w-full flex-wrap whitespace-normal" data-free-slot>
+            {duration(slot.minutes * 60)} free at {clock(slot.t_start)}
+            <span className="text-dim">· fits {slot.fits}</span>
+          </span>
         </p>
       ) : null}
     </section>
+  );
+}
+
+/** What the lanes' looks mean, behind a help mark: shown on hover, on focus, and held open by a click. */
+function LegendMark() {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="group relative inline-flex">
+      <button
+        type="button"
+        className="inline-grid size-5 place-content-center rounded-full border border-edge text-small leading-none text-mute hover:border-or/70 hover:text-txt"
+        aria-label="What the lanes mean"
+        aria-expanded={open}
+        aria-controls="lanes-legend"
+        onClick={() => setOpen((v) => !v)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setOpen(false);
+        }}
+      >
+        ?
+      </button>
+      <span
+        id="lanes-legend"
+        role="note"
+        className={`absolute bottom-full left-0 z-20 mb-1.5 w-max max-w-[min(520px,80vw)] rounded-sm border border-edge bg-raised px-2.5 py-1.5 text-small text-mute shadow-lg ${open ? "block" : "hidden group-hover:block group-has-[:focus-visible]:block"}`}
+      >
+        Solid: counted · dashed: a suggestion · faint: unlabelled phone or place · outlined: running.
+      </span>
+    </span>
   );
 }
 

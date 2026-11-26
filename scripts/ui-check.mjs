@@ -364,6 +364,12 @@ const flows = {
       INSERT INTO google_event (calendar_id, event_id, title, t_start, t_end, event_type) VALUES ('cal', 'focus', 'Focus time', ${at(day, 10)}, ${at(day, 12)}, 'focusTime');
       INSERT INTO intent (id, type, title, weight, weekly_hour_target) VALUES (gen_random_uuid(), 'goal', 'Ship Life on Rails', 3, 10);
       INSERT INTO intent (id, type, title) VALUES (gen_random_uuid(), 'project', 'Health admin');
+      -- Two tasks due tomorrow: the sooner one needs longer than any free stretch, so the slot offers the other.
+      INSERT INTO intent (id, type, title, due_at, estimate_hours) VALUES
+        (gen_random_uuid(), 'task', 'Rewrite the whole spec', ${at(day, 30)}, 20),
+        (gen_random_uuid(), 'task', 'Renew the passport', ${at(day, 33)}, 1);
+      -- A timer block nobody labelled, so the strip asks for a label.
+      INSERT INTO time_block (id, t_start, t_end, origin) VALUES (gen_random_uuid(), ${at(day, 12)}, ${at(day, 12.5)}, 'manual');
       DELETE FROM page WHERE slug = 'briefs/${day}';
     `);
     lor(["intent", "create", "--type", "task", "--title", "Call the dentist back", "--flag", "They need an answer about Thursday."]);
@@ -406,6 +412,35 @@ const flows = {
     const firstNeed = page.locator("section", { has: needs }).locator("li").first();
     const bottom = await firstNeed.evaluate((el) => (window.scrollY === 0 ? el.getBoundingClientRect().bottom : Infinity));
     expect(bottom <= 950, "the first Needs you item inside the 950px window without scrolling", `bottom at ${Math.round(bottom)}px`);
+    // The strip under the lanes: the legend behind its help mark, the label hint while a block has no label, one free slot.
+    const legendMark = page.getByRole("button", { name: "What the lanes mean" });
+    const legend = page.locator("#lanes-legend");
+    const legendText = "Solid: counted · dashed: a suggestion";
+    expect(!(await legend.isVisible()), "the legend not printed on the page until asked for");
+    await legendMark.hover();
+    expect((await legend.isVisible()) && (await legend.innerText()).startsWith(legendText), "the legend shown on hovering its help mark", await legend.innerText());
+    await shot("today-1c-legend");
+    await page.mouse.move(5, 5);
+    expect(!(await legend.isVisible()), "the legend gone when the pointer leaves");
+    await legendMark.click();
+    await page.mouse.move(5, 5);
+    expect((await legend.isVisible()) && (await legendMark.getAttribute("aria-expanded")) === "true", "the legend held open by a click");
+    await legendMark.click();
+    await page.mouse.move(5, 5);
+    expect(!(await legend.isVisible()), "the legend closed by a second click");
+    await page.keyboard.press("Shift");
+    await legendMark.focus();
+    expect(await legend.isVisible(), "the legend shown while its help mark has keyboard focus");
+    await legendMark.blur();
+    const hint = lanes.getByText("Click a block to label it.");
+    expect(await hint.isVisible(), "the label hint while the 12:00 timer block has no label");
+    const slots = lanes.locator("[data-free-slot]");
+    const slotText = (await slots.allInnerTexts()).join(" | ");
+    expect(
+      (await slots.count()) === 1 && /free at 17:00/.test(slotText) && /fits Renew the passport/.test(slotText),
+      "one free slot, at 17:00 after the afternoon hold, offering the task due soonest that fits it",
+      slotText,
+    );
     const main = await page.locator("main").textContent();
     expect(!/Calendar confirmed|time accounted for/i.test(main) && /Too much\? Reset visibility/.test(main), "the footer without the two percentages, with Reset visibility", main.slice(-200));
     // With the agent: one task a line, each a link to it in Tasks.
@@ -504,6 +539,12 @@ const flows = {
     expect(/Health admin/.test(await actual("Dentist").getAttribute("title")), "the lane's Dentist block to read Health admin", await actual("Dentist").getAttribute("title"));
     await shot("today-6-relabelled");
     console.log("blocks:\n" + after);
+    // Every block today labelled: the hint goes.
+    psql(`UPDATE time_block SET intent_id = (SELECT id FROM intent WHERE title = 'Health admin')
+          WHERE intent_id IS NULL AND t_start < ${at(day, 24)} AND coalesce(t_end, 'infinity') > ${at(day, 0)}`);
+    await page.goto(`${BASE}/?at=${day}T16:10`);
+    await settle();
+    expect((await lanes.getByText("Click a block to label it.").count()) === 0, "no label hint once every block today has a label");
 
     await page.getByRole("link", { name: "Previous day" }).click();
     await page.waitForURL(/date=/);
