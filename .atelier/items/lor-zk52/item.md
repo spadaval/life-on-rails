@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-zk52
 title: 'Tasks reads as a list: plain goal names, hints on focus, filters on one line'
-status: in_review
+status: approved
 mission: lor-40i0
 labels: []
 priority: medium
