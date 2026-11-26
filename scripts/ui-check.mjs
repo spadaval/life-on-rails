@@ -455,6 +455,22 @@ const flows = {
       "one free slot, at 17:00 after the afternoon hold, offering the task due soonest that fits it",
       slotText,
     );
+    // A goal behind on its hours takes the slot ahead of any task. The goal already has today's snapshot from the
+    // server's scorer; a starving one dated tomorrow becomes its latest, and deleting it puts the day back.
+    psql(`INSERT INTO score_snapshot (intent_id, as_of, score, parts)
+      SELECT id, '${day}'::date + 1, 0.2, '{"terms":{"last_7_days":{"starving":true,"adequacy":0.2}}}' FROM intent WHERE title = 'Ship Life on Rails'`);
+    await page.reload();
+    await settle();
+    const goalSlot = (await slots.allInnerTexts()).join(" | ");
+    expect(
+      (await slots.count()) === 1 && /free at 17:00/.test(goalSlot) && /for Ship Life on Rails, behind on its hours/.test(goalSlot),
+      "the free slot offered to the goal behind on its hours, before the task",
+      goalSlot,
+    );
+    await shot("today-1d-slot-goal");
+    psql(`DELETE FROM score_snapshot WHERE as_of > '${day}'`);
+    await page.reload();
+    await settle();
     const main = await page.locator("main").textContent();
     expect(!/Calendar confirmed|time accounted for/i.test(main) && /Too much\? Reset visibility/.test(main), "the footer without the two percentages, with Reset visibility", main.slice(-200));
     // With the agent: one task a line, each a link to it in Tasks.
