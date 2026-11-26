@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-yijs
 title: A free slot suggests the goal most behind on its hours again, before a task
-status: changes_requested
+status: in_review
 mission: null
 labels: []
 priority: medium
@@ -37,7 +37,7 @@ The gap code in `src/server/today.ts`, its tests, the chip's wording in `src/rou
 
 The first free stretch of the day goes to a goal behind on its hours again; later stretches still get their own tasks.
 
-- `src/server/today.ts`: `starvingGoal` is the old `gapSuggestion` query (heaviest active goal whose latest `score_snapshot` marks `last_7_days.starving`, weight descending then adequacy ascending), now also excluding system intents. `assignGapTasks(free, tasks, goal)` gives that goal to the first stretch of at least `MIN_GAP_MIN` and runs lor-auhc's task matching on the rest, so the goal does not use up a task and appears at most once a day. `Gap` gained `behind: boolean`.
+- `src/server/today.ts`: `starvingGoal` is the old `gapSuggestion` query (heaviest active goal whose latest `score_snapshot` marks `last_7_days.starving`, weight descending then adequacy ascending), now also excluding system intents. `assignGapTasks(free, tasks, goal)` gives that goal to the first stretch of at least `MIN_GAP_MIN` and runs lor-auhc's task matching on the rest, so the goal does not use up a task and takes one stretch per read of Today. It is held to the first stretch that is still to come, not the day's first: read again at 15:00, after a 12:00–14:00 stretch, and a goal still starving takes 15:00–22:00. See response 2-eiy9.1. `Gap` gained `behind: boolean`.
 - Wording: Today's chip reads "5h free at 17:00 · for Ship Life on Rails, behind on its hours" for a goal and "· fits <task>" for a task. The brief's line adds "(goal behind on its hours)" after a goal.
 - The Weight help in `IntentEditor.tsx` now says the heaviest such goal "is offered Today's next free stretch, before any task", which matches the code: the threshold (`weight >= 2`, adequacy under 0.5) is in `scoring/recompute.ts`.
 - Tests: `tests/today/gaps.test.ts` covers a goal taking the first stretch with tasks still on the later ones, no goal, and the brief's line; `tests/db/today.test.ts` covers the ordering (weight, then adequacy, from the latest snapshot only, paused goals left out) and a day with no starving goal.
@@ -50,4 +50,5 @@ Separate commit eb66c6df: `tests/db/device.test.ts` failed today with no leak. I
 ### Responses
 
 1-gbhc.1: rebutted: the repro is accurate, but holding the goal to the day's first stretch across calls contradicts Done when 1 and the Goal. Today keeps no record of past suggestions, so the only stable anchor is the first stretch from wake start. Then opening Today at noon, after the 08:00 stretch has passed, would never show the starving goal, though Done when 1 says the one slot Today shows suggests it "when there is one". Keeping the goal on one stretch would need new stored state for a suggestion. Done when 3's own reason ("so later stretches still get tasks") is about the stretches listed together, and every response gives the goal one stretch and the rest tasks (tests/today/gaps.test.ts). At 15:00 a goal still starving is still the one that most needs free time, which is what this item restores.
+2-eiy9.1: not built: holding the goal to one stretch for the whole day needs a stored record of which stretch it was offered, a new table or column for a suggestion. Without one, the goal is anchored to the day's first stretch from wake, and Today opened after that stretch would never show it, against Done when 1. The lead picks one: per read (built, the goal stays on the next free stretch while it starves) or per day (stored state, with the two-call regression).
 
