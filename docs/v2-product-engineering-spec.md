@@ -323,7 +323,7 @@ The agent searches for an existing page before creating one and prefers updating
 
 ### `lor` CLI
 
-`cli/lor.mjs`, plain JavaScript with no build step, symlinked as `~/.local/bin/lor`. It reads `LOR_AGENT_TOKEN` and `LOR_PORT` from the env file, calls `http://127.0.0.1:$LOR_PORT/api/v1/…`, and prints JSON, or markdown with `--md`. Exit codes: `0` ok, `2` usage, `3` empty, `4` auth, `5` not found, `6` refused by a write rule, `8` server unavailable.
+`cli/lor.mjs`, plain JavaScript with no build step, symlinked as `~/.local/bin/lor`. It reads `LOR_AGENT_TOKEN` and `LOR_PORT` from the env file, calls `http://127.0.0.1:$LOR_PORT/api/v1/…`, and prints JSON, or markdown with `--md`. Exit codes: `0` ok, `2` usage, `3` empty, `4` auth, `5` not found, `6` refused by a write rule, `8` server unavailable. Only the installed symlink reaches the real LoR: run by its own path (`node cli/lor.mjs`), the file wants `LOR_PORT` or `LOR_URL` in the environment and refuses lor-web's ports with `6`, so trying out a checkout's copy cannot write to the owner's data.
 
 ```
 # orientation

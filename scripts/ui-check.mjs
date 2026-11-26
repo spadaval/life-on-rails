@@ -11,6 +11,11 @@ import path from "node:path";
 import { chromium } from "playwright-core";
 
 const BASE = process.env.LOR_UI_BASE ?? "http://127.0.0.1:3857";
+// Flows empty tables and write as the agent: never against lor-web, which holds the owner's real data.
+if (["3847", "3848", "3849"].includes(new URL(BASE).port)) {
+  console.error(`ui-check: refused: ${BASE} is lor-web, with the owner's real data. Use the test server on :3857 (the verify skill's \`up\`).`);
+  process.exit(3);
+}
 const flow = process.argv[2] ?? "graph";
 const out = process.argv[3] ?? "/tmp/lor-ui";
 mkdirSync(out, { recursive: true });

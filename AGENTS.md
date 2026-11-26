@@ -71,7 +71,7 @@ Use the verify skill, `.claude/skills/verify-lor/SKILL.md`. Its CLI (`node .clau
 
 ## Talking to the running service
 
-`lor` (symlinked from `cli/lor.mjs`) is the agent's CLI; `skill/SKILL.md` teaches it. `lor status` shows every job. Logs: `journalctl --user -u lor-web -f`; the unattended runs: `journalctl --user -u assistant-mail -u assistant-nightly -u assistant-brief`. A run reaches the owner with `lor message` (WhatsApp), or by flagging a task (`lor task flag`, or `--flag` on create), which the channel sends. The channel's code is `src/server/channel/`.
+`lor` (symlinked from `cli/lor.mjs`) is the agent's CLI; `skill/SKILL.md` teaches it. Only that symlink reaches the real LoR: `node cli/lor.mjs` needs `LOR_PORT=3857` (the test server) and refuses lor-web. `lor status` shows every job. Logs: `journalctl --user -u lor-web -f`; the unattended runs: `journalctl --user -u assistant-mail -u assistant-nightly -u assistant-brief`. A run reaches the owner with `lor message` (WhatsApp), or by flagging a task (`lor task flag`, or `--flag` on create), which the channel sends. The channel's code is `src/server/channel/`.
 
 ## The wall display
 
