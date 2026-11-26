@@ -3,7 +3,7 @@ import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import { DayArc } from "../components/DayArc.js";
 import { useNow } from "../components/clock.js";
-import { duration, pct, shortDate } from "../components/format.js";
+import { duration, shortDate, splitBrief } from "../components/format.js";
 import { localTimeOnDay } from "../shared/localTime.js";
 import { TaskCheck } from "../components/IntentEditor.js";
 import { IntentPicker, type PickIntent } from "../components/IntentPicker.js";
@@ -16,9 +16,11 @@ import {
 import { GlobalActions } from "./__root.js";
 
 export const Route = createFileRoute("/")({
-  // `block=` selects a block by link: its id, or a local time like 14:30 that it covers.
+  // `block=` selects a block by link: its id, or a local time like 14:30 that it covers. `brief=1` opens the brief.
   validateSearch: (search) =>
-    z.object({ date: z.string().optional(), obs: z.string().uuid().optional(), block: z.coerce.string().optional() }).parse(search),
+    z
+      .object({ date: z.string().optional(), obs: z.string().uuid().optional(), block: z.coerce.string().optional(), brief: z.coerce.boolean().optional() })
+      .parse(search),
   loaderDeps: ({ search }) => ({ date: search.date, obs: search.obs }),
   loader: ({ deps }) => getTodayFn({ data: { date: deps.date, obs: deps.obs } }),
   component: Today,
@@ -114,7 +116,7 @@ function Today() {
         <Link to="/" search={{ date: t.next }} className="btn btn-secondary btn-sm" aria-label="Next day">
           Later
         </Link>
-        <GlobalActions />
+        <GlobalActions timerChip={!t.is_today} />
       </PageHead>
 
       <Notice text={notice} onClose={() => setNotice(null)} />
@@ -156,17 +158,17 @@ function Today() {
         <BlockPanel key={selectedBlock.id} block={selectedBlock} data={data} busy={busy} act={act} clock={clock} onClose={() => setSelected(null)} />
       ) : null}
 
-      {data.brief ? <Brief body={data.brief} /> : null}
-
-      {data.record && t.date <= data.yesterday ? <DayRecord record={data.record} timezone={t.timezone} highlight={search.obs} /> : null}
-
-      <AskAgent about={`Today, ${t.date}`} busy={busy} act={act} setNotice={setNotice} />
-
       <div className="grid gap-[22px] lg:grid-cols-[1.22fr_1fr_1.08fr]">
         <NeedsYou data={data} busy={busy} act={act} />
         <DueSoon data={data} busy={busy} act={act} />
         <Goals goals={data.goals} />
       </div>
+
+      {data.brief ? <Brief body={data.brief} opened={!!search.brief} /> : null}
+
+      {data.record && t.date <= data.yesterday ? <DayRecord record={data.record} timezone={t.timezone} highlight={search.obs} /> : null}
+
+      <AskAgent about={`Today, ${t.date}`} busy={busy} act={act} setNotice={setNotice} />
 
       {data.metricPrompt && (!t.is_today || data.localHour >= 17) ? (
         <Panel title={`${data.metricPrompt.title}?`}>
@@ -180,12 +182,8 @@ function Today() {
         </Panel>
       ) : null}
 
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-small text-mute">
-        <span>
-          {[t.confirm_rate !== null ? `Calendar confirmed ${pct(t.confirm_rate)}` : null, t.coverage !== null ? `time accounted for ${pct(t.coverage)}` : null]
-            .filter(Boolean)
-            .join(" · ")}
-        </span>
+      {/* The day's two measures, calendar confirmed and time accounted for, are on /status. */}
+      <footer className="flex justify-end border-t border-line pt-3">
         <button
           className="btn btn-quiet btn-sm"
           onClick={() =>
@@ -386,10 +384,29 @@ function Track({ children, showNow, nowX }: { children: React.ReactNode; showNow
   );
 }
 
-function Brief({ body }: { body: string }) {
+/** The brief's first sentence on one line; the rest opens below it. */
+function Brief({ body, opened }: { body: string; opened: boolean }) {
+  const [open, setOpen] = useState(opened);
+  const { lead, rest } = splitBrief(body);
   return (
-    <Panel title="This morning" aside="from the agent">
-      <div className="whitespace-pre-wrap text-body leading-relaxed">{body.trim()}</div>
+    <Panel bodyClass="py-3">
+      <div className="flex items-baseline gap-3">
+        <h2 className="h-sec shrink-0">This morning</h2>
+        <p className={`min-w-0 flex-1 text-body ${open ? "" : "truncate"}`} title={open ? undefined : lead}>
+          {lead}
+        </p>
+        {rest ? (
+          <button className="btn btn-quiet btn-sm shrink-0" aria-expanded={open} aria-controls="brief-rest" onClick={() => setOpen((v) => !v)}>
+            {open ? "Less" : "The rest"}
+          </button>
+        ) : null}
+      </div>
+      {rest ? (
+        <div id="brief-rest" hidden={!open} className="mt-2 whitespace-pre-wrap text-body leading-relaxed">
+          {rest}
+          <p className="mt-2 text-small text-mute">From the agent's morning run.</p>
+        </div>
+      ) : null}
     </Panel>
   );
 }
@@ -448,10 +465,18 @@ function NeedsYou({ data, busy, act }: { data: Data; busy: boolean; act: Act }) 
         ))}
       </ul>
       {data.agentTasks.length > 0 ? (
-        <p className="mt-auto border-t border-line pt-2 text-small text-mute">
-          <span className="tag-agent mr-2">with the agent</span>
-          {data.agentTasks.map((a) => a.title).join(" · ")}
-        </p>
+        <div className="mt-auto border-t border-line pt-2">
+          <span className="tag-agent">with the agent</span>
+          <ul className="mt-1 text-small">
+            {data.agentTasks.map((a) => (
+              <li key={a.id} className="py-0.5">
+                <Link to="/tasks" search={{ view: "agent", id: a.id }} className="text-mute hover:text-or">
+                  {a.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </Panel>
   );

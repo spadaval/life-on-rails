@@ -346,8 +346,10 @@ const flows = {
   },
 
   // Today as src/routes/index.tsx draws it, on the test server's fixed clock (`?at=`, src/server/clock.ts)
-  // so the timer has real minutes in it: start at 15:30 from the timer card, pause at 16:00, stop at 16:10,
-  // then select the Dentist block in the Planned and actual lanes and relabel it, remembering the title.
+  // so the timer has real minutes in it: the lists come right after the arc and lanes, the brief opens and closes
+  // by mouse and keyboard and stays open across a data refresh, the running timer shows once; start at 15:30 from
+  // the timer card, pause at 16:00, stop at 16:10, then select the Dentist block in the Planned and actual lanes
+  // and relabel it, remembering the title.
   async today() {
     const day = DAY();
     psql(`
@@ -362,7 +364,12 @@ const flows = {
       INSERT INTO google_event (calendar_id, event_id, title, t_start, t_end, event_type) VALUES ('cal', 'focus', 'Focus time', ${at(day, 10)}, ${at(day, 12)}, 'focusTime');
       INSERT INTO intent (id, type, title, weight, weekly_hour_target) VALUES (gen_random_uuid(), 'goal', 'Ship Life on Rails', 3, 10);
       INSERT INTO intent (id, type, title) VALUES (gen_random_uuid(), 'project', 'Health admin');
+      DELETE FROM page WHERE slug = 'briefs/${day}';
     `);
+    lor(["intent", "create", "--type", "task", "--title", "Call the dentist back", "--flag", "They need an answer about Thursday."]);
+    const agentTask = JSON.parse(lor(["intent", "create", "--type", "task", "--title", "Find a physio near work", "--assign", "agent"])).id;
+    lor(["intent", "create", "--type", "task", "--title", "Compare the two quotes", "--assign", "agent"]);
+    lor(["page", "create", `briefs/${day}`, "--title", `Brief ${day}`], "Finish the spec before the design review at 14:00. Lena is waiting on the icon sizes.\n\n- 09:30 standup, 14:00 dentist.\n- One flag: the dentist.\n");
     const local = (col) => `to_char(${col} AT TIME ZONE '${SERVER_TZ}', 'HH24:MI')`;
     // Today's blocks, one a line. Phone and place blocks from earlier data (the demo set) stay; they are fill below the calendar.
     const blocks = () =>
@@ -370,6 +377,17 @@ const flows = {
               || CASE WHEN b.paused_at IS NOT NULL THEN ' [paused ' || ${local("b.paused_at")} || ']' ELSE '' END || CASE WHEN b.committed THEN ' [committed]' ELSE '' END
             FROM time_block b LEFT JOIN intent i ON i.id = b.intent_id WHERE b.t_start >= ${at(day, 0)} AND b.t_start < ${at(day, 24)} ORDER BY b.t_start`).trim();
     const lanes = page.locator('section[aria-label="Planned and actual"]');
+    // The page's sections in order after the lanes: each panel's heading, and the Ask box.
+    const order = () =>
+      page.evaluate(() => {
+        const lanes = document.querySelector('section[aria-label="Planned and actual"]');
+        const after = (el) => lanes && lanes.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING;
+        return [...document.querySelectorAll("main h2, main input[aria-label='Ask the agent']")]
+          .filter(after)
+          .map((el) => (el.tagName === "INPUT" ? "Ask" : el.textContent.trim()));
+      });
+    const briefToggle = page.locator('button[aria-controls="brief-rest"]');
+    const briefOpen = async () => (await briefToggle.getAttribute("aria-expanded")) === "true" && (await page.locator("#brief-rest").isVisible());
     const actual = (text) => lanes.locator(`button[title*="${text}"]`);
     const stop = page.getByRole("button", { name: "Stop", exact: true });
     const card = page.locator("div", { has: stop }).last();
@@ -378,6 +396,42 @@ const flows = {
     await page.goto(`${BASE}/?at=${day}T15:30`);
     await settle();
     await shot("today-1-open");
+    const first = await order();
+    expect(
+      ["Needs you", "Due soon", "Goals this week", "This morning", "Ask"].every((h, i) => first[i] === h),
+      "Needs you, Due soon and Goals this week right after the lanes, then the brief, then the Ask box",
+      first,
+    );
+    const needs = page.locator("h2", { hasText: "Needs you" });
+    const firstNeed = page.locator("section", { has: needs }).locator("li").first();
+    const bottom = await firstNeed.evaluate((el) => (window.scrollY === 0 ? el.getBoundingClientRect().bottom : Infinity));
+    expect(bottom <= 950, "the first Needs you item inside the 950px window without scrolling", `bottom at ${Math.round(bottom)}px`);
+    const main = await page.locator("main").textContent();
+    expect(!/Calendar confirmed|time accounted for/i.test(main) && /Too much\? Reset visibility/.test(main), "the footer without the two percentages, with Reset visibility", main.slice(-200));
+    // With the agent: one task a line, each a link to it in Tasks.
+    const withAgent = page.locator("div", { has: page.locator(".tag-agent") }).last().locator("li a");
+    const agentLinks = await withAgent.evaluateAll((as) => as.map((a) => `${a.textContent} ${a.getAttribute("href")}`));
+    expect(
+      agentLinks.length === 2 && agentLinks.some((l) => l.startsWith("Find a physio near work ") && l.includes(`id=${agentTask}`) && l.includes("view=agent")),
+      "\"with the agent\" as a list of two task links, each opening its task",
+      agentLinks,
+    );
+    // The brief: one line, closed, until opened.
+    expect(!(await briefOpen()), "the brief closed on load", await briefToggle.getAttribute("aria-expanded"));
+    const lead = page.locator("section", { has: briefToggle }).locator("p").first();
+    const leadBox = await lead.evaluate((el) => ({ text: el.textContent, h: el.getBoundingClientRect().height, line: parseFloat(getComputedStyle(el).lineHeight) }));
+    expect(leadBox.text === "Finish the spec before the design review at 14:00." && leadBox.h <= leadBox.line * 1.5, "the brief's first sentence on one line", leadBox);
+    await briefToggle.click();
+    expect(await briefOpen(), "the brief open by mouse");
+    expect(/Lena is waiting on the icon sizes/.test(await page.locator("#brief-rest").innerText()), "the rest of the brief shown when open");
+    await shot("today-1b-brief-open");
+    await briefToggle.click();
+    expect(!(await briefOpen()), "the brief closed by mouse");
+    await briefToggle.focus();
+    await page.keyboard.press("Enter");
+    expect(await briefOpen(), "the brief open by keyboard (Enter)");
+    await page.keyboard.press("Space");
+    expect(!(await briefOpen()), "the brief closed by keyboard (Space)");
     // Start: "Something else…", a title, and the goal picked by search.
     await page.getByRole("button", { name: "Something else…" }).click();
     await page.fill('input[placeholder="What are you doing? (optional)"]', "Writing the spec");
@@ -391,14 +445,24 @@ const flows = {
     await settle();
     expect(/Ship Life on Rails.*Writing the spec/s.test(await card.innerText()), "the timer card to show Ship Life on Rails — Writing the spec", await card.innerText());
     await shot("today-2-running");
+    // The running timer once on Today: the card, and no chip in the page head. Other pages keep the chip, a link to Today.
+    const chip = page.locator("main header a", { hasText: "Ship Life on Rails" });
+    expect((await chip.count()) === 0, "no timer chip in Today's page head while the card shows the timer", await page.locator("main header").first().innerText());
+    await page.goto(`${BASE}/tasks?at=${day}T15:45`);
+    await settle();
+    expect((await chip.count()) === 1 && new URL(await chip.getAttribute("href"), BASE).pathname === "/", "the timer chip in the Tasks page head, linking to Today", await page.locator("main header").first().innerText());
 
     // Pause half an hour later.
     await page.goto(`${BASE}/?at=${day}T16:00`);
     await settle();
     expect(/\b30m\b/i.test(await card.innerText()), "the running card to read 30m at 16:00", await card.innerText());
+    // Open the brief first: Pause refreshes the page's data, and the brief stays open across it.
+    await briefToggle.click();
     await page.getByRole("button", { name: "Pause", exact: true }).click();
     await page.getByRole("button", { name: "Resume", exact: true }).waitFor();
     await settle();
+    expect(await briefOpen(), "the brief still open after Pause refreshed the page's data");
+    await briefToggle.click();
     const paused = blocks();
     expect(/15:30-open manual .* -> Ship Life on Rails \[paused 16:00\]/.test(paused), "an open timer block from 15:30 for Ship Life on Rails, paused at 16:00", paused);
     await shot("today-3-paused");
@@ -423,6 +487,9 @@ const flows = {
     expect((await actual("Dentist").getAttribute("class")).includes("outline-txt"), "the Dentist block drawn as selected", await actual("Dentist").getAttribute("class"));
     const panel = page.locator("section", { has: page.locator("#relabel-search") }).last();
     expect(/from the calendar/.test(await panel.innerText()), "the block panel to say it came from the calendar", await panel.innerText());
+    const withPanel = await order();
+    const needsAt = withPanel.indexOf("Needs you");
+    expect(needsAt >= 1 && withPanel.slice(needsAt, needsAt + 3).join() === "Needs you,Due soon,Goals this week", "the open block panel between the lanes and Needs you", withPanel);
     await shot("today-5-panel");
     // Relabel it to Health admin and remember the title.
     await page.getByLabel("Label every “Dentist” this way from now on").check();
@@ -444,6 +511,13 @@ const flows = {
     await settle();
     expect((await page.locator("h1").first().textContent()).trim() === "Day", "the previous day headed Day", await page.locator("h1").first().textContent());
     await shot("today-7-yesterday");
+
+    // The day's two measures moved to /status, each with what it measures.
+    await page.goto(`${BASE}/status?at=${day}T16:10`);
+    await settle();
+    const status = await page.locator("main").textContent();
+    expect(/Calendar confirmed/.test(status) && /Time accounted for/.test(status) && /calendar time is counted/.test(status), "Calendar confirmed and Time accounted for on /status, each with a sentence", status.slice(0, 600));
+    await shot("today-8-status");
   },
 
   async goals() {
