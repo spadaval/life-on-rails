@@ -3,12 +3,13 @@ schema: atelier.item
 schema_version: 3
 id: lor-ug9r
 title: Today’s timer picker must accept mouse clicks at 1500×950
-status: open
+status: approved
 mission: null
 labels: []
 priority: medium
 blocked_by: []
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A4a2870e7-da4e-4b83-912b-01cba07c6a79%3Adelegate-task%3A0ee8586c-5f33-4ecb-8ca3-b634c56f2eba
 ready: null
 trivial: null
 caused_by: null
@@ -23,10 +24,31 @@ Reproduced during lor-w2tw review against 5be6dafd: open `/?at=15:30`, press "So
 
 ## Done when
 
-- [ ] At 1500×950, opening Today's timer picker and searching for an intent lets a mouse click start the timer with that intent; no other section covers the result buttons.
-- [ ] The layout also keeps the picker and the Planned and actual lanes usable at 412 px wide.
-- [ ] `screen today` exercises the mouse selection and the feature map removes the Enter workaround once the fix is verified.
+- [x] At 1500×950, opening Today's timer picker and searching for an intent lets a mouse click start the timer with that intent; no other section covers the result buttons.
+- [x] The layout also keeps the picker and the Planned and actual lanes usable at 412 px wide.
+- [x] `screen today` exercises the mouse selection and the feature map removes the Enter workaround once the fix is verified.
 
 ## Scope
 
 Today's timer picker and day arc layout in `src/routes/index.tsx`, plus the `today` flow in `scripts/ui-check.mjs` and its verify-lor feature map. Preserve keyboard selection.
+
+## Report
+
+A mouse click on a search result in Today's timer picker now starts the timer at 1500×950. The cause: above phone width, `DayArc` lays its middle (`children`) over the picture with `sm:absolute`. The open picker made that middle taller than the arc, and the Planned and actual section, which comes later in the page, painted its hour row over the picker's buttons.
+
+The fix moves the picker out of the overlaid middle. `DayArc` takes a new `below` slot, rendered under the picture in the page's flow (`src/components/DayArc.tsx`). The picker (`TimerPicker` with `id="timer-picker"` in `src/routes/index.tsx`) goes there, so opening it pushes the lanes down instead of sliding under them. The "Something else…" toggle stays in the arc's middle, with `aria-expanded` and `aria-controls="timer-picker"`. The open/closed state moved from `TimerCard` up to `Today` so both places can see it. The picker comes after the toggle in the DOM, so Tab goes from the toggle into the picker. Keyboard Enter in `IntentPicker` is unchanged.
+
+`screen today` (`scripts/ui-check.mjs`):
+- At 1500×950 it searches "ship", checks with `elementFromPoint` that nothing covers the Ship Life on Rails button and that the picker ends above the lanes, then clicks the button.
+- At 412×915 it opens the picker, searches "health", and checks that neither the Health admin button nor the Dentist block in the Actual lane is covered. It then starts the timer with Enter, to prove the keyboard path, and stops it. A start and stop at the same fixed instant leaves no block.
+
+The feature map (`references/features/today.md`) drops the Enter workaround gotcha and describes the new steps and screenshots.
+
+Checked: `node .claude/skills/verify-lor/verify.mjs screen today /tmp/lor-verify/lor-ug9r` returned `ok: true` with no browser errors. See `today-1d-picker.png` (1500×950, picker under the arc and above the lanes) and `today-10-picker-412.png`. `pnpm test` passes (220), and so does `pnpm typecheck`. This worktree had no generated `src/routeTree.gen.ts`, so I copied the main checkout's (it is gitignored, lor-iurl).
+
+Round 2: the middle of the arc (`children`) and the picture now share one grid cell, and the middle's offset is `pt-[8.5%]` (34% of a 1200×300 picture, as a padding percentage counts from the width). The cell grows to whichever is taller, so at narrow desktop widths the middle pushes the picker and the lanes down instead of lying over them. At 1500 px the middle is back where it was before this item. Both ways to start the timer, the card's recent chips and the picker, go through `startTimer` in `Today`, which sends the picker's title and closes the picker. `screen today` now also checks the picker's inputs and result at 1100 and 800 px, and starts from a recent chip with a typed title. Run: `/tmp/lor-verify/lor-ug9r-r2`, `ok: true`, no browser errors. `pnpm typecheck` passes.
+
+### Responses
+
+1-0hda.1: fixed in 0d78336b
+1-0hda.2: fixed in 0d78336b
