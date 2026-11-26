@@ -614,6 +614,30 @@ const flows = {
     await stop.click();
     await page.getByRole("button", { name: "Something else…" }).waitFor();
     await settle();
+    // Between desktop and phone the arc's middle is taller than the picture: it must push the picker down, not lie over it.
+    const titleBox = page.locator('#timer-picker input[placeholder="What are you doing? (optional)"]');
+    for (const width of [1100, 800]) {
+      await page.setViewportSize({ width, height: 950 });
+      await page.getByRole("button", { name: "Something else…" }).click();
+      await search.fill("ship");
+      const covered = {};
+      for (const [what, loc] of [["title box", titleBox], ["search box", search], ["Ship Life on Rails button", pickShip]]) covered[what] = await onTop(loc);
+      expect(Object.values(covered).every((v) => v === "on top"), `the picker's title box, search box and result not covered at ${width}px`, covered);
+      await shot(`today-11-picker-${width}`);
+      await page.getByRole("button", { name: "Close", exact: true }).click();
+    }
+    // A recent intent in the card starts with the title typed in the picker, and the picker closes.
+    await page.getByRole("button", { name: "Something else…" }).click();
+    await titleBox.fill("Booking the dentist");
+    // The card's chip, not the picker's own Health admin, which comes after it on the page.
+    await page.locator('section[aria-label="The waking day"] button:not(#timer-picker button)', { hasText: "Health admin" }).click();
+    await stop.waitFor();
+    await settle();
+    expect(/Health admin.*Booking the dentist/s.test(await card.innerText()), "a recent intent in the card to start with the picker's title", await card.innerText());
+    await stop.click();
+    await page.getByRole("button", { name: "Something else…" }).waitFor();
+    await settle();
+    expect((await page.locator("#timer-picker").count()) === 0, "the picker closed after starting from a recent intent and stopping");
     await page.setViewportSize({ width: 1500, height: 950 });
   },
 

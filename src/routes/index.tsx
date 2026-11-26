@@ -50,6 +50,13 @@ function Today() {
   // The timer card's "Something else…" picker. It opens under the arc, not in it: laid over the picture it grew past
   // the arc's bottom and under the lanes, which then took its clicks.
   const [picking, setPicking] = useState(false);
+  const [timerTitle, setTimerTitle] = useState("");
+  // Either way of starting, a recent intent in the card or any intent in the picker, takes the picker's title and closes it.
+  const startTimer = (intentId: string) =>
+    act(() => timerFn({ data: { action: "start", intentId, title: timerTitle.trim() || null } })).then(() => {
+      setPicking(false);
+      setTimerTitle("");
+    });
 
   const hm24 = useMemo(() => new Intl.DateTimeFormat("en-GB", { timeZone: t.timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }), [t.timezone]);
   const hm = (ms: number) => hm24.format(new Date(ms));
@@ -132,7 +139,7 @@ function Today() {
         blocks={t.actual.map((b) => ({ t_start: b.t_start, t_end: b.t_end, committed: b.committed, bare: isBare(b) }))}
         events={timed.map((e) => ({ key: `${e.calendar_id}/${e.event_id}`, title: e.title ?? "(no title)", t_start: e.t_start }))}
         hm={hm}
-        below={t.is_today && !t.running && picking ? <TimerPicker data={data} busy={busy} act={act} onStarted={() => setPicking(false)} /> : null}
+        below={t.is_today && !t.running && picking ? <TimerPicker data={data} title={timerTitle} onTitle={setTimerTitle} onStart={startTimer} /> : null}
       >
         {t.is_today ? (
           <>
@@ -151,6 +158,7 @@ function Today() {
               now={now}
               busy={busy}
               act={act}
+              onStart={startTimer}
               picking={picking}
               onTogglePicker={() => setPicking((v) => !v)}
               onRelabel={() => t.running && setSelected(t.running.id)}
@@ -212,8 +220,8 @@ function Today() {
   );
 }
 
-function TimerCard({ data, now, busy, act, picking, onTogglePicker, onRelabel }: {
-  data: Data; now: number; busy: boolean; act: Act; picking: boolean; onTogglePicker: () => void; onRelabel: () => void;
+function TimerCard({ data, now, busy, act, onStart, picking, onTogglePicker, onRelabel }: {
+  data: Data; now: number; busy: boolean; act: Act; onStart: (intentId: string) => void; picking: boolean; onTogglePicker: () => void; onRelabel: () => void;
 }) {
   const running = data.today.running;
 
@@ -247,7 +255,7 @@ function TimerCard({ data, now, busy, act, picking, onTogglePicker, onRelabel }:
             key={r.id}
             className="btn btn-secondary btn-sm max-w-[200px] truncate"
             disabled={busy}
-            onClick={() => act(() => timerFn({ data: { action: "start", intentId: r.id, title: null } }))}
+            onClick={() => onStart(r.id)}
           >
             {r.title}
           </button>
@@ -261,16 +269,13 @@ function TimerCard({ data, now, busy, act, picking, onTogglePicker, onRelabel }:
 }
 
 /** "Something else…": a title and any intent to start the timer on. */
-function TimerPicker({ data, busy, act, onStarted }: { data: Data; busy: boolean; act: Act; onStarted: () => void }) {
-  const [title, setTitle] = useState("");
-  const start = (intentId: string) => {
-    if (busy) return;
-    void act(() => timerFn({ data: { action: "start", intentId, title: title.trim() || null } })).then(onStarted);
-  };
+function TimerPicker({ data, title, onTitle, onStart }: {
+  data: Data; title: string; onTitle: (title: string) => void; onStart: (intentId: string) => void;
+}) {
   return (
     <div id="timer-picker" className="w-full max-w-[560px] space-y-2 rounded-sm bg-panel p-3 text-left">
-      <input className="input" placeholder="What are you doing? (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <IntentPicker intents={data.intents} recent={data.recent} onPick={(i) => start(i.id)} />
+      <input className="input" placeholder="What are you doing? (optional)" value={title} onChange={(e) => onTitle(e.target.value)} />
+      <IntentPicker intents={data.intents} recent={data.recent} onPick={(i) => onStart(i.id)} />
     </div>
   );
 }
