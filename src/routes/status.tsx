@@ -2,6 +2,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Ago } from "../components/Ago.js";
 import { PageHead, Panel } from "../components/ui.js";
 import { getCaptureStatus } from "../server/functions/cockpit.js";
+import { healthLine, phoneSilentMs } from "../shared/phoneSilence.js";
 import { GlobalActions } from "./__root.js";
 
 export const Route = createFileRoute("/status")({
@@ -22,10 +23,15 @@ function Status() {
   const status = Route.useLoaderData();
   const router = useRouter();
   const unwell = status.jobs.filter((j) => j.state === "stale" || j.state === "error");
+  const phone = status.sources.find((s) => s.source === "android");
+  const health = healthLine(
+    status.db ? unwell.map((j) => j.name) : null,
+    phoneSilentMs(phone?.lastArrival ?? null, new Date(status.now).getTime()),
+  );
 
   return (
     <div className="space-y-[22px] pb-4">
-      <PageHead title="Status" sub={unwell.length === 0 && status.db ? "every sense reporting" : `${unwell.length} ${unwell.length === 1 ? "job needs" : "jobs need"} a look`}>
+      <PageHead title="Status" sub={health.ok ? "every sense reporting" : health.text}>
         <button className="btn btn-secondary btn-sm" onClick={() => router.invalidate()}>
           Refresh
         </button>
@@ -103,10 +109,11 @@ function Status() {
           {status.sources.length === 0 ? <p className="text-dim">Nothing has arrived yet.</p> : null}
           <ul>
             {status.sources.map((s) => (
-              <li key={s.source} className="grid grid-cols-[1fr_auto_90px] items-baseline gap-4 border-b border-line py-2 last:border-b-0">
+              <li key={s.source} className="grid grid-cols-[1fr_auto_130px] items-baseline gap-4 border-b border-line py-2 last:border-b-0">
                 <span className="font-medium">{SOURCE[s.source] ?? s.source}</span>
                 <span className="text-right text-mute">{s.count.toLocaleString("en-US")}</span>
-                <span className="text-right text-small text-mute">
+                <span className={`text-right text-small ${s.silent ? "font-medium text-bad" : "text-mute"}`} title={s.silent ? "Silent past its threshold" : undefined}>
+                  {s.silent ? "silent · " : null}
                   <Ago iso={s.lastArrival} />
                 </span>
               </li>
