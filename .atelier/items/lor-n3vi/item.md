@@ -3,13 +3,14 @@ schema: atelier.item
 schema_version: 3
 id: lor-n3vi
 title: Undo after stopping a timer or deleting a time block
-status: open
+status: building
 mission: lor-40i0
 labels: []
 priority: medium
 blocked_by:
 - lor-auhc
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A4a2870e7-da4e-4b83-912b-01cba07c6a79%3Adelegate-task%3A55fe89d0-5af4-4cd5-9a2e-5d4cd43691d6
 ready: null
 trivial: null
 caused_by: null
