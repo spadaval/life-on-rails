@@ -24,7 +24,7 @@ Free time on Today is offered first to the goal that most needs it, as it was be
 
 - [x] The one free slot Today shows, and the brief's `could go to:` lines, suggest the heaviest active goal marked starving in its latest score snapshot when there is one, ordered as before lor-auhc (weight descending, then adequacy ascending).
 - [x] With no such goal, a stretch suggests an open task that fits it, as lor-auhc built; no two stretches get the same task, and built-in labels such as Uncategorized are never suggested.
-- [x] A goal is suggested for at most one stretch a day, the first one, so later stretches still get tasks.
+- [x] A goal is suggested for at most one stretch each time Today is read, the next one still to come, so later stretches still get tasks.
 - [x] Tests in `tests/today/` and `tests/db/today.test.ts` cover a day with a starving goal and a day without.
 - [x] The Weight help in `src/components/IntentEditor.tsx` is true of the code.
 - [x] `pnpm typecheck`, `pnpm test`, `pnpm test:db` and `verify-lor screen today` pass.
@@ -46,6 +46,8 @@ The first free stretch of the day goes to a goal behind on its hours again; late
 Checks: `pnpm typecheck` passes (after a `pnpm build` in this worktree to generate the route tree, lor-iurl), `pnpm test` 223 passed, `pnpm test:db` 147 passed, `verify-lor screen today` ok (shots in `/tmp/claude-1000/lor-yijs-shots/`).
 
 Separate commit eb66c6df: `tests/db/device.test.ts` failed today with no leak. Its `not.toMatch(/555/)` matched UUIDv7 ids, whose clock prefix reads `01a21555` on 2026-11-25. It now checks for the phone numbers themselves (`/555\D?010[01]/`).
+
+Ruling (2026-11-25, from the item's author, thread e05499fa): per read, as built. Done when 3 said "a day" by mistake and meant one stretch among those a read shows; no stored per-day record is wanted, and the line is reworded to match.
 
 ### Responses
 
