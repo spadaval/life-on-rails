@@ -3,12 +3,13 @@ schema: atelier.item
 schema_version: 3
 id: lor-yijs
 title: A free slot suggests the goal most behind on its hours again, before a task
-status: open
+status: building
 mission: null
 labels: []
 priority: medium
 blocked_by: []
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3A2d47f0da-ba76-4ac6-83d7-b224c5408137%3Adelegate-task%3A394e2982-ad8b-49e5-b4d3-fdba53b0c1d1
 ready: null
 trivial: null
 caused_by: null
