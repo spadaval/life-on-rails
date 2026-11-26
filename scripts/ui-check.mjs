@@ -4,7 +4,9 @@
 //   node scripts/ui-check.mjs <flow> [outDir]
 // Uses the system Chrome through playwright-core. Screenshots go to outDir.
 import { execFileSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { parseEnv } from "node:util";
 import path from "node:path";
 import { chromium } from "playwright-core";
 
@@ -27,8 +29,25 @@ const settle = () => page.waitForLoadState("networkidle");
 
 /** Run SQL against the test database. */
 const psql = (sql) => execFileSync("psql", ["-d", "life_on_rails_test", "-v", "ON_ERROR_STOP=1", "-Atqc", sql], { encoding: "utf8" });
-const LOCAL_MIDNIGHT = `(date_trunc('day', now() AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'America/Los_Angeles')`;
-const at = (hours) => `${LOCAL_MIDNIGHT} + interval '${hours} hours'`;
+/** The server's LOR_TZ, as scripts/serve.mjs gets it: the environment, then the env file (Node's own parser), then env.ts's default. */
+const SERVER_TZ = (() => {
+  if (process.env.LOR_TZ) return process.env.LOR_TZ;
+  const file = process.env.LOR_ENV_FILE ?? path.join(homedir(), ".config/life-on-rails/env");
+  return (existsSync(file) ? parseEnv(readFileSync(file, "utf8")).LOR_TZ : undefined) || "America/New_York";
+})();
+/**
+ * The local day a flow works on: today in the server's time zone. A flow that fixes the clock passes it whole
+ * (`?at=<DAY>T15:30`), which the server takes as is even when LOR_FAKE_NOW sets another day, so the page,
+ * the fixtures and the SQL checks all mean the same day.
+ */
+const DAY = () => psql(`SELECT to_char(now() AT TIME ZONE '${SERVER_TZ}', 'YYYY-MM-DD')`).trim();
+/** SQL for a local time on `day` in the server's time zone. */
+const at = (day, hours) => `(('${day}'::date + interval '${hours} hours') AT TIME ZONE '${SERVER_TZ}')`;
+/** Fail the flow with what was expected and what was found. */
+const expect = (ok, what, found) => {
+  if (!ok) throw new Error(`expected ${what}${found === undefined ? "" : `; found ${typeof found === "string" ? found : JSON.stringify(found)}`}`);
+  console.log(`ok: ${what}`);
+};
 
 /** Run `lor` as the agent against the test server. */
 const lor = (args, input) =>
@@ -326,51 +345,105 @@ const flows = {
     console.log("search kinds:", await page.locator("li .chip").allInnerTexts());
   },
 
+  // Today as src/routes/index.tsx draws it, on the test server's fixed clock (`?at=`, src/server/clock.ts)
+  // so the timer has real minutes in it: start at 15:30 from the timer card, pause at 16:00, stop at 16:10,
+  // then select the Dentist block in the Planned and actual lanes and relabel it, remembering the title.
   async today() {
+    const day = DAY();
     psql(`
-      DELETE FROM commitment; DELETE FROM time_block; DELETE FROM google_event; DELETE FROM attribution_rule;
-      DELETE FROM intent_link; DELETE FROM intent WHERE NOT system;
+      DELETE FROM intent_link; DELETE FROM proposal; UPDATE time_block SET commitment_id = NULL; DELETE FROM commitment;
+      DELETE FROM time_block_observation; DELETE FROM time_block; DELETE FROM google_event; DELETE FROM attribution_rule; DELETE FROM intent WHERE NOT system;
       INSERT INTO google_sync_state (calendar_id, summary) VALUES ('cal', 'cal') ON CONFLICT DO NOTHING;
       INSERT INTO google_event (calendar_id, event_id, title, t_start, t_end, all_day) VALUES
-        ('cal', 'standup', 'Standup', ${at(9)}, ${at(9.5)}, false),
-        ('cal', 'hold', 'Afternoon hold', ${at(13)}, ${at(17)}, false),
-        ('cal', 'dentist', 'Dentist', ${at(14)}, ${at(15)}, false),
-        ('cal', 'dinner', 'Dinner with Priya', ${at(23)}, ${at(23.75)}, false),
-        ('cal', 'visit', 'Priya in town', ${at(0)}, ${at(24)}, true);
-      INSERT INTO google_event (calendar_id, event_id, title, t_start, t_end, event_type) VALUES ('cal', 'focus', 'Focus time', ${at(10)}, ${at(12)}, 'focusTime');
+        ('cal', 'standup', 'Standup', ${at(day, 9)}, ${at(day, 9.5)}, false),
+        ('cal', 'hold', 'Afternoon hold', ${at(day, 13)}, ${at(day, 17)}, false),
+        ('cal', 'dentist', 'Dentist', ${at(day, 14)}, ${at(day, 15)}, false),
+        ('cal', 'visit', 'Priya in town', ${at(day, 0)}, ${at(day, 24)}, true);
+      INSERT INTO google_event (calendar_id, event_id, title, t_start, t_end, event_type) VALUES ('cal', 'focus', 'Focus time', ${at(day, 10)}, ${at(day, 12)}, 'focusTime');
       INSERT INTO intent (id, type, title, weight, weekly_hour_target) VALUES (gen_random_uuid(), 'goal', 'Ship Life on Rails', 3, 10);
       INSERT INTO intent (id, type, title) VALUES (gen_random_uuid(), 'project', 'Health admin');
-      INSERT INTO intent (id, type, title) VALUES (gen_random_uuid(), 'metric', 'Energy');
     `);
-    await page.goto(`${BASE}/`);
+    const local = (col) => `to_char(${col} AT TIME ZONE '${SERVER_TZ}', 'HH24:MI')`;
+    // Today's blocks, one a line. Phone and place blocks from earlier data (the demo set) stay; they are fill below the calendar.
+    const blocks = () =>
+      psql(`SELECT ${local("b.t_start")} || '-' || coalesce(${local("b.t_end")}, 'open') || ' ' || b.origin || ' ' || coalesce(b.title, '') || ' -> ' || coalesce(i.title, '-')
+              || CASE WHEN b.paused_at IS NOT NULL THEN ' [paused ' || ${local("b.paused_at")} || ']' ELSE '' END || CASE WHEN b.committed THEN ' [committed]' ELSE '' END
+            FROM time_block b LEFT JOIN intent i ON i.id = b.intent_id WHERE b.t_start >= ${at(day, 0)} AND b.t_start < ${at(day, 24)} ORDER BY b.t_start`).trim();
+    const lanes = page.locator('section[aria-label="Planned and actual"]');
+    const actual = (text) => lanes.locator(`button[title*="${text}"]`);
+    const stop = page.getByRole("button", { name: "Stop", exact: true });
+    const card = page.locator("div", { has: stop }).last();
+
+    await page.setViewportSize({ width: 1500, height: 950 });
+    await page.goto(`${BASE}/?at=${day}T15:30`);
     await settle();
-    await page.click('button:has-text("Just start")');
-    await page.waitForSelector("text=Running since");
-    await shot("today-1-running");
-    await page.click('button:has-text("Stop")');
-    await page.waitForSelector("text=Start a timer");
+    await shot("today-1-open");
+    // Start: "Something else…", a title, and the goal picked by search.
+    await page.getByRole("button", { name: "Something else…" }).click();
+    await page.fill('input[placeholder="What are you doing? (optional)"]', "Writing the spec");
+    const search = page.locator('input[placeholder="Search goals, projects, habits, tasks…"]');
+    await search.fill("ship");
+    // Enter picks the first match. A click cannot: the picker spills out of the day arc and the
+    // lanes' hour row covers its buttons (a product bug, reported in lor-w2tw).
+    expect((await page.locator("button", { hasText: "Ship Life on Rails" }).count()) === 1, "the picker to offer Ship Life on Rails for \"ship\"");
+    await search.press("Enter");
+    await stop.waitFor();
     await settle();
-    await shot("today-2-timeline");
-    console.log("confirm card:", (await page.locator("h2:has-text('to confirm')").innerText()).trim());
-    // Relabel the dentist block and remember the title.
-    await page.click('section[aria-label="Timeline"] button:has-text("Dentist")');
+    expect(/Ship Life on Rails.*Writing the spec/s.test(await card.innerText()), "the timer card to show Ship Life on Rails — Writing the spec", await card.innerText());
+    await shot("today-2-running");
+
+    // Pause half an hour later.
+    await page.goto(`${BASE}/?at=${day}T16:00`);
+    await settle();
+    expect(/\b30m\b/i.test(await card.innerText()), "the running card to read 30m at 16:00", await card.innerText());
+    await page.getByRole("button", { name: "Pause", exact: true }).click();
+    await page.getByRole("button", { name: "Resume", exact: true }).waitFor();
+    await settle();
+    const paused = blocks();
+    expect(/15:30-open manual .* -> Ship Life on Rails \[paused 16:00\]/.test(paused), "an open timer block from 15:30 for Ship Life on Rails, paused at 16:00", paused);
+    await shot("today-3-paused");
+
+    // Stop ten minutes into the pause: the block ends when it was paused.
+    await page.goto(`${BASE}/?at=${day}T16:10`);
+    await settle();
+    expect(/\b30m\b/i.test(await card.innerText()), "the paused card to still read 30m at 16:10", await card.innerText());
+    await stop.click();
+    await page.getByRole("button", { name: "Something else…" }).waitFor();
+    await settle();
+    const stopped = blocks();
+    expect(/15:30-16:00 manual Writing the spec -> Ship Life on Rails(?! \[paused)/.test(stopped) && !/-open /.test(stopped), "the timer block closed at 15:30-16:00, nothing left open", stopped);
+    expect((await actual("Ship Life on Rails").count()) === 1, "one Ship Life on Rails block in the Actual lane", await lanes.locator("button").evaluateAll((bs) => bs.map((b) => b.title)));
+    await shot("today-4-stopped");
+
+    // Select the Dentist block: the calendar fill made it, labelled Meetings.
+    const before = blocks();
+    expect(/14:00-15:00 calendar Dentist -> Meetings/.test(before), "a 14:00-15:00 calendar block for Dentist, labelled Meetings", before);
+    await actual("Dentist").click();
     await page.waitForSelector("#relabel-search");
-    await shot("today-3-panel");
-    await page.check('input[type="checkbox"]');
+    expect((await actual("Dentist").getAttribute("class")).includes("outline-txt"), "the Dentist block drawn as selected", await actual("Dentist").getAttribute("class"));
+    const panel = page.locator("section", { has: page.locator("#relabel-search") }).last();
+    expect(/from the calendar/.test(await panel.innerText()), "the block panel to say it came from the calendar", await panel.innerText());
+    await shot("today-5-panel");
+    // Relabel it to Health admin and remember the title.
+    await page.getByLabel("Label every “Dentist” this way from now on").check();
     await page.fill("#relabel-search", "health");
-    await page.click('button:has-text("Health admin")');
-    await page.waitForSelector('section[aria-label="Timeline"] button:has-text("Health admin")');
+    await panel.locator("button", { hasText: "Health admin" }).click();
+    await page.waitForSelector("#relabel-search", { state: "detached" });
     await settle();
-    await page.click('button:has-text("Accept all")');
-    await page.waitForSelector("text=Confirmed.");
+    const after = blocks();
+    expect(/14:00-15:00 calendar Dentist -> Health admin/.test(after), "the Dentist block relabelled to Health admin", after);
+    const rules = psql("SELECT match_title || ' -> ' || i.title FROM attribution_rule r JOIN intent i ON i.id = r.intent_id").trim();
+    expect(rules === "^Dentist$ -> Health admin", "one rule for the exact title Dentist (^Dentist$) -> Health admin", rules);
+    expect(/Health admin/.test(await actual("Dentist").getAttribute("title")), "the lane's Dentist block to read Health admin", await actual("Dentist").getAttribute("title"));
+    await shot("today-6-relabelled");
+    console.log("blocks:\n" + after);
+
+    await page.getByRole("link", { name: "Previous day" }).click();
+    await page.waitForURL(/date=/);
+    await page.locator("h1", { hasText: /^Day$/ }).waitFor({ timeout: 10_000 }).catch(() => {});
     await settle();
-    await shot("today-4-confirmed");
-    console.log("footer:", (await page.locator("footer").innerText()).replace(/\s+/g, " "));
-    console.log("blocks:\n" + psql(`SELECT to_char(b.t_start AT TIME ZONE 'America/Los_Angeles', 'HH24:MI') || '-' || to_char(b.t_end AT TIME ZONE 'America/Los_Angeles', 'HH24:MI') || ' ' || b.origin || ' ' || coalesce(b.title, '') || ' -> ' || i.title || CASE WHEN b.committed THEN ' [committed]' ELSE '' END FROM time_block b JOIN intent i ON i.id = b.intent_id ORDER BY b.t_start`));
-    console.log("rules:", psql("SELECT match_title FROM attribution_rule").trim());
-    await page.goto(`${BASE}/?date=${new Date(Date.now() - 86400000 - 7 * 3600000).toISOString().slice(0, 10)}`);
-    await settle();
-    await shot("today-5-yesterday");
+    expect((await page.locator("h1").first().textContent()).trim() === "Day", "the previous day headed Day", await page.locator("h1").first().textContent());
+    await shot("today-7-yesterday");
   },
 
   async goals() {
@@ -388,23 +461,53 @@ const flows = {
     await page.goto(`${BASE}/goals`);
     await settle();
     await shot("goals-1");
-    console.log("goal card:", (await page.locator('section:has-text("Neha and the wedding")').first().innerText()).replace(/\s+/g, " "));
+    const card = (await page.locator('section:has-text("Neha and the wedding")').first().innerText()).replace(/\s+/g, " ");
+    console.log("goal card:", card);
+    expect(/0 \/ 6h this week/.test(card) && /Wedding vendors/.test(card) && /Call Neha/.test(card), "the wedding card with 0 / 6h, Wedding vendors and Call Neha", card);
+
     await page.click('button:has-text("New goal, project or habit")');
     await page.selectOption('select[aria-label="Kind"]', "goal");
     await page.fill('input[aria-label="Title"]', "Ship Life on Rails");
     await page.fill('input[aria-label="Hours a week"]', "10");
     await page.getByRole("button", { name: "Add", exact: true }).click();
     await page.waitForSelector('button:has-text("Ship Life on Rails")');
+    expect(psql("SELECT weekly_hour_target FROM intent WHERE title = 'Ship Life on Rails' AND type = 'goal'").trim() === "10", "a goal Ship Life on Rails at 10 h a week");
+
+    // Did it: the notice, and one habit completion in the table.
     await page.locator("li", { hasText: "Call Neha" }).getByRole("button", { name: "Did it" }).first().click();
-    await page.waitForSelector("text=Logged");
+    await page.waitForSelector("text=Logged “Call Neha”.");
+    const logged = psql("SELECT count(*) FROM commitment c JOIN intent i ON i.id = c.intent_id WHERE c.kind = 'habit_completion' AND i.title = 'Call Neha'").trim();
+    expect(logged === "1", "one habit_completion for Call Neha", logged);
+
+    // Select a row: the row highlights, the link names it, and the side panel opens on it.
     await page.click('button:has-text("Wedding vendors")');
+    await page.waitForURL(new RegExp(`id=${vendors}`));
     await settle();
+    const aside = page.locator("aside").last();
+    const row = page.locator("li > div", { has: page.locator('button:has-text("Wedding vendors")') }).first();
+    expect((await row.getAttribute("class")).includes("row-sel"), "the Wedding vendors row drawn as selected", await row.getAttribute("class"));
+    // innerText carries the CSS uppercase of titles and labels, so these match without case.
+    const facts = (await aside.innerText()).replace(/\s+/g, " ");
+    expect(/^Wedding vendors/i.test(facts) && /Kind Project/i.test(facts) && /Counts toward Neha and the wedding/i.test(facts) && /Tasks 2 tasks/i.test(facts), "the side panel on Wedding vendors: Project, under the wedding, 2 tasks", facts);
     await shot("goals-2-selected");
+
+    // Open the editor.
+    await aside.getByRole("button", { name: "Edit", exact: true }).click();
+    await aside.getByRole("button", { name: "Stop editing" }).waitFor();
+    const title = await aside.getByLabel("Title", { exact: true }).inputValue();
+    expect(title === "Wedding vendors" && (await aside.getByLabel("Hours a week").count()) === 1, "the editor open on Wedding vendors with an Hours a week field", title);
+    await shot("goals-3-editor");
+
+    // The task count opens Tasks filtered to the project: its two tasks, not Book flights under the goal.
     await page.click('aside a:has-text("2 tasks")');
     await page.waitForURL(/\/tasks\?for=/);
     await settle();
-    console.log("tasks for vendors:", (await page.locator("main").innerText()).match(/Shortlist venues|Call the florist|Book flights/g));
-    await shot("goals-3-tasks");
+    const rows = page.locator('li[id^="task-"] button[aria-label^="Select "]');
+    await rows.first().waitFor({ state: "attached" });
+    const listed = (await rows.evaluateAll((bs) => bs.map((b) => b.getAttribute("aria-label").replace(/^Select /, "")))).sort();
+    console.log("tasks for vendors:", listed.join(", "));
+    expect(JSON.stringify(listed) === JSON.stringify(["Call the florist", "Shortlist venues"]), "Tasks for Wedding vendors to list Call the florist and Shortlist venues, nothing else", listed);
+    await shot("goals-4-tasks");
   },
 };
 
