@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-zk52
 title: 'Tasks reads as a list: plain goal names, hints on focus, filters on one line'
-status: changes_requested
+status: in_review
 mission: lor-40i0
 labels: []
 priority: medium
@@ -75,5 +75,11 @@ At 1100px the bar still fits one line with no filter picked. It wraps only when 
 
 `node scripts/shots.mjs --base http://127.0.0.1:3857 --only Tasks` against the demo set (`LOR_FAKE_NOW=2026-11-17T15:00`): 4 shots × 3 widths, `"problems": []`. `pnpm typecheck` passes and `pnpm test` gives 213 passed. One catch along the way: `tests/look.test.ts` refused a `text-[10px]` I had put on the G mark, so it uses the type scale.
 
-**Tooling, for the lead.** The test server on :3857 and `life_on_rails_test` are one per machine with no lock. During this item, three other threads' `up` or flows replaced my server or emptied tables mid-run, which showed up as `ECONNRESET`, "Failed to fetch" and "both ends of a link must be existing intents". lor-3ydk covers refusing evidence from another checkout's server, but nothing stops the clobbering itself. It is worth its own item: a lock around `up` and `screen`, or a port and database per checkout. I noted it in the feature doc's Gotchas. A fresh worktree also needs `src/routeTree.gen.ts` before `pnpm typecheck` passes (lor-iurl); I copied it from the main checkout, where it is gitignored.
+**Tooling, for the lead.** The test server on :3857 and `life_on_rails_test` are one per machine with no lock. During this item, three other threads' `up` or flows replaced my server or emptied tables mid-run, which showed up as `ECONNRESET`, "Failed to fetch" and "both ends of a link must be existing intents". lor-3ydk covers refusing evidence from another checkout's server, but nothing stops the clobbering itself. The reviewer filed it as lor-rdbu. I noted it in the feature doc's Gotchas. A fresh worktree also needs `src/routeTree.gen.ts` before `pnpm typecheck` passes (lor-iurl); I copied it from the main checkout, where it is gitignored.
+
+**Round 2.** The finding held. With nothing chosen, the bar already took 769 of its 770px, so no width budget could fit a long For value plus Clear. Group and Sort now name their value only when it is not the view's default, as For, Due and From already did. From `xl` up the bar no longer wraps: the text field (down to 100px) and a chosen value shrink, and a cut value is whole in the button's title. Below `xl` the bar wraps as before. The flow now opens `?for=<Portuguese goal>` at 1500px and asserts the seven controls share a vertical centre. It also asserts that none spills past the bar or is squeezed below its own content, which caught a first try where Due's label ran over its arrow. The 1100px check runs with the same goal chosen. In `/tmp/lor-verify/zk52-r2`, `screen tasks` passes, all 23 `ok:` lines, `browser_errors: false`. `shots.mjs --only Tasks` gives 12 images and no problems, and `pnpm test` gives 213 passed.
+
+### Responses
+
+1-0pq6.1: fixed in e0b376ac
 
