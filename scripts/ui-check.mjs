@@ -431,7 +431,13 @@ const flows = {
     await page.keyboard.press("Shift");
     await legendMark.focus();
     expect(await legend.isVisible(), "the legend shown while its help mark has keyboard focus");
+    await page.keyboard.press("Escape");
+    expect(!(await legend.isVisible()), "the legend hidden by Escape while its help mark keeps focus");
     await legendMark.blur();
+    await legendMark.hover();
+    await page.keyboard.press("Escape");
+    expect(!(await legend.isVisible()), "the legend hidden by Escape while the pointer stays on its help mark");
+    await page.mouse.move(5, 5);
     const hint = lanes.getByText("Click a block to label it.");
     expect(await hint.isVisible(), "the label hint while the 12:00 timer block has no label");
     const slots = lanes.locator("[data-free-slot]");

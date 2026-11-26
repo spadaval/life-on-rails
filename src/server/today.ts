@@ -307,11 +307,11 @@ export function assignGapTasks(free: Span[], tasks: GapTask[]): Gap[] {
   return gaps;
 }
 
-/** Open tasks of the owner's that a free stretch could go to, due soonest first, then those with no due date. */
+/** All the owner's open tasks, due soonest first, then those with no due date. Not limited: any one of them may be the only one that fits. */
 async function gapTasks(db: Tx): Promise<GapTask[]> {
   const rows = await db<{ title: string; estimate_hours: number | null }[]>`
     SELECT title, estimate_hours FROM intent WHERE type = 'task' AND status = 'active' AND assignee = 'owner' AND NOT system
-    ORDER BY due_at NULLS LAST, created_at LIMIT 50`;
+    ORDER BY due_at NULLS LAST, created_at`;
   return rows.map((r) => ({ title: r.title, estimate_min: r.estimate_hours === null ? null : Math.round(r.estimate_hours * 60) }));
 }
 

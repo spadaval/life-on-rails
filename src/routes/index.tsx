@@ -379,26 +379,44 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
 /** What the lanes' looks mean, behind a help mark: shown on hover, on focus, and held open by a click. */
 function LegendMark() {
   const [open, setOpen] = useState(false);
+  // Escape hides it even while hovered or focused, until the pointer or focus leaves.
+  const [dismissed, setDismissed] = useState(false);
+  const reset = () => {
+    setOpen(false);
+    setDismissed(false);
+  };
+  const ref = useRef<HTMLSpanElement>(null);
+  // On the window: a pointer resting on the mark leaves the keyboard's focus elsewhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = ref.current;
+      if (e.key !== "Escape" || !el || !(el.matches(":hover") || el.contains(document.activeElement) || open)) return;
+      setOpen(false);
+      setDismissed(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
   return (
-    <span className="group relative inline-flex">
+    <span ref={ref} className="group relative inline-flex" onMouseLeave={() => setDismissed(false)}>
       <button
         type="button"
         className="inline-grid size-5 place-content-center rounded-full border border-edge text-small leading-none text-mute hover:border-or/70 hover:text-txt"
         aria-label="What the lanes mean"
         aria-expanded={open}
         aria-controls="lanes-legend"
-        onClick={() => setOpen((v) => !v)}
-        onBlur={() => setOpen(false)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") setOpen(false);
+        onClick={() => {
+          setDismissed(false);
+          setOpen((v) => !v);
         }}
+        onBlur={reset}
       >
         ?
       </button>
       <span
         id="lanes-legend"
         role="note"
-        className={`absolute bottom-full left-0 z-20 mb-1.5 w-max max-w-[min(520px,80vw)] rounded-sm border border-edge bg-raised px-2.5 py-1.5 text-small text-mute shadow-lg ${open ? "block" : "hidden group-hover:block group-has-[:focus-visible]:block"}`}
+        className={`absolute bottom-full left-0 z-20 mb-1.5 w-max max-w-[min(520px,80vw)] rounded-sm border border-edge bg-raised px-2.5 py-1.5 text-small text-mute shadow-lg ${open ? "block" : dismissed ? "hidden" : "hidden group-hover:block group-has-[:focus-visible]:block"}`}
       >
         Solid: counted · dashed: a suggestion · faint: unlabelled phone or place · outlined: running.
       </span>
