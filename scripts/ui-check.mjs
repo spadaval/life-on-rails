@@ -6,6 +6,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
+import { parseEnv } from "node:util";
 import path from "node:path";
 import { chromium } from "playwright-core";
 
@@ -28,16 +29,20 @@ const settle = () => page.waitForLoadState("networkidle");
 
 /** Run SQL against the test database. */
 const psql = (sql) => execFileSync("psql", ["-d", "life_on_rails_test", "-v", "ON_ERROR_STOP=1", "-Atqc", sql], { encoding: "utf8" });
-/** The server's LOR_TZ, read as scripts/serve.mjs reads it: the environment, then the env file, then env.ts's default. */
+/** The server's LOR_TZ, as scripts/serve.mjs gets it: the environment, then the env file (Node's own parser), then env.ts's default. */
 const SERVER_TZ = (() => {
   if (process.env.LOR_TZ) return process.env.LOR_TZ;
   const file = process.env.LOR_ENV_FILE ?? path.join(homedir(), ".config/life-on-rails/env");
-  const line = existsSync(file) ? readFileSync(file, "utf8").match(/^LOR_TZ=(.+)$/m) : null;
-  return line?.[1].trim() || "America/New_York";
+  return (existsSync(file) ? parseEnv(readFileSync(file, "utf8")).LOR_TZ : undefined) || "America/New_York";
 })();
-/** SQL for a local time on today's local day in the server's time zone. */
-const LOCAL_MIDNIGHT = `(date_trunc('day', now() AT TIME ZONE '${SERVER_TZ}') AT TIME ZONE '${SERVER_TZ}')`;
-const at = (hours) => `${LOCAL_MIDNIGHT} + interval '${hours} hours'`;
+/**
+ * The local day a flow works on: today in the server's time zone. A flow that fixes the clock passes it whole
+ * (`?at=<DAY>T15:30`), which the server takes as is even when LOR_FAKE_NOW sets another day, so the page,
+ * the fixtures and the SQL checks all mean the same day.
+ */
+const DAY = () => psql(`SELECT to_char(now() AT TIME ZONE '${SERVER_TZ}', 'YYYY-MM-DD')`).trim();
+/** SQL for a local time on `day` in the server's time zone. */
+const at = (day, hours) => `(('${day}'::date + interval '${hours} hours') AT TIME ZONE '${SERVER_TZ}')`;
 /** Fail the flow with what was expected and what was found. */
 const expect = (ok, what, found) => {
   if (!ok) throw new Error(`expected ${what}${found === undefined ? "" : `; found ${typeof found === "string" ? found : JSON.stringify(found)}`}`);
@@ -344,16 +349,17 @@ const flows = {
   // so the timer has real minutes in it: start at 15:30 from the timer card, pause at 16:00, stop at 16:10,
   // then select the Dentist block in the Planned and actual lanes and relabel it, remembering the title.
   async today() {
+    const day = DAY();
     psql(`
       DELETE FROM intent_link; DELETE FROM proposal; UPDATE time_block SET commitment_id = NULL; DELETE FROM commitment;
       DELETE FROM time_block_observation; DELETE FROM time_block; DELETE FROM google_event; DELETE FROM attribution_rule; DELETE FROM intent WHERE NOT system;
       INSERT INTO google_sync_state (calendar_id, summary) VALUES ('cal', 'cal') ON CONFLICT DO NOTHING;
       INSERT INTO google_event (calendar_id, event_id, title, t_start, t_end, all_day) VALUES
-        ('cal', 'standup', 'Standup', ${at(9)}, ${at(9.5)}, false),
-        ('cal', 'hold', 'Afternoon hold', ${at(13)}, ${at(17)}, false),
-        ('cal', 'dentist', 'Dentist', ${at(14)}, ${at(15)}, false),
-        ('cal', 'visit', 'Priya in town', ${at(0)}, ${at(24)}, true);
-      INSERT INTO google_event (calendar_id, event_id, title, t_start, t_end, event_type) VALUES ('cal', 'focus', 'Focus time', ${at(10)}, ${at(12)}, 'focusTime');
+        ('cal', 'standup', 'Standup', ${at(day, 9)}, ${at(day, 9.5)}, false),
+        ('cal', 'hold', 'Afternoon hold', ${at(day, 13)}, ${at(day, 17)}, false),
+        ('cal', 'dentist', 'Dentist', ${at(day, 14)}, ${at(day, 15)}, false),
+        ('cal', 'visit', 'Priya in town', ${at(day, 0)}, ${at(day, 24)}, true);
+      INSERT INTO google_event (calendar_id, event_id, title, t_start, t_end, event_type) VALUES ('cal', 'focus', 'Focus time', ${at(day, 10)}, ${at(day, 12)}, 'focusTime');
       INSERT INTO intent (id, type, title, weight, weekly_hour_target) VALUES (gen_random_uuid(), 'goal', 'Ship Life on Rails', 3, 10);
       INSERT INTO intent (id, type, title) VALUES (gen_random_uuid(), 'project', 'Health admin');
     `);
@@ -362,14 +368,14 @@ const flows = {
     const blocks = () =>
       psql(`SELECT ${local("b.t_start")} || '-' || coalesce(${local("b.t_end")}, 'open') || ' ' || b.origin || ' ' || coalesce(b.title, '') || ' -> ' || coalesce(i.title, '-')
               || CASE WHEN b.paused_at IS NOT NULL THEN ' [paused ' || ${local("b.paused_at")} || ']' ELSE '' END || CASE WHEN b.committed THEN ' [committed]' ELSE '' END
-            FROM time_block b LEFT JOIN intent i ON i.id = b.intent_id WHERE b.t_start >= ${at(0)} AND b.t_start < ${at(24)} ORDER BY b.t_start`).trim();
+            FROM time_block b LEFT JOIN intent i ON i.id = b.intent_id WHERE b.t_start >= ${at(day, 0)} AND b.t_start < ${at(day, 24)} ORDER BY b.t_start`).trim();
     const lanes = page.locator('section[aria-label="Planned and actual"]');
     const actual = (text) => lanes.locator(`button[title*="${text}"]`);
     const stop = page.getByRole("button", { name: "Stop", exact: true });
     const card = page.locator("div", { has: stop }).last();
 
     await page.setViewportSize({ width: 1500, height: 950 });
-    await page.goto(`${BASE}/?at=15:30`);
+    await page.goto(`${BASE}/?at=${day}T15:30`);
     await settle();
     await shot("today-1-open");
     // Start: "Something else…", a title, and the goal picked by search.
@@ -387,7 +393,7 @@ const flows = {
     await shot("today-2-running");
 
     // Pause half an hour later.
-    await page.goto(`${BASE}/?at=16:00`);
+    await page.goto(`${BASE}/?at=${day}T16:00`);
     await settle();
     expect(/\b30m\b/i.test(await card.innerText()), "the running card to read 30m at 16:00", await card.innerText());
     await page.getByRole("button", { name: "Pause", exact: true }).click();
@@ -398,7 +404,7 @@ const flows = {
     await shot("today-3-paused");
 
     // Stop ten minutes into the pause: the block ends when it was paused.
-    await page.goto(`${BASE}/?at=16:10`);
+    await page.goto(`${BASE}/?at=${day}T16:10`);
     await settle();
     expect(/\b30m\b/i.test(await card.innerText()), "the paused card to still read 30m at 16:10", await card.innerText());
     await stop.click();
