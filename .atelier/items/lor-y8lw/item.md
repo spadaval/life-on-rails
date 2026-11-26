@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-y8lw
 title: Running cli/lor.mjs from a checkout no longer writes to the live LoR by default
-status: in_review
+status: changes_requested
 mission: null
 labels: []
 priority: medium
