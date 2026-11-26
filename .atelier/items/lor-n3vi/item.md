@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-n3vi
 title: Undo after stopping a timer or deleting a time block
-status: changes_requested
+status: in_review
 mission: lor-40i0
 labels: []
 priority: medium
@@ -59,7 +59,7 @@ Stop on Today's timer card and Delete in the block editor now show a notice with
 - the restored span overlaps a manual, merged or committed block, where an open block's span runs from its start to now ("<label> now covers part of that time"). Uncommitted fill is not checked; the re-sync makes it yield;
 - an intent it was labelled with no longer exists.
 
-**The offer's rule, and where the snapshot lives.** The snapshot is returned to the page (`timerFn` stop and `deleteBlockFn` return `{ ok, undo }`) and lives in the Today component's notice state, nowhere on the server. Every action on the page replaces the notice, so the offer goes with the next action. A change of the router location (`useRouterState`'s href) drops the Undo button. A reload or leaving the page unmounts it. Undo sends the snapshot back to `undoBlockFn`. Since the page holds it, a hand-made snapshot could insert a block; that is the owner's own endpoint, which can already create and edit blocks, so I did not add a server table for it.
+**The offer's rule, and where the snapshot lives.** The snapshot is returned to the page (`timerFn` stop and `deleteBlockFn` return `{ ok, undo }`) and lives in the Today component's notice state, nowhere on the server. The offer ends at the next action on the page or a navigation. Actions are Today's own writes and the page head's Start timer and Add task, which announce themselves with a `lor:page-action` window event (`announcePageAction` in `ui.tsx`). A navigation is a change of the router location (`useRouterState`'s href). Each of these bumps a counter and drops the Undo button; an action installs its offer only if nothing bumped the counter while it ran, so a Stop that answers after a navigation offers nothing. A reload or leaving the page unmounts it. Undo sends the snapshot back to `undoBlockFn`. Since the page holds it, a hand-made snapshot could insert a block; that is the owner's own endpoint, which can already create and edit blocks, so I did not add a server table for it.
 
 **Other changes.** The agent API's `POST /timer/stop` still returns only `{ id }`. Stop's notice now reads "Stopped." (it had none). Block delete never had a confirm; the page head's chip is untouched. `Notice` in `src/components/ui.tsx` takes an optional `action` button. The stop's fill re-sync now widens to the block's start even when a short timer is dropped (it used `closed?.t_start`, which was null then).
 
@@ -79,6 +79,16 @@ ok: no Undo after a navigation
 ok: the stopped block with a pending suggestion
 ok: the block gone at once, and a notice offering Undo
 ok: Undo puts the block and the fill back, its suggestion still pending
+ok: no Undo once the page head has started another timer
+ok: no Undo from a Stop that answered after a navigation
+ok: the dropped timers left the blocks as they were
 ```
 
+The last three lines are round 2's. On the round 1 page code the flow fails at "no Undo once the page head has started another timer"; with only the counter guard removed it fails at "no Undo from a Stop that answered after a navigation". After the fix: `verify-lor screen today` ok with no browser errors, `pnpm typecheck` clean, `pnpm test` 220 passed, `pnpm test:db` 154 passed.
+
 **Tooling notes.** Port 3857 and `life_on_rails_test` are shared by every checkout. Another thread's `pnpm test:db` truncated tables mid-flow once, and another `verify-lor up` replaced my server once; both failures looked like page bugs. Worth a lock in verify-lor (related: lor-3ydk).
+
+### Responses
+
+1-8hyc.1: fixed in 4e6b62a5
+1-8hyc.2: fixed in 4e6b62a5
