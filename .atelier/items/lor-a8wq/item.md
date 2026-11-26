@@ -64,7 +64,7 @@ The sixteen edits, as Sumeet approved them on 2026-11-25:
 
 ## Report
 
-**The gallery:** https://buildbot.tail47515a.ts.net/lab/shots/dashboard-lor-40i0/ (over Tailscale, from the PC). All 28 shots in `shots/dashboard.json` at 1500px. Each image shows the mission's end and flips to the base with the **Before** button or the `b` key. The files are in `~/.local/state/lor-shots/dashboard-lor-40i0/` (base images under `previous/`), and `scripts/lab/publish.sh` copied them to the lab, so they survive a reboot.
+**The gallery:** http://buildbot.tail47515a.ts.net:3847/lab/shots/dashboard-lor-40i0/ (over Tailscale, from the PC; port 3847 is LoR's owner listener, while the bare HTTPS name serves T3 Code). All 28 shots in `shots/dashboard.json` at 1500px. Each image shows the mission's end and flips to the base with the **Before** button or the `b` key. The files are in `~/.local/state/lor-shots/dashboard-lor-40i0/` (base images under `previous/`), and `scripts/lab/publish.sh` copied them to the lab, so they survive a reboot.
 
 **How the shots were taken.** The base is 93d569a3, the first-parent parent of `Merge lor-w2tw` (521cb14f), which is the mission's first merge. The end is `main` at de399bed, with all eight other items merged. Each checkout ran under `scripts/ui-dev.sh` on :3858 with `LOR_FAKE_NOW=2026-11-25T15:00`, and the demo set was reloaded with that clock just before each run. `node scripts/shots.mjs` ran with a copy of the catalogue limited to `widths: [1500]`. Seeds, migrations and `shots.mjs` are the same at both commits, and both runs reported 28 images and no problems. The gallery labels the base "the previous run", so in it **Before means 93d569a3**.
 
