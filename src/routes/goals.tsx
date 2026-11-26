@@ -213,11 +213,11 @@ function Row({ n, shown, depth, openTasks, selected, onSelect, act }: {
   const quiet = !isOpen(n);
   return (
     <li>
-      {/* The name keeps at least 11rem; when the details beside it do not fit, they wrap under it. */}
+      {/* The name keeps at least 11rem and wraps rather than truncating; details that do not fit beside it wrap under it. */}
       <div className={`flex flex-wrap items-center gap-x-2.5 gap-y-0.5 py-1.5 pr-2 ${selected === n.id ? "row-sel" : "hover:bg-raised"}`} style={{ paddingLeft: 8 + depth * 20 }}>
-        <span className="flex min-w-[11rem] flex-1 items-center gap-2.5">
+        <span className="flex min-w-[11rem] flex-1 items-baseline gap-2.5">
           <span className={`cond w-[54px] shrink-0 text-small tracking-[0.06em] uppercase ${n.type === "habit" ? "text-or-deep" : "text-dim"}`}>{TYPE_NAME[n.type]}</span>
-          <button className={`min-w-0 flex-1 truncate text-left ${quiet ? "text-dim" : ""}`} onClick={() => onSelect(n.id)}>
+          <button className={`min-w-0 flex-1 text-left [overflow-wrap:anywhere] ${quiet ? "text-dim" : ""}`} onClick={() => onSelect(n.id)}>
             {n.title}
             {quiet ? <span className="ml-2 text-small">{n.status}</span> : null}
           </button>
