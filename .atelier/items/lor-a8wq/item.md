@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-a8wq
 title: Before and after of every dashboard page, for Sumeet to judge
-status: open
+status: building
 mission: lor-40i0
 labels: []
 priority: medium
@@ -16,7 +16,8 @@ blocked_by:
 - lor-j4nb
 - lor-n3vi
 - lor-0v56
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Aa2ab188c-a0a0-49ed-9a13-3deba974c50e%3Adelegate-task%3Af72b2d37-77c9-4561-adf0-10f9a0859d44
 ready: null
 trivial: null
 caused_by: null
