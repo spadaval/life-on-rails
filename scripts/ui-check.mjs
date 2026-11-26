@@ -93,6 +93,8 @@ const flows = {
     const goal = id(lor(["intent", "create", "--type", "goal", "--title", "Neha and the wedding"]));
     const vendors = id(lor(["intent", "create", "--type", "project", "--title", "Wedding vendors", "--parent", goal]));
     id(lor(["intent", "create", "--type", "project", "--title", "Life on Rails"]));
+    const portuguese = id(lor(["intent", "create", "--type", "goal", "--title", "Hold a conversation in Portuguese"]));
+    lor(["intent", "create", "--type", "task", "--title", "Book a weekly tutor session", "--parent", portuguese]);
     lor(["entity", "upsert", "--kind", "person", "--name", "Dad"]);
     lor(["intent", "create", "--type", "task", "--title", "Shortlist ceremony venues", "--parent", vendors, "--due", new Date(Date.now() + 3 * 86400000).toISOString(), "--flag", "You fly out on the 23rd: a shortlist first means you can visit them."]);
     lor(["intent", "create", "--type", "task", "--title", "Check the H-1B change of status took effect", "--due", new Date(Date.now() - 2 * 86400000).toISOString()]);
@@ -104,9 +106,70 @@ const flows = {
     await settle();
     await shot("tasks-1-open");
 
+    // A row names what it counts toward in plain dim text, in full; the Google mark stays boxed.
+    const tutor = page.locator('li[id^=task-]:has-text("Book a weekly tutor session")');
+    const goalName = tutor.locator('span[title="Hold a conversation in Portuguese"]');
+    const fit = await goalName.evaluate((el) => ({ cls: el.className, cut: el.scrollWidth > el.clientWidth, text: el.textContent }));
+    expect(!/\bchip\b/.test(fit.cls) && !fit.cut && fit.text === "Hold a conversation in Portuguese", "the goal name on the row as plain text, not cut at 1500px", fit);
+    const g = await page.locator('li[id^=task-]:has-text("Renew passport") [title="From Google Tasks"]').getAttribute("class");
+    expect(/\bchip\b/.test(g ?? ""), "the Google Tasks mark boxed", g);
+
+    // The filter bar: how many lines it takes, and whether every control is whole (inside the bar, not
+    // squeezed below its own content, no two overlapping). Lines are counted by vertical centre, since
+    // buttons of different heights on one line share it.
+    const bar = page.locator('input[aria-label="Filter by text"]').locator("..");
+    const layout = () => bar.evaluate((el) => {
+      const box = el.getBoundingClientRect();
+      const kids = [...el.querySelectorAll(":scope > *, :scope > span > *")].filter((c) => c.tagName !== "SPAN");
+      const rects = kids.map((c) => c.getBoundingClientRect());
+      const overlap = rects.some((a, i) => rects.some((b, j) => i < j && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1));
+      return {
+        lines: new Set(rects.map((r) => Math.round(r.top + r.height / 2))).size,
+        whole: !overlap && kids.every((c, i) => rects[i].left >= box.left - 1 && rects[i].right <= box.right + 1 && c.scrollWidth <= c.clientWidth + 1),
+        controls: kids.length,
+      };
+    });
+    const barAt = async (width, query, what, lines) => {
+      await page.setViewportSize({ width, height: 950 });
+      await page.goto(`${BASE}/tasks${query}`);
+      await settle();
+      const l = await layout();
+      expect(l.whole && (lines === undefined || l.lines === lines), what, l);
+      return l;
+    };
+    await barAt(1500, "", "filter, For, Due, From, Needs you, Group and Sort on one line at 1500px", 1);
+    await barAt(1500, `?for=${portuguese}`, "the filter line stays one line at 1500px with a long For value and Clear", 1);
+    await shot("tasks-1b-for-chosen");
+    await barAt(1500, `?for=${portuguese}&group=for&sort=updated`, "with Group and Sort changed too, the bar wraps whole controls at 1500px");
+    await shot("tasks-1c-all-chosen");
+    await barAt(1280, "", "the bar whole at 1280px, where the panel first sits beside the list");
+    await barAt(1280, `?for=${portuguese}&group=for&sort=updated`, "the bar whole at 1280px with everything chosen");
+    await page.setViewportSize({ width: 1500, height: 950 });
+    await page.goto(`${BASE}/tasks`);
+    await settle();
+
+    // Keyboard hints hide behind ? and the help mark; ? in a text field types a ?.
+    const keysShown = () => page.locator("#task-keys").count();
+    expect((await keysShown()) === 0, "no keyboard hints printed at rest");
+    await page.keyboard.press("?");
+    expect((await keysShown()) === 1, "? shows the keyboard hints");
+    await page.keyboard.press("Escape");
+    expect((await keysShown()) === 0, "Escape hides them");
+    await page.getByRole("button", { name: "Keyboard shortcuts" }).click();
+    expect((await keysShown()) === 1, "the help mark shows them");
+    await page.getByRole("button", { name: "Keyboard shortcuts" }).click();
+    await page.locator('input[aria-label="Filter by text"]').click();
+    await page.keyboard.press("?");
+    expect((await keysShown()) === 0 && (await page.locator('input[aria-label="Filter by text"]').inputValue()) === "?", "? in the filter field types a ? and opens nothing");
+    await page.locator('input[aria-label="Filter by text"]').fill("");
+    await page.keyboard.press("Escape");
+
     // Quick add: parent, date and agent in one line, with a suggestion picked by keyboard.
     const qa = page.getByRole("combobox", { name: "Add a task" });
+    const hint = page.getByText("counts toward ·");
+    expect((await hint.count()) === 0, "no syntax hint under the add field at rest");
     await qa.click();
+    expect(await hint.isVisible(), "the syntax hint once the add field has focus");
     await qa.pressSequentially("Ask the florist about peonies #wedd");
     await page.waitForSelector("#quick-add-choices");
     await shot("tasks-2-suggest");
@@ -115,24 +178,38 @@ const flows = {
     await shot("tasks-3-parsed");
     const chips = await page.locator(".chip").allInnerTexts();
     console.log("chips:", chips.join(" | "));
+    expect(chips.some((c) => /For\s+Wedding vendors/.test(c)) && chips.some((c) => /Due/.test(c)) && chips.some((c) => /With the agent/.test(c)), "chips for the parent, the date and the agent", chips.join(" | "));
     await qa.press("Enter");
-    await page.waitForSelector('li:has-text("Ask the florist about peonies")', { state: "attached" }).catch(() => {});
+    // Given to the agent, it leaves the Open view, so wait for the field's own word that it saved.
+    await page.getByText("Added “Ask the florist about peonies”.").waitFor();
     await settle();
     const row = psql(`SELECT title, assignee, to_char(due_at AT TIME ZONE 'America/New_York', 'Dy') FROM intent WHERE title LIKE 'Ask the florist%'`);
     console.log("created:", row.trim());
+    expect(/\|agent\|Fri$/.test(row.trim()), "the quick-added task given to the agent and due on a Friday", row.trim());
     const linked = psql(`SELECT p.title FROM intent_link l JOIN intent p ON p.id = l.to_id JOIN intent t ON t.id = l.from_id WHERE t.title LIKE 'Ask the florist%'`);
     console.log("counts toward:", linked.trim());
+    expect(linked.trim() === "Wedding vendors", "the quick-added task under Wedding vendors", linked.trim());
 
     // Waiting on a person, and a dismissed date word.
     await qa.pressSequentially("Get the deposit back @Dad tomorrow");
     await qa.press("Enter");
-    await settle();
+    await page.getByText("Added “Get the deposit back”.").waitFor();
     await qa.pressSequentially("Watch Friday Night Lights");
     await page.locator('.chip:has-text("Due") button').click();
     await qa.press("Enter");
+    await page.getByText("Added “Watch Friday Night Lights”.").waitFor();
+    const waiting = psql(`SELECT title, status FROM intent WHERE title LIKE 'Get the deposit%'`).trim();
+    console.log("waiting:", waiting);
+    expect(/\|waiting$/.test(waiting), "@Dad made the task waiting", waiting);
+    const literal = psql(`SELECT title, due_at IS NULL FROM intent WHERE title LIKE 'Watch%'`).trim();
+    console.log("literal:", literal);
+    expect(literal === "Watch Friday Night Lights|t", "the dismissed date kept as text", literal);
+
+    // Tick a row off.
+    await page.getByRole("checkbox", { name: "Choose the invitation vendor" }).check();
     await settle();
-    console.log("waiting:", psql(`SELECT title, status FROM intent WHERE title LIKE 'Get the deposit%'`).trim());
-    console.log("literal:", psql(`SELECT title, due_at IS NULL FROM intent WHERE title LIKE 'Watch%'`).trim());
+    const ticked = psql(`SELECT status FROM intent WHERE title = 'Choose the invitation vendor'`).trim();
+    expect(ticked === "done", "ticking a row marks it done", ticked);
 
     // The global dialog from another screen.
     await page.goto(`${BASE}/`);
@@ -146,13 +223,20 @@ const flows = {
     await page.goto(`${BASE}/tasks?for=${goal}`);
     await settle();
     await shot("tasks-5-filter-goal");
-    console.log("under the goal:", (await page.locator("li[id^=task-]").allInnerTexts()).map((t) => t.split("\n")[0]).join(" | "));
+    const under = (await page.locator("li[id^=task-]").allInnerTexts()).map((t) => t.split("\n")[0]);
+    console.log("under the goal:", under.join(" | "));
+    // Open view: the florist task went to the agent and the invitation one was ticked, so Shortlist is the one left.
+    expect(under.length === 1 && /Shortlist ceremony venues/.test(under[0]), "only the goal's tasks, its project's included", under);
     await page.goto(`${BASE}/tasks?group=for`);
     await settle();
+    await page.keyboard.press("j");
     await page.keyboard.press("j");
     await page.keyboard.press("Enter");
     await settle();
     await shot("tasks-6-panel");
+    const second = (await page.locator("li[id^=task-]").nth(1).innerText()).split("\n")[0];
+    const panelTitle = await page.getByRole("textbox", { name: "Title" }).inputValue();
+    expect(panelTitle === second, "j j Enter opens the second row in the panel", { second, panelTitle });
 
     // Bulk: select two with x, reschedule them.
     await page.keyboard.press("Escape");
@@ -162,12 +246,19 @@ const flows = {
     await shot("tasks-7-bulk");
     await page.locator('label:has(select[aria-label="Due"])').last().locator("select").selectOption({ label: "Tomorrow" });
     await settle();
-    console.log("notice:", await page.getByRole("status").innerText().catch(() => "(none)"));
+    const notice = await page.getByRole("status").innerText().catch(() => "(none)");
+    console.log("notice:", notice);
+    expect(/Rescheduled: 2\./.test(notice), "the bulk bar rescheduled the two picked rows", notice);
     await shot("tasks-8-after-bulk");
 
     await page.goto(`${BASE}/tasks?view=agent`);
     await settle();
     await shot("tasks-9-agent");
+
+    // At 1100px the filter bar wraps whole controls, and nothing spills past the list.
+    await barAt(1100, `?for=${portuguese}`, "the filter bar wraps cleanly at 1100px");
+    await shot("tasks-10-1100");
+    await page.setViewportSize({ width: 1500, height: 950 });
   },
   async people() {
     psql(`DELETE FROM page WHERE slug NOT IN ('agent', 'me', 'inbox'); UPDATE intent SET waiting_on_entity_id = NULL; DELETE FROM entity_identifier; DELETE FROM entity; DELETE FROM observation WHERE source = 'gmail';`);
@@ -397,6 +488,14 @@ const flows = {
     const actual = (text) => lanes.locator(`button[title*="${text}"]`);
     const stop = page.getByRole("button", { name: "Stop", exact: true });
     const card = page.locator("div", { has: stop }).last();
+    // Whether a click at the element's middle lands on it: nothing else, such as the lanes' hour row, lies over it.
+    const onTop = (loc) =>
+      loc.evaluate((el) => {
+        el.scrollIntoView({ block: "center" });
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return hit && el.contains(hit) ? "on top" : `covered by <${hit?.tagName.toLowerCase()} class="${hit?.getAttribute("class") ?? ""}">`;
+      });
 
     await page.setViewportSize({ width: 1500, height: 950 });
     await page.goto(`${BASE}/?at=${day}T15:30`);
@@ -447,6 +546,22 @@ const flows = {
       "one free slot, at 17:00 after the afternoon hold, offering the task due soonest that fits it",
       slotText,
     );
+    // A goal behind on its hours takes the slot ahead of any task. The goal already has today's snapshot from the
+    // server's scorer; a starving one dated tomorrow becomes its latest, and deleting it puts the day back.
+    psql(`INSERT INTO score_snapshot (intent_id, as_of, score, parts)
+      SELECT id, '${day}'::date + 1, 0.2, '{"terms":{"last_7_days":{"starving":true,"adequacy":0.2}}}' FROM intent WHERE title = 'Ship Life on Rails'`);
+    await page.reload();
+    await settle();
+    const goalSlot = (await slots.allInnerTexts()).join(" | ");
+    expect(
+      (await slots.count()) === 1 && /free at 17:00/.test(goalSlot) && /for Ship Life on Rails, behind on its hours/.test(goalSlot),
+      "the free slot offered to the goal behind on its hours, before the task",
+      goalSlot,
+    );
+    await shot("today-1d-slot-goal");
+    psql(`DELETE FROM score_snapshot WHERE as_of > '${day}'`);
+    await page.reload();
+    await settle();
     const main = await page.locator("main").textContent();
     expect(!/Calendar confirmed|time accounted for/i.test(main) && /Too much\? Reset visibility/.test(main), "the footer without the two percentages, with Reset visibility", main.slice(-200));
     // With the agent: one task a line, each a link to it in Tasks.
@@ -478,10 +593,16 @@ const flows = {
     await page.fill('input[placeholder="What are you doing? (optional)"]', "Writing the spec");
     const search = page.locator('input[placeholder="Search goals, projects, habits, tasks…"]');
     await search.fill("ship");
-    // Enter picks the first match. A click cannot: the picker spills out of the day arc and the
-    // lanes' hour row covers its buttons (a product bug, reported in lor-w2tw).
-    expect((await page.locator("button", { hasText: "Ship Life on Rails" }).count()) === 1, "the picker to offer Ship Life on Rails for \"ship\"");
-    await search.press("Enter");
+    // A mouse click on the match starts it: the picker opens under the arc, and nothing lies over its buttons.
+    const pickShip = page.locator("#timer-picker button", { hasText: "Ship Life on Rails" });
+    expect((await pickShip.count()) === 1, "the picker to offer Ship Life on Rails for \"ship\"");
+    const shipTop = await onTop(pickShip);
+    expect(shipTop === "on top", "the picker's Ship Life on Rails button not covered by another section at 1500x950", shipTop);
+    const pickerBox = await page.locator("#timer-picker").boundingBox();
+    const lanesBox = await lanes.boundingBox();
+    expect(pickerBox.y + pickerBox.height <= lanesBox.y, "the open picker above the lanes, not over them", { picker: pickerBox, lanes: lanesBox });
+    await shot("today-1d-picker");
+    await pickShip.click();
     await stop.waitFor();
     await settle();
     expect(/Ship Life on Rails.*Writing the spec/s.test(await card.innerText()), "the timer card to show Ship Life on Rails — Writing the spec", await card.innerText());
@@ -655,6 +776,47 @@ const flows = {
     await shot("today-9-brief-one-sentence-412");
     await briefToggle.click();
     expect((await briefToggle.getAttribute("aria-expanded")) === "false", "the one-sentence brief closed again");
+    // At phone width the picker and the lanes both take clicks, and Enter in the search still picks the first match.
+    await page.getByRole("button", { name: "Something else…" }).click();
+    await search.fill("health");
+    const pickHealth = page.locator("#timer-picker button", { hasText: "Health admin" });
+    const healthTop = await onTop(pickHealth);
+    expect(healthTop === "on top", "the picker's Health admin button not covered at 412px", healthTop);
+    const dentistTop = await onTop(actual("Dentist"));
+    expect(dentistTop === "on top", "the Dentist block in the Actual lane not covered at 412px with the picker open", dentistTop);
+    await shot("today-10-picker-412");
+    await search.press("Enter");
+    await stop.waitFor();
+    await settle();
+    expect(/Health admin/.test(await card.innerText()), "Enter in the picker's search to start the timer on the first match, Health admin", await card.innerText());
+    // Started and stopped at the same fixed instant, the timer leaves no block (MIN_BLOCK_MS).
+    await stop.click();
+    await page.getByRole("button", { name: "Something else…" }).waitFor();
+    await settle();
+    // Between desktop and phone the arc's middle is taller than the picture: it must push the picker down, not lie over it.
+    const titleBox = page.locator('#timer-picker input[placeholder="What are you doing? (optional)"]');
+    for (const width of [1100, 800]) {
+      await page.setViewportSize({ width, height: 950 });
+      await page.getByRole("button", { name: "Something else…" }).click();
+      await search.fill("ship");
+      const covered = {};
+      for (const [what, loc] of [["title box", titleBox], ["search box", search], ["Ship Life on Rails button", pickShip]]) covered[what] = await onTop(loc);
+      expect(Object.values(covered).every((v) => v === "on top"), `the picker's title box, search box and result not covered at ${width}px`, covered);
+      await shot(`today-11-picker-${width}`);
+      await page.getByRole("button", { name: "Close", exact: true }).click();
+    }
+    // A recent intent in the card starts with the title typed in the picker, and the picker closes.
+    await page.getByRole("button", { name: "Something else…" }).click();
+    await titleBox.fill("Booking the dentist");
+    // The card's chip, not the picker's own Health admin, which comes after it on the page.
+    await page.locator('section[aria-label="The waking day"] button:not(#timer-picker button)', { hasText: "Health admin" }).click();
+    await stop.waitFor();
+    await settle();
+    expect(/Health admin.*Booking the dentist/s.test(await card.innerText()), "a recent intent in the card to start with the picker's title", await card.innerText());
+    await stop.click();
+    await page.getByRole("button", { name: "Something else…" }).waitFor();
+    await settle();
+    expect((await page.locator("#timer-picker").count()) === 0, "the picker closed after starting from a recent intent and stopping");
     await page.setViewportSize({ width: 1500, height: 950 });
   },
 
@@ -666,7 +828,8 @@ const flows = {
     lor(["intent", "create", "--type", "task", "--title", "Shortlist venues", "--parent", vendors]);
     lor(["intent", "create", "--type", "task", "--title", "Call the florist", "--parent", vendors]);
     lor(["intent", "create", "--type", "task", "--title", "Book flights", "--parent", wedding]);
-    id(lor(["intent", "create", "--type", "habit", "--title", "Call Neha", "--parent", wedding, "--frequency", "1"]));
+    const callNeha = id(lor(["intent", "create", "--type", "habit", "--title", "Call Neha", "--parent", wedding, "--frequency", "1"]));
+    lor(["intent", "create", "--type", "task", "--title", "Buy Neha a card", "--parent", callNeha]);
     lor(["intent", "create", "--type", "project", "--title", "Health admin"]);
 
     await page.setViewportSize({ width: 1500, height: 950 });
@@ -676,6 +839,11 @@ const flows = {
     const card = (await page.locator('section:has-text("Neha and the wedding")').first().innerText()).replace(/\s+/g, " ");
     console.log("goal card:", card);
     expect(/0 \/ 6h this week/.test(card) && /Wedding vendors/.test(card) && /Call Neha/.test(card), "the wedding card with 0 / 6h, Wedding vendors and Call Neha", card);
+    // Each row says its kind; a habit says how often it is due beside Did it. innerText carries the CSS uppercase.
+    expect(/Project Wedding vendors 2 tasks/i.test(card) && /Habit Call Neha 1 per day Did it/i.test(card), "rows labelled Project (with its 2 tasks) and Habit (1 per day, beside Did it)", card);
+    // Tasks are said once and none goes unsaid: the project row counts its two, the foot the other two,
+    // Book flights on the goal itself and Buy Neha a card under the habit. No 4-task total.
+    expect(/2 tasks outside its projects/.test(card) && !/4 tasks/.test(card), "the foot counting the 2 tasks outside the project (on the goal, under the habit), no 4-task total", card);
 
     await page.click('button:has-text("New goal, project or habit")');
     await page.selectOption('select[aria-label="Kind"]', "goal");
@@ -708,6 +876,8 @@ const flows = {
     await aside.getByRole("button", { name: "Stop editing" }).waitFor();
     const title = await aside.getByLabel("Title", { exact: true }).inputValue();
     expect(title === "Wedding vendors" && (await aside.getByLabel("Hours a week").count()) === 1, "the editor open on Wedding vendors with an Hours a week field", title);
+    const weight = (await aside.getByLabel(/^Weight/).locator("xpath=..").innerText()).replace(/\s+/g, " ");
+    expect(/Not used in scoring for a project yet/.test(weight), "the Weight field saying what it does for a project", weight);
     await shot("goals-3-editor");
 
     // The task count opens Tasks filtered to the project: its two tasks, not Book flights under the goal.

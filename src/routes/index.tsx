@@ -64,6 +64,16 @@ function Today() {
     window.addEventListener(PAGE_ACTION, endOffer);
     return () => window.removeEventListener(PAGE_ACTION, endOffer);
   }, []);
+  // The timer card's "Something else…" picker. It opens under the arc, not in it: laid over the picture it grew past
+  // the arc's bottom and under the lanes, which then took its clicks.
+  const [picking, setPicking] = useState(false);
+  const [timerTitle, setTimerTitle] = useState("");
+  // Either way of starting, a recent intent in the card or any intent in the picker, takes the picker's title and closes it.
+  const startTimer = (intentId: string) =>
+    act(() => timerFn({ data: { action: "start", intentId, title: timerTitle.trim() || null } })).then(() => {
+      setPicking(false);
+      setTimerTitle("");
+    });
 
   const hm24 = useMemo(() => new Intl.DateTimeFormat("en-GB", { timeZone: t.timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }), [t.timezone]);
   const hm = (ms: number) => hm24.format(new Date(ms));
@@ -154,6 +164,7 @@ function Today() {
         blocks={t.actual.map((b) => ({ t_start: b.t_start, t_end: b.t_end, committed: b.committed, bare: isBare(b) }))}
         events={timed.map((e) => ({ key: `${e.calendar_id}/${e.event_id}`, title: e.title ?? "(no title)", t_start: e.t_start }))}
         hm={hm}
+        below={t.is_today && !t.running && picking ? <TimerPicker data={data} title={timerTitle} onTitle={setTimerTitle} onStart={startTimer} /> : null}
       >
         {t.is_today ? (
           <>
@@ -167,7 +178,16 @@ function Today() {
               {remaining > 0 ? "of the waking day" : now < wakeStart ? `The day starts at ${clock(t.wake_start)}` : "The waking day is over"}
               {next ? ` · next ${clock(next.t_start)} ${next.title ?? ""}, in ${duration((new Date(next.t_start).getTime() - now) / 1000)}` : ""}
             </p>
-            <TimerCard data={data} now={now} busy={busy} act={act} onRelabel={() => t.running && setSelected(t.running.id)} />
+            <TimerCard
+              data={data}
+              now={now}
+              busy={busy}
+              act={act}
+              onStart={startTimer}
+              picking={picking}
+              onTogglePicker={() => setPicking((v) => !v)}
+              onRelabel={() => t.running && setSelected(t.running.id)}
+            />
           </>
         ) : (
           <>
@@ -225,15 +245,10 @@ function Today() {
   );
 }
 
-function TimerCard({ data, now, busy, act, onRelabel }: { data: Data; now: number; busy: boolean; act: Act; onRelabel: () => void }) {
+function TimerCard({ data, now, busy, act, onStart, picking, onTogglePicker, onRelabel }: {
+  data: Data; now: number; busy: boolean; act: Act; onStart: (intentId: string) => void; picking: boolean; onTogglePicker: () => void; onRelabel: () => void;
+}) {
   const running = data.today.running;
-  const [picking, setPicking] = useState(false);
-  const [title, setTitle] = useState("");
-  const start = (intentId: string | null) =>
-    act(() => timerFn({ data: { action: "start", intentId, title: title.trim() || null } })).then(() => {
-      setPicking(false);
-      setTitle("");
-    });
 
   if (running) {
     const paused = running.paused_at !== null;
@@ -261,20 +276,31 @@ function TimerCard({ data, now, busy, act, onRelabel }: { data: Data; now: numbe
     <div className="mt-[18px] flex w-full flex-col items-center gap-2">
       <div className="flex flex-wrap justify-center gap-2">
         {data.recent.slice(0, 3).map((r) => (
-          <button key={r.id} className="btn btn-secondary btn-sm max-w-[200px] truncate" disabled={busy} onClick={() => start(r.id)}>
+          <button
+            key={r.id}
+            className="btn btn-secondary btn-sm max-w-[200px] truncate"
+            disabled={busy}
+            onClick={() => onStart(r.id)}
+          >
             {r.title}
           </button>
         ))}
-        <button className="btn btn-quiet btn-sm" onClick={() => setPicking((v) => !v)}>
+        <button className="btn btn-quiet btn-sm" aria-expanded={picking} aria-controls="timer-picker" onClick={onTogglePicker}>
           {picking ? "Close" : "Something else…"}
         </button>
       </div>
-      {picking ? (
-        <div className="w-full max-w-[560px] space-y-2 rounded-sm bg-panel p-3 text-left">
-          <input className="input" placeholder="What are you doing? (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <IntentPicker intents={data.intents} recent={data.recent} onPick={(i) => start(i.id)} />
-        </div>
-      ) : null}
+    </div>
+  );
+}
+
+/** "Something else…": a title and any intent to start the timer on. */
+function TimerPicker({ data, title, onTitle, onStart }: {
+  data: Data; title: string; onTitle: (title: string) => void; onStart: (intentId: string) => void;
+}) {
+  return (
+    <div id="timer-picker" className="w-full max-w-[560px] space-y-2 rounded-sm bg-panel p-3 text-left">
+      <input className="input" placeholder="What are you doing? (optional)" value={title} onChange={(e) => onTitle(e.target.value)} />
+      <IntentPicker intents={data.intents} recent={data.recent} onPick={(i) => onStart(i.id)} />
     </div>
   );
 }
@@ -303,7 +329,8 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
   for (let h = from; h <= to; h += 4 * 3_600_000) ticks.push(h);
   const timed = t.planned.filter((e) => !e.all_day);
   const allDay = t.planned.filter((e) => e.all_day);
-  // One free slot: the next stretch from now that a task fits. The server gives each stretch its own task.
+  // One free slot: the next stretch from now with a suggestion. The server gives the first stretch to a goal behind on
+  // its hours when there is one, and each other stretch its own task.
   const slot = t.gaps.find((g) => g.fits);
   const unlabelled = t.actual.some((b) => !b.intent);
   const showNow = t.is_today && now >= from && now <= to;
@@ -393,7 +420,7 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
         <p className="pl-[66px]">
           <span className="chip max-w-full flex-wrap whitespace-normal" data-free-slot>
             {duration(slot.minutes * 60)} free at {clock(slot.t_start)}
-            <span className="text-dim">· fits {slot.fits}</span>
+            <span className="text-dim">{slot.behind ? `· for ${slot.fits}, behind on its hours` : `· fits ${slot.fits}`}</span>
           </span>
         </p>
       ) : null}

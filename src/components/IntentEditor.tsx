@@ -12,14 +12,28 @@ export type Act = (fn: () => Promise<unknown>, done?: string) => Promise<unknown
 
 export const numOrNull = (s: string): number | null => (s.trim() === "" || Number.isNaN(Number(s)) ? null : Number(s));
 
-function Field({ label, children, wide = false }: { label: string; children: ReactNode; wide?: boolean }) {
+function Field({ label, hint, children, wide = false }: { label: string; hint?: string; children: ReactNode; wide?: boolean }) {
   return (
     <label className={`block text-small text-mute ${wide ? "sm:col-span-2" : ""}`}>
       <span className="mb-1 block">{label}</span>
       {children}
+      {hint ? <span className="mt-1 block text-dim">{hint}</span> : null}
     </label>
   );
 }
+
+/**
+ * What an intent's own weight changes, read from where it is used: a goal's `starving` flag in
+ * src/server/scoring/recompute.ts and the free-time suggestion in src/server/today.ts, and the
+ * metric asked for on Today in src/server/functions/today.ts. (A score's mix of its children
+ * uses the link's weight, not this one.)
+ */
+const WEIGHT_HINT: Partial<Record<GraphNode["type"], string>> = {
+  goal: "At 2 or more, the goal is marked under target when the last 7 days gave it less than half its hours, and the heaviest such goal is offered Today's next free stretch, before any task.",
+  metric: "Today asks for the heaviest metric not yet logged that day.",
+  project: "Not used in scoring for a project yet.",
+  habit: "Not used in scoring for a habit yet.",
+};
 
 export function IntentEditor({ node: n, nodes, entities, act }: { node: GraphNode; nodes: GraphNode[]; entities: Entity[]; act: Act }) {
   const [title, setTitle] = useState(n.title);
@@ -79,7 +93,7 @@ export function IntentEditor({ node: n, nodes, entities, act }: { node: GraphNod
             <input className="input" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
           </Field>
         ) : (
-          <Field label="Weight">
+          <Field label="Weight" hint={WEIGHT_HINT[n.type]} wide={n.type === "goal"}>
             <input className="input" inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} />
           </Field>
         )}

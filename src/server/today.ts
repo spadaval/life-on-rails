@@ -47,8 +47,13 @@ export interface Gap {
   t_start: string;
   t_end: string;
   minutes: number;
-  /** An open task that fits this stretch; no other gap is given the same one. */
+  /**
+   * What this stretch could go to: the goal most behind on its hours (first stretch only), else an open task that
+   * fits it. No other gap is given the same one.
+   */
   fits: string | null;
+  /** True when `fits` is a goal behind on its hours rather than a task. */
+  behind: boolean;
 }
 
 /** An open task a free stretch could go to, in the order they are offered (due soonest first). */
@@ -249,7 +254,8 @@ export async function getToday(db: Tx, date: Ymd, now = clockNow()): Promise<Tod
     const from = Math.max(now.getTime(), wake.start.getTime());
     const busy = events.filter((e) => e.fills).map((e) => ({ t: e.t_start.getTime(), tEnd: e.t_end.getTime() }));
     const free = subtractSpans([{ t: from, tEnd: wake.end.getTime() }], busy);
-    gaps.push(...assignGapTasks(free, free.length > 0 ? await gapTasks(db) : []));
+    const any = free.length > 0;
+    gaps.push(...assignGapTasks(free, any ? await gapTasks(db) : [], any ? await starvingGoal(db) : null));
   }
 
   const sessions = await db<{ id: string; t_start: Date; t_end: Date; app: string | null; title: string | null; device: string }[]>`
@@ -291,20 +297,40 @@ export async function getToday(db: Tx, date: Ymd, now = clockNow()): Promise<Tod
 }
 
 /**
- * The free stretches long enough to use, in time order, each with the first task (in the order given) whose estimate
- * fits its length and that no earlier stretch took.
+ * The free stretches long enough to use, in time order. The first goes to `goal`, the goal most behind on its hours,
+ * when there is one; every other stretch gets the first task (in the order given) whose estimate fits its length and
+ * that no earlier stretch took.
  */
-export function assignGapTasks(free: Span[], tasks: GapTask[]): Gap[] {
+export function assignGapTasks(free: Span[], tasks: GapTask[], goal: string | null = null): Gap[] {
   const taken = new Set<number>();
   const gaps: Gap[] = [];
   for (const g of [...free].sort((a, b) => a.t - b.t)) {
     const minutes = Math.round((g.tEnd - g.t) / 60_000);
     if (minutes < MIN_GAP_MIN) continue;
+    const span = { t_start: new Date(g.t).toISOString(), t_end: new Date(g.tEnd).toISOString(), minutes };
+    if (goal !== null && gaps.length === 0) {
+      gaps.push({ ...span, fits: goal, behind: true });
+      continue;
+    }
     const i = tasks.findIndex((task, j) => !taken.has(j) && (task.estimate_min === null || task.estimate_min <= minutes));
     if (i >= 0) taken.add(i);
-    gaps.push({ t_start: new Date(g.t).toISOString(), t_end: new Date(g.tEnd).toISOString(), minutes, fits: i >= 0 ? tasks[i]!.title : null });
+    gaps.push({ ...span, fits: i >= 0 ? tasks[i]!.title : null, behind: false });
   }
   return gaps;
+}
+
+/**
+ * The goal free time should go to first: the heaviest active goal whose latest score snapshot marks its last 7 days
+ * starving, the least adequate among equals. Null when no goal is starving.
+ */
+async function starvingGoal(db: Tx): Promise<string | null> {
+  const rows = await db<{ title: string }[]>`
+    SELECT i.title FROM intent i
+    JOIN LATERAL (SELECT parts FROM score_snapshot s WHERE s.intent_id = i.id ORDER BY as_of DESC LIMIT 1) s ON true
+    WHERE i.type = 'goal' AND i.status = 'active' AND NOT i.system
+      AND (s.parts->'terms'->'last_7_days'->>'starving')::boolean IS TRUE
+    ORDER BY i.weight DESC, (s.parts->'terms'->'last_7_days'->>'adequacy')::float8 ASC NULLS FIRST LIMIT 1`;
+  return rows[0]?.title ?? null;
 }
 
 /** All the owner's open tasks, due soonest first, then those with no due date. Not limited: any one of them may be the only one that fits. */
@@ -359,7 +385,7 @@ export function renderToday(t: TodayView): string {
   }
   if (t.gaps.length > 0) {
     out.push("", "## Free stretches left", "");
-    for (const g of t.gaps) out.push(`- ${hm(g.t_start, t.timezone)}–${hm(g.t_end, t.timezone)} (${g.minutes} min)${g.fits ? `, could go to: ${g.fits}` : ""}`);
+    for (const g of t.gaps) out.push(`- ${hm(g.t_start, t.timezone)}–${hm(g.t_end, t.timezone)} (${g.minutes} min)${g.fits ? `, could go to: ${g.fits}${g.behind ? " (goal behind on its hours)" : ""}` : ""}`);
   }
   if (t.phone) out.push("", `Phone: ${phoneLine(t.phone)}.`);
   return out.join("\n") + "\n";

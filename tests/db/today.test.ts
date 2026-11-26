@@ -109,6 +109,36 @@ dbDescribe("time over the API", () => {
     expect((await api("POST", `/blocks/${stopped.id}/recategorize`, { intent_id: deep.id, thread: "t-1" })).status).toBe(200);
   });
 
+  it("the first free stretch goes to the heaviest goal behind on its hours, the rest to tasks", async () => {
+    const snapshot = async (id: string, asOf: string, starving: boolean, adequacy: number) =>
+      sql`INSERT INTO score_snapshot ${sql({ intent_id: id, as_of: asOf, score: adequacy, parts: sql.json({ terms: { last_7_days: { starving, adequacy } } }) })}`;
+    await event("review", 14, 15);
+    await createIntent(sql, { type: "task", title: "Renew the passport" }, ui);
+    const light = await createIntent(sql, { type: "goal", title: "Read more" }, ui);
+    const heavy = await createIntent(sql, { type: "goal", title: "Ship Life on Rails" }, ui);
+    const heavier = await createIntent(sql, { type: "goal", title: "Run twice a week" }, ui);
+    const paused = await createIntent(sql, { type: "goal", title: "Learn Italian" }, ui);
+    await sql`UPDATE intent SET weight = 2 WHERE id = ${light.id}`;
+    await sql`UPDATE intent SET weight = 3 WHERE id IN ${sql([heavy.id, heavier.id])}`;
+    await sql`UPDATE intent SET weight = 5, status = 'paused' WHERE id = ${paused.id}`;
+    await snapshot(light.id, "2026-10-13", true, 0.1);
+    await snapshot(heavy.id, "2026-10-13", true, 0.2);
+    // Equal weight: the less adequate goal comes first, judged by its latest snapshot only.
+    await snapshot(heavier.id, "2026-10-12", true, 0.1);
+    await snapshot(heavier.id, "2026-10-13", true, 0.3);
+    await snapshot(paused.id, "2026-10-13", true, 0);
+    await fill();
+
+    let t = await getToday(sql, "2026-10-14", at(12));
+    expect(t.gaps.map((g) => [g.minutes, g.fits, g.behind])).toEqual([[120, "Ship Life on Rails", true], [420, "Renew the passport", false]]);
+
+    // A day with no goal starving: the first stretch gets the task.
+    await sql`DELETE FROM score_snapshot`;
+    await snapshot(heavy.id, "2026-10-13", false, 0.9);
+    t = await getToday(sql, "2026-10-14", at(12));
+    expect(t.gaps.map((g) => [g.minutes, g.fits, g.behind])).toEqual([[120, "Renew the passport", false], [420, null, false]]);
+  });
+
   it("a free stretch finds a task that fits even behind many that do not", async () => {
     for (let i = 0; i < 60; i++) {
       await createIntent(sql, { type: "task", title: `Long ${i}` }, ui);
