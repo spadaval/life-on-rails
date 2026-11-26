@@ -386,7 +386,7 @@ const flows = {
           .filter(after)
           .map((el) => (el.tagName === "INPUT" ? "Ask" : el.textContent.trim()));
       });
-    const briefToggle = page.locator('button[aria-controls="brief-rest"]');
+    const briefToggle = page.locator('button[aria-controls~="brief-lead"]');
     const briefOpen = async () => (await briefToggle.getAttribute("aria-expanded")) === "true" && (await page.locator("#brief-rest").isVisible());
     const actual = (text) => lanes.locator(`button[title*="${text}"]`);
     const stop = page.getByRole("button", { name: "Stop", exact: true });
@@ -518,6 +518,25 @@ const flows = {
     const status = await page.locator("main").textContent();
     expect(/Calendar confirmed/.test(status) && /Time accounted for/.test(status) && /calendar time is counted/.test(status), "Calendar confirmed and Time accounted for on /status, each with a sentence", status.slice(0, 600));
     await shot("today-8-status");
+
+    // A one-sentence brief cut off at phone width still opens, by touch or keyboard, to the whole sentence.
+    const sentence = "Finish the spec before the design review at 14:00 and send Lena the icon sizes.";
+    psql(`DELETE FROM page WHERE slug = 'briefs/${day}'`);
+    lor(["page", "create", `briefs/${day}`, "--title", `Brief ${day}`], `${sentence}\n`);
+    await page.setViewportSize({ width: 412, height: 915 });
+    await page.goto(`${BASE}/?at=${day}T16:10`);
+    await settle();
+    const leadEl = page.locator("#brief-lead");
+    const cut = await leadEl.evaluate((el) => el.scrollWidth > el.clientWidth);
+    expect(cut && (await briefToggle.count()) === 1, "a one-sentence brief cut off at 412px, with a control to open it", { cut, buttons: await briefToggle.count() });
+    await briefToggle.focus();
+    await page.keyboard.press("Enter");
+    const whole = await leadEl.evaluate((el) => ({ text: el.textContent, fits: el.scrollWidth <= el.clientWidth }));
+    expect((await briefToggle.getAttribute("aria-expanded")) === "true" && whole.fits && whole.text === sentence, "the whole sentence readable once opened", whole);
+    await shot("today-9-brief-one-sentence-412");
+    await briefToggle.click();
+    expect((await briefToggle.getAttribute("aria-expanded")) === "false", "the one-sentence brief closed again");
+    await page.setViewportSize({ width: 1500, height: 950 });
   },
 
   async goals() {

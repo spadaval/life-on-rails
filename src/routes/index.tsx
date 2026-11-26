@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import { DayArc } from "../components/DayArc.js";
@@ -384,20 +384,40 @@ function Track({ children, showNow, nowX }: { children: React.ReactNode; showNow
   );
 }
 
-/** The brief's first sentence on one line; the rest opens below it. */
+/**
+ * The brief's first sentence on one line; the rest opens below it. The button also shows when the sentence alone
+ * is cut off at this width, so a one-sentence brief can still be read in full by touch or keyboard.
+ */
 function Brief({ body, opened }: { body: string; opened: boolean }) {
   const [open, setOpen] = useState(opened);
   const { lead, rest } = splitBrief(body);
+  const leadRef = useRef<HTMLParagraphElement>(null);
+  const [clipped, setClipped] = useState(false);
+  // Measured only while closed: open, the sentence wraps and never overflows.
+  useEffect(() => {
+    const el = leadRef.current;
+    if (!el || open) return;
+    const check = () => setClipped(el.scrollWidth > el.clientWidth);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open, lead]);
   return (
     <Panel bodyClass="py-3">
       <div className="flex items-baseline gap-3">
         <h2 className="h-sec shrink-0">This morning</h2>
-        <p className={`min-w-0 flex-1 text-body ${open ? "" : "truncate"}`} title={open ? undefined : lead}>
+        <p id="brief-lead" ref={leadRef} className={`min-w-0 flex-1 text-body ${open ? "" : "truncate"}`} title={open ? undefined : lead}>
           {lead}
         </p>
-        {rest ? (
-          <button className="btn btn-quiet btn-sm shrink-0" aria-expanded={open} aria-controls="brief-rest" onClick={() => setOpen((v) => !v)}>
-            {open ? "Less" : "The rest"}
+        {rest || clipped ? (
+          <button
+            className="btn btn-quiet btn-sm shrink-0"
+            aria-expanded={open}
+            aria-controls={rest ? "brief-lead brief-rest" : "brief-lead"}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? "Less" : rest ? "The rest" : "More"}
           </button>
         ) : null}
       </div>
