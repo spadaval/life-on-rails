@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-y8lw
 title: Running cli/lor.mjs from a checkout no longer writes to the live LoR by default
-status: changes_requested
+status: in_review
 mission: null
 labels: []
 priority: medium
@@ -44,8 +44,11 @@ One limit: a thread that exports `LOR_PORT=3857` and then runs the installed `lo
 
 **Round 2.** All three findings held. The guard now decides by port alone, on any host, because a host has too many spellings to list; a tailnet name on 3848 is refused too. `scripts/ui-check.mjs` reads the env file once and refuses its `LOR_PORT`, `LOR_SERVE_PORT` and `LOR_TRMNL_PORT` beside 3847 to 3849. `tests/lor-cli.test.ts` runs every child with `--import` of a module that replaces `fetch`, so allowed calls assert their method and address and refused ones assert that no fetch happened; it also runs `ui-check.mjs` against all six ports, where it exits 3 before a browser starts. `pnpm test` gives 230 passed, `pnpm typecheck` passes, and `verify.mjs up` then `screen tasks /tmp/lor-verify/y8lw-r2` gives `ok: true`, 24 `ok:` lines, `browser_errors: false`.
 
+**Round 3.** Finding 4 held: both guards compared port strings. They now compare numbers and take a URL with no port as its scheme's default, the way `scripts/shots.mjs` does. The test's env file sets `LOR_PORT=04000` and `LOR_SERVE_PORT=80`, and the refused cases add `:80`, a URL with no port, and `LOR_PORT=04000`, for the CLI and for `ui-check.mjs`. `pnpm test` gives 230 passed and `pnpm typecheck` passes. The browser flow was not rerun: the change to `ui-check.mjs` is the one comparison, and the test runs it.
+
 ### Responses
 
 1-ffbo.1: fixed in 00fb3451
 1-ffbo.2: fixed in 00fb3451
 1-ffbo.3: fixed in 00fb3451
+2-07n5.4: fixed in 259bc81c
