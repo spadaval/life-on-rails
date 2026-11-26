@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-mxrc
 title: Fix scripts/ui-check.mjs so the today and goals flows check what Today and Goals do on main
-status: ready
+status: dropped
 mission: lor-l9a7
 labels:
 - verification
@@ -40,3 +40,7 @@ created_at: 2026-11-08T06:09:27.358768702Z
 Relationships of the old record that the new format has no field for.
 
 - discovered_from: lor-sfh9 (Give agents one verify skill that drives LoR's server, web screens and launcher and proves what they changed)
+
+## Report
+
+Dropped: Done by lor-w2tw (merge 521cb14f), which repaired the today and goals flows in mission lor-40i0.

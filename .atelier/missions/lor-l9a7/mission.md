@@ -7,7 +7,8 @@ status: draft
 labels:
 - chain
 lead: null
-ready: null
+planners:
+- e05499fa-7ab0-4d4d-87b3-517340323121
 created_at: 2026-11-10T06:11:15.540367025Z
 ---
 
