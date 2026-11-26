@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-a8wq
 title: Before and after of every dashboard page, for Sumeet to judge
-status: in_review
+status: approved
 mission: lor-40i0
 labels: []
 priority: medium
