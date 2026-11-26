@@ -278,7 +278,8 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
   for (let h = from; h <= to; h += 4 * 3_600_000) ticks.push(h);
   const timed = t.planned.filter((e) => !e.all_day);
   const allDay = t.planned.filter((e) => e.all_day);
-  // One free slot: the next stretch from now that a task fits. The server gives each stretch its own task.
+  // One free slot: the next stretch from now with a suggestion. The server gives the first stretch to a goal behind on
+  // its hours when there is one, and each other stretch its own task.
   const slot = t.gaps.find((g) => g.fits);
   const unlabelled = t.actual.some((b) => !b.intent);
   const showNow = t.is_today && now >= from && now <= to;
@@ -368,7 +369,7 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
         <p className="pl-[66px]">
           <span className="chip max-w-full flex-wrap whitespace-normal" data-free-slot>
             {duration(slot.minutes * 60)} free at {clock(slot.t_start)}
-            <span className="text-dim">· fits {slot.fits}</span>
+            <span className="text-dim">{slot.behind ? `· for ${slot.fits}, behind on its hours` : `· fits ${slot.fits}`}</span>
           </span>
         </p>
       ) : null}

@@ -29,7 +29,7 @@ function Field({ label, hint, children, wide = false }: { label: string; hint?: 
  * uses the link's weight, not this one.)
  */
 const WEIGHT_HINT: Partial<Record<GraphNode["type"], string>> = {
-  goal: "At 2 or more, the goal is marked under target when the last 7 days gave it less than half its hours, and the heaviest such goal is suggested for free time first.",
+  goal: "At 2 or more, the goal is marked under target when the last 7 days gave it less than half its hours, and the heaviest such goal is offered Today's next free stretch, before any task.",
   metric: "Today asks for the heaviest metric not yet logged that day.",
   project: "Not used in scoring for a project yet.",
   habit: "Not used in scoring for a habit yet.",

@@ -32,6 +32,35 @@ describe("free stretches and the tasks they could go to", () => {
     expect(gaps.map((g) => g.fits)).toEqual(["Tidy the desk", null, null]);
   });
 
+  it("a goal behind on its hours takes the first stretch, and later stretches still get their own tasks", () => {
+    const gaps = assignGapTasks(free, tasks, "Ship Life on Rails");
+    expect(gaps.map((g) => [g.minutes, g.fits, g.behind])).toEqual([
+      [45, "Ship Life on Rails", true],
+      [30, "Call the dentist back", false], // the call was not used up by the first stretch
+      [360, "Write the report", false],
+    ]);
+  });
+
+  it("with no goal behind, no gap is marked behind", () => {
+    expect(assignGapTasks(free, tasks, null).every((g) => !g.behind)).toBe(true);
+  });
+
+  it("a goal behind on its hours is named as a goal in the brief", () => {
+    const view: TodayView = {
+      date: "2026-10-14", is_today: true, prev: "2026-10-13", next: "2026-10-15", now: new Date(at(12)).toISOString(),
+      timezone: "America/New_York", wake_start: new Date(at(8)).toISOString(), wake_end: new Date(at(22)).toISOString(),
+      remaining_s: 10 * 3600, remaining_fraction: 10 / 14, running: null, planned: [], actual: [],
+      gaps: assignGapTasks(free, tasks, "Ship Life on Rails"), to_confirm: 0, day_start: new Date(at(0)).toISOString(), day_end: new Date(at(24)).toISOString(),
+      confirm_rate: null, coverage: null, phone: null,
+    };
+    const lines = renderToday(view).split("\n");
+    const from = lines.indexOf("## Free stretches left");
+    expect(lines.slice(from + 2, from + 4)).toEqual([
+      "- 12:00–12:45 (45 min), could go to: Ship Life on Rails (goal behind on its hours)",
+      "- 14:00–14:30 (30 min), could go to: Call the dentist back",
+    ]);
+  });
+
   it("the brief's free-stretch lines name each gap's own task", () => {
     const view: TodayView = {
       date: "2026-10-14", is_today: true, prev: "2026-10-13", next: "2026-10-15", now: new Date(at(12)).toISOString(),
