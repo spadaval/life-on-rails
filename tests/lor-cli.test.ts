@@ -14,7 +14,8 @@ const envFile = path.join(dir, "env");
 const installed = path.join(dir, "lor");
 const noNetwork = path.join(dir, "no-network.mjs");
 // lor-web on ports of its own, so a refusal is the env file's doing and not the built-in list's.
-writeFileSync(envFile, "LOR_AGENT_TOKEN=t\nLOR_PORT=4000\nLOR_SERVE_PORT=4001\nLOR_TRMNL_PORT=4002\n");
+// One is written with a leading zero and one is http's default, which a URL spells differently.
+writeFileSync(envFile, "LOR_AGENT_TOKEN=t\nLOR_PORT=04000\nLOR_SERVE_PORT=80\nLOR_TRMNL_PORT=4002\n");
 writeFileSync(noNetwork, 'globalThis.fetch = async (url, init) => { process.stderr.write(`FETCH ${init?.method ?? "GET"} ${url}\\n`); return new Response("{}"); };\n');
 symlinkSync(cli, installed);
 
@@ -42,7 +43,9 @@ describe("cli/lor.mjs run as a file", () => {
       { LOR_URL: "http://localhost:3848" },
       { LOR_URL: "http://localhost.:4000" },
       { LOR_URL: "http://[::ffff:127.0.0.1]:3847" },
-      { LOR_URL: "http://[::1]:4001" },
+      { LOR_URL: "http://[::1]:80" },
+      { LOR_URL: "http://127.0.0.1" },
+      { LOR_PORT: "04000" },
       { LOR_URL: "http://box.tailnet.example:3848" },
     ];
     for (const env of named) {
@@ -65,15 +68,15 @@ describe("cli/lor.mjs run as a file", () => {
 
 describe("the installed lor, a symlink", () => {
   it("takes the env file's server by default", () => {
-    expect(run(installed, {})).toMatchObject({ code: 0, err: "FETCH POST http://127.0.0.1:4000/api/v1/intents\n" });
+    expect(run(installed, {})).toMatchObject({ code: 0, err: "FETCH POST http://127.0.0.1:04000/api/v1/intents\n" });
   });
 });
 
 describe("scripts/ui-check.mjs", () => {
   it("refuses a base on lor-web's ports, built in or from the env file, before a browser starts", () => {
-    for (const port of ["3847", "3848", "3849", "4000", "4001", "4002"]) {
-      const r = run("scripts/ui-check.mjs", { LOR_UI_BASE: `http://localhost.:${port}` }, ["tasks", path.join(dir, "out")]);
-      expect([port, r.code]).toEqual([port, 3]);
+    for (const at of [":3847", ":3848", ":3849", ":4000", ":80", "", ":4002"]) {
+      const r = run("scripts/ui-check.mjs", { LOR_UI_BASE: `http://localhost.${at}` }, ["tasks", path.join(dir, "out")]);
+      expect([at, r.code]).toEqual([at, 3]);
       expect(r.err).toMatch(/port of lor-web/);
     }
   });

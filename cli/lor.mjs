@@ -134,7 +134,8 @@ function loadConfig() {
     url: get("LOR_URL"),
     // Whether this call's own environment names the server, and the ports lor-web holds.
     named: Boolean(process.env.LOR_PORT || process.env.LOR_URL),
-    realPorts: ["3847", "3848", fromFile.LOR_PORT, fromFile.LOR_SERVE_PORT].filter(Boolean),
+    // As numbers, the way scripts/serve.mjs reads them: "04000" listens on 4000.
+    realPorts: [3847, 3848, Number(fromFile.LOR_PORT), Number(fromFile.LOR_SERVE_PORT)].filter(Boolean),
   };
 }
 
@@ -148,7 +149,10 @@ function refusal(config, base) {
   if (lstatSync(process.argv[1]).isSymbolicLink()) return null;
   const how = "For the test server: LOR_PORT=3857 node cli/lor.mjs ... (the verify skill's `up` starts it). For the real LoR: the installed `lor`.";
   if (!config.named) return `cli/lor.mjs run as a file has no default server, so that a test command cannot write to the real LoR. ${how}`;
-  if (config.realPorts.includes(new URL(base).port)) return `${base} is on a port of lor-web, with the owner's real data, and cli/lor.mjs run as a file does not go there. ${how}`;
+  const url = new URL(base);
+  // A URL drops its scheme's default port, so http://host is port 80.
+  const port = Number(url.port || (url.protocol === "https:" ? 443 : 80));
+  if (config.realPorts.includes(port)) return `${base} is on a port of lor-web, with the owner's real data, and cli/lor.mjs run as a file does not go there. ${how}`;
   return null;
 }
 

@@ -19,8 +19,9 @@ const ENV_FILE = (() => {
 /** The server's LOR_TZ: the environment, then the env file, then env.ts's default. */
 const SERVER_TZ = process.env.LOR_TZ || ENV_FILE.LOR_TZ || "America/New_York";
 // Flows empty tables and write as the agent: never on lor-web's ports, which hold the owner's real data.
-// The port alone decides, as in cli/lor.mjs (lor-y8lw).
-if (["3847", "3848", "3849", ENV_FILE.LOR_PORT, ENV_FILE.LOR_SERVE_PORT, ENV_FILE.LOR_TRMNL_PORT].includes(new URL(BASE).port)) {
+// The port alone decides, as numbers and with the scheme's default, as in cli/lor.mjs (lor-y8lw).
+const BASE_PORT = Number(new URL(BASE).port || (new URL(BASE).protocol === "https:" ? 443 : 80));
+if ([3847, 3848, 3849, Number(ENV_FILE.LOR_PORT), Number(ENV_FILE.LOR_SERVE_PORT), Number(ENV_FILE.LOR_TRMNL_PORT)].includes(BASE_PORT)) {
   console.error(`ui-check: refused: ${BASE} is on a port of lor-web, with the owner's real data. Use the test server on :3857 (the verify skill's \`up\`).`);
   process.exit(3);
 }
