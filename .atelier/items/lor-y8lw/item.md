@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-y8lw
 title: Running cli/lor.mjs from a checkout no longer writes to the live LoR by default
-status: changes_requested
+status: in_review
 mission: null
 labels: []
 priority: medium
@@ -34,10 +34,18 @@ A command meant for the test server cannot write to the real LoR by leaving a va
 
 ## Report
 
-`cli/lor.mjs` tells the two uses apart by how it was started: the installed `lor` is a symlink (`lstat` of `process.argv[1]`), a checkout's copy under test is run by its own path. Run by its path, it needs the server named in the call's own environment, and it refuses loopback addresses on lor-web's ports. The env file no longer supplies a default there, because the env file is what pointed the 25 Nov command at the real server. The installed `lor` is unchanged, so agents in any checkout still reach their memory with `lor`.
+`cli/lor.mjs` tells the two uses apart by how it was started: the installed `lor` is a symlink (`lstat` of `process.argv[1]`), a checkout's copy under test is run by its own path. Run by its path, it needs the server named in the call's own environment, and it refuses lor-web's ports on any host. The env file no longer supplies a default there, because the env file is what pointed the 25 Nov command at the real server. The installed `lor` is unchanged, so agents in any checkout still reach their memory with `lor`.
 
 `scripts/ui-check.mjs` already passed `LOR_PORT` from its base URL; it now also exits 3 when that base is 3847, 3848 or 3849. `verify.mjs` and `shots.mjs` had their own refusals already.
 
 Checked: `pnpm test` gives 229 passed, with the new `tests/lor-cli.test.ts` (refused with no server, refused on 3847, on the env file's port and on `LOR_URL=http://localhost:3848`, allowed to a named closed port, help still prints, the symlink still takes the env file's port). `pnpm typecheck` passes. By hand in this worktree: `node cli/lor.mjs status` exits 6 with the message, `lor status` exits 0, `LOR_UI_BASE=http://127.0.0.1:3847 node scripts/ui-check.mjs tasks` exits 3. `verify.mjs up` then `screen tasks /tmp/lor-verify/y8lw`: `ok: true`, 24 `ok:` lines, `browser_errors: false`, which exercises the flow's own `lor` calls on `:3857`.
 
 One limit: a thread that exports `LOR_PORT=3857` and then runs the installed `lor` talks to the test server, and one that runs the installed `lor` with nothing set talks to the real one, as designed. The guard covers the source file, which is what test commands use.
+
+**Round 2.** All three findings held. The guard now decides by port alone, on any host, because a host has too many spellings to list; a tailnet name on 3848 is refused too. `scripts/ui-check.mjs` reads the env file once and refuses its `LOR_PORT`, `LOR_SERVE_PORT` and `LOR_TRMNL_PORT` beside 3847 to 3849. `tests/lor-cli.test.ts` runs every child with `--import` of a module that replaces `fetch`, so allowed calls assert their method and address and refused ones assert that no fetch happened; it also runs `ui-check.mjs` against all six ports, where it exits 3 before a browser starts. `pnpm test` gives 230 passed, `pnpm typecheck` passes, and `verify.mjs up` then `screen tasks /tmp/lor-verify/y8lw-r2` gives `ok: true`, 24 `ok:` lines, `browser_errors: false`.
+
+### Responses
+
+1-ffbo.1: fixed in 00fb3451
+1-ffbo.2: fixed in 00fb3451
+1-ffbo.3: fixed in 00fb3451
