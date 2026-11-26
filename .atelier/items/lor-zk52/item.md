@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-zk52
 title: 'Tasks reads as a list: plain goal names, hints on focus, filters on one line'
-status: changes_requested
+status: in_review
 mission: lor-40i0
 labels: []
 priority: medium
@@ -79,7 +79,11 @@ At 1100px the bar still fits one line with no filter picked. It wraps only when 
 
 **Round 2.** The finding held. With nothing chosen, the bar already took 769 of its 770px, so no width budget could fit a long For value plus Clear. Group and Sort now name their value only when it is not the view's default, as For, Due and From already did. From `xl` up the bar no longer wraps: the text field (down to 100px) and a chosen value shrink, and a cut value is whole in the button's title. Below `xl` the bar wraps as before. The flow now opens `?for=<Portuguese goal>` at 1500px and asserts the seven controls share a vertical centre. It also asserts that none spills past the bar or is squeezed below its own content, which caught a first try where Due's label ran over its arrow. The 1100px check runs with the same goal chosen. In `/tmp/lor-verify/zk52-r2`, `screen tasks` passes, all 23 `ok:` lines, `browser_errors: false`. `shots.mjs --only Tasks` gives 12 images and no problems, and `pnpm test` gives 213 passed.
 
+**Round 3.** Round 2's no-wrap bar was the wrong fix. It kept one line only by squeezing, so a changed Group or Sort ran under the task panel, a chosen For collapsed to 2px, and the default bar spilled at 1280px. The bar wraps again, and no control can shrink below its content. One line at 1500px now comes from sizing. The text field starts at 100px and grows into spare room up to 200px; its explicit `min-w` matters, because an input's automatic minimum is about 20 characters. A chosen value is cut at 120px, and the button's title shows it whole. Group and Sort still name only a non-default value. With the Portuguese goal and Clear showing, the line has a pixel or two to spare, so a longer label elsewhere would wrap it. The flow would catch that.
+
+The flow's `barAt` checks that every control is inside the bar, not squeezed below its content, and not overlapping another. It runs at 1500px with defaults (one line), with the Portuguese goal (one line, `tasks-1b-for-chosen`), and with the goal, `group=for` and `sort=updated` (wraps, `tasks-1c-all-chosen`). It also runs at 1280px with defaults and with everything changed, and at 1100px with the goal. In `/tmp/lor-verify/zk52-r3`, `screen tasks` passes all 26 `ok:` lines with `browser_errors: false`. `shots.mjs --only Tasks` gives 12 images with no problems, and `pnpm typecheck` and `pnpm test` (213) pass.
+
 ### Responses
 
-1-0pq6.1: fixed in e0b376ac
-
+1-0pq6.1: fixed in e0b376ac, and again in d584951b, which replaced that commit's no-wrap approach
+2-38sj.2: fixed in d584951b
