@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-n3vi
 title: Undo after stopping a timer or deleting a time block
-status: in_review
+status: changes_requested
 mission: lor-40i0
 labels: []
 priority: medium
