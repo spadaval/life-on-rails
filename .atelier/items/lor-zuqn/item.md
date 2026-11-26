@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-zuqn
 title: 'Today leads with what needs you: lists under the arc, a one-line brief, one timer'
-status: changes_requested
+status: in_review
 mission: lor-40i0
 labels: []
 priority: medium
@@ -66,4 +66,10 @@ Noticed:
 
 - The first `verify.mjs demo` failed with `demo: no intent 01a2…`, and a second run straight after succeeded. Most likely another thread was writing the shared `life_on_rails_test` at the same moment. I did not file it, because I could not show the cause.
 - The picker under "Something else…" still spills out of the arc (the Gotcha in `today.md`). It is unchanged and out of scope.
+
+The finding's fix: the brief's button also shows when the first sentence alone overflows its line ("More"), measured with a ResizeObserver while closed, and `aria-controls` names the sentence and the rest. The `today` flow now ends at 412px with a one-sentence brief: it is cut off, has the button, opens by Enter to the whole sentence, and closes by click. The re-run of `verify-lor screen today` (33 checks ok) is in `/tmp/lor-verify/t3-e2e303f2-1331f518926b970a/zuqn-r2/` with `today-9-brief-one-sentence-412.png`. `pnpm typecheck` and `pnpm test` (212) pass.
+
+### Responses
+
+1-ywgv.1: fixed in bebe23c4
 
