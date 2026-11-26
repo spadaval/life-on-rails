@@ -391,7 +391,8 @@ dbDescribe("device people", () => {
       { id: soon.id, name: "Sam", kind: "person", last_at: null, last_via: null, overdue_by: null, keep_in_touch_days: null, birthday_in: 5, turning: Number(addDays(today, 5).slice(0, 4)) - 1990 },
     ]);
     for (const p of [...r.overdue, ...r.birthdays]) expect(p).not.toHaveProperty("identifiers");
-    expect(JSON.stringify(r)).not.toMatch(/555/);
+    // The numbers in any form; not a bare /555/, which matches a UUIDv7 id minted while its clock prefix holds 555.
+    expect(JSON.stringify(r)).not.toMatch(/555\D?010[01]/);
   });
 });
 
