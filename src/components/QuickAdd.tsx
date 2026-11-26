@@ -187,7 +187,7 @@ export function QuickAdd({ options, initial = "", autoFocus = false, onEscape, o
         </ul>
       ) : null}
 
-      <div className="mt-1.5 flex min-h-6 flex-wrap items-center gap-1.5 text-small text-mute">
+      <div className={`flex flex-wrap items-center gap-1.5 text-small text-mute ${focused || text || said || busy ? "mt-1.5 min-h-6" : ""}`}>
         {parsed.tokens.map((t) => (
           <span key={tokenKey(t)} className="chip gap-1.5 text-small">
             {chipText(t)}
@@ -197,7 +197,8 @@ export function QuickAdd({ options, initial = "", autoFocus = false, onEscape, o
           </span>
         ))}
         {said || busy ? <span className={busy ? "text-dim" : "text-txt"}>{busy ? "Adding…" : said}</span> : null}
-        {parsed.tokens.length === 0 && !said && !busy ? (
+        {/* The syntax hint shows only while you are adding, so at rest the list leads. */}
+        {(focused || text) && parsed.tokens.length === 0 && !said && !busy ? (
           <span className="text-dim">
             <Key>#</Key> counts toward · <Key>@agent</Key> or <Key>@person</Key> · dates like <i>fri</i>, <i>tomorrow</i>, <i>oct 20</i>, <i>in 2 weeks</i> · <Key>Enter</Key> adds
           </span>

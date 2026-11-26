@@ -86,6 +86,7 @@ function Tasks() {
   // Null until a row is picked by hand: until then the rows `pick=` names.
   const [pickedByHand, setPicked] = useState<ReadonlySet<string> | null>(null);
   const filterBox = useRef<HTMLInputElement>(null);
+  const [help, setHelp] = useState(false);
 
   const view: View = search.view ?? "open";
   const group = search.group ?? (view === "done" ? "none" : "due");
@@ -173,8 +174,10 @@ function Tasks() {
       if (pickedIds.length) void act(() => bulkTasksFn({ data: { ids: pickedIds, action: { op: "done" } } }), `Done: ${pickedIds.length}.`).then(() => setPicked(new Set()));
       else if (at && !at.google_task_id) void act(() => taskDoneFn({ data: { id: at.id, done: at.status !== "done" } }));
     } else if (e.key === "/") (handled(), filterBox.current?.focus());
+    else if (e.key === "?") (handled(), setHelp((h) => !h));
     else if (e.key === "Escape") {
-      if (search.id) open(null);
+      if (help) setHelp(false);
+      else if (search.id) open(null);
       else if (picked.size) setPicked(new Set());
     }
   };
@@ -211,10 +214,11 @@ function Tasks() {
             ))}
           </nav>
 
+          {/* Sized so the usual bar (one filter chosen, Clear showing) is one line at 1500px; more than that wraps whole controls. */}
           <div className="flex flex-wrap items-center gap-2">
             <input
               ref={filterBox}
-              className="input w-[180px] py-1"
+              className="input w-auto max-w-[200px] min-w-[100px] grow basis-[100px] py-1"
               placeholder="Filter…  /"
               aria-label="Filter by text"
               value={search.q ?? ""}
@@ -224,17 +228,17 @@ function Tasks() {
             <Choice label="For" value={search.for} onChange={(v) => set({ for: v })} options={parents.map((p) => ({ id: p.id, label: `${p.title}`, hint: p.type }))} />
             <Choice label="Due" value={search.due} onChange={(v) => set({ due: v as Filters["due"] })} options={DUE.map((d) => ({ id: d.id, label: d.label }))} />
             <Choice label="From" value={search.from} onChange={(v) => set({ from: v as Filters["from"] })} options={FROM.map((d) => ({ id: d.id, label: d.label }))} />
-            <button className={`btn btn-secondary text-small ${search.flagged ? "" : "text-mute"}`} aria-pressed={!!search.flagged} onClick={() => set({ flagged: search.flagged ? undefined : true })}>
+            <button className={`btn btn-secondary shrink-0 text-small ${search.flagged ? "" : "text-mute"}`} aria-pressed={!!search.flagged} onClick={() => set({ flagged: search.flagged ? undefined : true })}>
               <Star size={9} /> Needs you
             </button>
             {filtering ? (
-              <button className="btn btn-quiet btn-sm" onClick={() => set({ for: undefined, due: undefined, from: undefined, flagged: undefined, q: undefined })}>
+              <button className="btn btn-quiet btn-sm shrink-0" onClick={() => set({ for: undefined, due: undefined, from: undefined, flagged: undefined, q: undefined })}>
                 Clear
               </button>
             ) : null}
-            <span className="ml-auto flex items-center gap-2">
-              <Choice label="Group" value={group} always onChange={(v) => set({ group: (v ?? "none") as Filters["group"] })} options={GROUPS.map((g) => ({ id: g.id, label: g.label }))} />
-              <Choice label="Sort" value={sort} always onChange={(v) => set({ sort: (v ?? "due") as Filters["sort"] })} options={SORTS.map((g) => ({ id: g.id, label: g.label }))} />
+            <span className="ml-auto flex shrink-0 items-center gap-2">
+              <Choice label="Group" value={group} always quiet={view === "done" ? "none" : "due"} onChange={(v) => set({ group: (v ?? "none") as Filters["group"] })} options={GROUPS.map((g) => ({ id: g.id, label: g.label }))} />
+              <Choice label="Sort" value={sort} always quiet={view === "done" ? "updated" : "due"} onChange={(v) => set({ sort: (v ?? "due") as Filters["sort"] })} options={SORTS.map((g) => ({ id: g.id, label: g.label }))} />
             </span>
           </div>
 
@@ -281,9 +285,21 @@ function Tasks() {
           )}
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2 text-small text-dim">
-            <span>
-              <Key>j</Key> <Key>k</Key> move · <Key>Enter</Key> open · <Key>x</Key> select · <Key>d</Key> done · <Key>/</Key> filter · <Key>q</Key> add · <Key>Esc</Key> close
-            </span>
+            <button
+              className="btn btn-quiet btn-sm size-6 justify-center rounded-full border border-edge p-0"
+              aria-label="Keyboard shortcuts"
+              aria-expanded={help}
+              aria-controls="task-keys"
+              title="Keyboard shortcuts (?)"
+              onClick={() => setHelp(!help)}
+            >
+              ?
+            </button>
+            {help ? (
+              <span id="task-keys">
+                <Key>j</Key> <Key>k</Key> move · <Key>Enter</Key> open · <Key>x</Key> select · <Key>d</Key> done · <Key>/</Key> filter · <Key>q</Key> add · <Key>?</Key> these keys · <Key>Esc</Key> close
+              </span>
+            ) : null}
             {view === "open" ? (
               <span className="ml-auto">
                 Too much?{" "}
@@ -383,20 +399,28 @@ function bucket(rows: GraphNode[], key: (n: GraphNode) => string, order: string[
   return [...m.entries()].map(([k, rows]) => ({ key: k, title: k, rows }));
 }
 
-/** A filter or display choice: a quiet button that opens a list; the chosen value shows on the button. */
-function Choice({ label, value, options, onChange, always = false }: {
+/**
+ * A filter or display choice: a quiet button that opens a list; the chosen value shows on the button,
+ * unless it is `quiet`, a display choice's default. A long value is cut at 120px, and the button's title has it whole.
+ */
+function Choice({ label, value, options, onChange, always = false, quiet }: {
   label: string;
   value: string | undefined;
   options: { id: string; label: string; hint?: string }[];
   onChange: (v: string | undefined) => void;
   always?: boolean;
+  quiet?: string;
 }) {
   const current = options.find((o) => o.id === value);
+  const shown = current && current.id !== quiet ? current : undefined;
   return (
-    <label className={`relative inline-flex items-center rounded-sm border text-small leading-6 ${current && !always ? "border-or/70 text-txt" : "border-edge text-mute"} hover:border-or/70`}>
+    <label
+      className={`relative inline-flex shrink-0 items-center rounded-sm border text-small leading-6 ${current && !always ? "border-or/70 text-txt" : "border-edge text-mute"} hover:border-or/70`}
+      title={current ? `${label}: ${current.label}` : undefined}
+    >
       <span className="pointer-events-none flex items-center gap-1.5 py-1 pr-6 pl-3 whitespace-nowrap">
         {label}
-        {current ? <span className="max-w-[200px] truncate text-txt">{current.label}</span> : null}
+        {shown ? <span className="max-w-[120px] truncate text-txt">{shown.label}</span> : null}
       </span>
       <select
         className="absolute inset-0 cursor-pointer opacity-0"
@@ -449,8 +473,8 @@ function TaskRow({ node: n, today, showParent, open, cursor, picked, onOpen, onP
       <span className="flex shrink-0 items-center gap-2 text-small">
         {n.status === "waiting" ? <span className="text-mute">waiting on {n.waiting_on ?? "someone"}</span> : null}
         {n.assignee === "agent" ? <span className="text-cy/85">agent</span> : null}
-        {showParent && n.parents[0] ? <span className="chip block max-w-[120px] truncate sm:max-w-[190px]">{n.parents[0].title}</span> : null}
-        {n.google_task_id ? <span className="text-dim" title="From Google Tasks">G</span> : null}
+        {showParent && n.parents[0] ? <span className="block max-w-[140px] truncate text-dim sm:max-w-[320px]" title={n.parents[0].title}>{n.parents[0].title}</span> : null}
+        {n.google_task_id ? <span className="chip px-1 font-medium" title="From Google Tasks" aria-label="From Google Tasks">G</span> : null}
         <span className={`w-[68px] text-right ${n.due_local === today && !done ? "text-or" : past ? "text-txt" : "text-mute"}`}>
           {n.due_local ? dueLabel(n.due_local, today) : ""}
         </span>
