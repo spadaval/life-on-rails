@@ -53,3 +53,7 @@ The host's pnpm set-up and, if needed, a line in `AGENTS.md`. Not a change of th
 **Checked.** In a fresh `git worktree add --detach … main`, under `bash -ic`, `bash -lic` and `env -i HOME=$HOME bash -lic`, and in this agent's existing shell (whose `PATH` predates the fix), `which pnpm` is `~/.local/share/vite-plus/bin/pnpm` and `pnpm --version` prints 12.11.2. There, `pnpm install` finished ("Done in 1.1s using pnpm v12.11.2"), `pnpm test` passed 24 files and 208 tests, and `pnpm typecheck` ran and failed only on `src/routeTree.gen.ts` being missing (errors in `src/routes/tasks.tsx` and `src/routes/trmnl/$.ts`). That failure is lor-iurl, already filed, and not about pnpm.
 
 **Docs.** The one to use is simply `pnpm`, so `AGENTS.md` is unchanged. One thing worth knowing: `node` in agent shells is Vite+'s Node 26.13 again, as it was before 2026-11-21, not the 22.20 under `~/.local/opt/node` that `lor-web` runs.
+
+### Responses
+
+1-gwik.1: fixed in ea306798
