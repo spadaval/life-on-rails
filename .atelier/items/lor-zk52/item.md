@@ -3,13 +3,14 @@ schema: atelier.item
 schema_version: 3
 id: lor-zk52
 title: 'Tasks reads as a list: plain goal names, hints on focus, filters on one line'
-status: open
+status: building
 mission: lor-40i0
 labels: []
 priority: medium
 blocked_by:
 - lor-mxm9
-implementers: []
+implementers:
+- thread:delegated-task:command%3Amcp%3Aab2feab2-8ed8-40be-ad1b-e17103ce5d1b%3Adelegate-task%3A2debba3d-fd72-4dd8-9188-473b85649818
 ready: null
 trivial: null
 caused_by: null
