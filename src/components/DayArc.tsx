@@ -52,7 +52,7 @@ const arcPath = (f0: number, f1: number) => {
   return d;
 };
 
-export function DayArc({ wakeStart, wakeEnd, now, isToday, blocks, events, hm, children }: {
+export function DayArc({ wakeStart, wakeEnd, now, isToday, blocks, events, hm, children, below }: {
   wakeStart: string;
   wakeEnd: string;
   now: number;
@@ -60,7 +60,10 @@ export function DayArc({ wakeStart, wakeEnd, now, isToday, blocks, events, hm, c
   blocks: ArcBlock[];
   events: ArcEvent[];
   hm: (ms: number) => string;
+  /** What sits in the arc's middle. Above the phone width it is laid over the picture. */
   children: ReactNode;
+  /** What opens from the middle and could outgrow it, like the timer's picker: under the picture, in the page's flow. */
+  below?: ReactNode;
 }) {
   const t0 = new Date(wakeStart).getTime();
   const t1 = new Date(wakeEnd).getTime();
@@ -85,93 +88,99 @@ export function DayArc({ wakeStart, wakeEnd, now, isToday, blocks, events, hm, c
     });
 
   return (
-    <section className="relative mx-auto max-w-[1240px]" aria-label="The waking day">
+    <section className="mx-auto max-w-[1240px]" aria-label="The waking day">
       <PhoneBar t0={t0} t1={t1} now={now} isToday={isToday} blocks={blocks} hm={hm} />
-      <svg viewBox={`0 0 ${W} ${H}`} className="hidden h-auto w-full sm:block" role="img" aria-label={`Waking day from ${hm(t0)} to ${hm(t1)}`}>
-        <defs>
-          <pattern id="arc-grid" width="60" height="60" patternUnits="userSpaceOnUse">
-            <path d="M60 0H0V60" fill="none" stroke="rgb(255 255 255 / 0.03)" />
-          </pattern>
-        </defs>
-        <rect width={W} height={H} fill="url(#arc-grid)" />
-        <line x1={0} x2={W} y1={BASE} y2={BASE} stroke="#1e2029" />
+      {/* The picture and its middle share one grid cell, so the cell is as tall as the taller of them: a middle that
+          outgrows the picture at a narrow width pushes what follows down instead of lying over it. */}
+      <div className="sm:grid">
+        <svg viewBox={`0 0 ${W} ${H}`} className="hidden h-auto w-full self-start sm:block sm:[grid-area:1/1]" role="img" aria-label={`Waking day from ${hm(t0)} to ${hm(t1)}`}>
+          <defs>
+            <pattern id="arc-grid" width="60" height="60" patternUnits="userSpaceOnUse">
+              <path d="M60 0H0V60" fill="none" stroke="rgb(255 255 255 / 0.03)" />
+            </pattern>
+          </defs>
+          <rect width={W} height={H} fill="url(#arc-grid)" />
+          <line x1={0} x2={W} y1={BASE} y2={BASE} stroke="#1e2029" />
 
-        <path d={arcPath(0, 1)} fill="none" stroke="#4a2e14" strokeWidth={1.5} strokeDasharray="5 7" />
+          <path d={arcPath(0, 1)} fill="none" stroke="#4a2e14" strokeWidth={1.5} strokeDasharray="5 7" />
 
-        {blocks.map((b, i) => {
-          const s = frac(new Date(b.t_start).getTime());
-          const e = frac(b.t_end ? new Date(b.t_end).getTime() : now);
-          if (e - s < 0.001) return null;
-          return (
-            <path
-              key={i}
-              d={arcPath(s, e)}
-              fill="none"
-              stroke="#f08a2c"
-              strokeOpacity={b.committed || !b.t_end ? 1 : b.bare ? 0.7 : 0.85}
-              strokeWidth={!b.t_end ? 4.5 : b.committed ? 3.5 : 2.5}
-            />
-          );
-        })}
+          {blocks.map((b, i) => {
+            const s = frac(new Date(b.t_start).getTime());
+            const e = frac(b.t_end ? new Date(b.t_end).getTime() : now);
+            if (e - s < 0.001) return null;
+            return (
+              <path
+                key={i}
+                d={arcPath(s, e)}
+                fill="none"
+                stroke="#f08a2c"
+                strokeOpacity={b.committed || !b.t_end ? 1 : b.bare ? 0.7 : 0.85}
+                strokeWidth={!b.t_end ? 4.5 : b.committed ? 3.5 : 2.5}
+              />
+            );
+          })}
 
-        {hours.map((h) => {
-          const f = frac(h);
-          const p = point(f);
-          const n = normal(f);
-          const hour = Number(hm(h).slice(0, 2));
-          return (
-            <g key={h}>
-              <line x1={p.x - n.x * 6} y1={p.y - n.y * 6} x2={p.x + n.x * 6} y2={p.y + n.y * 6} stroke="#6b4420" />
-              {hour % 2 === 0 && f > 0.03 && f < 0.97 ? (
-                <text x={p.x - n.x * 24} y={p.y - n.y * 24 + 4} textAnchor="middle" fill="#928777" fontSize={13} className="font-cond">
-                  {hm(h).slice(0, 2)}
-                </text>
-              ) : null}
-            </g>
-          );
-        })}
+          {hours.map((h) => {
+            const f = frac(h);
+            const p = point(f);
+            const n = normal(f);
+            const hour = Number(hm(h).slice(0, 2));
+            return (
+              <g key={h}>
+                <line x1={p.x - n.x * 6} y1={p.y - n.y * 6} x2={p.x + n.x * 6} y2={p.y + n.y * 6} stroke="#6b4420" />
+                {hour % 2 === 0 && f > 0.03 && f < 0.97 ? (
+                  <text x={p.x - n.x * 24} y={p.y - n.y * 24 + 4} textAnchor="middle" fill="#928777" fontSize={13} className="font-cond">
+                    {hm(h).slice(0, 2)}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
 
-        {labelled.map((e) => {
-          const p = point(e.f);
-          const n = normal(e.f);
-          const dx = p.x + n.x * 18;
-          const dy = p.y + n.y * 18;
-          const text = `${hm(new Date(e.t_start).getTime())} ${e.title.length > 34 ? `${e.title.slice(0, 33)}…` : e.title}`;
-          // Outside the arc, away from the middle; a label that would run past the picture's edge goes inside the arc instead.
-          let anchor: "start" | "middle" | "end" = p.x < CX - 80 ? "end" : p.x > CX + 80 ? "start" : "middle";
-          let lx = p.x + n.x * 34 + (anchor === "end" ? -4 : anchor === "start" ? 4 : 0);
-          let ly = p.y + n.y * 34 + 4;
-          const width = labelWidth(text);
-          if ((anchor === "end" && lx - width < EDGE) || (anchor === "start" && lx + width > W - EDGE)) {
-            anchor = anchor === "end" ? "start" : "end";
-            // Past the hour numbers, which sit 24 inside the arc.
-            lx = p.x - n.x * 44 + (anchor === "start" ? 4 : -4);
-            ly = p.y - n.y * 44 + 4;
-          }
-          return (
-            <g key={e.key}>
-              <rect x={dx - 5} y={dy - 5} width={10} height={10} transform={`rotate(45 ${dx} ${dy})`} fill="#0c0d12" stroke="#6cc6ec" strokeWidth={1.5} />
-              {e.show ? (
-                <text x={lx} y={ly} textAnchor={anchor} fill="#6cc6ec" fontSize={14}>
-                  {text}
-                </text>
-              ) : null}
-            </g>
-          );
-        })}
+          {labelled.map((e) => {
+            const p = point(e.f);
+            const n = normal(e.f);
+            const dx = p.x + n.x * 18;
+            const dy = p.y + n.y * 18;
+            const text = `${hm(new Date(e.t_start).getTime())} ${e.title.length > 34 ? `${e.title.slice(0, 33)}…` : e.title}`;
+            // Outside the arc, away from the middle; a label that would run past the picture's edge goes inside the arc instead.
+            let anchor: "start" | "middle" | "end" = p.x < CX - 80 ? "end" : p.x > CX + 80 ? "start" : "middle";
+            let lx = p.x + n.x * 34 + (anchor === "end" ? -4 : anchor === "start" ? 4 : 0);
+            let ly = p.y + n.y * 34 + 4;
+            const width = labelWidth(text);
+            if ((anchor === "end" && lx - width < EDGE) || (anchor === "start" && lx + width > W - EDGE)) {
+              anchor = anchor === "end" ? "start" : "end";
+              // Past the hour numbers, which sit 24 inside the arc.
+              lx = p.x - n.x * 44 + (anchor === "start" ? 4 : -4);
+              ly = p.y - n.y * 44 + 4;
+            }
+            return (
+              <g key={e.key}>
+                <rect x={dx - 5} y={dy - 5} width={10} height={10} transform={`rotate(45 ${dx} ${dy})`} fill="#0c0d12" stroke="#6cc6ec" strokeWidth={1.5} />
+                {e.show ? (
+                  <text x={lx} y={ly} textAnchor={anchor} fill="#6cc6ec" fontSize={14}>
+                    {text}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
 
-        {showNow ? <Reticle f={nowF} label={`${hm(now)} now`} /> : null}
+          {showNow ? <Reticle f={nowF} label={`${hm(now)} now`} /> : null}
 
-        <circle cx={point(0).x} cy={point(0).y} r={3} fill="#928777" />
-        <circle cx={point(1).x} cy={point(1).y} r={3} fill="#928777" />
-        <text x={point(0).x} y={BASE + 22} fill="#b1a596" fontSize={13.5}>
-          Rising {hm(t0)}
-        </text>
-        <text x={point(1).x} y={BASE + 22} fill="#b1a596" fontSize={13.5} textAnchor="end">
-          Setting {hm(t1)}
-        </text>
-      </svg>
-      <div className="mx-auto mt-4 flex max-w-[640px] flex-col items-center text-center sm:absolute sm:inset-x-0 sm:top-[34%] sm:mt-0">{children}</div>
+          <circle cx={point(0).x} cy={point(0).y} r={3} fill="#928777" />
+          <circle cx={point(1).x} cy={point(1).y} r={3} fill="#928777" />
+          <text x={point(0).x} y={BASE + 22} fill="#b1a596" fontSize={13.5}>
+            Rising {hm(t0)}
+          </text>
+          <text x={point(1).x} y={BASE + 22} fill="#b1a596" fontSize={13.5} textAnchor="end">
+            Setting {hm(t1)}
+          </text>
+        </svg>
+        {/* 8.5% of the width is 34% of the picture's height (300 of 1200): a padding percentage counts from the width. */}
+        <div className="mx-auto mt-4 flex w-full max-w-[640px] flex-col items-center self-start text-center sm:mt-0 sm:pt-[8.5%] sm:[grid-area:1/1]">{children}</div>
+      </div>
+      {below ? <div className="mx-auto mt-3 flex max-w-[640px] justify-center">{below}</div> : null}
     </section>
   );
 }
