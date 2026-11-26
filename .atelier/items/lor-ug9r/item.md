@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-ug9r
 title: Today’s timer picker must accept mouse clicks at 1500×950
-status: changes_requested
+status: in_review
 mission: null
 labels: []
 priority: medium
@@ -45,3 +45,10 @@ The fix moves the picker out of the overlaid middle. `DayArc` takes a new `below
 The feature map (`references/features/today.md`) drops the Enter workaround gotcha and describes the new steps and screenshots.
 
 Checked: `node .claude/skills/verify-lor/verify.mjs screen today /tmp/lor-verify/lor-ug9r` returned `ok: true` with no browser errors. See `today-1d-picker.png` (1500×950, picker under the arc and above the lanes) and `today-10-picker-412.png`. `pnpm test` passes (220), and so does `pnpm typecheck`. This worktree had no generated `src/routeTree.gen.ts`, so I copied the main checkout's (it is gitignored, lor-iurl).
+
+Round 2: the middle of the arc (`children`) and the picture now share one grid cell, and the middle's offset is `pt-[8.5%]` (34% of a 1200×300 picture, as a padding percentage counts from the width). The cell grows to whichever is taller, so at narrow desktop widths the middle pushes the picker and the lanes down instead of lying over them. At 1500 px the middle is back where it was before this item. Both ways to start the timer, the card's recent chips and the picker, go through `startTimer` in `Today`, which sends the picker's title and closes the picker. `screen today` now also checks the picker's inputs and result at 1100 and 800 px, and starts from a recent chip with a typed title. Run: `/tmp/lor-verify/lor-ug9r-r2`, `ok: true`, no browser errors. `pnpm typecheck` passes.
+
+### Responses
+
+1-0hda.1: fixed in 0d78336b
+1-0hda.2: fixed in 0d78336b
