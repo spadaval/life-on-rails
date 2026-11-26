@@ -70,10 +70,10 @@ function Goals() {
       <Notice text={notice} onClose={() => setNotice(null)} />
 
       <div className="flex flex-wrap items-center gap-3">
-        <button className="btn" onClick={() => setAdding((v) => !v)}>
+        <button className="btn btn-secondary" onClick={() => setAdding((v) => !v)}>
           {adding ? "Close" : "New goal, project or habit"}
         </button>
-        <label className="flex items-center gap-2 text-[13.5px] text-mute">
+        <label className="flex items-center gap-2 text-small text-mute">
           <input type="checkbox" checked={showDone} onChange={(e) => set({ done: e.target.checked || undefined })} />
           Show done, paused and later
         </label>
@@ -136,7 +136,7 @@ function useOpenTasks(nodes: GraphNode[]): Map<string, number> {
 
 function TaskCount({ id, n }: { id: string; n: number }) {
   return (
-    <Link to="/tasks" search={{ for: id }} className="shrink-0 text-[13px] text-dim hover:text-or" title="Open these in Tasks">
+    <Link to="/tasks" search={{ for: id }} className="shrink-0 text-small text-dim hover:text-or" title="Open these in Tasks">
       {n === 0 ? "no tasks" : `${n} ${n === 1 ? "task" : "tasks"}`}
     </Link>
   );
@@ -185,12 +185,12 @@ function Row({ n, shown, depth, openTasks, selected, onSelect, act }: {
         {n.type === "habit" ? <span className="size-2 shrink-0 border border-mute" /> : n.type === "goal" ? <Star size={9} className="text-mute" /> : <span className={`size-1.5 shrink-0 rounded-full ${n.type === "metric" ? "border border-mute" : "bg-mute"}`} />}
         <button className={`min-w-0 flex-1 truncate text-left ${quiet ? "text-dim" : ""}`} onClick={() => onSelect(n.id)}>
           {n.title}
-          {quiet ? <span className="ml-2 text-[12.5px]">{n.status}</span> : null}
+          {quiet ? <span className="ml-2 text-small">{n.status}</span> : null}
         </button>
-        {n.due_local && !quiet ? <span className="shrink-0 text-[12.5px] text-dim">due {shortDate(n.due_local)}</span> : null}
-        {n.weekly_hour_target ? <span className="shrink-0 text-[12.5px] text-mute">{round1(n.week_hours ?? 0)} / {round1(n.weekly_hour_target)}h</span> : null}
+        {n.due_local && !quiet ? <span className="shrink-0 text-small text-dim">due {shortDate(n.due_local)}</span> : null}
+        {n.weekly_hour_target ? <span className="shrink-0 text-small text-mute">{round1(n.week_hours ?? 0)} / {round1(n.weekly_hour_target)}h</span> : null}
         {n.type === "habit" ? (
-          <button className="btn btn-sm" onClick={() => act(() => habitFn({ data: { id: n.id } }), `Logged “${n.title}”.`)}>
+          <button className="btn btn-primary btn-sm" onClick={() => act(() => habitFn({ data: { id: n.id } }), `Logged “${n.title}”.`)}>
             Did it
           </button>
         ) : n.type === "project" || n.type === "goal" ? (
@@ -231,16 +231,16 @@ function Details({ node: n, edit, nodes, entities, openTasks, act, onSelect, onC
   ];
 
   return (
-    <Panel title={n.title} aside={<button className="btn btn-sm" onClick={onClose}>Close</button>}>
+    <Panel framed title={n.title} aside={<button className="btn btn-quiet btn-sm" onClick={onClose}>Close</button>}>
       {n.via === "agent" ? (
         <p className="mt-1.5">
           <span className="tag-agent">added by the agent</span>
         </p>
       ) : null}
-      <dl className="mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[14px]">
+      <dl className="mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-body">
         {facts.map(([k, v]) => (
           <div key={k} className="contents">
-            <dt className="cond text-[12.5px] font-medium text-dim">{k}</dt>
+            <dt className="cond text-small font-medium text-dim">{k}</dt>
             <dd>{v}</dd>
           </div>
         ))}
@@ -250,15 +250,15 @@ function Details({ node: n, edit, nodes, entities, openTasks, act, onSelect, onC
           <Meter value={n.week_hours ?? 0} target={n.weekly_hour_target} />
         </div>
       ) : null}
-      {n.description ? <p className="mt-3 text-[14px] whitespace-pre-line text-mute">{n.description}</p> : null}
+      {n.description ? <p className="mt-3 text-body whitespace-pre-line text-mute">{n.description}</p> : null}
 
       <div className="mt-3 flex flex-wrap gap-2">
         {n.type === "habit" ? (
-          <button className="btn border-or text-or" onClick={() => act(() => habitFn({ data: { id: n.id } }), `Logged “${n.title}”.`)}>
+          <button className={`btn ${editing ? "btn-secondary" : "btn-primary"}`} onClick={() => act(() => habitFn({ data: { id: n.id } }), `Logged “${n.title}”.`)}>
             Did it
           </button>
         ) : null}
-        <button className="btn" onClick={() => setEditing((v) => !v)}>
+        <button className="btn btn-secondary" onClick={() => setEditing((v) => !v)}>
           {editing ? "Stop editing" : "Edit"}
         </button>
       </div>
@@ -271,9 +271,9 @@ function Details({ node: n, edit, nodes, entities, openTasks, act, onSelect, onC
 
       {kids.length > 0 ? (
         <section className="mt-5">
-          <h4 className="cond flex justify-between border-b border-line pb-1 text-[13px] font-semibold text-mute">
+          <h4 className="cond flex justify-between border-b border-line pb-1 text-small font-semibold text-mute">
             Under it
-            <span className="font-sans text-[12.5px] font-normal text-dim">{kids.length}</span>
+            <span className="font-sans text-small font-normal text-dim">{kids.length}</span>
           </h4>
           <ul className="mt-1">
             {kids.map((k) => (
@@ -281,7 +281,7 @@ function Details({ node: n, edit, nodes, entities, openTasks, act, onSelect, onC
                 <button className="text-left hover:text-or" onClick={() => onSelect(k.id)}>
                   {k.title}
                 </button>
-                <span className="text-[12.5px] text-dim">{TYPE_NAME[k.type].toLowerCase()}</span>
+                <span className="text-small text-dim">{TYPE_NAME[k.type].toLowerCase()}</span>
               </li>
             ))}
           </ul>
@@ -301,7 +301,7 @@ function NewIntent({ nodes, defaultParent, onDone, act }: { nodes: GraphNode[]; 
 
   return (
     <form
-      className="flex flex-wrap items-center gap-2 border border-edge bg-panel p-3"
+      className="flex flex-wrap items-center gap-2 rounded-sm bg-panel p-3"
       onSubmit={(e) => {
         e.preventDefault();
         if (!title.trim()) return;
@@ -353,7 +353,7 @@ function NewIntent({ nodes, defaultParent, onDone, act }: { nodes: GraphNode[]; 
           </select>
         </>
       ) : null}
-      <button className="btn border-or text-or" type="submit" disabled={!title.trim()}>
+      <button className="btn btn-primary" type="submit" disabled={!title.trim()}>
         Add
       </button>
     </form>

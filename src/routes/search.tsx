@@ -35,7 +35,7 @@ function SearchPage() {
         }}
       >
         <input className="input" placeholder="Notes, people, tasks, messages, mail…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" autoFocus />
-        <button className="btn" type="submit">
+        <button className="btn btn-secondary" type="submit">
           Search
         </button>
       </form>
@@ -67,7 +67,7 @@ function SearchPage() {
                     {r.title}
                   </Link>
                 )}
-                <p className="mt-0.5 line-clamp-2 text-[13.5px] text-mute">{r.snippet}</p>
+                <p className="mt-0.5 line-clamp-2 text-small text-mute">{r.snippet}</p>
               </li>
             ))}
           </ul>

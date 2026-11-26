@@ -103,15 +103,15 @@ function Today() {
   return (
     <div className="space-y-5 pb-4">
       <PageHead title={t.is_today ? "Today" : "Day"} sub={dateLabel}>
-        <Link to="/" search={{ date: t.prev }} className="btn btn-sm" aria-label="Previous day">
+        <Link to="/" search={{ date: t.prev }} className="btn btn-secondary btn-sm" aria-label="Previous day">
           Earlier
         </Link>
         {!t.is_today ? (
-          <Link to="/" search={{}} className="btn btn-sm">
+          <Link to="/" search={{}} className="btn btn-secondary btn-sm">
             Today
           </Link>
         ) : null}
-        <Link to="/" search={{ date: t.next }} className="btn btn-sm" aria-label="Next day">
+        <Link to="/" search={{ date: t.next }} className="btn btn-secondary btn-sm" aria-label="Next day">
           Later
         </Link>
         <GlobalActions />
@@ -136,7 +136,7 @@ function Today() {
                 <em className="ml-3 text-[20px] font-medium tracking-[0.08em] text-or not-italic">{remaining > 0 ? "remaining" : "recorded"}</em>
               ) : null}
             </p>
-            <p className="mt-2 text-[14px] text-mute">
+            <p className="mt-2 text-body text-mute">
               {remaining > 0 ? "of the waking day" : now < wakeStart ? `The day starts at ${clock(t.wake_start)}` : "The waking day is over"}
               {next ? ` · next ${clock(next.t_start)} ${next.title ?? ""}, in ${duration((new Date(next.t_start).getTime() - now) / 1000)}` : ""}
             </p>
@@ -145,7 +145,7 @@ function Today() {
         ) : (
           <>
             <p className="cond text-[56px] leading-none font-semibold tracking-[0.03em]">{duration(recorded)}</p>
-            <p className="mt-2 text-[14px] text-mute">recorded on this day</p>
+            <p className="mt-2 text-body text-mute">recorded on this day</p>
           </>
         )}
       </DayArc>
@@ -172,7 +172,7 @@ function Today() {
         <Panel title={`${data.metricPrompt.title}?`}>
           <div className="flex flex-wrap gap-2">
             {[1, 2, 3, 4, 5].map((v) => (
-              <button key={v} className="btn min-w-10" disabled={busy} onClick={() => act(() => metricFn({ data: { id: data.metricPrompt!.id, value: v } }), "Noted.")}>
+              <button key={v} className="btn btn-secondary min-w-10" disabled={busy} onClick={() => act(() => metricFn({ data: { id: data.metricPrompt!.id, value: v } }), "Noted.")}>
                 {v}
               </button>
             ))}
@@ -180,14 +180,14 @@ function Today() {
         </Panel>
       ) : null}
 
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-[13px] text-mute">
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-small text-mute">
         <span>
           {[t.confirm_rate !== null ? `Calendar confirmed ${pct(t.confirm_rate)}` : null, t.coverage !== null ? `time accounted for ${pct(t.coverage)}` : null]
             .filter(Boolean)
             .join(" · ")}
         </span>
         <button
-          className="underline decoration-dim hover:text-txt"
+          className="btn btn-quiet btn-sm"
           onClick={() =>
             act(async () => {
               const r = await resetVisibilityFn({ data: {} });
@@ -217,17 +217,17 @@ function TimerCard({ data, now, busy, act, onRelabel }: { data: Data; now: numbe
     const until = paused ? new Date(running.paused_at!).getTime() : now;
     const elapsed = Math.max(0, (until - new Date(running.t_start).getTime()) / 1000);
     return (
-      <div className="mt-[18px] inline-flex flex-wrap items-center justify-center gap-3 border border-edge bg-panel/90 py-1.5 pr-2 pl-4">
+      <div className="mt-[18px] inline-flex flex-wrap items-center justify-center gap-3 rounded-sm border border-edge bg-panel/90 py-1.5 pr-2 pl-4">
         <span className={`size-1.5 rounded-full bg-or ${paused ? "opacity-40" : ""}`} />
         <button className="max-w-[260px] truncate text-left font-medium hover:text-or" onClick={onRelabel} title="Change label">
           {running.intent ?? "Uncategorized"}
           {running.title ? <span className="text-mute"> — {running.title}</span> : null}
         </button>
         <span className="cond min-w-[42px] text-[21px] leading-none font-semibold text-or">{duration(elapsed)}</span>
-        <button className="btn btn-sm" disabled={busy} onClick={() => act(() => timerFn({ data: { action: paused ? "resume" : "pause" } }))}>
+        <button className="btn btn-quiet btn-sm" disabled={busy} onClick={() => act(() => timerFn({ data: { action: paused ? "resume" : "pause" } }))}>
           {paused ? "Resume" : "Pause"}
         </button>
-        <button className="btn btn-sm" disabled={busy} onClick={() => act(() => timerFn({ data: { action: "stop" } }))}>
+        <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => act(() => timerFn({ data: { action: "stop" } }))}>
           Stop
         </button>
       </div>
@@ -238,16 +238,16 @@ function TimerCard({ data, now, busy, act, onRelabel }: { data: Data; now: numbe
     <div className="mt-[18px] flex w-full flex-col items-center gap-2">
       <div className="flex flex-wrap justify-center gap-2">
         {data.recent.slice(0, 3).map((r) => (
-          <button key={r.id} className="btn btn-sm max-w-[200px] truncate" disabled={busy} onClick={() => start(r.id)}>
+          <button key={r.id} className="btn btn-secondary btn-sm max-w-[200px] truncate" disabled={busy} onClick={() => start(r.id)}>
             {r.title}
           </button>
         ))}
-        <button className="btn btn-sm" onClick={() => setPicking((v) => !v)}>
+        <button className="btn btn-quiet btn-sm" onClick={() => setPicking((v) => !v)}>
           {picking ? "Close" : "Something else…"}
         </button>
       </div>
       {picking ? (
-        <div className="w-full max-w-[560px] space-y-2 border border-edge bg-panel p-3 text-left">
+        <div className="w-full max-w-[560px] space-y-2 rounded-sm bg-panel p-3 text-left">
           <input className="input" placeholder="What are you doing? (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />
           <IntentPicker intents={data.intents} recent={data.recent} onPick={(i) => start(i.id)} />
         </div>
@@ -274,8 +274,8 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
   const x = (ms: number) => `${((Math.min(Math.max(ms, from), to) - from) / (to - from)) * 100}%`;
   const share = (a: number, b: number) => Math.max(0.0015, (Math.min(b, to) - Math.max(a, from)) / (to - from));
   const w = (a: number, b: number) => `${share(a, b) * 100}%`;
-  // A label only where it fits: about 7px a character on a lane roughly 1100px wide.
-  const fits = (a: number, b: number, text: string | null) => share(a, b) * 1100 > Math.min(text?.length ?? 0, 14) * 7 + 8;
+  // A label only where it fits: about 7.5px a character on a lane roughly 1100px wide.
+  const fits = (a: number, b: number, text: string | null) => share(a, b) * 1100 > Math.min(text?.length ?? 0, 14) * 7.5 + 8;
   const ticks: number[] = [];
   for (let h = from; h <= to; h += 4 * 3_600_000) ticks.push(h);
   const timed = t.planned.filter((e) => !e.all_day);
@@ -295,7 +295,7 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
       ) : null}
       <div className="grid grid-cols-[66px_1fr] items-center gap-y-1.5">
         <span />
-        <div className="relative h-4 text-[12.5px] text-dim">
+        <div className="relative h-4 text-small text-dim">
           {ticks.map((h, i) => (
             <span
               key={h}
@@ -307,7 +307,7 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
           ))}
         </div>
 
-        <span className="text-[13px] text-mute">Planned</span>
+        <span className="text-small text-mute">Planned</span>
         <Track showNow={showNow} nowX={x(now)}>
           {timed.map((e) => (
             <a
@@ -315,7 +315,7 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
               href={e.html_link ?? undefined}
               target="_blank"
               rel="noreferrer"
-              className={`absolute top-1 bottom-1 overflow-hidden px-1 text-[11.5px] leading-4 whitespace-nowrap text-cy ${e.fills ? "border border-cy/80 bg-cy/12" : "border border-dashed border-cy/40"}`}
+              className={`absolute top-1 bottom-1 overflow-hidden px-1 text-small leading-4 whitespace-nowrap text-cy ${e.fills ? "border border-cy/80 bg-cy/12" : "border border-dashed border-cy/40"}`}
               style={{ left: x(new Date(e.t_start).getTime()), width: w(new Date(e.t_start).getTime(), new Date(e.t_end).getTime()) }}
               title={`${clock(e.t_start)}–${clock(e.t_end)} ${e.title ?? ""}`}
             >
@@ -324,7 +324,7 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
           ))}
         </Track>
 
-        <span className="text-[13px] text-mute">Actual</span>
+        <span className="text-small text-mute">Actual</span>
         <Track showNow={showNow} nowX={x(now)}>
           {t.actual.map((b) => {
             const a = new Date(b.t_start).getTime();
@@ -339,7 +339,7 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
             return (
               <button
                 key={b.id}
-                className={`absolute top-1 bottom-1 overflow-hidden px-1 text-left text-[11.5px] leading-4 whitespace-nowrap ${look} ${selected === b.id ? "outline-2 outline-offset-1 outline-txt" : ""}`}
+                className={`absolute top-1 bottom-1 overflow-hidden px-1 text-left text-small leading-4 whitespace-nowrap ${look} ${selected === b.id ? "outline-2 outline-offset-1 outline-txt" : ""}`}
                 style={{ left: x(a), width: w(a, z) }}
                 onClick={() => onSelect(b.id)}
                 title={`${clock(b.t_start)}–${b.t_end ? clock(b.t_end) : "now"} ${blockName(b)}${b.title && b.title !== blockName(b) ? ` · ${b.title}` : ""}`}
@@ -350,7 +350,7 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
           })}
         </Track>
       </div>
-      <div className="flex flex-wrap justify-between gap-x-6 gap-y-1 pl-[66px] text-[13px] text-mute">
+      <div className="flex flex-wrap justify-between gap-x-6 gap-y-1 pl-[66px] text-small text-mute">
         <span>Solid: counted · dashed: a suggestion · faint: unlabelled phone or place · outlined: running. Click a block to label it.</span>
         {t.phone ? (
           <span>
@@ -363,7 +363,7 @@ function Lanes({ t, now, selected, onSelect, hm, clock }: {
       {t.gaps.length > 0 ? (
         <p className="flex flex-wrap gap-2 pl-[66px]">
           {t.gaps.slice(0, 4).map((g) => (
-            <span key={g.t_start} className="chip">
+            <span key={g.t_start} className="chip max-w-full flex-wrap whitespace-normal">
               {duration(g.minutes * 60)} free at {clock(g.t_start)}
               {g.fits ? <span className="text-dim">· fits {g.fits}</span> : null}
             </span>
@@ -389,7 +389,7 @@ function Track({ children, showNow, nowX }: { children: React.ReactNode; showNow
 function Brief({ body }: { body: string }) {
   return (
     <Panel title="This morning" aside="from the agent">
-      <div className="whitespace-pre-wrap text-[14.5px] leading-relaxed">{body.trim()}</div>
+      <div className="whitespace-pre-wrap text-body leading-relaxed">{body.trim()}</div>
     </Panel>
   );
 }
@@ -415,7 +415,7 @@ function AskAgent({ about, busy, act, setNotice }: { about: string; busy: boolea
         placeholder="Ask the agent, or hand it something"
         aria-label="Ask the agent"
       />
-      <button className="btn" disabled={busy || !text.trim()}>Send</button>
+      <button className="btn btn-secondary" disabled={busy || !text.trim()}>Send</button>
     </form>
   );
 }
@@ -431,16 +431,16 @@ function NeedsYou({ data, busy, act }: { data: Data; busy: boolean; act: Act }) 
               <Star size={9} className="translate-y-[-1px] text-or" />
               {n.title}
             </p>
-            {n.note ? <p className="mt-0.5 mb-2 ml-[19px] text-[14px] text-mute">{n.note}</p> : null}
+            {n.note ? <p className="mt-0.5 mb-2 ml-[19px] text-body text-mute">{n.note}</p> : null}
             <div className="ml-[19px] flex items-center gap-2">
               {n.google ? (
-                <span className="text-[13px] text-dim">Complete it in Google Tasks</span>
+                <span className="text-small text-dim">Complete it in Google Tasks</span>
               ) : (
-                <button className="btn btn-sm" disabled={busy} onClick={() => act(() => taskDoneFn({ data: { id: n.id, done: true } }))}>
+                <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => act(() => taskDoneFn({ data: { id: n.id, done: true } }))}>
                   Done
                 </button>
               )}
-              <button className="btn btn-sm" disabled={busy} onClick={() => act(() => unflagFn({ data: { id: n.id } }))}>
+              <button className="btn btn-quiet btn-sm" disabled={busy} onClick={() => act(() => unflagFn({ data: { id: n.id } }))}>
                 Seen
               </button>
             </div>
@@ -448,7 +448,7 @@ function NeedsYou({ data, busy, act }: { data: Data; busy: boolean; act: Act }) 
         ))}
       </ul>
       {data.agentTasks.length > 0 ? (
-        <p className="mt-auto border-t border-line pt-2 text-[13px] text-mute">
+        <p className="mt-auto border-t border-line pt-2 text-small text-mute">
           <span className="tag-agent mr-2">with the agent</span>
           {data.agentTasks.map((a) => a.title).join(" · ")}
         </p>
@@ -476,7 +476,7 @@ function DueSoon({ data, busy, act }: { data: Data; busy: boolean; act: Act }) {
             <TaskCheck id={task.id} title={task.title} done={task.done} google={task.google} act={act} />
             <span className="min-w-0">
               <span className={task.done ? "text-dim line-through" : ""}>{task.title}</span>
-              <small className="block text-[13px] text-mute">
+              <small className="block text-small text-mute">
                 {[task.done ? "done today" : task.due ? `due ${shortDate(task.due)}` : null, task.waiting_on ? `waiting on ${task.waiting_on}` : null, task.parent, task.google ? "Google Tasks" : null]
                   .filter(Boolean)
                   .join(" · ")}
@@ -495,18 +495,18 @@ function Goals({ goals }: { goals: Data["goals"] }) {
       {goals.length === 0 ? <Empty>No goals with an hour target yet. Set one in Goals.</Empty> : null}
       <ul>
         {goals.map((g) => (
-          <li key={g.id} className="grid grid-cols-[1fr_60px_56px] items-center gap-3 py-[7px]">
+          <li key={g.id} className="grid grid-cols-[1fr_60px_auto] items-center gap-3 py-[7px]">
             <Link to="/goals" search={{ id: g.id }} className={`hover:text-or ${g.hours > 0 ? "text-txt" : "text-mute"}`}>
               {g.title}
             </Link>
             <Meter value={g.hours} target={g.target} />
-            <span className={`text-right text-[14px] ${g.hours > 0 ? "text-txt" : "text-mute"}`}>
+            <span className={`text-right text-small whitespace-nowrap ${g.hours > 0 ? "text-txt" : "text-mute"}`}>
               {round1(g.hours)} / {round1(g.target)}h
             </span>
           </li>
         ))}
       </ul>
-      {goals.some((g) => g.hours === 0) ? <p className="mt-2 text-[13px] text-dim">Quiet rows have no hours yet this week.</p> : null}
+      {goals.some((g) => g.hours === 0) ? <p className="mt-2 text-small text-dim">Quiet rows have no hours yet this week.</p> : null}
     </Panel>
   );
 }
@@ -524,7 +524,7 @@ function DayRecord({ record, timezone, highlight }: { record: NonNullable<Data["
         title="The day, written up"
         aside={
           record.page ? (
-            <Link to="/notes" search={{ slug: record.page.slug }} className="btn btn-sm">
+            <Link to="/notes" search={{ slug: record.page.slug }} className="btn btn-secondary btn-sm">
               Open in Notes
             </Link>
           ) : undefined
@@ -541,8 +541,8 @@ function DayRecord({ record, timezone, highlight }: { record: NonNullable<Data["
               key={o.id}
               className={`grid grid-cols-[48px_72px_minmax(0,1fr)] items-baseline gap-x-3 border-t border-line py-1.5 first:border-t-0 ${o.bulk ? "opacity-50" : ""} ${highlight && o.ids.includes(highlight) ? "row-sel" : ""}`}
             >
-              <span className="text-[13.5px] text-mute">{clock(o.t)}</span>
-              <span className={`text-[12.5px] ${o.source === "agent" ? "text-cy" : "text-dim"}`}>{SOURCE[o.source] ?? o.source}</span>
+              <span className="text-small text-mute">{clock(o.t)}</span>
+              <span className={`text-small ${o.source === "agent" ? "text-cy" : "text-dim"}`}>{SOURCE[o.source] ?? o.source}</span>
               <span className="min-w-0">
                 {o.title ?? "(untitled)"}
                 {o.detail ? <span className="text-mute"> · {o.detail}</span> : null}
@@ -570,19 +570,20 @@ function BlockPanel({ block: b, data, busy, act, clock, onClose }: {
 
   return (
     <Panel
+      framed
       title={
         <>
           {blockName(b)}
-          {b.title && b.title !== blockName(b) ? <span className="ml-2 font-sans text-[14px] font-normal tracking-normal text-mute normal-case">{b.title}</span> : null}
+          {b.title && b.title !== blockName(b) ? <span className="ml-2 font-sans text-body font-normal tracking-normal text-mute normal-case">{b.title}</span> : null}
         </>
       }
       aside={
-        <button className="btn btn-sm" onClick={onClose}>
+        <button className="btn btn-quiet btn-sm" onClick={onClose}>
           Close
         </button>
       }
     >
-      <p className="text-[14px] text-mute">
+      <p className="text-body text-mute">
         {clock(b.t_start)}–{b.t_end ? clock(b.t_end) : "now"} · {fromWhere(b.origin)} ·{" "}
         {b.committed
           ? `confirmed${b.committed_via && b.committed_via !== "ui" ? ` by ${b.committed_via}` : ""}`
@@ -599,19 +600,19 @@ function BlockPanel({ block: b, data, busy, act, clock, onClose }: {
       <div className="mt-3 grid gap-5 lg:grid-cols-[1fr_auto]">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[14px] font-medium">{b.committed ? "Change it to" : "It was"}</span>
+            <span className="text-body font-medium">{b.committed ? "Change it to" : "It was"}</span>
             {b.proposal && closed ? (
               <>
-                <button className="btn btn-sm border-or text-or" disabled={busy} onClick={() => act(() => confirmFn({ data: { date, accept: [b.proposal!.id] } }))}>
+                <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => act(() => confirmFn({ data: { date, accept: [b.proposal!.id] } }))}>
                   Yes, {b.intent}
                 </button>
-                <button className="btn btn-sm" disabled={busy} onClick={() => act(() => confirmFn({ data: { date, reject: [b.proposal!.id] } }))}>
+                <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => act(() => confirmFn({ data: { date, reject: [b.proposal!.id] } }))}>
                   Not this
                 </button>
               </>
             ) : null}
             {b.committed ? (
-              <button className="btn btn-sm" disabled={busy} onClick={() => act(() => uncommitFn({ data: { blockId: b.id } }), "Unconfirmed.")}>
+              <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => act(() => uncommitFn({ data: { blockId: b.id } }), "Unconfirmed.")}>
                 Undo confirm
               </button>
             ) : null}
@@ -623,7 +624,7 @@ function BlockPanel({ block: b, data, busy, act, clock, onClose }: {
             onPick={(i: PickIntent) => act(() => recategorizeFn({ data: { blockId: b.id, intentId: i.id, rememberTitle: calendar && remember, remember: !calendar && remember } })).then(onClose)}
           />
           {(calendar && b.title) || b.origin === "auto_activity" || b.origin === "place" ? (
-            <label className="flex items-center gap-2 text-[14px] text-mute">
+            <label className="flex items-center gap-2 text-body text-mute">
               <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
               {calendar
                 ? `Label every “${b.title}” this way from now on`
@@ -638,32 +639,32 @@ function BlockPanel({ block: b, data, busy, act, clock, onClose }: {
           <div className="flex flex-wrap items-end gap-2 lg:max-w-[360px] lg:border-l lg:border-line lg:pl-5">
             {!fill ? (
               <>
-                <label className="flex flex-col gap-1 text-[13px] text-mute">
+                <label className="flex flex-col gap-1 text-small text-mute">
                   Start
-                  <input className="input w-[110px]" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+                  <input className="input w-[136px]" type="time" value={start} onChange={(e) => setStart(e.target.value)} />
                 </label>
-                <label className="flex flex-col gap-1 text-[13px] text-mute">
+                <label className="flex flex-col gap-1 text-small text-mute">
                   End
-                  <input className="input w-[110px]" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+                  <input className="input w-[136px]" type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
                 </label>
-                <button className="btn" disabled={busy} onClick={() => act(() => editBlockFn({ data: { blockId: b.id, date, start, end } }), "Times changed.")}>
+                <button className="btn btn-secondary" disabled={busy} onClick={() => act(() => editBlockFn({ data: { blockId: b.id, date, start, end } }), "Times changed.")}>
                   Save times
                 </button>
               </>
             ) : null}
-            <label className="flex flex-col gap-1 text-[13px] text-mute">
+            <label className="flex flex-col gap-1 text-small text-mute">
               Split at
-              <input className="input w-[110px]" type="time" value={splitAt} onChange={(e) => setSplitAt(e.target.value)} />
+              <input className="input w-[136px]" type="time" value={splitAt} onChange={(e) => setSplitAt(e.target.value)} />
             </label>
             <button
-              className="btn"
+              className="btn btn-secondary"
               disabled={busy || !splitAt}
               onClick={() => act(() => splitBlockFn({ data: { blockId: b.id, date, at: splitAt } }), fill ? "Split. Label one half now, or the next sync will join them again." : "Split.")}
             >
               Split
             </button>
             {!fill ? (
-              <button className="btn btn-danger" disabled={busy} onClick={() => act(() => deleteBlockFn({ data: { blockId: b.id } }), "Deleted.").then(onClose)}>
+              <button className="btn btn-secondary btn-danger" disabled={busy} onClick={() => act(() => deleteBlockFn({ data: { blockId: b.id } }), "Deleted.").then(onClose)}>
                 Delete
               </button>
             ) : null}

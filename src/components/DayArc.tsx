@@ -177,7 +177,7 @@ function PhoneBar({ t0, t1, now, isToday, blocks, hm }: { t0: number; t1: number
         })}
         {isToday && now > t0 && now < t1 ? <span className="absolute -inset-y-1 w-0.5 bg-txt" style={{ left: pct(now) }} /> : null}
       </div>
-      <div className="mt-1 flex justify-between text-[12.5px] text-mute">
+      <div className="mt-1 flex justify-between text-small text-mute">
         <span>Rising {hm(t0)}</span>
         <span>Setting {hm(t1)}</span>
       </div>

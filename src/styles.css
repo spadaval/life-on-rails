@@ -28,6 +28,11 @@
   --color-bad: #e0735a;
   --font-sans: Saira, ui-sans-serif, system-ui, sans-serif;
   --font-cond: "Saira Condensed", Saira, ui-sans-serif, sans-serif;
+  /* The type scale: four sizes, one job each (DESIGN.md, Typography). The arc's readout has its own. */
+  --text-small: 13px;
+  --text-body: 15px;
+  --text-lead: 18px;
+  --text-title: 22px;
 }
 
 html {
@@ -69,20 +74,23 @@ a {
 }
 
 .h-sec {
-  @apply cond text-[15px] font-semibold text-txt;
+  @apply cond text-body font-semibold text-txt;
 }
 
 /* Components sit in their layer so utilities on an element can still adjust them. */
 @layer components {
-/* Buttons are sentence case. Solid orange only for the one primary action on a screen. */
+  /* Buttons: three levels, sentence case, a small radius. Each takes .btn and one level.
+     Primary is filled: at most one per panel or toolbar. In the small row size it is drawn as an
+     amber outline, so a list of rows with a Done each does not pour solid amber down a panel.
+     Secondary is outlined. Quiet is text only. Danger is a coral secondary, not a fourth level. */
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 border border-edge bg-transparent px-3 py-1 text-[13.5px] font-medium whitespace-nowrap text-txt transition-colors duration-150;
-  }
-  .btn:hover:not(:disabled) {
-    @apply border-or/70 bg-or/10;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-sm border border-transparent bg-transparent px-3 py-1 text-body leading-6 font-medium whitespace-nowrap transition-colors duration-150;
   }
   .btn:disabled {
     @apply cursor-default opacity-45;
+  }
+  .btn-sm {
+    @apply px-2 py-0 text-small leading-6;
   }
   .btn-primary {
     @apply border-or bg-or font-semibold text-[#1a0d02];
@@ -90,57 +98,119 @@ a {
   .btn-primary:hover:not(:disabled) {
     @apply border-[#ff9c45] bg-[#ff9c45];
   }
+  .btn-primary.btn-sm {
+    @apply border-or/80 bg-transparent text-or;
+  }
+  .btn-primary.btn-sm:hover:not(:disabled) {
+    @apply border-or bg-or/15;
+  }
+  .btn-secondary {
+    @apply border-edge text-txt;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    @apply border-or/70 bg-or/10;
+  }
+  .btn-quiet {
+    @apply text-mute;
+  }
+  .btn-quiet:hover:not(:disabled) {
+    @apply bg-raised text-txt;
+  }
   .btn-danger {
     @apply border-bad/60 text-bad;
   }
   .btn-danger:hover:not(:disabled) {
     @apply border-bad bg-bad/10;
   }
-  .btn-sm {
-    @apply px-2 py-0 text-[12.5px] leading-6;
+  /* A toggle that is on (a filter): the selection's quiet amber. */
+  .btn[aria-pressed="true"] {
+    @apply border-or/70 text-or;
   }
   .link {
     @apply text-txt underline decoration-dim hover:decoration-or;
   }
-  
-  /* A framed panel with 6px chamfers: the frame is the outer element, the face the inner. */
+
+  /* Segmented controls (filters, tabs, Pages/Graph): adjacent segments in one rounded outline;
+     the chosen one takes the selection's tint. Navigation, not buttons. */
+  .seg {
+    @apply inline-flex flex-wrap overflow-hidden rounded-sm border border-edge;
+  }
+  .seg > * {
+    @apply border-l border-edge px-3 py-1 text-body text-mute first:border-l-0 hover:text-txt;
+  }
+  .seg > [aria-pressed="true"],
+  .seg > .active {
+    @apply text-txt;
+    background: rgb(240 138 44 / 0.08);
+    box-shadow: inset 0 0 0 1px rgb(240 138 44 / 0.55);
+  }
+
+  /* Panels are separated by tone: a plain panel is the panel face on the ground, with a small
+     radius and no border. */
   .panel {
-    --c: 6px;
-    @apply bg-frame p-px;
-    clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+    @apply rounded-sm bg-panel;
   }
   .panel > .face {
-    @apply h-full bg-panel;
+    @apply h-full;
+  }
+  /* The framed panel: a 1px bronze frame with 6px chamfers, the frame the outer element and the
+     face the inner. Only for what is open or live: the open editor, the selected block, a dialog. */
+  .panel-framed {
+    --c: 6px;
+    @apply rounded-none bg-frame p-px;
+    clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  }
+  .panel-framed > .face {
+    @apply bg-panel;
     clip-path: inherit;
   }
-  
+
   .chip {
-    @apply inline-flex items-center gap-1 border border-edge px-1.5 text-[12px] leading-5 whitespace-nowrap text-mute;
+    @apply inline-flex items-center gap-1 rounded-sm border border-edge px-1.5 text-small leading-5 whitespace-nowrap text-mute;
   }
   .tag-agent {
-    @apply inline-flex items-center gap-1.5 text-[12px] leading-5 whitespace-nowrap text-cy/85;
+    @apply inline-flex items-center gap-1.5 text-small leading-5 whitespace-nowrap text-cy/85;
   }
-  
+
+  /* Text fields, selects, date and time pickers and textareas all take .input. */
   .input {
-    @apply w-full border border-edge bg-well px-2.5 py-1.5 text-[14px] text-txt placeholder:text-dim;
+    @apply w-full rounded-sm border border-edge bg-well px-2.5 py-1 text-body leading-6 text-txt placeholder:text-dim;
   }
   .input:focus {
     @apply border-or/70 outline-none;
   }
   select.input {
-    @apply pr-7;
+    @apply cursor-pointer appearance-none pr-7;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23928777'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
   }
-  
-  /* The date and time pickers' glyphs, in the frame's orange-brown instead of the browser's black. */
-::-webkit-calendar-picker-indicator {
-  filter: invert(55%) sepia(40%) saturate(500%) hue-rotate(345deg);
-  cursor: pointer;
-}
+  select.input option {
+    @apply bg-raised text-txt;
+  }
 
-input[type="checkbox"] {
-    accent-color: var(--color-or);
+  /* The date and time pickers' glyphs, in the frame's orange-brown instead of the browser's black. */
+  ::-webkit-calendar-picker-indicator {
+    filter: invert(55%) sepia(40%) saturate(500%) hue-rotate(345deg);
+    cursor: pointer;
   }
-  
+
+  /* Checkboxes: a square well with an edge, amber with a dark tick when checked. */
+  input[type="checkbox"] {
+    @apply inline-grid size-[15px] shrink-0 cursor-pointer appearance-none place-content-center rounded-[2px] border border-edge bg-well align-middle transition-colors duration-150;
+  }
+  input[type="checkbox"]:hover:not(:disabled) {
+    @apply border-or/70;
+  }
+  input[type="checkbox"]:checked {
+    @apply border-or bg-or;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%231a0d02' stroke-width='2'/%3E%3C/svg%3E");
+    background-size: 100% 100%;
+  }
+  input[type="checkbox"]:disabled {
+    @apply cursor-default opacity-45;
+  }
+
   /* A selectable row: a quiet orange tint and edge, never a solid bar. */
   .row-sel {
     background: rgb(240 138 44 / 0.08);
@@ -158,16 +228,16 @@ input[type="checkbox"] {
 
 /* Rendered pages. A reading measure, sentence case, the theme's colours. */
 .prose-lor {
-  @apply max-w-[72ch] space-y-3 text-[15.5px] leading-relaxed text-txt;
+  @apply max-w-[72ch] space-y-3 text-body leading-relaxed text-txt;
 }
 .prose-lor h1 {
-  @apply cond pb-1 text-[26px] font-semibold;
+  @apply cond pb-1 text-title font-semibold;
 }
 .prose-lor h2 {
-  @apply cond pt-4 text-[19px] font-semibold text-txt;
+  @apply cond pt-4 text-lead font-semibold text-txt;
 }
 .prose-lor h3 {
-  @apply pt-2 text-[16px] font-semibold;
+  @apply pt-2 text-body font-semibold;
 }
 .prose-lor ul {
   @apply list-disc space-y-1 pl-6 marker:text-or;
@@ -182,13 +252,13 @@ input[type="checkbox"] {
   @apply bg-raised px-1 text-[0.9em];
 }
 .prose-lor pre {
-  @apply overflow-x-auto border border-line bg-well p-3 text-sm;
+  @apply overflow-x-auto rounded-sm border border-line bg-well p-3 text-small;
 }
 .prose-lor blockquote {
   @apply border-l border-or/60 pl-3 text-mute;
 }
 .prose-lor table {
-  @apply w-full text-sm;
+  @apply w-full text-small;
 }
 .prose-lor th,
 .prose-lor td {
@@ -201,7 +271,7 @@ input[type="checkbox"] {
   @apply ml-px align-super text-[0.68em] no-underline;
 }
 .prose-lor details.footnotes {
-  @apply mt-8 border-t border-line pt-3 text-[13px] text-dim;
+  @apply mt-8 border-t border-line pt-3 text-small text-dim;
 }
 .prose-lor details.footnotes summary {
   @apply cursor-pointer text-mute hover:text-txt;

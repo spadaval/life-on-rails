@@ -123,13 +123,13 @@ export function QuickAdd({ options, initial = "", autoFocus = false, onEscape, o
 
   return (
     <div className="relative">
-      <div className={`relative border bg-well ${focused ? "border-or/70" : "border-edge"}`}>
-        <div ref={overlay} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden px-3 py-2 text-[15px] whitespace-pre text-transparent">
+      <div className={`relative rounded-sm border bg-well ${focused ? "border-or/70" : "border-edge"}`}>
+        <div ref={overlay} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden px-3 py-2 text-body whitespace-pre text-transparent">
           {marked}
         </div>
         <input
           ref={input}
-          className="relative w-full bg-transparent px-3 py-2 text-[15px] text-txt outline-none placeholder:text-dim"
+          className="relative w-full bg-transparent px-3 py-2 text-body text-txt outline-none placeholder:text-dim"
           placeholder="Add a task: Call the florist #Wedding vendors fri @agent"
           aria-label="Add a task"
           autoFocus={autoFocus}
@@ -177,21 +177,21 @@ export function QuickAdd({ options, initial = "", autoFocus = false, onEscape, o
                   choose(n);
                 }}
                 onMouseEnter={() => setPick(i)}
-                className={`flex cursor-pointer items-baseline justify-between gap-3 px-3 py-1.5 text-[14px] ${i === pick ? "bg-or/10 text-txt" : "text-mute"}`}
+                className={`flex cursor-pointer items-baseline justify-between gap-3 px-3 py-1.5 text-body ${i === pick ? "bg-or/10 text-txt" : "text-mute"}`}
               >
                 <span className="truncate">{n.id === "agent" ? "the agent" : n.name}</span>
-                <span className="shrink-0 text-[12px] text-dim">{type ?? (n.id === "agent" ? "do it for me" : "waiting on")}</span>
+                <span className="shrink-0 text-small text-dim">{type ?? (n.id === "agent" ? "do it for me" : "waiting on")}</span>
               </li>
             );
           })}
         </ul>
       ) : null}
 
-      <div className="mt-1.5 flex min-h-6 flex-wrap items-center gap-1.5 text-[13px] text-mute">
+      <div className="mt-1.5 flex min-h-6 flex-wrap items-center gap-1.5 text-small text-mute">
         {parsed.tokens.map((t) => (
-          <span key={tokenKey(t)} className="chip gap-1.5 text-[12.5px]">
+          <span key={tokenKey(t)} className="chip gap-1.5 text-small">
             {chipText(t)}
-            <button className="text-dim hover:text-txt" title="Not that: keep it as text" aria-label="Keep it as text" onClick={() => setIgnore(new Set([...ignore, tokenKey(t)]))}>
+            <button className="btn btn-quiet btn-sm px-0.5 leading-5" title="Not that: keep it as text" aria-label="Keep it as text" onClick={() => setIgnore(new Set([...ignore, tokenKey(t)]))}>
               ×
             </button>
           </span>
@@ -208,7 +208,7 @@ export function QuickAdd({ options, initial = "", autoFocus = false, onEscape, o
 }
 
 export function Key({ children }: { children: ReactNode }) {
-  return <kbd className="border border-edge px-1 font-sans text-[11.5px] leading-[18px] text-mute not-italic">{children}</kbd>;
+  return <kbd className="rounded-sm border border-edge px-1 font-sans text-small leading-[18px] text-mute not-italic">{children}</kbd>;
 }
 
 /** Quick add over any screen: `q` opens it, Escape closes it. It stays open for the next task. A link opens it with `add=`. */
@@ -238,7 +238,7 @@ export function QuickAddDialog({ linked }: { linked?: string }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/55 px-4 pt-[18vh]" onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}>
-      <div className="panel w-full max-w-[720px]" role="dialog" aria-label="Add a task">
+      <div className="panel panel-framed w-full max-w-[720px]" role="dialog" aria-label="Add a task">
         <div className="face px-5 py-4">
           <h2 className="h-sec mb-2.5">Add a task</h2>
           {options ? <QuickAdd options={options} initial={linked} autoFocus onEscape={() => setOpen(false)} /> : <p className="py-2 text-dim">…</p>}

@@ -135,19 +135,19 @@ export function StarMap({ pages, layout, selected, onSelect, onOpen }: {
           return <Body key={p.slug} p={p} k={k} links={degree.get(p.slug) ?? 0} selected={selected === p.slug} lit={lit} dim={neighbours !== null && !lit} />;
         })}
       </svg>
-      <p className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap items-center gap-x-4 gap-y-1 bg-well/85 px-2 py-1 text-[12.5px] text-mute">
+      <p className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-sm bg-well/85 px-2 py-1 text-small text-mute">
         <span className="flex items-center gap-1.5"><svg width="11" height="11" viewBox="-10 -10 20 20" aria-hidden="true"><path d={STAR_PATH} fill="#f08a2c" /></svg>loaded into every agent run</span>
         <span className="flex items-center gap-1.5"><span className="size-[7px] rounded-full bg-cy" />a person</span>
         <span className="flex items-center gap-1.5"><span className="size-[7px] rounded-full bg-mute" />a page, larger with more links in</span>
       </p>
       <div className="absolute right-3 bottom-3 flex gap-1.5">
-        <button className="btn btn-sm min-w-8 bg-panel" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in">
+        <button className="btn btn-secondary btn-sm min-w-8 bg-panel" onClick={() => zoom(1 / 1.25)} aria-label="Zoom in">
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" /></svg>
         </button>
-        <button className="btn btn-sm min-w-8 bg-panel" onClick={() => zoom(1.25)} aria-label="Zoom out">
+        <button className="btn btn-secondary btn-sm min-w-8 bg-panel" onClick={() => zoom(1.25)} aria-label="Zoom out">
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6h10" stroke="currentColor" strokeWidth="1.5" /></svg>
         </button>
-        <button className="btn btn-sm bg-panel" onClick={() => setView(fit)}>
+        <button className="btn btn-secondary btn-sm bg-panel" onClick={() => setView(fit)}>
           Fit
         </button>
       </div>
