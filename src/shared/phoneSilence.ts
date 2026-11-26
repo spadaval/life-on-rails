@@ -17,10 +17,14 @@ export function phoneSilentMs(lastReport: string | null, nowMs: number): number 
   return gap > PHONE_SILENT_AFTER_MS ? gap : null;
 }
 
-/** "5h", or "3d" past two days. */
+/**
+ * "5h", or "2d" from 36 hours. Rounded with the same units as /status's "5h ago"
+ * (`ago` in src/components/format.ts), so the line and the phone's row on that page
+ * never disagree: at 4h40m both say 5h (lor-a8wq found "silent for 4h" beside "5h ago").
+ */
 export function silentFor(ms: number): string {
-  const h = Math.floor(ms / 3600_000);
-  return h < 48 ? `${h}h` : `${Math.floor(h / 24)}d`;
+  const h = ms / 3600_000;
+  return h < 36 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`;
 }
 
 /** The sidebar's health line: jobs that need a look first, then a silent phone. `unwell` null means the database could not be read. */
