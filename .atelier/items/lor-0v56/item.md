@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-0v56
 title: A phone that has stopped reporting shows in the sidebar's health line
-status: in_review
+status: approved
 mission: lor-40i0
 labels: []
 priority: medium
