@@ -3,7 +3,7 @@ schema: atelier.item
 schema_version: 3
 id: lor-2i9i
 title: lor log - reads the text from stdin, so a bare '-' is never logged
-status: in_review
+status: approved
 mission: null
 labels: []
 priority: medium
