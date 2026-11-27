@@ -51,7 +51,7 @@ write (free for the agent; every write needs --thread <your T3 thread id>)
   lor entity set <id|name|email> [--keep-in-touch <days>|off] [--birthday MM-DD|off] [--priority on|off]
         [--name "..."] [--alias "..."]... [--unalias "..."]...   a --name stays even when Google calls them something else
   lor entity merge <keep> <merge-in>       fold the second into the first (identifiers, messages, page, tasks); the second is deleted
-  lor log "<text>" [--intent <id>]
+  lor log "<text>" [--intent <id>]        - reads the text from stdin
   lor mail done <observation_id>...       take handled mail off the queue
   lor message "<text>" [--attach <file>] [--intent <id>]   reaches Sumeet on WhatsApp; - reads the text from stdin
   lor message history [--since <t|24h|7d>] [--search "..."] [--around <id>] [--limit N]   what was said, newest last
@@ -162,6 +162,16 @@ function readBody(flags) {
   return readFileSync(0, "utf8");
 }
 
+/** The text of `lor message` and `lor log`: the words given, or stdin when they are a lone "-". Never a bare "-", never nothing. */
+function readText(words, flags) {
+  if (words.length === 1 && words[0] === "-") {
+    const text = readBody(flags).trim();
+    if (!text) throw new Usage('"-" reads the text from stdin, and stdin was empty');
+    return text;
+  }
+  return need(words.join(" "), '"<text>"');
+}
+
 const int = (value, name) => {
   if (value === undefined) return undefined;
   const n = Number(value);
@@ -252,7 +262,7 @@ function plan(positionals, flags) {
         method: "POST",
         path: "/messages",
         body: write({
-          text: b === "-" ? readBody(flags) : need(positionals.slice(1).join(" "), '"<text>"'),
+          text: readText(positionals.slice(1), flags),
           attach: flags.attach ? path.resolve(flags.attach) : undefined,
           intent_id: flags.intent,
         }),
@@ -274,7 +284,7 @@ function plan(positionals, flags) {
     case "day":
       return { method: "GET", path: `/day${q({ date: b })}`, md: true };
     case "log":
-      return { method: "POST", path: "/log", body: write({ text: need(b, "<text>"), intent_id: flags.intent }) };
+      return { method: "POST", path: "/log", body: write({ text: readText(positionals.slice(1), flags), intent_id: flags.intent }) };
 
     case "page":
       switch (b) {

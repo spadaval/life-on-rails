@@ -72,6 +72,40 @@ describe("the installed lor, a symlink", () => {
   });
 });
 
+// The 27 Nov 2026 nightly ran `lor log - <<EOF`, as `lor message -` allows, and logged an entry
+// whose whole text was "-" (lor-2i9i).
+describe("the text of lor log and lor message", () => {
+  const showBody = path.join(dir, "show-body.mjs");
+  writeFileSync(showBody, 'globalThis.fetch = async (url, init) => { process.stderr.write(`BODY ${init?.body}\\n`); return new Response("{}"); };\n');
+  const send = (args: string[], input?: string) => {
+    const r = spawnSync(process.execPath, ["--import", showBody, cli, ...args, "--thread", "t"], { encoding: "utf8", input: input ?? "", env: { ...process.env, LOR_ENV_FILE: envFile, LOR_PORT: "3857" } });
+    return { code: r.status, text: r.stderr.startsWith("BODY ") ? JSON.parse(r.stderr.slice(5)).text : undefined, err: r.stderr };
+  };
+
+  it("comes from stdin when the argument is a lone -", () => {
+    for (const verb of ["log", "message"]) {
+      expect([verb, send([verb, "-"], "Filed two inbox entries.\nNothing else.\n")]).toMatchObject([verb, { code: 0, text: "Filed two inbox entries.\nNothing else." }]);
+    }
+  });
+
+  it("is refused when stdin has nothing, and no request is made", () => {
+    for (const verb of ["log", "message"]) {
+      for (const input of ["", " \n"]) {
+        const r = send([verb, "-"], input);
+        expect([verb, r.code]).toEqual([verb, 2]);
+        expect(r.err).toMatch(/stdin was empty/);
+        expect(r.err).not.toContain("BODY");
+      }
+    }
+  });
+
+  it("is the words given otherwise, a dash among them included", () => {
+    expect(send(["log", "moved", "-", "twice"])).toMatchObject({ code: 0, text: "moved - twice" });
+    expect(send(["log", "one quoted note"])).toMatchObject({ code: 0, text: "one quoted note" });
+    expect(send(["log"]).code).toBe(2);
+  });
+});
+
 describe("scripts/ui-check.mjs", () => {
   it("refuses a base on lor-web's ports, built in or from the env file, before a browser starts", () => {
     for (const at of [":3847", ":3848", ":3849", ":4000", ":80", "", ":4002"]) {
