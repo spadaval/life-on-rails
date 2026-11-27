@@ -277,7 +277,8 @@ Unattended runs and the morning brief never record habits or metrics, or start t
 ## Keeping a record
 
 `lor log "<what you did or noticed>"` after anything you do outside LoR on Sumeet's
-behalf (replied to someone, booked something, changed a file). It is how the nightly run
+behalf (replied to someone, booked something, changed a file). For text with quotes
+or several lines, `lor log - < note.txt` reads it from stdin, as `lor message -` does. It is how the nightly run
 and Sumeet see what happened.
 
 ## Exit codes

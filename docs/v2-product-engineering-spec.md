@@ -350,7 +350,7 @@ lor page update <slug> --base <N> --find "..." --replace "..."
 lor page update <slug> --append < fragment.md
 lor entity upsert --kind K --name "..." [--email a@b] [--alias "..."]
 lor entity set <who> [--keep-in-touch <days>|off] [--birthday MM-DD|off] [--priority on|off]
-lor log "<text>" [--intent <id>]        # a source=agent observation: something the agent did or noticed
+lor log "<text>" [--intent <id>]        # a source=agent observation: something the agent did or noticed; - reads the text from stdin
 lor intent create --type T --title "..." [--parent <id>] [--due <t>] [--waiting-on <entity_id>] [--assign agent]
 lor link --from <id> --to <id> --kind measures|blocks|derived_from
 lor task assign <id> owner|agent
